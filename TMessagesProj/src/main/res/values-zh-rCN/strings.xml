@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="Vpn">VPN</string>
+    <string name="VpnSettings">VPN 设置</string>
+    <string name="UseVpn">使用 VPN</string>
+    <string name="VpnAutoSwitch">自动切换 VPN</string>
+    <string name="VpnAutoSwitchInfo">选择应用在前台时检测连接失灵的频率。后台时由应用自身流量驱动，仅在连接静默时才检测，更快也更省电。</string>
+    <string name="VpnAutoSwitchTimeoutMinutes">%1$d 分钟</string>
+    <string name="VpnRouteCalls">通话也走 VPN</string>
+    <string name="VpnRouteCallsInfo">将语音和视频通话也经 VPN 中继传输，可向对方隐藏您的 IP 地址，但通话改走 TCP 中继，画质可能下降、延迟可能升高。默认关闭。</string>
+    <string name="VpnDetails">编辑连接</string>
+    <string name="VpnDetailsInfo">编辑此连接的设置。留空某个字段即删除它。</string>
+    <string name="ConnectingToVpn">正在连接 VPN</string>
+    <string name="ConnectingToVpnWithDots">正在连接 VPN…</string>
+    <string name="TitleSetupVpn">设置 VPN ></string>
+    <string name="VpnConnections">连接</string>
+    <string name="AddVpn">添加 VPN</string>
+    <string name="VpnInfo">用 VPN 隧道代替代理承载 Telegram 流量。点按一个连接即可使用。</string>
+    <string name="VpnKeyHint">VPN 密钥</string>
+    <string name="VpnNameHint">名称（可选）</string>
+    <string name="VpnScanQr">扫描二维码</string>
+    <string name="VpnUpdateAvailable">OrionekoX 有新版本。</string>
+    <string name="VpnUpdateDownloading">正在下载更新…</string>
+    <string name="VpnQrPart">已扫描 %1$d/%2$d 个二维码，请扫描下一个</string>
+    <string name="VpnForegroundActive">VPN 已开启——保持 OrionekoX 连接</string>
+    <string name="VpnAddInfo">粘贴 vpn://（AmneziaWG）、vless://、hysteria2:// 或 ss://（Shadowsocks/Outline）链接，或 AmneziaWG 配置，也可点按二维码图标扫码。</string>
+    <string name="VpnSupportedProtocols">支持的协议</string>
+    <string name="VpnSupportedProtocolsInfo">OrionekoX 通过内嵌隧道承载 Telegram 流量。支持：\n\n- VLESS（含 REALITY、XHTTP）\n- Hysteria2（QUIC、混淆）\n- AmneziaWG 2.0（vpn:// 备份与 awg 配置）\n- Shadowsocks / Outline（ss://，带前缀伪装）</string>
+    <string name="VpnDeleteTitle">删除连接</string>
+    <string name="VpnDeleteText">删除此 VPN 连接？</string>
+    <string name="VpnInvalidKey">无法识别此 VPN 密钥</string>
+</resources>
