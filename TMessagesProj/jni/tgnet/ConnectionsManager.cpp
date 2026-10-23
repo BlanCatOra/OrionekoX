@@ -3891,6 +3891,17 @@ void ConnectionsManager::setNetworkAvailable(bool value, int32_t type, bool slow
     });
 }
 
+void ConnectionsManager::setVpnTunnelActive(bool value) {
+    scheduleTask([&, value] {
+        if (LOGS_ENABLED) DEBUG_D("vpn tunnel active = %d", value ? 1 : 0);
+        vpnTunnelActive = value;
+    });
+}
+
+bool ConnectionsManager::isVpnTunnelActive() {
+    return vpnTunnelActive;
+}
+
 void ConnectionsManager::setIpStrategy(uint8_t value) {
     scheduleTask([&, value] {
         lastProtocolUsefullData = false;

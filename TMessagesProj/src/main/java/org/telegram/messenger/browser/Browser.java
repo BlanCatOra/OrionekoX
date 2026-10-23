@@ -300,7 +300,10 @@ public class Browser {
             tryTelegraph = false;
             _allowCustom = false;
         }
-        final boolean allowCustom = _allowCustom;
+        // When the VPN routes the in-app browser, keep web links inside our (proxied) WebView instead of
+        // Custom Tabs / external Chrome, which run in another process and can't be tunnelled.
+        final boolean routeBrowser = org.telegram.messenger.vpn.VpnController.getInstance().shouldRouteBrowser();
+        final boolean allowCustom = _allowCustom && !routeBrowser;
         if (tryTelegraph) {
             try {
                 String host = AndroidUtilities.getHostAuthority(uri);

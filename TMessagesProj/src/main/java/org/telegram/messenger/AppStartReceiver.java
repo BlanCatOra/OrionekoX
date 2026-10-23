@@ -23,6 +23,13 @@ public class AppStartReceiver extends BroadcastReceiver {
                     SharedConfig.saveConfig();
                 }
                 ApplicationLoader.startPushService();
+                // Bring the embedded VPN back up if it was on, so the tunnel survives a reboot
+                // (no-op when the VPN wasn't enabled).
+                try {
+                    org.telegram.messenger.vpn.VpnController.getInstance().load();
+                } catch (Throwable e) {
+                    FileLog.e(e);
+                }
             });
         }
     }

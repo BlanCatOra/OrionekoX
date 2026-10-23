@@ -58,3 +58,6 @@
 # Use -keep to explicitly keep any other classes shrinking would remove
 #-dontoptimize
 #-dontobfuscate
+-keep class libbox.** { *; }
+-keep class go.** { *; }
+-keep class org.telegram.messenger.vpn.** { *; }

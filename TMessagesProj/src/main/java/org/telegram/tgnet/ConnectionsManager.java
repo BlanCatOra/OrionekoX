@@ -35,6 +35,7 @@ import org.telegram.messenger.EmuDetector;
 import org.telegram.messenger.FileLoadOperation;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.vpn.VpnController;
 import org.telegram.messenger.FileUploadOperation;
 import org.telegram.messenger.KeepAliveJob;
 import org.telegram.messenger.LocaleController;
@@ -934,6 +935,9 @@ public class ConnectionsManager extends BaseController {
     }
 
     public static void onBytesReceived(int amount, int networkType, final int currentAccount) {
+        // While the VPN is on every one of these bytes came through the tunnel, which makes this the
+        // cheapest possible proof that the current server is alive - see VpnController.runHealthCheck.
+        VpnController.onTgnetBytesReceived();
         try {
             StatsController.getInstance(currentAccount).incrementReceivedBytesCount(networkType, StatsController.TYPE_TOTAL, amount);
         } catch (Exception e) {
@@ -1002,6 +1006,13 @@ public class ConnectionsManager extends BaseController {
     public static native int native_isTestBackend(int currentAccount);
     public static native void native_pauseNetwork(int currentAccount);
     public static native void native_setIpStrategy(int currentAccount, byte value);
+    public static native void native_setVpnTunnelActive(int currentAccount, boolean active);
+
+    public static void setVpnTunnelActive(boolean active) {
+        for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
+            native_setVpnTunnelActive(a, active);
+        }
+    }
     public static native void native_updateDcSettings(int currentAccount);
     public static native void native_moveDatacenter(int currentAccount, int datacenterId);
     public static native void native_setNetworkAvailable(int currentAccount, boolean value, int networkType, boolean slow);

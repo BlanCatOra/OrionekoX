@@ -12,6 +12,7 @@ import android.os.SystemClock;
 
 import org.telegram.messenger.utils.ImmutableByteArrayOutputStream;
 import org.telegram.tgnet.ConnectionsManager;
+import org.telegram.messenger.vpn.VpnController;
 import org.telegram.tgnet.NativeByteBuffer;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
@@ -1702,6 +1703,8 @@ public class FileLoadOperation {
                     if (BuildVars.LOGS_ENABLED) {
                         FileLog.d("finished downloading file to " + cacheFileFinal + " time = " + (System.currentTimeMillis() - startTime) + " dc = " + datacenterId + " size = " + AndroidUtilities.formatFileSize(totalBytesCount));
                     }
+                    // A file that arrived proves the tunnel still carries downloads.
+                    VpnController.onMediaDownloadFinished();
                     if (increment) {
                         if (currentType == ConnectionsManager.FileTypeAudio) {
                             StatsController.getInstance(currentAccount).incrementReceivedItemsCount(ApplicationLoader.getCurrentNetworkType(), StatsController.TYPE_AUDIOS, 1);

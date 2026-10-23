@@ -306,7 +306,10 @@ void Connection::connect() {
     } else {
         ipv6 = 0;
     }
-    uint32_t isStatic = connectionType == ConnectionTypeProxy || !ConnectionsManager::getInstance(currentDatacenter->instanceNum).proxyAddress.empty() ? TcpAddressFlagStatic : 0;
+    // While the app tunnel is the proxy, rotate addresses the way a direct connection does -
+    // a silent address must not pin media downloads to one dead ip:port.
+    bool appTunnel = ConnectionsManager::getInstance(currentDatacenter->instanceNum).isVpnTunnelActive();
+    uint32_t isStatic = connectionType == ConnectionTypeProxy || (!ConnectionsManager::getInstance(currentDatacenter->instanceNum).proxyAddress.empty() && !appTunnel) ? TcpAddressFlagStatic : 0;
     TcpAddress *tcpAddress = nullptr;
     if (isMediaConnectionType(connectionType)) {
         currentAddressFlags = TcpAddressFlagDownload | isStatic;
@@ -693,7 +696,7 @@ void Connection::onDisconnectedInternal(int32_t reason, int32_t error) {
             isTryingNextPort = true;
             if (failedConnectionCount > willRetryConnectCount || switchToNextPort) {
                 currentDatacenter->nextAddressOrPort(currentAddressFlags);
-                if (currentDatacenter->isRepeatCheckingAddresses() && (ConnectionsManager::getInstance(currentDatacenter->instanceNum).getIpStratagy() == USE_IPV4_ONLY || ConnectionsManager::getInstance(currentDatacenter->instanceNum).getIpStratagy() == USE_IPV6_ONLY)) {
+                if (currentDatacenter->isRepeatCheckingAddresses() && !ConnectionsManager::getInstance(currentDatacenter->instanceNum).isVpnTunnelActive() && (ConnectionsManager::getInstance(currentDatacenter->instanceNum).getIpStratagy() == USE_IPV4_ONLY || ConnectionsManager::getInstance(currentDatacenter->instanceNum).getIpStratagy() == USE_IPV6_ONLY)) {
                     if (LOGS_ENABLED) DEBUG_D("started retrying connection, set ipv4 ipv6 random strategy");
                     ConnectionsManager::getInstance(currentDatacenter->instanceNum).setIpStrategy(USE_IPV4_IPV6_RANDOM);
                 }
