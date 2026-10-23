@@ -215,11 +215,6 @@ public class VpnSettingsActivity extends BaseFragment {
         final BottomSheet[] sheet = new BottomSheet[1];
         sheet[0] = CameraScanActivity.showAsSheet(this, true, CameraScanActivity.TYPE_QR, new CameraScanActivity.CameraScanActivityDelegate() {
             @Override
-            public boolean isContinuousScan() {
-                return true; // keep the camera open so split AmneziaVPN codes can be scanned in a row
-            }
-
-            @Override
             public void didFindQr(String text) {
                 AndroidUtilities.runOnUIThread(() -> onQrScanned(text, sheet[0]));
             }
