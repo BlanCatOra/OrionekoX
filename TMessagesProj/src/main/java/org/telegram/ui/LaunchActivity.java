@@ -1513,7 +1513,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     }
 
     private boolean handleVpnTestIntent(Intent intent) {
-        if (!BuildVars.DEBUG_VERSION || intent == null) {
+        // OrionekoX: share-link (vless:// etc.) import is a release feature, not a debug-only tool
+        if (intent == null) {
             return false;
         }
         String key = intent.getStringExtra("vpn_key");

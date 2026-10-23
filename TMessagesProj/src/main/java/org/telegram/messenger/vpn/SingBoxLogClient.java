@@ -4,6 +4,7 @@ import org.telegram.messenger.FileLog;
 
 import libbox.CommandClient;
 import libbox.CommandClientHandler;
+import libbox.DnsQuery;
 import libbox.CommandClientOptions;
 import libbox.ConnectionEvents;
 import libbox.Libbox;
@@ -92,4 +93,5 @@ final class SingBoxLogClient implements CommandClientHandler {
     @Override public void writeGroups(OutboundGroupIterator message) {}
     @Override public void writeOutbounds(OutboundGroupItemIterator message) {}
     @Override public void writeStatus(StatusMessage message) {}
+    @Override public void writeDNSQuery(DnsQuery query) {}
 }

@@ -1,6 +1,8 @@
 package org.telegram.messenger.vpn;
 
 import libbox.ConnectionOwner;
+import libbox.BridgeOptions;
+import libbox.BridgeSession;
 import libbox.InterfaceUpdateListener;
 import libbox.NetworkInterfaceIterator;
 import libbox.Notification;
@@ -132,5 +134,19 @@ public class SingBoxPlatformInterface implements PlatformInterface {
     @Override
     public String tailscaleHostname() {
         return "";
+    }
+
+    @Override
+    public void cancelNotification(String tag, int id) {
+    }
+
+    @Override
+    public boolean usePlatformBridge() {
+        return false;
+    }
+
+    @Override
+    public BridgeSession createBridge(BridgeOptions options) {
+        throw new UnsupportedOperationException();
     }
 }
