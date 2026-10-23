@@ -180,8 +180,8 @@
     <string name="NotificationGroupFew">%1$s enviou %3$s ao grupo %2$s</string>
     <string name="NotificationGroupAlbum">%1$s enviou um álbum para o grupo %2$s</string>
     <string name="NotificationGroupForwardedFew">%1$s encaminhou %3$s ao grupo %2$s</string>
-    <string name="NotificationHiddenName">Telegram</string>
-    <string name="NotificationHiddenChatName">Telegram</string>
+    <string name="NotificationHiddenName">OrionekoX</string>
+    <string name="NotificationHiddenChatName">OrionekoX</string>
     <string name="NotificationHiddenChatUserName">Usuário</string>
     <string name="NotificationHiddenMessage">Nova mensagem</string>
     <string name="Reply">Responder</string>
@@ -1134,10 +1134,10 @@
     <string name="SecretLinkPreviewAlert">Ativar a prévia estendida de links em Chats Secretos? Note que a prévia é gerada nos servidores do Telegram.</string>
     <string name="SecretChatContextBotAlert">Os bots inline são fornecidos por desenvolvedores terceiros. Para o bot funcionar, os símbolos que você digita depois do nome de usuário do bot são enviados para o respectivo desenvolvedor.</string>
     <string name="EditMessageError">Desculpe, você não pode editar essa mensagem.</string>
-    <string name="AllowReadCall">Permita o acesso às ligações ao Telegram, assim podemos automaticamente adicionar o código para você.</string>
-    <string name="AllowReadCallAndLog">Por favor, permita que o Telegram receba chamadas e leia o registro de chamadas para que possamos inserir automaticamente seu código para você.</string>
+    <string name="AllowReadCall">Permita o acesso às ligações ao OrionekoX, assim podemos automaticamente adicionar o código para você.</string>
+    <string name="AllowReadCallAndLog">Por favor, permita que o OrionekoX receba chamadas e leia o registro de chamadas para que possamos inserir automaticamente seu código para você.</string>
     <string name="AllowReadCallLog">Por favor, permita que o Telegram leia o registro de chamadas para inserir automaticamente o seu código para você.</string>
-    <string name="AllowFillNumber">Por favor, permita que o Telegram receba chamadas. Assim podemos confirmar o seu número de telefone automaticamente.</string>
+    <string name="AllowFillNumber">Por favor, permita que o OrionekoX receba chamadas. Assim podemos confirmar o seu número de telefone automaticamente.</string>
     <string name="UserRestricted">Você não tem permissão para isso.</string>
     <string name="YouBlockedUser">Desculpe, você bloqueou este usuário ou bot e por isso não pode adicioná-lo a grupos. Desbloqueie para prosseguir.</string>
     <string name="AddAdminErrorNotAMember">Você não pode adicionar esse usuário como admin porque ele não é membro deste grupo e você não tem permissão para adicioná-lo.</string>
@@ -1192,7 +1192,7 @@
     <string name="PermissionDrawAboveOtherAppsTitle">Picture-in-Picture</string>
     <string name="PermissionDrawAboveOtherAppsGroupCallTitle">Chat de vídeo flutuante</string>
     <!--Intro view-->
-    <string name="Page1Title">Telegram</string>
+    <string name="Page1Title">OrionekoX</string>
     <string name="Page2Title">Rápido</string>
     <string name="Page3Title">Gratuito</string>
     <string name="Page4Title">Seguro</string>
