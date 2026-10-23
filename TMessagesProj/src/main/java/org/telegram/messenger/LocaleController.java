@@ -1083,6 +1083,7 @@ public class LocaleController {
 
                 localizationExternal = new Localization.Builder()
                     .addLocalization(stringMap)
+                    .addLocalization(getOrionekoForkStrings(localeInfo))
                     .build();
                 localizationExternalSize = calculateTranslatedCount(stringMap);
 
@@ -1222,6 +1223,66 @@ public class LocaleController {
             if (v != null && v.contains("Telegram")) {
                 stringMap.put(key, v.replace("Telegram", "OrionekoX"));
             }
+        }
+    }
+
+    // OrionekoX: strings that exist only in this fork (VPN manager etc.) and therefore never
+    // appear in official cloud language packs. Telegram resolves pack-missing keys against a
+    // bundled English asset, so we merge these, localized from packaged resources, into the
+    // external localization at build time.
+    private static final String[] ORIONEKO_FORK_KEYS = {
+        "Vpn", "VpnSettings", "UseVpn", "VpnAutoSwitch", "VpnAutoSwitchInfo", "VpnAutoSwitchTimeoutMinutes",
+        "VpnRouteCalls", "VpnRouteCallsInfo", "VpnDetails", "VpnDetailsInfo", "VpnConnections", "VpnInfo",
+        "VpnKeyHint", "VpnNameHint", "VpnScanQr", "VpnQrPart", "VpnAddInfo", "VpnSupportedProtocols",
+        "VpnSupportedProtocolsInfo", "VpnDeleteTitle", "VpnDeleteText", "VpnInvalidKey", "VpnForegroundActive",
+        "VpnUpdateAvailable", "VpnUpdateDownloading", "AddVpn", "TitleSetupVpn", "ConnectingToVpn", "ConnectingToVpnWithDots"
+    };
+
+    private static HashMap<String, String> orionekoForkStringsCache;
+    private static String orionekoForkStringsCacheKey;
+
+    private static HashMap<String, String> getOrionekoForkStrings(LocaleInfo localeInfo) {
+        HashMap<String, String> empty = new HashMap<>();
+        try {
+            if (localeInfo == null) {
+                return empty;
+            }
+            String key = localeInfo.getKey();
+            if (key != null && key.equals(orionekoForkStringsCacheKey) && orionekoForkStringsCache != null) {
+                return orionekoForkStringsCache;
+            }
+            Context ctx = ApplicationLoader.applicationContext;
+            if (ctx == null) {
+                return empty;
+            }
+            String code = !TextUtils.isEmpty(localeInfo.pluralLangCode) ? localeInfo.pluralLangCode : localeInfo.shortName;
+            java.util.Locale loc;
+            if (TextUtils.isEmpty(code)) {
+                loc = java.util.Locale.getDefault();
+            } else {
+                String[] args = code.split("[_\\-]");
+                String region = args.length > 1 ? args[1] : "";
+                if (region.length() == 4) { // script code (e.g. "hans") - map to the dominant region
+                    region = region.equalsIgnoreCase("hans") ? "CN" : region.equalsIgnoreCase("hant") ? "TW" : "";
+                }
+                loc = region.isEmpty() ? new java.util.Locale(args[0]) : new java.util.Locale(args[0], region.toUpperCase());
+            }
+            android.content.res.Configuration cfg = new android.content.res.Configuration(ctx.getResources().getConfiguration());
+            cfg.setLocale(loc);
+            Context lctx = ctx.createConfigurationContext(cfg);
+            HashMap<String, String> map = new HashMap<>();
+            for (String k : ORIONEKO_FORK_KEYS) {
+                int id = lctx.getResources().getIdentifier(k, "string", ctx.getPackageName());
+                if (id != 0) {
+                    map.put(k, lctx.getResources().getString(id));
+                }
+            }
+            orionekoForkStringsCacheKey = key;
+            orionekoForkStringsCache = map;
+            return map;
+        } catch (Exception e) {
+            FileLog.e(e);
+            return empty;
         }
     }
 
@@ -1381,6 +1442,7 @@ public class LocaleController {
                 }
                 localizationExternal = new Localization.Builder()
                     .addLocalization(localeValues)
+                    .addLocalization(getOrionekoForkStrings(localeInfo))
                     .build();
                 localizationExternalSize = calculateTranslatedCount(localeValues);
             }
@@ -3097,6 +3159,7 @@ public class LocaleController {
 
                         localizationExternal = new Localization.Builder()
                             .addLocalization(valuesToSet)
+                            .addLocalization(getOrionekoForkStrings(localeInfo))
                             .build();
                         localizationExternalSize = calculateTranslatedCount(valuesToSet);
 
