@@ -278,6 +278,10 @@ void moveDatacenter(JNIEnv *env, jclass c, jint instanceNum, jint datacenterId) 
     ConnectionsManager::getInstance(instanceNum).moveToDatacenter(datacenterId);
 }
 
+void setVpnTunnelActive(JNIEnv *env, jclass c, jint instanceNum, jboolean value) {
+    ConnectionsManager::getInstance(instanceNum).setVpnTunnelActive(value);
+}
+
 void setIpStrategy(JNIEnv *env, jclass c, jint instanceNum, jbyte value) {
     ConnectionsManager::getInstance(instanceNum).setIpStrategy((uint8_t) value);
 }
@@ -550,6 +554,7 @@ static JNINativeMethod ConnectionsManagerMethods[] = {
         {"native_updateDcSettings", "(I)V", (void *) updateDcSettings},
         {"native_moveDatacenter", "(II)V", (void *) moveDatacenter},
         {"native_setIpStrategy", "(IB)V", (void *) setIpStrategy},
+        {"native_setVpnTunnelActive", "(IZ)V", (void *) setVpnTunnelActive},
         {"native_setNetworkAvailable", "(IZIZ)V", (void *) setNetworkAvailable},
         {"native_setPushConnectionEnabled", "(IZ)V", (void *) setPushConnectionEnabled},
         {"native_setJava", "(Z)V", (void *) setJava},

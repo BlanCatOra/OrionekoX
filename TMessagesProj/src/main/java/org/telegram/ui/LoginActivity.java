@@ -767,7 +767,9 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
 
         proxyButtonView = new ImageView(context);
         proxyButtonView.setImageDrawable(proxyDrawable = new ProxyDrawable(context));
-        proxyButtonView.setOnClickListener(v -> presentFragment(new ProxyListActivity()));
+        // OrionekoX: the login-screen button opens the VPN-key manager, so a new user on a blocked
+        // network can paste and enable a vless/hysteria2/AmneziaWG key that tunnels the very first sendCode.
+        proxyButtonView.setOnClickListener(v -> presentFragment(new VpnListActivity()));
         proxyButtonView.setAlpha(0f);
         proxyButtonView.setVisibility(View.GONE);
         sizeNotifierFrameLayout.addView(proxyButtonView, LayoutHelper.createFrame(32, 32, Gravity.RIGHT | Gravity.TOP, 16, 16, 16, 16));

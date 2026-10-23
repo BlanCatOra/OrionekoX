@@ -105,6 +105,8 @@ import org.telegram.messenger.BotGuardHelper;
 import org.telegram.messenger.BotWebViewVibrationEffect;
 import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.BuildVars;
+import org.telegram.messenger.vpn.SingBoxManager;
+import org.telegram.messenger.vpn.VpnController;
 import org.telegram.messenger.ChannelBoostsController;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.ContactsController;
@@ -455,6 +457,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             SharedConfig.lastPauseTime = (int) (SystemClock.elapsedRealtime() / 1000);
         }
         AndroidUtilities.fillStatusBarHeight(this, false);
+        // Restore the VPN on a cold start: reconnect it if it was left enabled (the sing-box core
+        // dies with the process, so it must be brought back up).
+        VpnController.getInstance().load();
         actionBarLayout = new ActionBarLayout(this, true);
 
         frameLayout = new ActivityContentLayout(this);
@@ -1507,8 +1512,38 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         return handleIntent(intent, isNew, restore, fromPassword, null, true, false);
     }
 
+    private boolean handleVpnTestIntent(Intent intent) {
+        if (!BuildVars.DEBUG_VERSION || intent == null) {
+            return false;
+        }
+        String key = intent.getStringExtra("vpn_key");
+        if (key == null) {
+            Uri data = intent.getData();
+            if (data != null) {
+                String low = data.toString().toLowerCase();
+                if (low.startsWith("vpn://") || low.startsWith("vless://") || low.startsWith("hysteria2://") || low.startsWith("awg://")) {
+                    key = data.toString();
+                }
+            }
+        }
+        if (key == null) {
+            return false;
+        }
+        if ("disconnect".equalsIgnoreCase(key.trim())) {
+            SingBoxManager.getInstance().disconnect();
+            Toast.makeText(this, "OrionekoX VPN: disconnecting", Toast.LENGTH_SHORT).show();
+            return true;
+        }
+        SingBoxManager.getInstance().connect(key);
+        Toast.makeText(this, "OrionekoX VPN: connecting...", Toast.LENGTH_SHORT).show();
+        return true;
+    }
+
     @SuppressLint("Range")
     private boolean handleIntent(Intent intent, boolean isNew, boolean restore, boolean fromPassword, Browser.Progress progress, boolean rebuildFragments, boolean openedTelegram) {
+        if (handleVpnTestIntent(intent)) {
+            return true;
+        }
         if (GiftInfoBottomSheet.handleIntent(intent, progress)) {
             return true;
         }
@@ -8222,8 +8257,13 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             title = "Updating";
             titleId = R.string.Updating;
         } else if (currentConnectionState == ConnectionsManager.ConnectionStateConnectingToProxy) {
-            title = "ConnectingToProxyWithDots";
-            titleId = R.string.ConnectingToProxyWithDots;
+            if (VpnController.getInstance().isEnabled()) {
+                title = "ConnectingToVpnWithDots";
+                titleId = R.string.ConnectingToVpnWithDots;
+            } else {
+                title = "ConnectingToProxyWithDots";
+                titleId = R.string.ConnectingToProxyWithDots;
+            }
         } else if (currentConnectionState == ConnectionsManager.ConnectionStateConnecting) {
             title = "Connecting";
             titleId = R.string.Connecting;

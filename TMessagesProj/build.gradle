@@ -101,6 +101,8 @@ dependencies {
     api project(":TMessagesProj_Modules:media3:media-lib-decoder-ffmpeg")
     api project(":TMessagesProj_Modules:media3:media-lib-session")
     api project(':jlatexmath')
+    // OrionekoX: embedded sing-box tunnel core (from pelegram, GPLv3)
+    implementation(name: 'libbox-lx', ext: 'aar')
 
 //    implementation 'com.google.mlkit:translate:17.0.3'
 

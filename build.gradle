@@ -17,6 +17,16 @@ repositories {
     google()
 }
 
+// Make the local sing-box AAR resolvable from every module (the app module resolves the
+// runtime classpath and needs to see :libbox-lx: that TMessagesProj depends on).
+allprojects {
+    repositories {
+        flatDir { dirs "${rootProject.projectDir}/TMessagesProj/libs" }
+        google()
+        mavenCentral()
+    }
+}
+
 // Strip JLatexMath fonts we don't ship (transitive AAR assets from
 // io.noties.markwon:ext-latex -> ru.noties:jlatexmath-android, ~764 KB total under
 // assets/org/scilab/forge/jlatexmath/fonts/). Has to live in the APK modules — a
