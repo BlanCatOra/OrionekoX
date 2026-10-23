@@ -1210,6 +1210,21 @@ public class LocaleController {
         return getLocaleFileStrings(file, false);
     }
 
+    private static final String[] ORIONEKO_BRAND_KEYS = {
+        "AppName", "Page1Title", "AllowReadCall", "AllowReadCallAndLog",
+        "AllowFillNumber", "NotificationHiddenName", "NotificationHiddenChatName"
+    };
+
+    // OrionekoX: keep the fork brand when cloud language packs supply official strings
+    private static void applyOrionekoBrand(HashMap<String, String> stringMap) {
+        for (String key : ORIONEKO_BRAND_KEYS) {
+            String v = stringMap.get(key);
+            if (v != null && v.contains("Telegram")) {
+                stringMap.put(key, v.replace("Telegram", "OrionekoX"));
+            }
+        }
+    }
+
     private HashMap<String, String> getLocaleFileStrings(File file, boolean preserveEscapes) {
         FileInputStream stream = null;
         reloadLastFile = false;
@@ -1266,6 +1281,7 @@ public class LocaleController {
                 }
                 eventType = parser.next();
             }
+            applyOrionekoBrand(stringMap);
             return stringMap;
         } catch (Exception e) {
             try {

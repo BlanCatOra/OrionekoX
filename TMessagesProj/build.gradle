@@ -138,6 +138,11 @@ android {
         minSdkVersion 23
         targetSdkVersion 36
 
+        // OrionekoX: inject own Telegram API credentials via local.properties (TELEGRAM_APP_ID / TELEGRAM_APP_HASH),
+        // fallback to upstream defaults when absent
+        buildConfigField "int", "TELEGRAM_APP_ID", propOr("TELEGRAM_APP_ID", "4")
+        buildConfigField "String", "TELEGRAM_APP_HASH", "\"" + propOr("TELEGRAM_APP_HASH", "014b35b6184100b085b0d0572f9b5103") + "\""
+
         vectorDrawables.generatedDensities = ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi']
 
         multiDexEnabled true
@@ -244,6 +249,11 @@ def getProps(String propName) {
     } else {
         return "";
     }
+}
+
+def propOr(String propName, String defValue) {
+    def v = getProps(propName)
+    return (v == null || v.toString().isEmpty()) ? defValue : v.toString()
 }
 apply plugin: 'com.google.gms.google-services'
 
