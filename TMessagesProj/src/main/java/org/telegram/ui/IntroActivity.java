@@ -394,14 +394,18 @@ public class IntroActivity extends BaseFragment implements NotificationCenter.No
         agentsOnlyButton.setGravity(Gravity.CENTER);
         agentsOnlyButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
         agentsOnlyButton.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-        frameContainerView.addView(agentsOnlyButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 36, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 152));
+        frameContainerView.addView(agentsOnlyButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 36, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 128));
         agentsOnlyButton.setOnClickListener(v -> {
             if (startPressed) {
                 return;
             }
             startPressed = true;
             org.telegram.ox.OxMode.setAgentOnly(true);
-            presentFragment(new OxAgentsActivity(), true);
+            try {
+                org.telegram.ox.OxAgentsBridge.ensureLocalAccount();
+            } catch (Throwable ignore) {
+            }
+            presentFragment(new DialogsActivity(null), true);
             destroyed = true;
         });
 

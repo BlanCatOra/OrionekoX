@@ -420,9 +420,34 @@ public class OxAgentChatActivity extends BaseFragment {
 
         final EditText name = field(context, wrap, LocaleController.getString(R.string.OxAgentNameHint2), agent.name);
         final EditText emoji = field(context, wrap, "Emoji", agent.emoji);
-        final EditText baseUrl = field(context, wrap, "Base URL (OpenAI 兼容，云端如 https://api.deepseek.com；本地如 http://127.0.0.1:11434/v1)", agent.baseUrl);
+
+        final EditText baseUrl = field(context, wrap, "Base URL (OpenAI 兼容，云端如 https://api.deepseek.com；局域网设备如 http://<设备IP>:11434/v1)", agent.baseUrl);
         final EditText apiKey = field(context, wrap, "API Key（本地后端可留空）", agent.apiKey);
         final EditText model = field(context, wrap, "模型 (如 deepseek-chat / qwen2.5:7b)", agent.model);
+
+        TextView presetLabel = new TextView(context);
+        presetLabel.setText("🌐 " + LocaleController.getString(R.string.OxEndpointPresets));
+        presetLabel.setTextSize(13);
+        presetLabel.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        presetLabel.setPadding(0, AndroidUtilities.dp(10), 0, AndroidUtilities.dp(6));
+        wrap.addView(presetLabel);
+        presetLabel.setOnClickListener(v -> {
+            final String[][] presets = {
+                {"DeepSeek (cloud)", "https://api.deepseek.com", "deepseek-chat"},
+                {"Ollama (local/LAN device)", "http://127.0.0.1:11434/v1", "qwen2.5:7b"},
+                {"LM Studio (local/LAN device)", "http://127.0.0.1:1234/v1", ""},
+                {"opencode serve (local/LAN device)", "http://127.0.0.1:4010/v1", ""},
+            };
+            CharSequence[] names = new CharSequence[presets.length];
+            for (int i = 0; i < presets.length; i++) names[i] = presets[i][0];
+            new AlertDialog.Builder(context)
+                    .setItems(names, (d, which) -> {
+                        baseUrl.setText(presets[which][1]);
+                        if (!presets[which][2].isEmpty()) model.setText(presets[which][2]);
+                    })
+                    .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                    .show();
+        });
 
         TextView mdLabel = new TextView(context);
         mdLabel.setText("AGENTS.md（人设/规则）");

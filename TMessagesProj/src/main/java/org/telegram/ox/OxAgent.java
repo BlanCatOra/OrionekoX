@@ -18,6 +18,7 @@ public class OxAgent {
     public String model;
     public boolean builtIn;
     public boolean pinned;    // sticks to the top of the agents block in the chat list
+    public long tgId;         // synthetic Telegram user id when running in local-account mode (0 = not yet assigned)
     // tool name -> "auto" | "ask" | "deny"; missing entries fall back to the tool default
     public JSONObject toolsPolicy = new JSONObject();
 
@@ -32,6 +33,7 @@ public class OxAgent {
         a.model = o.optString("model", "");
         a.builtIn = o.optBoolean("built_in", false);
         a.pinned = o.optBoolean("pinned", false);
+        a.tgId = o.optLong("tg_id", 0);
         JSONObject tp = o.optJSONObject("tools_policy");
         a.toolsPolicy = tp == null ? new JSONObject() : tp;
         return a;
@@ -49,6 +51,7 @@ public class OxAgent {
         o.put("model", model);
         o.put("built_in", builtIn);
         o.put("pinned", pinned);
+        o.put("tg_id", tgId);
         o.put("tools_policy", toolsPolicy);
         return o;
     }

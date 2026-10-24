@@ -414,6 +414,17 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         ApplicationLoader.postInitApplication();
         AndroidUtilities.checkDisplaySize(this, getResources().getConfiguration());
         currentAccount = UserConfig.selectedAccount;
+        android.util.Log.i("OxBridge", "onCreate hook: selectedAccount=" + currentAccount
+                + " agentOnly=" + org.telegram.ox.OxMode.isAgentOnly());
+        // OrionekoX: agent-only mode activates a local account so the full Telegram UI
+        // works offline (agents appear as contacts, chats are real chats)
+        try {
+            if (org.telegram.ox.OxMode.isAgentOnly()) {
+                org.telegram.ox.OxAgentsBridge.ensureLocalAccount();
+            }
+        } catch (Throwable t) {
+            FileLog.e(t);
+        }
         registerReceiver(batteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         if (!UserConfig.getInstance(currentAccount).isClientActivated()) {
             Intent intent = getIntent();
@@ -590,6 +601,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
         LiteMode.addOnPowerSaverAppliedListener(onPowerSaverCallback = this::onPowerSaver);
         if (actionBarLayout.getFragmentStack().isEmpty() && (layersActionBarLayout == null || layersActionBarLayout.getFragmentStack().isEmpty())) {
+            android.util.Log.i("OxBridge", "stack init: activated=" + UserConfig.getInstance(currentAccount).isClientActivated()
+                    + " agentOnly=" + org.telegram.ox.OxMode.isAgentOnly() + " selectedAccount=" + currentAccount);
             if (!UserConfig.getInstance(currentAccount).isClientActivated()) {
                 actionBarLayout.addFragmentToStack(getClientNotActivatedFragment());
             } else {
@@ -1095,6 +1108,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
     private BaseFragment getClientNotActivatedFragment() {
         // OrionekoX: agent-only mode - use the app without a Telegram account (agents only)
+        android.util.Log.i("OxBridge", "getClientNotActivatedFragment agentOnly=" + org.telegram.ox.OxMode.isAgentOnly()
+                + " activated=" + UserConfig.getInstance(currentAccount).isClientActivated());
         if (org.telegram.ox.OxMode.isAgentOnly()) {
             return new OxAgentsActivity();
         }

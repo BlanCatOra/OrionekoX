@@ -8290,6 +8290,18 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         updateVisibleRows(MessagesController.UPDATE_MASK_SELECT_DIALOG);
     }
 
+    // OrionekoX: agent-only mode exit - wipes the local account and returns to the login intro
+    private void confirmExitAgentOnly() {
+        if (getParentActivity() == null) return;
+        android.app.Activity act = getParentActivity();
+        org.telegram.ui.ActionBar.AlertDialog.Builder b = new org.telegram.ui.ActionBar.AlertDialog.Builder(act);
+        b.setTitle(getString(R.string.OxLoginTelegram));
+        b.setMessage(getString(R.string.OxLoginTelegramText));
+        b.setPositiveButton(getString(R.string.OK), (d, w) -> org.telegram.ox.OxAgentsBridge.exitAgentOnly());
+        b.setNegativeButton(getString(R.string.Cancel), null);
+        b.show();
+    }
+
     // OrionekoX: long-press menu for the local-agent rows pinned at the top of the chat list
     private void showOxAgentMenu(org.telegram.ox.OxAgent agent, DialogsAdapter adapter) {
         if (adapter == null || getParentActivity() == null) return;
@@ -8310,6 +8322,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 builder.setTitle(LocaleController.getString(R.string.OxAgentDeleteTitle));
                 builder.setMessage(LocaleController.formatString("OxDeleteAgentConfirm", R.string.OxDeleteAgentConfirm, agent.name));
                 builder.setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
+                    org.telegram.ox.OxAgentsBridge.onAgentDeleted(agent.tgId);
                     org.telegram.ox.OxAgentStore.deleteAgent(agent.id);
                     adapter.notifyDataSetChanged();
                 });
@@ -13815,15 +13828,20 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             });
         });
         io.addGap();
-        io.add(R.drawable.outline_groups_24, getString(R.string.NewGroup), () -> {
-            Bundle args = new Bundle();
-            presentFragment(new GroupCreateActivity(args));
-        });
-        io.add(R.drawable.outline_saved_24, getString(R.string.SavedMessages), () -> {
-            Bundle args = new Bundle();
-            args.putLong("user_id", UserConfig.getInstance(currentAccount).getClientUserId());
-            presentFragment(new ChatActivity(args));
-        });
+        boolean oxAgentOnly = org.telegram.ox.OxMode.isAgentOnly();
+        if (!oxAgentOnly) {
+            io.add(R.drawable.outline_groups_24, getString(R.string.NewGroup), () -> {
+                Bundle args = new Bundle();
+                presentFragment(new GroupCreateActivity(args));
+            });
+        }
+        if (!oxAgentOnly) {
+            io.add(R.drawable.outline_saved_24, getString(R.string.SavedMessages), () -> {
+                Bundle args = new Bundle();
+                args.putLong("user_id", UserConfig.getInstance(currentAccount).getClientUserId());
+                presentFragment(new ChatActivity(args));
+            });
+        }
         // OrionekoX: local agents entry in the drawer
         io.add(R.drawable.filled_bot_approve_24, getString(R.string.OxAgents), () -> {
             presentFragment(new OxAgentsActivity());
@@ -13832,10 +13850,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         io.add(R.drawable.filled_bot_approve_24, getString(R.string.OxMcp), () -> {
             presentFragment(new OxMcpActivity());
         });
-        if (ApplicationLoader.applicationLoaderInstance != null) {
+        if (oxAgentOnly) {
+            io.add(R.drawable.outline_add_account, getString(R.string.OxLoginTelegram), () -> confirmExitAgentOnly());
+        }
+        if (!oxAgentOnly && ApplicationLoader.applicationLoaderInstance != null) {
             ApplicationLoader.applicationLoaderInstance.addItemOptions(io);
         }
-        if (getMessagesController().config.walletAvailable.get()) {
+        if (!oxAgentOnly && getMessagesController().config.walletAvailable.get()) {
             io.add(R.drawable.ic_gram, LocaleController.getString(R.string.WalletAttachMoney), () -> {
                 presentFragment(new WalletActivity());
             });

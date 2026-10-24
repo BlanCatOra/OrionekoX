@@ -55,7 +55,7 @@
     <string name="OxAgentImported">已导入智能体 %1$s</string>
     <string name="OxAgentImportFailed">导入失败：不是有效的 .oxagent 文件</string>
     <string name="OxAgentExported">已导出 %1$s（不包含 API 密钥）</string>
-    <string name="OxAgentsOnlyEntry">🤖 先用智能体（免登录）</string>
+    <string name="OxAgentsOnlyEntry">🤖 使用本地模式</string>
     <string name="OxMcp">MCP 服务</string>
     <string name="OxMcpIntro">远程 MCP 服务器（与 Operit/Operit2 插件生态同协议）。已启用服务器提供的工具会自动并入智能体工具集，并走同一套权限确认。</string>
     <string name="OxMcpEmpty">还没有服务器。添加一个吧——例如 Operit 插件市场里的远程 MCP 端点。</string>
@@ -67,4 +67,7 @@
     <string name="OxMcpToolsFound">%1$d 个工具</string>
     <string name="OxMcpToolsAvailable">当前可用 MCP 工具：%1$d 个</string>
     <string name="OxMcpDisabled">已停用</string>
+    <string name="OxLoginTelegram">登录 Telegram</string>
+    <string name="OxLoginTelegramText">将退出智能体模式并清除本地账号数据（智能体及其聊天记录）。继续？</string>
+    <string name="OxEndpointPresets">端点预设（云端 / 局域网其他设备）</string>
 </resources>

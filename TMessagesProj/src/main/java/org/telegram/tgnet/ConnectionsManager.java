@@ -845,6 +845,12 @@ public class ConnectionsManager extends BaseController {
     }
 
     public static void onLogout(final int currentAccount) {
+        // OrionekoX: in local-agent mode the account is fabricated - there is no server
+        // session, so AUTH_KEY_UNREGISTERED style callbacks must not wipe it.
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            android.util.Log.i("OxBridge", "onLogout ignored in agent-only mode");
+            return;
+        }
         AndroidUtilities.runOnUIThread(() -> {
             AccountInstance accountInstance = AccountInstance.getInstance(currentAccount);
             if (accountInstance.getUserConfig().getClientUserId() != 0) {
