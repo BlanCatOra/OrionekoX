@@ -214,6 +214,9 @@ public class OxMcpActivity extends BaseFragment {
         final EditText url = new EditText(ctx);
         url.setHint(LocaleController.getString(R.string.OxMcpUrlHint));
         wrap.addView(url, LayoutHelper.createLinear(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT, 0, 8, 0, 8));
+        final EditText headers = new EditText(ctx);
+        headers.setHint(LocaleController.getString(R.string.OxMcpHeadersHint));
+        wrap.addView(headers, LayoutHelper.createLinear(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT, 0, 8, 0, 8));
 
         AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
         builder.setTitle(LocaleController.getString(R.string.OxMcpAdd));
@@ -223,6 +226,10 @@ public class OxMcpActivity extends BaseFragment {
             String u = url.getText().toString().trim();
             if (n.isEmpty() || !(u.startsWith("http://") || u.startsWith("https://"))) return;
             OxMcpManager.McpServer s = new OxMcpManager.McpServer(n, u);
+            String h = headers.getText().toString().trim();
+            if (!h.isEmpty()) {
+                try { new org.json.JSONObject(h); s.headersJson = h; } catch (Exception ignore) {}
+            }
             OxMcpManager.saveServer(s);
             rebuild();
             refreshNow(s);

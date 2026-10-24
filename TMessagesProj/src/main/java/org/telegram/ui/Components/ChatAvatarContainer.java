@@ -1581,7 +1581,9 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
 
     private void updateCurrentConnectionState() {
         String title = null;
-        if (currentConnectionState == ConnectionsManager.ConnectionStateWaitingForNetwork) {
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            // local mode: tgnet can never connect; never let the connecting state stomp the subtitle
+        } else if (currentConnectionState == ConnectionsManager.ConnectionStateWaitingForNetwork) {
             title = getString(R.string.WaitingForNetwork);
         } else if (currentConnectionState == ConnectionsManager.ConnectionStateConnecting) {
             title = getString(R.string.Connecting);

@@ -1268,6 +1268,7 @@ public class LocaleController {
         "OxMcpEmpty",
         "OxMcpIntro",
         "OxMcpNameHint",
+        "OxMcpHeadersHint",
         "OxMcpRefresh",
         "OxMcpRefreshing",
         "OxMcpToolsAvailable",
