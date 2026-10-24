@@ -91,6 +91,64 @@ public class OxBuiltinTools {
         });
 
         register(new OxTool() {
+            @Override public String name() { return "tg_list_chats"; }
+            @Override public String description() { return "List the top chats/dialogs of the signed-in Telegram account with type and unread count. Read-only, requires user confirmation."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() {
+                JSONObject s = schema(new String[]{"limit"});
+                try { s.put("description", "limit: optional, 1-30, default 15"); } catch (Exception ignored) {}
+                return s;
+            }
+            @Override public String execute(JSONObject args) {
+                final int limit = Math.max(1, Math.min(30, args.optInt("limit", 15)));
+                final String[] out = new String[1];
+                final CountDownLatch latch = new CountDownLatch(1);
+                AndroidUtilities.runOnUIThread(() -> {
+                    try {
+                        org.telegram.messenger.MessagesController mc =
+                            org.telegram.messenger.MessagesController.getInstance(UserConfig.selectedAccount);
+                        java.util.ArrayList<org.telegram.tgnet.TLRPC.Dialog> dialogs = mc.getAllDialogs();
+                        JSONArray arr = new JSONArray();
+                        int count = 0;
+                        for (org.telegram.tgnet.TLRPC.Dialog d : dialogs) {
+                            if (count >= limit) break;
+                            long id = d.id;
+                            String title;
+                            String type;
+                            if (id > 0) {
+                                org.telegram.tgnet.TLRPC.User u = mc.getUser(id);
+                                title = u == null ? "?" : org.telegram.messenger.UserObject.getUserName(u);
+                                type = "user";
+                            } else {
+                                org.telegram.tgnet.TLRPC.Chat c = mc.getChat(-id);
+                                title = c == null ? "?" : (c.title == null ? "?" : c.title);
+                                type = (c != null && c.megagroup) ? "supergroup" : (c != null && c.broadcast) ? "channel" : "chat";
+                            }
+                            if (title == null || title.isEmpty()) continue;
+                            JSONObject o = new JSONObject();
+                            o.put("title", title);
+                            o.put("type", type);
+                            o.put("unread", d.unread_count);
+                            arr.put(o);
+                            count++;
+                        }
+                        out[0] = arr.toString();
+                    } catch (Throwable t) {
+                        out[0] = "error: " + t;
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+                try {
+                    latch.await(8, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return out[0] == null ? "timeout" : out[0];
+            }
+        });
+
+        register(new OxTool() {
             @Override public String name() { return "http_get"; }
             @Override public String description() { return "HTTP GET a URL and return the first 2000 bytes of the response body. Use for fetching public information."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }

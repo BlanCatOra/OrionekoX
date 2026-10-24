@@ -43,4 +43,6 @@
     <string name="OxAgentSummarizerName">摘要官</string>
     <string name="OxToolPermissionTitle">允许调用工具？</string>
     <string name="OxToolPermissionText">该智能体请求执行以下工具：</string>
+    <string name="OxVpnKeepAlive">后台保活</string>
+    <string name="OxVpnKeepAliveInfo">将应用加入电池优化白名单，并每分钟发送一个极小的保活数据包，让 VPN 隧道在后台持续存活、进程被杀后自动恢复连接。</string>
 </resources>
