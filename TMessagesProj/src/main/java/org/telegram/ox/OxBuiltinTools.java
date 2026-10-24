@@ -350,6 +350,52 @@ public class OxBuiltinTools {
         });
 
         register(new OxTool() {
+            @Override public String name() { return "shell_in_container"; }
+            @Override public String description() { return "Run a shell command inside the built-in Ubuntu container (PRoot userland, sandboxed to the app). First call installs the rootfs (~30MB download). Use for file operations, text processing, package listing inside the container."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() {
+                JSONObject s = schema(new String[]{"command"});
+                try {
+                    JSONObject props = s.optJSONObject("properties");
+                    if (props != null) {
+                        props.put("command", new JSONObject().put("type", "string").put("description", "sh command to run inside the container"));
+                        props.put("timeout_sec", new JSONObject().put("type", "integer").put("description", "optional timeout, default 30"));
+                    }
+                } catch (Exception ignored) {}
+                return s;
+            }
+            @Override public String execute(JSONObject args) {
+                String cmd = args.optString("command", "").trim();
+                if (cmd.isEmpty()) return "error: missing 'command'";
+                long timeout = Math.max(5, Math.min(300, args.optInt("timeout_sec", 30))) * 1000L;
+                return org.telegram.ox.OxContainerManager.run(cmd, timeout);
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "container_status"; }
+            @Override public String description() { return "Get the Ubuntu container install state (not installed / installing / ready) and basic info. Auto policy."; }
+            @Override public String defaultPolicy() { return POLICY_AUTO; }
+            @Override public JSONObject parameters() {
+                return schema(new String[0]);
+            }
+            @Override public String execute(JSONObject args) {
+                org.json.JSONObject o = new org.json.JSONObject();
+                try {
+                    int st = org.telegram.ox.OxContainerManager.getState();
+                    o.put("state", st == org.telegram.ox.OxContainerManager.STATE_READY ? "ready"
+                            : st == org.telegram.ox.OxContainerManager.STATE_INSTALLING ? "installing"
+                            : st == org.telegram.ox.OxContainerManager.STATE_ERROR ? "error: " + org.telegram.ox.OxContainerManager.getErrorText()
+                            : "not installed");
+                    o.put("prootBinary", org.telegram.ox.OxContainerManager.isProotAvailable());
+                    o.put("rootfs", org.telegram.ox.OxContainerManager.isRootfsReady());
+                    o.put("rootfsDiag", org.telegram.ox.OxContainerManager.rootfsDiagnostics());
+                } catch (Exception ignored) {}
+                return o.toString();
+            }
+        });
+
+        register(new OxTool() {
             @Override public String name() { return "http_get"; }
             @Override public String description() { return "HTTP GET a URL and return the first 2000 bytes of the response body. Use for fetching public information."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }
