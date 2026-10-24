@@ -71,6 +71,7 @@ public class VpnListActivity extends BaseFragment implements VpnController.Liste
     private int autoSwitchInfoRow;
     @Keep private int routeCallsRow;
     private int routeCallsInfoRow;
+    @Keep private int keepAliveRow;
     private int useVpnShadowRow;
     private int connectionsHeaderRow;
     private int vpnStartRow;
@@ -197,6 +198,13 @@ public class VpnListActivity extends BaseFragment implements VpnController.Liste
             boolean value = !c.isRouteCalls();
             c.setRouteCalls(value);
             ((TextCheckCell) view).setChecked(value);
+        } else if (position == keepAliveRow) {
+            boolean value = !org.telegram.messenger.vpn.VpnKeepAlive.enabled();
+            org.telegram.messenger.vpn.VpnKeepAlive.setEnabled(value);
+            ((TextCheckCell) view).setChecked(value);
+            if (value && getParentActivity() != null) {
+                org.telegram.messenger.vpn.VpnKeepAlive.requestIgnoreBatteryOptimizations(getParentActivity());
+            }
         } else if (position == addVpnRow) {
             presentFragment(new VpnSettingsActivity());
         } else if (position >= vpnStartRow && vpnStartRow >= 0 && position < vpnEndRow) {
@@ -284,12 +292,14 @@ public class VpnListActivity extends BaseFragment implements VpnController.Liste
             }
             routeCallsRow = rowCount++;
             routeCallsInfoRow = rowCount++;
+            keepAliveRow = rowCount++;
         } else {
             autoSwitchRow = -1;
             autoSwitchTimeoutRow = -1;
             autoSwitchInfoRow = -1;
             routeCallsRow = -1;
             routeCallsInfoRow = -1;
+            keepAliveRow = -1;
         }
         // when the VPN is on, routeCallsInfoRow is the section footer; otherwise a plain shadow is.
         useVpnShadowRow = c.isEnabled() ? -1 : rowCount++;
@@ -579,7 +589,7 @@ public class VpnListActivity extends BaseFragment implements VpnController.Liste
         @Override
         public boolean isEnabled(RecyclerView.ViewHolder holder) {
             int position = holder.getAdapterPosition();
-            return position == useVpnRow || position == autoSwitchRow || position == routeCallsRow || position == addVpnRow
+            return position == useVpnRow || position == autoSwitchRow || position == routeCallsRow || position == keepAliveRow || position == addVpnRow
                     || (position >= vpnStartRow && vpnStartRow >= 0 && position < vpnEndRow);
         }
 
@@ -587,7 +597,7 @@ public class VpnListActivity extends BaseFragment implements VpnController.Liste
         public int getItemViewType(int position) {
             if (position == useVpnShadowRow || position == vpnShadowRow) {
                 return VIEW_TYPE_SHADOW;
-            } else if (position == useVpnRow || position == autoSwitchRow || position == routeCallsRow) {
+            } else if (position == useVpnRow || position == autoSwitchRow || position == routeCallsRow || position == keepAliveRow) {
                 return VIEW_TYPE_CHECK;
             } else if (position == connectionsHeaderRow) {
                 return VIEW_TYPE_HEADER;
@@ -650,6 +660,8 @@ public class VpnListActivity extends BaseFragment implements VpnController.Liste
                         cell.setTextAndCheck(getString(R.string.VpnAutoSwitch), c.isAutoSwitch(), c.isAutoSwitch());
                     } else if (position == routeCallsRow) {
                         cell.setTextAndCheck(getString(R.string.VpnRouteCalls), c.isRouteCalls(), false);
+                    } else if (position == keepAliveRow) {
+                        cell.setTextAndCheck(getString(R.string.OxVpnKeepAlive), org.telegram.messenger.vpn.VpnKeepAlive.enabled(), false);
                     }
                     break;
                 }

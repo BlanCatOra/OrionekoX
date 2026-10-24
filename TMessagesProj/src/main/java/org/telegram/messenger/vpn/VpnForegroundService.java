@@ -61,6 +61,65 @@ public class VpnForegroundService extends Service {
         return null;
     }
 
+    private android.os.Handler beaconHandler;
+    private final Runnable beacon = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                if (VpnController.getInstance().isEnabled() && org.telegram.messenger.vpn.VpnKeepAlive.enabled()) {
+                    new Thread(VpnForegroundService::socksBeacon, "ox-vpn-beacon").start();
+                }
+            } catch (Throwable ignored) {
+            }
+            if (beaconHandler != null) {
+                beaconHandler.postDelayed(this, 60_000L);
+            }
+        }
+    };
+
+    /**
+     * Open a connection through the local sing-box SOCKS5 inbound and close it right away.
+     * A few packets each minute keeps the tunnel from idling out and gives the auto-switch
+     * health check a liveness signal while the app is in the background.
+     */
+    private static void socksBeacon() {
+        java.net.Socket socket = null;
+        try {
+            int port = VpnController.getInstance().getProxyPort();
+            socket = new java.net.Socket();
+            socket.connect(new java.net.InetSocketAddress("127.0.0.1", port), 5_000);
+            socket.setSoTimeout(5_000);
+            java.io.OutputStream out = socket.getOutputStream();
+            java.io.InputStream in = socket.getInputStream();
+            out.write(new byte[]{5, 1, 0});              // greeting: no-auth
+            out.flush();
+            if (in.read() != 5) return;
+            in.read();
+            // CONNECT 1.1.1.1:443 (domain-free IPv4 form)
+            out.write(new byte[]{5, 1, 0, 1, 1, 1, 1, 1, 0x01, (byte) 0xBB});
+            out.flush();
+            byte[] rep = new byte[10];
+            int n = 0;
+            while (n < rep.length) {
+                int r = in.read(rep, n, rep.length - n);
+                if (r < 0) break;
+                n += r;
+            }
+        } catch (Throwable ignored) {
+        } finally {
+            if (socket != null) {
+                try { socket.close(); } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        beaconHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        beaconHandler.postDelayed(beacon, 15_000L);
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         try {
@@ -71,11 +130,22 @@ public class VpnForegroundService extends Service {
             // leave a zombie started service around.
             stopSelf();
         }
+        // The OS can restart this sticky service on its own after killing the process; the
+        // sing-box core died with the old process, so bring the tunnel back up if it was on.
+        try {
+            VpnController.getInstance().load();
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
+        if (beaconHandler != null) {
+            beaconHandler.removeCallbacks(beacon);
+            beaconHandler = null;
+        }
         try {
             stopForeground(true);
             NotificationManagerCompat.from(ApplicationLoader.applicationContext).cancel(NOTIFICATION_ID);

@@ -1248,6 +1248,8 @@ public class LocaleController {
         "OxAgentsIntro",
         "OxToolPermissionText",
         "OxToolPermissionTitle",
+        "OxVpnKeepAlive",
+        "OxVpnKeepAliveInfo",
         "TitleSetupVpn",
         "UseVpn",
         "Vpn",
