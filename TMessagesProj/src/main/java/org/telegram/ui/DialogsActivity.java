@@ -4367,6 +4367,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             viewPage.listView.setVerticalScrollbarPosition(LocaleController.isRTL ? RecyclerListView.SCROLLBAR_POSITION_LEFT : RecyclerListView.SCROLLBAR_POSITION_RIGHT);
             viewPage.addView(viewPage.listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
             viewPage.listView.setOnItemClickListener((view, position, x, y) -> {
+                if (view instanceof DialogsAdapter.OxAgentCell) {
+                    org.telegram.ox.OxAgent agent = ((DialogsAdapter.OxAgentCell) view).getAgent();
+                    if (agent != null) {
+                        presentFragment(new OxAgentChatActivity(agent.id));
+                    }
+                    return;
+                }
                 if (view instanceof GraySectionCell)
                     return;
                 if (view instanceof DialogCell && ((DialogCell) view).isBlocked()) {
