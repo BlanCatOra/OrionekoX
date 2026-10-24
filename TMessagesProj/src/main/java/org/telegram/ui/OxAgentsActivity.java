@@ -52,14 +52,20 @@ public class OxAgentsActivity extends BaseFragment {
                 if (id == -1) finishFragment();
                 else if (id == MENU_MCP) presentFragment(new OxMcpActivity());
                 else if (id == MENU_LOGIN) {
-                    org.telegram.ox.OxMode.setAgentOnly(false);
-                    presentFragment(new LoginActivity());
+                    if (getParentActivity() == null) return;
+                    AlertDialog.Builder b = new AlertDialog.Builder(getParentActivity());
+                    b.setTitle(LocaleController.getString(R.string.OxLoginTelegram));
+                    b.setMessage(LocaleController.getString(R.string.OxLoginTelegramText));
+                    b.setPositiveButton(LocaleController.getString(R.string.OK), (d, w) ->
+                            org.telegram.ox.OxAgentsBridge.exitAgentOnly());
+                    b.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+                    b.show();
                 }
             }
         });
         ActionBarMenu menu = actionBar.createMenu();
         menu.addItem(MENU_MCP, R.drawable.filled_bot_approve_24);
-        if (org.telegram.ox.OxMode.isAgentOnly() && org.telegram.messenger.UserConfig.getActivatedAccountsCount() == 0) {
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
             menu.addItem(MENU_LOGIN, R.drawable.outline_add_account);
         }
 
@@ -78,6 +84,10 @@ public class OxAgentsActivity extends BaseFragment {
     public void onResume() {
         super.onResume();
         rebuild();
+        // local-account mode: materialize agents as contacts/dialogs
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            org.telegram.ox.OxAgentsBridge.syncAgents(false);
+        }
     }
 
     private void rebuild() {
@@ -145,7 +155,13 @@ public class OxAgentsActivity extends BaseFragment {
         row.addView(textCol, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
 
         row.setBackground(Theme.getSelectorDrawable(false));
-        row.setOnClickListener(v -> presentFragment(new OxAgentChatActivity(agent.id)));
+        row.setOnClickListener(v -> {
+            if (agent.tgId != 0 && org.telegram.ox.OxMode.isAgentOnly()) {
+                presentFragment(org.telegram.ui.ChatActivity.of(agent.tgId));
+            } else {
+                presentFragment(new OxAgentChatActivity(agent.id));
+            }
+        });
         row.setOnLongClickListener(v -> {
             showAgentMenu(agent);
             return true;
@@ -311,6 +327,7 @@ public class OxAgentsActivity extends BaseFragment {
         builder.setTitle(LocaleController.getString(R.string.OxAgentDeleteTitle));
         builder.setMessage(LocaleController.getString(R.string.OxAgentDeleteText));
         builder.setPositiveButton(LocaleController.getString(R.string.Delete), (dialog, which) -> {
+            org.telegram.ox.OxAgentsBridge.onAgentDeleted(agent.tgId);
             OxAgentStore.deleteAgent(agent.id);
             rebuild();
         });

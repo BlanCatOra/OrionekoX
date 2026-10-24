@@ -65,10 +65,16 @@ public class OxModelHub {
                 body.put("model", agent.model == null ? "" : agent.model);
                 body.put("messages", messages);
                 body.put("stream", true);
-                java.util.Collection<OxTool> availableTools = OxMcpManager.tools();
-                if (withTools && !availableTools.isEmpty()) {
-                    // warm MCP servers once per process so their tools appear in later rounds
+                java.util.Collection<OxTool> availableTools;
+                if (withTools && OxMcpManager.hasEnabledServers() && OxMcpManager.mcpToolCount() == 0) {
+                    // first use in this process: fetch MCP tool lists synchronously -
+                    // we are on the worker thread, so a blocking initialize is safe
+                    OxMcpManager.refreshEnabledServersSync();
+                } else {
                     OxMcpManager.ensureRefreshedAsync();
+                }
+                availableTools = OxMcpManager.tools();
+                if (withTools && !availableTools.isEmpty()) {
                     JSONArray tools = new JSONArray();
                     for (OxTool t : availableTools) {
                         JSONObject fn = new JSONObject();

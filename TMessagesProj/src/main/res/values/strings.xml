@@ -11603,7 +11603,7 @@
     <string name="OxAgentImported">Imported agent %1$s</string>
     <string name="OxAgentImportFailed">Import failed: not a valid .oxagent file</string>
     <string name="OxAgentExported">Exported %1$s (API key is not included)</string>
-    <string name="OxAgentsOnlyEntry">🤖 Use agents first (no login)</string>
+    <string name="OxAgentsOnlyEntry">🤖 Use local mode</string>
     <string name="OxMcp">MCP Servers</string>
     <string name="OxMcpIntro">Remote MCP servers (same transport as the Operit/Operit2 plugin ecosystem). Tools provided by enabled servers join the agent tool set automatically, behind the same permission gate.</string>
     <string name="OxMcpEmpty">No servers yet. Add one - e.g. a remote MCP endpoint from the Operit plugin market.</string>
@@ -11615,4 +11615,7 @@
     <string name="OxMcpToolsFound">%1$d tools</string>
     <string name="OxMcpToolsAvailable">Currently available MCP tools: %1$d</string>
     <string name="OxMcpDisabled">Disabled</string>
+    <string name="OxLoginTelegram">Sign in to Telegram</string>
+    <string name="OxLoginTelegramText">This leaves agent-only mode and wipes the local account data (agents, chats with them). Continue?</string>
+    <string name="OxEndpointPresets">Endpoint presets (cloud / other devices on LAN)</string>
 </resources>

@@ -258,6 +258,24 @@ public class OxMcpManager {
         }
     }
 
+    public static boolean hasEnabledServers() {
+        loadIfNeeded();
+        synchronized (servers) {
+            for (McpServer s : servers) {
+                if (s.enabled) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Blocking refresh of every enabled server. Call from a worker thread only. */
+    public static void refreshEnabledServersSync() {
+        loadIfNeeded();
+        for (McpServer s : getServers()) {
+            if (s.enabled) refreshServer(s);
+        }
+    }
+
     // ---------------- tool call ----------------
 
     static String callTool(McpServer s, String tool, JSONObject args) throws Exception {

@@ -4475,6 +4475,11 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         if (peer == 0) {
             return;
         }
+        // OrionekoX: intercept sends to local agents (no server round-trip). Runs after
+        // the extracted locals but before message sending guards; pure text only.
+        if (org.telegram.ox.OxAgentsBridge.interceptOutgoing(sendMessageParams)) {
+            return;
+        }
         if (richMessage != null && DialogObject.isEncryptedDialog(peer)) {
             return;
         }
