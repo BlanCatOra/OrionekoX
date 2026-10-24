@@ -13850,6 +13850,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         io.add(R.drawable.filled_bot_approve_24, getString(R.string.OxMcp), () -> {
             presentFragment(new OxMcpActivity());
         });
+        io.add(R.drawable.msg_settings_old, getString(R.string.OxSettingsTitle), () -> {
+            presentFragment(new OxSettingsActivity());
+        });
         if (oxAgentOnly) {
             io.add(R.drawable.outline_add_account, getString(R.string.OxLoginTelegram), () -> confirmExitAgentOnly());
         }

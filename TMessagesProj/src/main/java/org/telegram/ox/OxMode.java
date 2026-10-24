@@ -23,12 +23,45 @@ public class OxMode {
         }
     }
 
+    public static boolean isOnboardingDone() {
+        return prefs().getBoolean("onboarding_done", false);
+    }
+
+    public static void setOnboardingDone(boolean value) {
+        prefs().edit().putBoolean("onboarding_done", value).apply();
+    }
+
+    public static String getContainerMirror() {
+        return prefs().getString("container_mirror", "official");
+    }
+
+    public static void setContainerMirror(String v) {
+        prefs().edit().putString("container_mirror", v).apply();
+    }
+
+    public static String getContainerVersion() {
+        return prefs().getString("container_version", "22.04");
+    }
+
+    public static void setContainerVersion(String v) {
+        prefs().edit().putString("container_version", v).apply();
+    }
+
+    public static String getContainerComponents() {
+        return prefs().getString("container_components", "nodejs,python3,git,curl");
+    }
+
+    public static void setContainerComponents(String csv) {
+        prefs().edit().putString("container_components", csv).apply();
+    }
+
+    private static SharedPreferences prefs() {
+        return ApplicationLoader.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
     public static void setAgentOnly(boolean value) {
         try {
-            Context ctx = ApplicationLoader.applicationContext;
-            if (ctx == null) return;
-            SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            p.edit().putBoolean("agent_only", value).apply();
+            prefs().edit().putBoolean("agent_only", value).apply();
         } catch (Exception ignored) {
         }
     }

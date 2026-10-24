@@ -37,6 +37,7 @@ public class OxAgentsActivity extends BaseFragment {
     private static final int REQ_IMPORT = 1002;
     private static final int MENU_MCP = 1;
     private static final int MENU_LOGIN = 2;
+    private static final int MENU_SETTINGS = 3;
 
     private LinearLayout listContainer;
     private String pendingExportId;
@@ -51,6 +52,7 @@ public class OxAgentsActivity extends BaseFragment {
             public void onItemClick(int id) {
                 if (id == -1) finishFragment();
                 else if (id == MENU_MCP) presentFragment(new OxMcpActivity());
+                else if (id == MENU_SETTINGS) presentFragment(new OxSettingsActivity());
                 else if (id == MENU_LOGIN) {
                     if (getParentActivity() == null) return;
                     AlertDialog.Builder b = new AlertDialog.Builder(getParentActivity());
@@ -65,6 +67,7 @@ public class OxAgentsActivity extends BaseFragment {
         });
         ActionBarMenu menu = actionBar.createMenu();
         menu.addItem(MENU_MCP, R.drawable.filled_bot_approve_24);
+        menu.addItem(MENU_SETTINGS, R.drawable.msg_settings_old);
         if (org.telegram.ox.OxMode.isAgentOnly()) {
             menu.addItem(MENU_LOGIN, R.drawable.outline_add_account);
         }

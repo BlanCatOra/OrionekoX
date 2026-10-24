@@ -137,11 +137,15 @@ public class OxAgentsBridge {
                 // existing (photo-less) user object is kept and avatars never render
                 MessagesController.getInstance(0).putUser(u, false);
             }
+            final StringBuilder liveIds = new StringBuilder();
             for (OxAgent a : agents) {
                 ensureDialogRow(a.tgId);
                 refreshDialogRow(a.tgId);
                 greetIfEmpty(a);
+                if (liveIds.length() > 0) liveIds.append(',');
+                liveIds.append(a.tgId);
             }
+            pruneOrphanAgentDialogs(liveIds.toString());
             AndroidUtilities.runOnUIThread(() ->
                     NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.dialogsNeedReload));
         } catch (Throwable t) {
@@ -915,6 +919,24 @@ public class OxAgentsBridge {
                     logErr("onAgentDeleted UI failed", t);
                 }
             });
+        });
+    }
+
+    /** Removes agent-range dialogs/messages whose agent no longer exists (e.g. after a data wipe). */
+    private static void pruneOrphanAgentDialogs(String liveIdsCsv) {
+        MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
+            try {
+                String keep = liveIdsCsv == null || liveIdsCsv.isEmpty() ? "-1" : liveIdsCsv;
+                MessagesStorage.getInstance(0).getDatabase().executeFast(
+                        "DELETE FROM dialogs WHERE did >= " + AGENT_BASE + " AND did < " + (AGENT_BASE + AGENT_RANGE)
+                                + " AND did NOT IN (" + keep + ")").stepThis().dispose();
+                MessagesStorage.getInstance(0).getDatabase().executeFast(
+                        "DELETE FROM messages_v2 WHERE uid >= " + AGENT_BASE + " AND uid < " + (AGENT_BASE + AGENT_RANGE)
+                                + " AND uid NOT IN (" + keep + ")").stepThis().dispose();
+                log("pruned orphan agent dialogs, keep=" + keep);
+            } catch (Throwable t) {
+                logErr("pruneOrphanAgentDialogs failed", t);
+            }
         });
     }
 

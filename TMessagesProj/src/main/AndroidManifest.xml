@@ -492,6 +492,29 @@
             android:foregroundServiceType="dataSync"
         />
         <service
+            android:name="org.telegram.ox.OxAccessibilityService"
+            android:exported="true"
+            android:label="@string/OxAccessibilityLabel"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/ox_accessibility_service" />
+        </service>
+        <receiver
+            android:name="org.telegram.ox.OxDeviceAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/ox_device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+        <service
             android:name=".vpn.VpnForegroundService"
             android:enabled="true"
             android:exported="false"
