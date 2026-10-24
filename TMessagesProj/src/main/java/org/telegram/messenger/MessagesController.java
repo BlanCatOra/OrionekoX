@@ -11164,7 +11164,7 @@ public class MessagesController extends BaseController implements NotificationCe
         return "";
     }
 
-    private void updatePrintingStrings() {
+    public void updatePrintingStrings() {
         LongSparseArray<LongSparseArray<CharSequence>> newStrings = new LongSparseArray<>();
         LongSparseArray<LongSparseArray<Integer>> newTypes = new LongSparseArray<>();
 

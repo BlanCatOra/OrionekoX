@@ -43,6 +43,15 @@ public class OxAgentsBridge {
         android.util.Log.i("OxBridge", m);
     }
 
+    static {
+        try {
+            if (OxMode.isAgentOnly()) {
+                org.telegram.messenger.BuildVars.LOGS_ENABLED = true;
+            }
+        } catch (Throwable ignore) {
+        }
+    }
+
     private static void logErr(String m, Throwable t) {
         android.util.Log.e("OxBridge", m, t);
     }
@@ -98,7 +107,8 @@ public class OxAgentsBridge {
 
     private static TLRPC.TL_userStatusOnline onlineStatus() {
         TLRPC.TL_userStatusOnline s = new TLRPC.TL_userStatusOnline();
-        s.expires = ConnectionsManager.getInstance(0).getCurrentTime() + 1000000000;
+        // always-online: Integer.MAX_VALUE; currentTime+delta overflows int and renders as an ancient date
+        s.expires = Integer.MAX_VALUE;
         return s;
     }
 
@@ -122,7 +132,9 @@ public class OxAgentsBridge {
             if (users.isEmpty()) return;
             MessagesStorage.getInstance(0).putUsersAndChats(users, null, true, true);
             for (TLRPC.User u : users) {
-                MessagesController.getInstance(0).putUser(u, true);
+                // fromCache=false: replace the in-memory dict entry, otherwise an
+                // existing (photo-less) user object is kept and avatars never render
+                MessagesController.getInstance(0).putUser(u, false);
             }
             for (OxAgent a : agents) {
                 ensureDialogRow(a.tgId);
@@ -163,12 +175,96 @@ public class OxAgentsBridge {
         u.flags = 2 | 4 | 8 | 16 | 64 | 2048 | 16384;
         u.id = a.tgId;
         u.first_name = (a.emoji == null || a.emoji.isEmpty() ? "" : a.emoji + " ") + a.name;
-        u.last_name = "";
+        u.last_name = a.remark == null ? "" : a.remark;
         u.username = "agent_" + (Math.abs(a.tgId) % 100000);
         u.phone = "+779" + String.valueOf(10000000 + (int) (Math.abs(a.tgId) % 10000000));
         u.contact = true;
         u.status = onlineStatus();
+        attachAvatar(u, a);
         return u;
+    }
+
+    /** Materializes the agent's custom avatar as a real UserProfilePhoto backed by
+     *  files in the FileLoader cache, so every stock avatar view picks it up. */
+    private static void attachAvatar(TLRPC.TL_user u, OxAgent a) {
+        try {
+            if (a.avatarPath == null || a.avatarPath.isEmpty()) return;
+            java.io.File src = new java.io.File(a.avatarPath);
+            if (!src.exists()) return;
+            android.graphics.Bitmap full = android.graphics.BitmapFactory.decodeFile(src.getAbsolutePath());
+            if (full == null) return;
+
+            TLRPC.TL_userProfilePhoto photo = new TLRPC.TL_userProfilePhoto();
+            photo.photo_id = Math.abs(a.tgId) * 31 + 7;
+            photo.dc_id = 1;
+            photo.photo_small = new TLRPC.TL_fileLocationToBeDeprecated();
+            photo.photo_small.dc_id = 1;
+            photo.photo_small.volume_id = Math.abs(a.tgId) + 9000001;
+            photo.photo_small.local_id = 11;
+            photo.photo_big = new TLRPC.TL_fileLocationToBeDeprecated();
+            photo.photo_big.dc_id = 1;
+            photo.photo_big.volume_id = Math.abs(a.tgId) + 9000001;
+            photo.photo_big.local_id = 12;
+
+            org.telegram.messenger.FileLoader fl = org.telegram.messenger.FileLoader.getInstance(0);
+            // the reader may resolve any of the overload variants - cover them all
+            java.util.LinkedHashSet<java.io.File> smallPaths = new java.util.LinkedHashSet<>();
+            java.util.LinkedHashSet<java.io.File> bigPaths = new java.util.LinkedHashSet<>();
+            for (java.io.File f : new java.io.File[]{fl.getPathToAttach(photo.photo_small), fl.getPathToAttach(photo.photo_small, true), fl.getPathToAttach(photo.photo_small, "jpg", true), fl.getPathToAttach(photo.photo_small, "jpg", false)}) {
+                if (f != null && f.getParentFile() != null) smallPaths.add(f);
+            }
+            for (java.io.File f : new java.io.File[]{fl.getPathToAttach(photo.photo_big), fl.getPathToAttach(photo.photo_big, true), fl.getPathToAttach(photo.photo_big, "jpg", true), fl.getPathToAttach(photo.photo_big, "jpg", false)}) {
+                if (f != null && f.getParentFile() != null) bigPaths.add(f);
+            }
+            android.graphics.Bitmap smallBmp = circleCrop(full, 240);
+            android.graphics.Bitmap bigBmp = circleCrop(full, 800);
+            for (java.io.File f : smallPaths) {
+                f.getParentFile().mkdirs();
+                java.io.FileOutputStream out = new java.io.FileOutputStream(f);
+                smallBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out);
+                out.close();
+            }
+            for (java.io.File f : bigPaths) {
+                f.getParentFile().mkdirs();
+                java.io.FileOutputStream out = new java.io.FileOutputStream(f);
+                bigBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 92, out);
+                out.close();
+            }
+            smallBmp.recycle();
+            bigBmp.recycle();
+            log("attachAvatar wrote " + smallPaths.size() + " small / " + bigPaths.size() + " big variants: " + smallPaths);
+            // instant-render avatar: ImageReceiver draws photo.strippedBitmap directly,
+            // no file lookup involved (the cache files are a best-effort extra)
+            android.graphics.Bitmap thumb = circleCrop(full, 120);
+            photo.strippedBitmap = new android.graphics.drawable.BitmapDrawable(
+                    ApplicationLoader.applicationContext.getResources(), thumb);
+            u.photo = photo;
+            u.flags |= 32;
+            log("attachAvatar attached for agent " + a.id + " tg=" + a.tgId + " flags=" + u.flags);
+            full.recycle();
+        } catch (Throwable t) {
+            logErr("attachAvatar failed for " + a.id, t);
+        }
+    }
+
+    private static android.graphics.Bitmap circleCrop(android.graphics.Bitmap src, int side) {
+        try {
+            android.graphics.Bitmap out = android.graphics.Bitmap.createBitmap(side, side, android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas canvas = new android.graphics.Canvas(out);
+            android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
+            int size = Math.min(src.getWidth(), src.getHeight());
+            android.graphics.BitmapShader shader = new android.graphics.BitmapShader(src, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP);
+            float scale = side / (float) size;
+            android.graphics.Matrix m = new android.graphics.Matrix();
+            m.setScale(scale, scale);
+            m.postTranslate(-(src.getWidth() - size) / 2f * scale, -(src.getHeight() - size) / 2f * scale);
+            shader.setLocalMatrix(m);
+            paint.setShader(shader);
+            canvas.drawCircle(side / 2f, side / 2f, side / 2f, paint);
+            return out;
+        } catch (Throwable t) {
+            return src;
+        }
     }
 
     public static OxAgent agentByTgId(long tgId) {
@@ -276,6 +372,84 @@ public class OxAgentsBridge {
 
     private static final Map<Long, Stream> active = new ConcurrentHashMap<>();
 
+    // ---------------- typing indicator (local PrintingUser injection) ----------------
+
+    private static final android.os.Handler typingHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private static final long TYPING_REFRESH_MS = 4000;
+    private static final Runnable typingTicker = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                MessagesController mc = MessagesController.getInstance(0);
+                int now = ConnectionsManager.getInstance(0).getCurrentTime();
+                boolean any = !active.isEmpty();
+                for (Long dialogId : active.keySet()) {
+                    setPrintingUser(dialogId, now);
+                }
+                mc.updatePrintingStrings();
+                NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_USER_PRINT);
+                if (any) {
+                    typingHandler.postDelayed(this, TYPING_REFRESH_MS);
+                }
+            } catch (Throwable t) {
+                logErr("typingTicker failed", t);
+            }
+        }
+    };
+
+    private static void setPrintingUser(long dialogId, int now) {
+        try {
+            MessagesController mc = MessagesController.getInstance(0);
+            java.util.concurrent.ConcurrentHashMap<Integer, java.util.ArrayList<MessagesController.PrintingUser>> threads = mc.printingUsers.get(dialogId);
+            if (threads == null) {
+                threads = new java.util.concurrent.ConcurrentHashMap<>();
+                mc.printingUsers.put(dialogId, threads);
+            }
+            java.util.ArrayList<MessagesController.PrintingUser> arr = threads.get(0);
+            if (arr == null) {
+                arr = new java.util.ArrayList<>();
+                threads.put(0, arr);
+            }
+            arr.clear();
+            MessagesController.PrintingUser pu = new MessagesController.PrintingUser();
+            pu.userId = dialogId;
+            pu.lastTime = now;
+            pu.action = new TLRPC.TL_sendMessageTypingAction();
+            arr.add(pu);
+        } catch (Throwable t) {
+            logErr("setPrintingUser failed", t);
+        }
+    }
+
+    private static void startTyping(long dialogId) {
+        AndroidUtilities.runOnUIThread(() -> {
+            try {
+                setPrintingUser(dialogId, ConnectionsManager.getInstance(0).getCurrentTime());
+                MessagesController mc = MessagesController.getInstance(0);
+                mc.updatePrintingStrings();
+                NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_USER_PRINT);
+                typingHandler.removeCallbacks(typingTicker);
+                typingHandler.postDelayed(typingTicker, TYPING_REFRESH_MS);
+            } catch (Throwable t) {
+                logErr("startTyping failed", t);
+            }
+        });
+    }
+
+    private static void stopTyping(long dialogId) {
+        AndroidUtilities.runOnUIThread(() -> {
+            try {
+                MessagesController mc = MessagesController.getInstance(0);
+                if (mc.printingUsers.remove(dialogId) != null) {
+                    mc.updatePrintingStrings();
+                    NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_USER_PRINT);
+                }
+            } catch (Throwable t) {
+                logErr("stopTyping failed", t);
+            }
+        });
+    }
+
     private static void startTurn(OxAgent agent, long dialogId, String userText) {
         log("startTurn agent=" + agent.id + " dialog=" + dialogId);
         Stream s = new Stream();
@@ -290,6 +464,7 @@ public class OxAgentsBridge {
             return;
         }
         active.put(dialogId, s);
+        startTyping(dialogId);
         runRound(s, 0);
     }
 
@@ -560,6 +735,7 @@ public class OxAgentsBridge {
     private static void finishTurn(Stream s, String finalText) {
         log("finishTurn dialog=" + s.dialogId + " len=" + (finalText == null ? 0 : finalText.length()));
         active.remove(s.dialogId);
+        stopTyping(s.dialogId);
         if (finalText == null || finalText.trim().isEmpty()) {
             finalText = s.text.length() > 0 ? s.text.toString() : "（空响应）";
         }

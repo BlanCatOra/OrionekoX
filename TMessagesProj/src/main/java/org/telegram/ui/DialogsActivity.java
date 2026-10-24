@@ -8314,7 +8314,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             adapter.notifyDataSetChanged();
         });
         items.add(LocaleController.getString(R.string.OxEditAgent));
-        actions.add(() -> presentFragment(new OxAgentChatActivity(agent.id, true)));
+        actions.add(() -> presentFragment(new OxAgentProfileActivity(agent.id)));
         if (!agent.builtIn) {
             items.add(LocaleController.getString(R.string.Delete));
             actions.add(() -> {
