@@ -13775,6 +13775,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             args.putLong("user_id", UserConfig.getInstance(currentAccount).getClientUserId());
             presentFragment(new ChatActivity(args));
         });
+        // OrionekoX: local agents entry in the drawer
+        io.add(R.drawable.filled_bot_approve_24, getString(R.string.OxAgents), () -> {
+            presentFragment(new OxAgentsActivity());
+        });
         if (ApplicationLoader.applicationLoaderInstance != null) {
             ApplicationLoader.applicationLoaderInstance.addItemOptions(io);
         }

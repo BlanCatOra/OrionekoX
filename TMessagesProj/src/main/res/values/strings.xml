@@ -11577,4 +11577,16 @@
     <string name="VpnDeleteTitle">Delete connection</string>
     <string name="VpnDeleteText">Delete this VPN connection?</string>
     <string name="VpnInvalidKey">Could not read this VPN key</string>
+    <string name="OxAgents">Agents</string>
+    <string name="OxAgentsIntro">Local agents run fully on your device. Tap one to chat; configure a model from the chat menu (top right). Long-press a custom agent to delete it.</string>
+    <string name="OxAgentNew">New Agent</string>
+    <string name="OxAgentNameHint2">Name</string>
+    <string name="OxAgentDeleteTitle">Delete agent</string>
+    <string name="OxAgentDeleteText">Delete this agent and its chat history?</string>
+    <string name="OxAgentInputHint">Message your agent…</string>
+    <string name="OxAgentGreeting">Hi! I\'m a local agent. Open the menu (top right) to connect a real model, or chat with me in offline echo mode.</string>
+    <string name="OxAgentSettings">Agent settings</string>
+    <string name="OxAgentEchoName">Echo Assistant</string>
+    <string name="OxAgentTranslatorName">Translator</string>
+    <string name="OxAgentSummarizerName">Summarizer</string>
 </resources>
