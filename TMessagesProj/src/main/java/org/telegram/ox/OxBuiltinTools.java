@@ -207,11 +207,18 @@ public class OxBuiltinTools {
 
         register(new OxTool() {
             @Override public String name() { return "tg_read_chat"; }
-            @Override public String description() { return "Read the latest messages of a Telegram private chat, group or channel by (partial) title. If unsure of the exact title, call tg_list_chats first. Read-only, requires user confirmation."; }
+            @Override public String description() { return "Read the latest messages of a Telegram private chat, group or channel by (partial) title. If unsure of the exact title, call tg_list_chats first. Optional contains: substring filter; since_hours: only recent messages. Read-only, requires user confirmation."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }
             @Override public JSONObject parameters() {
                 JSONObject s = schema(new String[]{"chat"});
-                try { s.put("description", "chat: full or partial chat title; limit: optional, 1-50, default 20"); } catch (Exception ignored) {}
+                try {
+                    s.put("description", "chat: full or partial chat title; limit: optional, 1-50, default 20; contains: optional substring filter; since_hours: optional time filter");
+                    JSONObject props = s.optJSONObject("properties");
+                    if (props != null) {
+                        props.put("contains", new JSONObject().put("type", "string").put("description", "substring filter"));
+                        props.put("since_hours", new JSONObject().put("type", "integer").put("description", "only messages newer than N hours"));
+                    }
+                } catch (Exception ignored) {}
                 return s;
             }
             @Override public String execute(JSONObject args) {
@@ -279,6 +286,10 @@ public class OxBuiltinTools {
                                 }
                                 org.telegram.tgnet.TLRPC.TL_messages_messages res =
                                     (org.telegram.tgnet.TLRPC.TL_messages_messages) response;
+                                String contains = args.optString("contains", "").trim().toLowerCase();
+                                int sinceHours = args.optInt("since_hours", 0);
+                                long minDate = sinceHours > 0
+                                        ? (System.currentTimeMillis() / 1000L) - sinceHours * 3600L : 0L;
                                 java.util.HashMap<Long, String> users = new java.util.HashMap<>();
                                 java.util.HashMap<Long, String> chats = new java.util.HashMap<>();
                                 for (org.telegram.tgnet.TLRPC.User u : res.users) {
@@ -291,6 +302,7 @@ public class OxBuiltinTools {
                                 java.text.SimpleDateFormat df = new java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.US);
                                 for (int i = res.messages.size() - 1; i >= 0; i--) {
                                     org.telegram.tgnet.TLRPC.Message m = res.messages.get(i);
+                                    if (minDate > 0 && m.date * 1000L < minDate) continue;
                                     String sender = title;
                                     if (m.from_id != null) {
                                         if (m.from_id.user_id != 0) {
@@ -309,6 +321,7 @@ public class OxBuiltinTools {
                                         text = m.action != null ? "(service message)" : (m.media != null ? "(media/attachment)" : "");
                                     }
                                     if (text.isEmpty()) continue;
+                                    if (!contains.isEmpty() && !text.toLowerCase().contains(contains)) continue;
                                     if (text.length() > 500) text = text.substring(0, 500) + "…";
                                     sb.append('[').append(df.format(new java.util.Date(m.date * 1000L))).append("] ")
                                       .append(sender).append(": ").append(text);
