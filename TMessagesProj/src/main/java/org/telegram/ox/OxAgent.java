@@ -17,6 +17,7 @@ public class OxAgent {
     public String apiKey;    // TODO(M3): move into encrypted Vault
     public String model;
     public boolean builtIn;
+    public boolean pinned;    // sticks to the top of the agents block in the chat list
     // tool name -> "auto" | "ask" | "deny"; missing entries fall back to the tool default
     public JSONObject toolsPolicy = new JSONObject();
 
@@ -30,6 +31,7 @@ public class OxAgent {
         a.apiKey = o.optString("api_key", "");
         a.model = o.optString("model", "");
         a.builtIn = o.optBoolean("built_in", false);
+        a.pinned = o.optBoolean("pinned", false);
         JSONObject tp = o.optJSONObject("tools_policy");
         a.toolsPolicy = tp == null ? new JSONObject() : tp;
         return a;
@@ -46,6 +48,7 @@ public class OxAgent {
         o.put("api_key", apiKey);
         o.put("model", model);
         o.put("built_in", builtIn);
+        o.put("pinned", pinned);
         o.put("tools_policy", toolsPolicy);
         return o;
     }

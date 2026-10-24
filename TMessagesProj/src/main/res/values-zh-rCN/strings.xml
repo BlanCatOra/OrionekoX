@@ -46,4 +46,13 @@
     <string name="OxVpnKeepAlive">后台保活</string>
     <string name="OxVpnKeepAliveInfo">将应用加入电池优化白名单，并每分钟发送一个极小的保活数据包，让 VPN 隧道在后台持续存活、进程被杀后自动恢复连接。</string>
     <string name="OxAgentInListStatus">本地智能体 · 点击对话</string>
+    <string name="OxPinAgent">置顶</string>
+    <string name="OxUnpinAgent">取消置顶</string>
+    <string name="OxEditAgent">编辑设置</string>
+    <string name="OxDeleteAgentConfirm">删除智能体 %1$s 及其聊天记录？</string>
+    <string name="OxImportAgent">导入 .oxagent</string>
+    <string name="OxExportAgent">导出 .oxagent</string>
+    <string name="OxAgentImported">已导入智能体 %1$s</string>
+    <string name="OxAgentImportFailed">导入失败：不是有效的 .oxagent 文件</string>
+    <string name="OxAgentExported">已导出 %1$s（不包含 API 密钥）</string>
 </resources>

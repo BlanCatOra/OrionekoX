@@ -53,10 +53,17 @@ public class OxAgentChatActivity extends BaseFragment {
     private ScrollView scrollView;
     private EditText inputField;
     private boolean generating;
+    private boolean openSettingsOnStart;
 
     public OxAgentChatActivity(String id) {
         super();
         agentId = id;
+    }
+
+    public OxAgentChatActivity(String id, boolean openSettings) {
+        super();
+        agentId = id;
+        openSettingsOnStart = openSettings;
     }
 
     public OxAgentChatActivity(Bundle args) {
@@ -119,6 +126,10 @@ public class OxAgentChatActivity extends BaseFragment {
         fragmentView = rootLayout;
 
         rebuildChat();
+        if (openSettingsOnStart) {
+            openSettingsOnStart = false;
+            AndroidUtilities.runOnUIThread(this::showSettings, 300);
+        }
         return fragmentView;
     }
 

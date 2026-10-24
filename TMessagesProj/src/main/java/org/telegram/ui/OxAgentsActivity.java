@@ -11,6 +11,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
@@ -23,6 +24,7 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,7 +33,11 @@ import java.util.UUID;
 @SuppressLint("ViewConstructor")
 public class OxAgentsActivity extends BaseFragment {
 
+    private static final int REQ_EXPORT = 1001;
+    private static final int REQ_IMPORT = 1002;
+
     private LinearLayout listContainer;
+    private String pendingExportId;
 
     @Override
     public View createView(Context context) {
@@ -87,6 +93,14 @@ public class OxAgentsActivity extends BaseFragment {
         add.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(18), AndroidUtilities.dp(16), AndroidUtilities.dp(18));
         add.setOnClickListener(v -> showCreateDialog());
         listContainer.addView(add);
+
+        TextView imp = new TextView(context);
+        imp.setText("📥 " + LocaleController.getString(R.string.OxImportAgent));
+        imp.setTextSize(16);
+        imp.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        imp.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(4), AndroidUtilities.dp(16), AndroidUtilities.dp(18));
+        imp.setOnClickListener(v -> importFromOxAgent());
+        listContainer.addView(imp);
     }
 
     private View row(Context context, OxAgent agent) {
@@ -121,10 +135,140 @@ public class OxAgentsActivity extends BaseFragment {
         row.setBackground(Theme.getSelectorDrawable(false));
         row.setOnClickListener(v -> presentFragment(new OxAgentChatActivity(agent.id)));
         row.setOnLongClickListener(v -> {
-            if (!agent.builtIn) showDeleteDialog(agent);
+            showAgentMenu(agent);
             return true;
         });
         return row;
+    }
+
+    private void showAgentMenu(OxAgent agent) {
+        if (getParentActivity() == null) return;
+        java.util.ArrayList<CharSequence> items = new java.util.ArrayList<>();
+        java.util.ArrayList<Runnable> actions = new java.util.ArrayList<>();
+        items.add(LocaleController.getString(agent.pinned ? R.string.OxUnpinAgent : R.string.OxPinAgent));
+        actions.add(() -> {
+            agent.pinned = !agent.pinned;
+            OxAgentStore.saveAgent(agent);
+            rebuild();
+        });
+        items.add(LocaleController.getString(R.string.OxExportAgent));
+        actions.add(() -> exportOxAgent(agent));
+        if (!agent.builtIn) {
+            items.add(LocaleController.getString(R.string.Delete));
+            actions.add(() -> showDeleteDialog(agent));
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(agent.emoji + " " + agent.name);
+        builder.setItems(items.toArray(new CharSequence[0]), (d, which) -> {
+            if (which >= 0 && which < actions.size()) actions.get(which).run();
+        });
+        builder.show();
+    }
+
+    // ---------------- .oxagent import/export (API key is never exported) ----------------
+
+    private void exportOxAgent(OxAgent agent) {
+        if (getParentActivity() == null) return;
+        pendingExportId = agent.id;
+        try {
+            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT);
+            i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+            i.setType("application/octet-stream");
+            i.putExtra(android.content.Intent.EXTRA_TITLE, sanitizeFileName(agent.name) + ".oxagent");
+            startActivityForResult(i, REQ_EXPORT);
+        } catch (Exception e) {
+            pendingExportId = null;
+            toast("⚠ " + e);
+        }
+    }
+
+    private void importFromOxAgent() {
+        try {
+            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
+            i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+            startActivityForResult(i, REQ_IMPORT);
+        } catch (Exception e) {
+            toast("⚠ " + e);
+        }
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, android.content.Intent data) {
+        if (resultCode != android.app.Activity.RESULT_OK || data == null) {
+            pendingExportId = null;
+            return;
+        }
+        android.content.Context ctx = getParentActivity();
+        if (ctx == null) {
+            pendingExportId = null;
+            return;
+        }
+        if (requestCode == REQ_EXPORT && pendingExportId != null) {
+            final String id = pendingExportId;
+            pendingExportId = null;
+            final android.net.Uri uri = data.getData();
+            new Thread(() -> {
+                String msg;
+                try {
+                    OxAgent a = OxAgentStore.loadAgent(id);
+                    if (a == null || uri == null) throw new IllegalStateException("agent or uri gone");
+                    JSONObject o = a.toJson();
+                    o.put("format", "oxagent");
+                    o.put("api_key", "");
+                    o.put("built_in", false);
+                    java.io.OutputStream os = ctx.getContentResolver().openOutputStream(uri);
+                    os.write(o.toString().getBytes(StandardCharsets.UTF_8));
+                    os.close();
+                    msg = LocaleController.formatString("OxAgentExported", R.string.OxAgentExported, a.name);
+                } catch (Exception e) {
+                    msg = "⚠ " + e;
+                }
+                final String m = msg;
+                AndroidUtilities.runOnUIThread(() -> toast(m));
+            }, "ox-export").start();
+        } else if (requestCode == REQ_IMPORT) {
+            final android.net.Uri uri = data.getData();
+            new Thread(() -> {
+                String msg;
+                try {
+                    java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+                    java.io.InputStream is = ctx.getContentResolver().openInputStream(uri);
+                    byte[] buf = new byte[8192];
+                    int n;
+                    while ((n = is.read(buf)) > 0) bos.write(buf, 0, n);
+                    is.close();
+                    JSONObject o = new JSONObject(new String(bos.toByteArray(), StandardCharsets.UTF_8));
+                    String name = o.optString("name", "").trim();
+                    if (name.isEmpty() || uri == null) throw new org.json.JSONException("not a .oxagent file");
+                    OxAgent a = OxAgent.fromJson(o);
+                    a.name = name;
+                    a.builtIn = false;
+                    if (a.id == null || a.id.isEmpty() || OxAgentStore.loadAgent(a.id) != null) {
+                        a.id = "imp" + UUID.randomUUID().toString().substring(0, 6);
+                    }
+                    OxAgentStore.saveAgent(a);
+                    msg = LocaleController.formatString("OxAgentImported", R.string.OxAgentImported, a.name);
+                } catch (Exception e) {
+                    msg = LocaleController.getString(R.string.OxAgentImportFailed);
+                }
+                final String m = msg;
+                AndroidUtilities.runOnUIThread(() -> {
+                    toast(m);
+                    rebuild();
+                });
+            }, "ox-import").start();
+        }
+    }
+
+    private static String sanitizeFileName(String s) {
+        return s == null ? "agent" : s.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+    }
+
+    private void toast(String s) {
+        if (getParentActivity() != null) {
+            android.widget.Toast.makeText(getParentActivity(), s, android.widget.Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void showCreateDialog() {

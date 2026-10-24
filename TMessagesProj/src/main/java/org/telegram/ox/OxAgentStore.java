@@ -63,7 +63,9 @@ public class OxAgentStore {
             summarizer.builtIn = true;
             summarizer.baseUrl = "https://api.deepseek.com";
             summarizer.model = "deepseek-chat";
-            summarizer.agentsMd = "# Summarizer\n\nSummarize the user's text into 3-5 bullet points in Simplified Chinese, then one line stating the overall sentiment.";
+            summarizer.agentsMd = "# Summarizer\n\nYou summarize content for the user in Simplified Chinese.\n\n" +
+                "For a Telegram channel or group, first call tool `tg_list_chats` to find the exact chat title, then call tool `tg_read_chat` with that title to fetch recent messages, then summarize them into 3-5 bullet points plus one line of overall sentiment. Cite message authors when a point depends on a single message.\n\n" +
+                "For plain pasted text, summarize it directly into 3-5 bullet points plus one sentiment line - no tools needed.";
             saveAgent(summarizer);
         } catch (Throwable t) {
             FileLog.e(TAG, t);
@@ -81,7 +83,14 @@ public class OxAgentStore {
                 if (a != null) out.add(a);
             }
         }
-        out.sort((x, y) -> Boolean.compare(x.builtIn, y.builtIn));
+        out.sort((x, y) -> {
+            if (x.pinned != y.pinned) return x.pinned ? -1 : 1;
+            int b = Boolean.compare(x.builtIn, y.builtIn);
+            if (b != 0) return b;
+            String nx = x.name == null ? "" : x.name;
+            String ny = y.name == null ? "" : y.name;
+            return nx.compareToIgnoreCase(ny);
+        });
         return out;
     }
 

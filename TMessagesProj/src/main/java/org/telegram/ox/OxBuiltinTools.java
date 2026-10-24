@@ -206,6 +206,137 @@ public class OxBuiltinTools {
         });
 
         register(new OxTool() {
+            @Override public String name() { return "tg_read_chat"; }
+            @Override public String description() { return "Read the latest messages of a Telegram private chat, group or channel by (partial) title. If unsure of the exact title, call tg_list_chats first. Read-only, requires user confirmation."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() {
+                JSONObject s = schema(new String[]{"chat"});
+                try { s.put("description", "chat: full or partial chat title; limit: optional, 1-50, default 20"); } catch (Exception ignored) {}
+                return s;
+            }
+            @Override public String execute(JSONObject args) {
+                final String chatQuery = args.optString("chat", "").trim();
+                if (chatQuery.isEmpty()) return "error: missing required argument 'chat'";
+                final int limit = Math.max(1, Math.min(50, args.optInt("limit", 20)));
+                final String[] out = new String[1];
+                final CountDownLatch latch = new CountDownLatch(1);
+                final int account = UserConfig.selectedAccount;
+                AndroidUtilities.runOnUIThread(() -> {
+                    try {
+                        org.telegram.messenger.MessagesController mc =
+                            org.telegram.messenger.MessagesController.getInstance(account);
+                        java.util.ArrayList<org.telegram.tgnet.TLRPC.Dialog> dialogs = mc.getAllDialogs();
+                        if (dialogs.isEmpty()) {
+                            out[0] = "error: no dialogs on this device (not signed in?)";
+                            latch.countDown();
+                            return;
+                        }
+                        org.telegram.tgnet.TLRPC.Dialog target = null;
+                        java.util.List<org.telegram.tgnet.TLRPC.Dialog> candidates = new java.util.ArrayList<>();
+                        String q = chatQuery.toLowerCase();
+                        for (org.telegram.tgnet.TLRPC.Dialog d : dialogs) {
+                            String title = oxDialogTitle(mc, d);
+                            if (title == null) continue;
+                            if (title.equalsIgnoreCase(chatQuery)) { target = d; break; }
+                            if (title.toLowerCase().contains(q)) candidates.add(d);
+                        }
+                        if (target == null && candidates.size() == 1) target = candidates.get(0);
+                        if (target == null) {
+                            StringBuilder sb = new StringBuilder("error: chat '" + chatQuery + "' not found. Available chats:");
+                            for (org.telegram.tgnet.TLRPC.Dialog d : dialogs) {
+                                String t = oxDialogTitle(mc, d);
+                                if (t != null) sb.append("\n- ").append(t);
+                            }
+                            out[0] = sb.toString();
+                            latch.countDown();
+                            return;
+                        }
+                        final String title = oxDialogTitle(mc, target);
+                        org.telegram.tgnet.TLRPC.InputPeer peer = mc.getInputPeer(target.id);
+                        if (peer == null) {
+                            out[0] = "error: cannot resolve input peer for '" + title + "'";
+                            latch.countDown();
+                            return;
+                        }
+                        org.telegram.tgnet.TLRPC.TL_messages_getHistory req = new org.telegram.tgnet.TLRPC.TL_messages_getHistory();
+                        req.peer = peer;
+                        req.offset_id = 0;
+                        req.offset_date = 0;
+                        req.add_offset = 0;
+                        req.limit = limit;
+                        req.max_id = 0;
+                        req.min_id = 0;
+                        req.hash = 0;
+                        org.telegram.tgnet.ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                            try {
+                                if (error != null) {
+                                    out[0] = "error: " + error.code + " " + error.text;
+                                    return;
+                                }
+                                if (!(response instanceof org.telegram.tgnet.TLRPC.TL_messages_messages)) {
+                                    out[0] = "error: unexpected response type";
+                                    return;
+                                }
+                                org.telegram.tgnet.TLRPC.TL_messages_messages res =
+                                    (org.telegram.tgnet.TLRPC.TL_messages_messages) response;
+                                java.util.HashMap<Long, String> users = new java.util.HashMap<>();
+                                java.util.HashMap<Long, String> chats = new java.util.HashMap<>();
+                                for (org.telegram.tgnet.TLRPC.User u : res.users) {
+                                    users.put(u.id, org.telegram.messenger.UserObject.getUserName(u));
+                                }
+                                for (org.telegram.tgnet.TLRPC.Chat c : res.chats) {
+                                    chats.put(c.id, c.title == null ? "" : c.title);
+                                }
+                                StringBuilder sb = new StringBuilder("chat: " + title + ", messages " + res.messages.size() + " (oldest first):\n");
+                                java.text.SimpleDateFormat df = new java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.US);
+                                for (int i = res.messages.size() - 1; i >= 0; i--) {
+                                    org.telegram.tgnet.TLRPC.Message m = res.messages.get(i);
+                                    String sender = title;
+                                    if (m.from_id != null) {
+                                        if (m.from_id.user_id != 0) {
+                                            String n = users.get(m.from_id.user_id);
+                                            if (n != null && !n.isEmpty()) sender = n;
+                                        } else if (m.from_id.channel_id != 0) {
+                                            String n = chats.get(m.from_id.channel_id);
+                                            if (n != null && !n.isEmpty()) sender = n;
+                                        } else if (m.from_id.chat_id != 0) {
+                                            String n = chats.get(m.from_id.chat_id);
+                                            if (n != null && !n.isEmpty()) sender = n;
+                                        }
+                                    }
+                                    String text = m.message == null ? "" : m.message.trim();
+                                    if (text.isEmpty()) {
+                                        text = m.action != null ? "(service message)" : (m.media != null ? "(media/attachment)" : "");
+                                    }
+                                    if (text.isEmpty()) continue;
+                                    if (text.length() > 500) text = text.substring(0, 500) + "…";
+                                    sb.append('[').append(df.format(new java.util.Date(m.date * 1000L))).append("] ")
+                                      .append(sender).append(": ").append(text);
+                                    if (m.views > 0) sb.append("  👁").append(m.views);
+                                    sb.append('\n');
+                                }
+                                out[0] = sb.toString();
+                            } catch (Throwable t) {
+                                out[0] = "error: " + t;
+                            } finally {
+                                latch.countDown();
+                            }
+                        });
+                    } catch (Throwable t) {
+                        out[0] = "error: " + t;
+                        latch.countDown();
+                    }
+                });
+                try {
+                    latch.await(25, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return out[0] == null ? "timeout" : out[0];
+            }
+        });
+
+        register(new OxTool() {
             @Override public String name() { return "http_get"; }
             @Override public String description() { return "HTTP GET a URL and return the first 2000 bytes of the response body. Use for fetching public information."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }
@@ -222,7 +353,7 @@ public class OxBuiltinTools {
                     conn = (HttpURLConnection) new URL(url).openConnection();
                     conn.setConnectTimeout(10_000);
                     conn.setReadTimeout(20_000);
-                    conn.setRequestProperty("User-Agent", "OrionekoX/" + "0.0.5");
+                    conn.setRequestProperty("User-Agent", "OrionekoX/0.1.0");
                     int code = conn.getResponseCode();
                     StringBuilder sb = new StringBuilder();
                     try (BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
@@ -237,6 +368,15 @@ public class OxBuiltinTools {
                 }
             }
         });
+    }
+
+    private static String oxDialogTitle(org.telegram.messenger.MessagesController mc, org.telegram.tgnet.TLRPC.Dialog d) {
+        if (d.id > 0) {
+            org.telegram.tgnet.TLRPC.User u = mc.getUser(d.id);
+            return u == null ? null : org.telegram.messenger.UserObject.getUserName(u);
+        }
+        org.telegram.tgnet.TLRPC.Chat c = mc.getChat(-d.id);
+        return c == null || c.title == null ? null : c.title;
     }
 
     private static JSONObject schema(String[] requiredProps) {
