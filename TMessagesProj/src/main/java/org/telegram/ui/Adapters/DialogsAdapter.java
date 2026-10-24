@@ -318,7 +318,7 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
         public void setAgent(org.telegram.ox.OxAgent a) {
             agent = a;
             emojiView.setText(a.emoji);
-            nameView.setText(a.name);
+            nameView.setText(a.pinned ? "📌 " + a.name : a.name);
             statusView.setText(LocaleController.getString(R.string.OxAgentInListStatus));
         }
 

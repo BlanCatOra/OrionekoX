@@ -4442,6 +4442,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             viewPage.listView.setOnItemLongClickListener(new RecyclerListView.OnItemLongClickListenerExtended() {
                 @Override
                 public boolean onItemClick(View view, int position, float x, float y) {
+                    if (view instanceof DialogsAdapter.OxAgentCell) {
+                        org.telegram.ox.OxAgent oxAgent = ((DialogsAdapter.OxAgentCell) view).getAgent();
+                        if (oxAgent != null) {
+                            showOxAgentMenu(oxAgent, viewPage.dialogsAdapter);
+                        }
+                        return true;
+                    }
                     if (view instanceof DialogCell && ((DialogCell) view).isBlocked()) {
                         showPremiumBlockedToast(view, ((DialogCell) view).getDialogId());
                         return true;
@@ -8281,6 +8288,41 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
         }
         updateVisibleRows(MessagesController.UPDATE_MASK_SELECT_DIALOG);
+    }
+
+    // OrionekoX: long-press menu for the local-agent rows pinned at the top of the chat list
+    private void showOxAgentMenu(org.telegram.ox.OxAgent agent, DialogsAdapter adapter) {
+        if (adapter == null || getParentActivity() == null) return;
+        java.util.ArrayList<CharSequence> items = new java.util.ArrayList<>();
+        java.util.ArrayList<Runnable> actions = new java.util.ArrayList<>();
+        items.add(LocaleController.getString(agent.pinned ? R.string.OxUnpinAgent : R.string.OxPinAgent));
+        actions.add(() -> {
+            agent.pinned = !agent.pinned;
+            org.telegram.ox.OxAgentStore.saveAgent(agent);
+            adapter.notifyDataSetChanged();
+        });
+        items.add(LocaleController.getString(R.string.OxEditAgent));
+        actions.add(() -> presentFragment(new OxAgentChatActivity(agent.id, true)));
+        if (!agent.builtIn) {
+            items.add(LocaleController.getString(R.string.Delete));
+            actions.add(() -> {
+                AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+                builder.setTitle(LocaleController.getString(R.string.OxAgentDeleteTitle));
+                builder.setMessage(LocaleController.formatString("OxDeleteAgentConfirm", R.string.OxDeleteAgentConfirm, agent.name));
+                builder.setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
+                    org.telegram.ox.OxAgentStore.deleteAgent(agent.id);
+                    adapter.notifyDataSetChanged();
+                });
+                builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+                builder.show();
+            });
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(agent.emoji + " " + agent.name);
+        builder.setItems(items.toArray(new CharSequence[0]), (dialog, which) -> {
+            if (which >= 0 && which < actions.size()) actions.get(which).run();
+        });
+        builder.show();
     }
 
     private boolean onItemLongClick(RecyclerListView listView, View view, int position, float x, float y, int dialogsType, RecyclerListView.Adapter adapter) {
