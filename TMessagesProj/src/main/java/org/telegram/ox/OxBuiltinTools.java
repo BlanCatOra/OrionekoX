@@ -91,6 +91,63 @@ public class OxBuiltinTools {
         });
 
         register(new OxTool() {
+            @Override public String name() { return "tg_unread_summary"; }
+            @Override public String description() { return "Summarize unread messages: totals and the chats with the most unread. Read-only, requires user confirmation."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() {
+                return schema(new String[]{"top"});
+            }
+            @Override public String execute(JSONObject args) {
+                final int top = Math.max(1, Math.min(20, args.optInt("top", 5)));
+                final String[] out = new String[1];
+                final CountDownLatch latch = new CountDownLatch(1);
+                AndroidUtilities.runOnUIThread(() -> {
+                    try {
+                        org.telegram.messenger.MessagesController mc =
+                            org.telegram.messenger.MessagesController.getInstance(UserConfig.selectedAccount);
+                        java.util.ArrayList<org.telegram.tgnet.TLRPC.Dialog> dialogs = mc.getAllDialogs();
+                        long total = 0;
+                        JSONArray items = new JSONArray();
+                        java.util.List<long[]> rows = new java.util.ArrayList<>();
+                        for (org.telegram.tgnet.TLRPC.Dialog d : dialogs) {
+                            total += Math.max(0, d.unread_count);
+                            if (d.unread_count > 0) rows.add(new long[]{d.id, d.unread_count});
+                        }
+                        rows.sort((x, y) -> Long.compare(y[1], x[1]));
+                        int k = 0;
+                        for (long[] r : rows) {
+                            if (k >= top) break;
+                            String title;
+                            if (r[0] > 0) {
+                                org.telegram.tgnet.TLRPC.User u = mc.getUser(r[0]);
+                                title = u == null ? "#" + r[0] : org.telegram.messenger.UserObject.getUserName(u);
+                            } else {
+                                org.telegram.tgnet.TLRPC.Chat c = mc.getChat(-r[0]);
+                                title = c == null || c.title == null ? "#" + r[0] : c.title;
+                            }
+                            items.put(new JSONObject().put("title", title).put("unread", r[1]));
+                            k++;
+                        }
+                        JSONObject o = new JSONObject();
+                        o.put("total_unread", total);
+                        o.put("top", items);
+                        out[0] = o.toString();
+                    } catch (Throwable t) {
+                        out[0] = "error: " + t;
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+                try {
+                    latch.await(8, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return out[0] == null ? "timeout" : out[0];
+            }
+        });
+
+        register(new OxTool() {
             @Override public String name() { return "tg_list_chats"; }
             @Override public String description() { return "List the top chats/dialogs of the signed-in Telegram account with type and unread count. Read-only, requires user confirmation."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }

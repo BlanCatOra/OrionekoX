@@ -11593,4 +11593,5 @@
     <string name="OxToolPermissionText">This agent wants to run a tool.</string>
     <string name="OxVpnKeepAlive">Keep alive in background</string>
     <string name="OxVpnKeepAliveInfo">Exempts the app from battery optimization and sends a tiny keep-alive packet every minute so the VPN tunnel survives in the background and reconnects automatically after the process is killed.</string>
+    <string name="OxAgentInListStatus">Local agent · tap to chat</string>
 </resources>

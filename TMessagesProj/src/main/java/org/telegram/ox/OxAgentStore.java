@@ -90,7 +90,9 @@ public class OxAgentStore {
             File f = new File(agentDir(id), "agent.json");
             if (!f.exists()) return null;
             JSONObject o = new JSONObject(readFile(f));
-            return OxAgent.fromJson(o);
+            OxAgent a = OxAgent.fromJson(o);
+            a.apiKey = OxVault.unwrap(a.apiKey);
+            return a;
         } catch (Exception e) {
             FileLog.e(TAG, e);
             return null;
@@ -101,7 +103,16 @@ public class OxAgentStore {
         try {
             File dir = agentDir(a.id);
             dir.mkdirs();
+            // Vault: wrap the API key for storage, in-memory copy stays plaintext.
+            String live = a.apiKey;
+            if (live != null && !live.isEmpty() && !OxVault.isWrapped(live)) {
+                String wrapped = OxVault.wrap(live);
+                if (wrapped != null) {
+                    a.apiKey = wrapped;
+                }
+            }
             writeFile(new File(dir, "agent.json"), a.toJson().toString());
+            a.apiKey = live;
             writeFile(new File(dir, "AGENTS.md"), a.agentsMd == null ? "" : a.agentsMd);
         } catch (Exception e) {
             FileLog.e(TAG, e);

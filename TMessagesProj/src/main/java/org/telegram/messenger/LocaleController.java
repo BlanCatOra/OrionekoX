@@ -1238,6 +1238,7 @@ public class LocaleController {
         "OxAgentDeleteTitle",
         "OxAgentEchoName",
         "OxAgentGreeting",
+        "OxAgentInListStatus",
         "OxAgentInputHint",
         "OxAgentNameHint2",
         "OxAgentNew",

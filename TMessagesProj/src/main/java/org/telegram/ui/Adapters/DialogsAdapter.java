@@ -110,7 +110,8 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
             VIEW_TYPE_GRAY_SECTION = 20,
             VIEW_TYPE_FORWARD_TO_STORIES_CELL = 21,
             VIEW_TYPE_HEADER_3 = 22,
-            VIEW_TYPE_DIALOG_COMMUNITY = 23;
+            VIEW_TYPE_DIALOG_COMMUNITY = 23,
+            VIEW_TYPE_OX_AGENT = 99;
 
     private Context mContext;
     private ArchiveHintCell archiveHintCell;
@@ -278,9 +279,58 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
     LongSparseIntArray dialogsStableIds = new LongSparseIntArray();
     HashMap<String, Integer> dialogsHeaderStableIds = new HashMap<>();
 
+    /** OrionekoX: local agent row rendered at the top of the main chat list - the "bot-like" entry. */
+    public static class OxAgentCell extends android.widget.FrameLayout {
+
+        private final android.widget.TextView emojiView;
+        private final android.widget.TextView nameView;
+        private final android.widget.TextView statusView;
+        private org.telegram.ox.OxAgent agent;
+
+        public OxAgentCell(Context context) {
+            super(context);
+            setBackground(Theme.getSelectorDrawable(false));
+            android.widget.LinearLayout row = new android.widget.LinearLayout(context);
+            row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            row.setPadding(AndroidUtilities.dp(14), AndroidUtilities.dp(8), AndroidUtilities.dp(14), AndroidUtilities.dp(8));
+
+            emojiView = new android.widget.TextView(context);
+            emojiView.setTextSize(26);
+            row.addView(emojiView, org.telegram.ui.Components.LayoutHelper.createLinear(44, 44, android.view.Gravity.CENTER_VERTICAL));
+
+            android.widget.LinearLayout col = new android.widget.LinearLayout(context);
+            col.setOrientation(android.widget.LinearLayout.VERTICAL);
+            nameView = new android.widget.TextView(context);
+            nameView.setTextSize(17);
+            nameView.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            nameView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            col.addView(nameView);
+            statusView = new android.widget.TextView(context);
+            statusView.setTextSize(13);
+            statusView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
+            col.addView(statusView);
+            row.addView(col, org.telegram.ui.Components.LayoutHelper.createLinear(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+            addView(row, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+        }
+
+        public void setAgent(org.telegram.ox.OxAgent a) {
+            agent = a;
+            emojiView.setText(a.emoji);
+            nameView.setText(a.name);
+            statusView.setText(LocaleController.getString(R.string.OxAgentInListStatus));
+        }
+
+        public org.telegram.ox.OxAgent getAgent() {
+            return agent;
+        }
+    }
+
     private class ItemInternal extends AdapterWithDiffUtils.Item {
 
         TLRPC.Dialog dialog;
+        org.telegram.ox.OxAgent oxAgent;
         TLRPC.RecentMeUrl recentMeUrl;
         TLRPC.TL_contact contact;
         boolean isForumCell;
@@ -300,6 +350,12 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
         private TLRPC.Chat chat;
         private TLRPC.User user;
         private long dialogId;
+
+        public ItemInternal(org.telegram.ox.OxAgent agent) {
+            super(VIEW_TYPE_OX_AGENT, false);
+            this.oxAgent = agent;
+            stableId = stableIdPointer++;
+        }
 
         public ItemInternal(int viewType, String string) {
             super(viewType, false);
@@ -646,6 +702,9 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup viewGroup, int viewType) {
         View view;
         switch (viewType) {
+            case VIEW_TYPE_OX_AGENT:
+                view = new OxAgentCell(mContext);
+                break;
             case VIEW_TYPE_DIALOG_COMMUNITY:
                 DialogCell dialogCell2 = new DialogCell(parentFragment, mContext, true, false, currentAccount, null);
                 if (communityId != 0) {
@@ -893,6 +952,11 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
     @Override
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int i) {
         switch (holder.getItemViewType()) {
+            case VIEW_TYPE_OX_AGENT: {
+                ItemInternal item = itemInternals.get(i);
+                ((OxAgentCell) holder.itemView).setAgent(item.oxAgent);
+                break;
+            }
             case VIEW_TYPE_FORWARD_TO_STORIES_CELL: {
                 TLRPC.Dialog nextDialog = (TLRPC.Dialog) getItem(i + 1);
 
@@ -1696,6 +1760,17 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
                     hasChatlistHint = true;
                     itemInternals.add(new ItemInternal(updates));
                 }
+            }
+        }
+
+        // OrionekoX: local agents live at the very top of the main chat list
+        if (dialogsType == 0 && folderId == 0 && communityId == 0 && parentFragment != null && !parentFragment.isArchive()) {
+            try {
+                for (org.telegram.ox.OxAgent agent : org.telegram.ox.OxAgentStore.listAgents()) {
+                    itemInternals.add(new ItemInternal(agent));
+                }
+            } catch (Throwable t) {
+                org.telegram.messenger.FileLog.e(t);
             }
         }
 
