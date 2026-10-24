@@ -15,3 +15,5 @@ TMessagesProj_AppStandalone/afat/
 TMessagesProj_AppHuawei/afat/
 TMessagesProj/jni/ffmpeg/build_android
 orioneko.keystore
+dist/
+patches/*.patch
