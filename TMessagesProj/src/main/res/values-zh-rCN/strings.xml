@@ -29,4 +29,16 @@
     <string name="VpnDeleteTitle">删除连接</string>
     <string name="VpnDeleteText">删除此 VPN 连接？</string>
     <string name="VpnInvalidKey">无法识别此 VPN 密钥</string>
+    <string name="OxAgents">智能体</string>
+    <string name="OxAgentsIntro">本地智能体完全在你的设备上运行。点按开始对话；在聊天页右上角菜单配置模型。长按自建智能体可删除。</string>
+    <string name="OxAgentNew">新建智能体</string>
+    <string name="OxAgentNameHint2">名称</string>
+    <string name="OxAgentDeleteTitle">删除智能体</string>
+    <string name="OxAgentDeleteText">删除该智能体及其聊天记录？</string>
+    <string name="OxAgentInputHint">给智能体发消息…</string>
+    <string name="OxAgentGreeting">你好！我是本地智能体。点右上角菜单接入真实模型，或先和我用离线回声模式聊聊。</string>
+    <string name="OxAgentSettings">智能体设置</string>
+    <string name="OxAgentEchoName">回声助手</string>
+    <string name="OxAgentTranslatorName">翻译官</string>
+    <string name="OxAgentSummarizerName">摘要官</string>
 </resources>
