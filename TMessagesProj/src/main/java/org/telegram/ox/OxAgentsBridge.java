@@ -328,6 +328,7 @@ public class OxAgentsBridge {
         final OxAgent agent = agentByTgId(dialogId);
         StringBuilder captionAll = new StringBuilder();
         int photoCount = 0;
+        String lastArchivedPath = null;
         if (infos != null) {
             for (SendMessagesHelper.SendingMediaInfo info : infos) {
                 String path = info.path;
@@ -363,6 +364,7 @@ public class OxAgentsBridge {
                     photoCount++;
 
                     // archive into the agent's media inbox
+                    String archivedPath = null;
                     if (agent != null) {
                         File inbox = new File(ApplicationLoader.applicationContext.getFilesDir(),
                                 "oxagents/" + agent.id + "/media");
@@ -375,13 +377,15 @@ public class OxAgentsBridge {
                             int n;
                             while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
                             out.close(); in.close();
-                            log("media archived: " + dst.getAbsolutePath());
+                            archivedPath = dst.getAbsolutePath();
+                            log("media archived: " + archivedPath);
                         } catch (Throwable t) {
                             logErr("media archive failed", t);
                         }
                     }
                     int[] wh = photoSizeOf(photo);
                     captionAll.append(" [图片 ").append(wh[0]).append("x").append(wh[1]).append("]");
+                    lastArchivedPath = archivedPath;
                 } catch (Throwable t) {
                     logErr("handleOutgoingMedia item failed", t);
                 }
@@ -389,7 +393,8 @@ public class OxAgentsBridge {
         }
         if (agent != null) {
             List<OxChatEntry> chat = OxAgentStore.loadChat(agent.id);
-            chat.add(new OxChatEntry("user", (captionAll.toString().trim() + " 已发送").trim(), System.currentTimeMillis()));
+            chat.add(new OxChatEntry("user", (captionAll.toString().trim() + " 已发送").trim(),
+                    System.currentTimeMillis(), lastArchivedPath));
             OxAgentStore.saveChat(agent.id, chat);
             injectAgentReply(dialogId, "📷 收到 " + photoCount + " 张图片" +
                     (agent.isEchoMode() ? "。（接入模型后可对图片做视觉理解）" : "，已存入媒体收件箱。"));
@@ -573,7 +578,25 @@ public class OxAgentsBridge {
         for (int i = from; i < history.size(); i++) {
             OxChatEntry e = history.get(i);
             if ("user".equals(e.role) || "assistant".equals(e.role)) {
-                messages.put(new JSONObject().put("role", e.role).put("content", e.content));
+                if ("user".equals(e.role) && e.imagePath != null && new File(e.imagePath).exists()) {
+                    // multimodal user turn: text + inline base64 image
+                    JSONObject content = new JSONObject();
+                    content.put("type", "text");
+                    content.put("text", e.content == null || e.content.isEmpty() ? "（看这张图片）" : e.content);
+                    JSONArray parts = new JSONArray().put(content);
+                    java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+                    try (java.io.FileInputStream in = new java.io.FileInputStream(e.imagePath)) {
+                        byte[] buf = new byte[16384];
+                        int n;
+                        while ((n = in.read(buf)) > 0) bos.write(buf, 0, n);
+                    }
+                    String b64 = android.util.Base64.encodeToString(bos.toByteArray(), android.util.Base64.NO_WRAP);
+                    parts.put(new JSONObject().put("type", "image_url")
+                            .put("image_url", new JSONObject().put("url", "data:image/jpeg;base64," + b64)));
+                    messages.put(new JSONObject().put("role", "user").put("content", parts));
+                } else {
+                    messages.put(new JSONObject().put("role", e.role).put("content", e.content));
+                }
             }
         }
         return messages;
@@ -731,6 +754,11 @@ public class OxAgentsBridge {
                 MessageObject obj = new MessageObject(0, msg, true, false);
                 if (out) {
                     obj.wasJustSent = true;
+                }
+                if (msg.media != null && !(msg.media instanceof TLRPC.TL_messageMediaEmpty)) {
+                    log("persistAndShow media type=" + obj.type + " mediaClass=" + msg.media.getClass().getSimpleName()
+                            + " photoNonNull=" + (msg.media.photo != null)
+                            + " sizes=" + (msg.media.photo != null && msg.media.photo.sizes != null ? msg.media.photo.sizes.size() : -1));
                 }
                 ArrayList<MessageObject> objArr = new ArrayList<>();
                 objArr.add(obj);
