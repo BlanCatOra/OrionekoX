@@ -1094,6 +1094,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     }
 
     private BaseFragment getClientNotActivatedFragment() {
+        // OrionekoX: agent-only mode - use the app without a Telegram account (agents only)
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            return new OxAgentsActivity();
+        }
         if (LoginActivity.loadCurrentState(false, currentAccount).getInt("currentViewNum", 0) != 0) {
             return new LoginActivity();
         }

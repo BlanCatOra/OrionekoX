@@ -388,6 +388,23 @@ public class IntroActivity extends BaseFragment implements NotificationCenter.No
             destroyed = true;
         });
 
+        // OrionekoX: skip Telegram login entirely - agents only (local + cloud backends)
+        TextView agentsOnlyButton = new TextView(context);
+        agentsOnlyButton.setText(LocaleController.getString(R.string.OxAgentsOnlyEntry));
+        agentsOnlyButton.setGravity(Gravity.CENTER);
+        agentsOnlyButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        agentsOnlyButton.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        frameContainerView.addView(agentsOnlyButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 36, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 152));
+        agentsOnlyButton.setOnClickListener(v -> {
+            if (startPressed) {
+                return;
+            }
+            startPressed = true;
+            org.telegram.ox.OxMode.setAgentOnly(true);
+            presentFragment(new OxAgentsActivity(), true);
+            destroyed = true;
+        });
+
         bottomPages = new BottomPagesView(context, viewPager, 6);
         frameContainerView.addView(bottomPages, LayoutHelper.createFrame(66, 5, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, ICON_HEIGHT_DP + 200, 0, 0));
 

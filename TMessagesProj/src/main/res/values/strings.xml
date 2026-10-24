@@ -11603,4 +11603,16 @@
     <string name="OxAgentImported">Imported agent %1$s</string>
     <string name="OxAgentImportFailed">Import failed: not a valid .oxagent file</string>
     <string name="OxAgentExported">Exported %1$s (API key is not included)</string>
+    <string name="OxAgentsOnlyEntry">🤖 Use agents first (no login)</string>
+    <string name="OxMcp">MCP Servers</string>
+    <string name="OxMcpIntro">Remote MCP servers (same transport as the Operit/Operit2 plugin ecosystem). Tools provided by enabled servers join the agent tool set automatically, behind the same permission gate.</string>
+    <string name="OxMcpEmpty">No servers yet. Add one - e.g. a remote MCP endpoint from the Operit plugin market.</string>
+    <string name="OxMcpAdd">Add MCP server</string>
+    <string name="OxMcpNameHint">Name</string>
+    <string name="OxMcpUrlHint">https://… (Streamable HTTP endpoint)</string>
+    <string name="OxMcpRefresh">Refresh</string>
+    <string name="OxMcpRefreshing">Refreshing…</string>
+    <string name="OxMcpToolsFound">%1$d tools</string>
+    <string name="OxMcpToolsAvailable">Currently available MCP tools: %1$d</string>
+    <string name="OxMcpDisabled">Disabled</string>
 </resources>

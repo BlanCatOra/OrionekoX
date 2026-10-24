@@ -250,7 +250,7 @@ public class OxAgentChatActivity extends BaseFragment {
             return;
         }
         final OxModelHub.ToolCall call = calls.get(i);
-        final OxTool tool = OxBuiltinTools.ALL.get(call.name);
+        final OxTool tool = org.telegram.ox.OxMcpManager.lookup(call.name);
         if (tool == null) {
             toolResult(call, "error: unknown tool '" + call.name + "'", messages, depth, userText, acc, i, calls);
             return;
