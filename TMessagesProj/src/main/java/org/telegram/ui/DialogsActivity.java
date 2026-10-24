@@ -13828,6 +13828,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         io.add(R.drawable.filled_bot_approve_24, getString(R.string.OxAgents), () -> {
             presentFragment(new OxAgentsActivity());
         });
+        // OrionekoX: remote MCP servers (Operit/Operit2 plugin ecosystem transport)
+        io.add(R.drawable.filled_bot_approve_24, getString(R.string.OxMcp), () -> {
+            presentFragment(new OxMcpActivity());
+        });
         if (ApplicationLoader.applicationLoaderInstance != null) {
             ApplicationLoader.applicationLoaderInstance.addItemOptions(io);
         }

@@ -35,6 +35,8 @@ public class OxAgentsActivity extends BaseFragment {
 
     private static final int REQ_EXPORT = 1001;
     private static final int REQ_IMPORT = 1002;
+    private static final int MENU_MCP = 1;
+    private static final int MENU_LOGIN = 2;
 
     private LinearLayout listContainer;
     private String pendingExportId;
@@ -48,8 +50,18 @@ public class OxAgentsActivity extends BaseFragment {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) finishFragment();
+                else if (id == MENU_MCP) presentFragment(new OxMcpActivity());
+                else if (id == MENU_LOGIN) {
+                    org.telegram.ox.OxMode.setAgentOnly(false);
+                    presentFragment(new LoginActivity());
+                }
             }
         });
+        ActionBarMenu menu = actionBar.createMenu();
+        menu.addItem(MENU_MCP, R.drawable.filled_bot_approve_24);
+        if (org.telegram.ox.OxMode.isAgentOnly() && org.telegram.messenger.UserConfig.getActivatedAccountsCount() == 0) {
+            menu.addItem(MENU_LOGIN, R.drawable.outline_add_account);
+        }
 
         FrameLayout rootLayout = new FrameLayout(context);
         ScrollView scrollView = new ScrollView(context);
@@ -118,7 +130,7 @@ public class OxAgentsActivity extends BaseFragment {
         textCol.setOrientation(LinearLayout.VERTICAL);
 
         TextView name = new TextView(context);
-        name.setText(agent.name);
+        name.setText(agent.pinned ? "📌 " + agent.name : agent.name);
         name.setTextSize(17);
         name.setTypeface(Typeface.DEFAULT_BOLD);
         name.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));

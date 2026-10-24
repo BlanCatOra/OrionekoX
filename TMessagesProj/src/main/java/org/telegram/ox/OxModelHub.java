@@ -65,9 +65,12 @@ public class OxModelHub {
                 body.put("model", agent.model == null ? "" : agent.model);
                 body.put("messages", messages);
                 body.put("stream", true);
-                if (withTools && !OxBuiltinTools.ALL.isEmpty()) {
+                java.util.Collection<OxTool> availableTools = OxMcpManager.tools();
+                if (withTools && !availableTools.isEmpty()) {
+                    // warm MCP servers once per process so their tools appear in later rounds
+                    OxMcpManager.ensureRefreshedAsync();
                     JSONArray tools = new JSONArray();
-                    for (OxTool t : OxBuiltinTools.ALL.values()) {
+                    for (OxTool t : availableTools) {
                         JSONObject fn = new JSONObject();
                         fn.put("name", t.name());
                         fn.put("description", t.description());
