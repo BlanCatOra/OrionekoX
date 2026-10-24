@@ -17,6 +17,8 @@ public class OxAgent {
     public String apiKey;    // TODO(M3): move into encrypted Vault
     public String model;
     public boolean builtIn;
+    // tool name -> "auto" | "ask" | "deny"; missing entries fall back to the tool default
+    public JSONObject toolsPolicy = new JSONObject();
 
     public static OxAgent fromJson(JSONObject o) throws JSONException {
         OxAgent a = new OxAgent();
@@ -28,6 +30,8 @@ public class OxAgent {
         a.apiKey = o.optString("api_key", "");
         a.model = o.optString("model", "");
         a.builtIn = o.optBoolean("built_in", false);
+        JSONObject tp = o.optJSONObject("tools_policy");
+        a.toolsPolicy = tp == null ? new JSONObject() : tp;
         return a;
     }
 
@@ -42,12 +46,18 @@ public class OxAgent {
         o.put("api_key", apiKey);
         o.put("model", model);
         o.put("built_in", builtIn);
+        o.put("tools_policy", toolsPolicy);
         return o;
     }
 
+    public String toolPolicy(OxTool tool) {
+        String p = toolsPolicy.optString(tool.name(), null);
+        return p == null || p.isEmpty() ? tool.defaultPolicy() : p;
+    }
+
+    // Echo mode only when no backend at all - local backends (Ollama & friends) need no key.
     public boolean isEchoMode() {
-        return apiKey == null || apiKey.trim().isEmpty()
-            || baseUrl == null || baseUrl.trim().isEmpty();
+        return baseUrl == null || baseUrl.trim().isEmpty();
     }
 
     public String statusLine() {
