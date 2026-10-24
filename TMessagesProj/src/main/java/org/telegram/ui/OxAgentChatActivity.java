@@ -88,7 +88,7 @@ public class OxAgentChatActivity extends BaseFragment {
                 if (id == -1) {
                     finishFragment();
                 } else if (id == MENU_SETTINGS) {
-                    showSettings();
+                    presentFragment(new OxAgentProfileActivity(agentId));
                 }
             }
         });

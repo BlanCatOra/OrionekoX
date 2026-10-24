@@ -19,6 +19,8 @@ public class OxAgent {
     public boolean builtIn;
     public boolean pinned;    // sticks to the top of the agents block in the chat list
     public long tgId;         // synthetic Telegram user id when running in local-account mode (0 = not yet assigned)
+    public String remark;     // note line, mirrored into the synthetic user's last name
+    public String avatarPath; // master copy of the custom avatar image (may be null)
     // tool name -> "auto" | "ask" | "deny"; missing entries fall back to the tool default
     public JSONObject toolsPolicy = new JSONObject();
 
@@ -34,6 +36,8 @@ public class OxAgent {
         a.builtIn = o.optBoolean("built_in", false);
         a.pinned = o.optBoolean("pinned", false);
         a.tgId = o.optLong("tg_id", 0);
+        a.remark = o.optString("remark", "");
+        a.avatarPath = o.optString("avatar_path", "");
         JSONObject tp = o.optJSONObject("tools_policy");
         a.toolsPolicy = tp == null ? new JSONObject() : tp;
         return a;
@@ -52,6 +56,8 @@ public class OxAgent {
         o.put("built_in", builtIn);
         o.put("pinned", pinned);
         o.put("tg_id", tgId);
+        o.put("remark", remark == null ? "" : remark);
+        o.put("avatar_path", avatarPath == null ? "" : avatarPath);
         o.put("tools_policy", toolsPolicy);
         return o;
     }

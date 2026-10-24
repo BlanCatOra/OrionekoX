@@ -11618,4 +11618,9 @@
     <string name="OxLoginTelegram">Sign in to Telegram</string>
     <string name="OxLoginTelegramText">This leaves agent-only mode and wipes the local account data (agents, chats with them). Continue?</string>
     <string name="OxEndpointPresets">Endpoint presets (cloud / other devices on LAN)</string>
+    <string name="OxAgentProfile">Agent profile</string>
+    <string name="OxAgentAvatarPick">Choose avatar</string>
+    <string name="OxAgentRemark">Note</string>
+    <string name="OxAgentModel">Model ID</string>
+    <string name="OxMcpPresetChoose">Provider / endpoint preset</string>
 </resources>
