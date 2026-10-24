@@ -1107,6 +1107,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     }
 
     private BaseFragment getClientNotActivatedFragment() {
+        // OrionekoX: first-run guide takes precedence; it routes to login or Ox mode itself
+        if (!org.telegram.ox.OxMode.isOnboardingDone()) {
+            return new org.telegram.ui.OxOnboardingActivity();
+        }
         // OrionekoX: agent-only mode - use the app without a Telegram account (agents only)
         android.util.Log.i("OxBridge", "getClientNotActivatedFragment agentOnly=" + org.telegram.ox.OxMode.isAgentOnly()
                 + " activated=" + UserConfig.getInstance(currentAccount).isClientActivated());
