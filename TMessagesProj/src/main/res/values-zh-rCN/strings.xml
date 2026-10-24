@@ -75,4 +75,5 @@
     <string name="OxAgentRemark">备注</string>
     <string name="OxAgentModel">模型 ID</string>
     <string name="OxMcpPresetChoose">提供商 / 端点预设</string>
+    <string name="OxMcpHeadersHint">额外请求头 JSON，如 {\"Authorization\":\"Bearer x\"}（可选）</string>
 </resources>

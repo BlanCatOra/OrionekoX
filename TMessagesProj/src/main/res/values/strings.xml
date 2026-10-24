@@ -11623,4 +11623,5 @@
     <string name="OxAgentRemark">Note</string>
     <string name="OxAgentModel">Model ID</string>
     <string name="OxMcpPresetChoose">Provider / endpoint preset</string>
+    <string name="OxMcpHeadersHint">Extra headers JSON, e.g. {\"Authorization\":\"Bearer x\"} (optional)</string>
 </resources>

@@ -17,6 +17,7 @@ import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.LaunchActivity;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -317,6 +318,94 @@ public class OxAgentsBridge {
         return true;
     }
 
+    // ---------------- media (photos) to agents ----------------
+
+    /** Routes media the user sends to an agent dialog. Photos become real outgoing
+     *  photo messages in the chat (sizes written locally by generatePhotoSizes) and
+     *  the file is archived into the agent's media inbox for tools/vision. */
+    public static void handleOutgoingMedia(long dialogId, java.util.List<SendMessagesHelper.SendingMediaInfo> infos) {
+        log("handleOutgoingMedia dialog=" + dialogId + " count=" + (infos == null ? 0 : infos.size()));
+        final OxAgent agent = agentByTgId(dialogId);
+        StringBuilder captionAll = new StringBuilder();
+        int photoCount = 0;
+        if (infos != null) {
+            for (SendMessagesHelper.SendingMediaInfo info : infos) {
+                String path = info.path;
+                if (path == null || path.isEmpty()) {
+                    injectAgentReply(dialogId, "（该类型媒体暂不支持发送给智能体）");
+                    continue;
+                }
+                try {
+                    SendMessagesHelper smh = SendMessagesHelper.getInstance(0);
+                    TLRPC.TL_photo photo = smh.generatePhotoSizes(path, null);
+                    if (photo == null) {
+                        injectAgentReply(dialogId, "（图片读取失败：" + path + "）");
+                        continue;
+                    }
+                    TLRPC.TL_message msg = new TLRPC.TL_message();
+                    msg.flags = 256 | 512;   // HAS_FROM_ID | HAS_MEDIA
+                    msg.id = UserConfig.getInstance(0).getNewMessageId();
+                    msg.local_id = msg.id;
+                    msg.out = true;
+                    msg.date = (int) (System.currentTimeMillis() / 1000);
+                    msg.media = new TLRPC.TL_messageMediaPhoto();
+                    msg.media.flags |= 1;   // photo
+                    msg.media.photo = photo;
+                    msg.media.ttl_seconds = 0;
+                    msg.message = "";
+                    msg.peer_id = new TLRPC.TL_peerUser();
+                    msg.peer_id.user_id = dialogId;
+                    msg.from_id = new TLRPC.TL_peerUser();
+                    msg.from_id.user_id = SELF_ID;
+                    msg.dialog_id = dialogId;
+                    msg.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
+                    persistAndShow(dialogId, msg);
+                    photoCount++;
+
+                    // archive into the agent's media inbox
+                    if (agent != null) {
+                        File inbox = new File(ApplicationLoader.applicationContext.getFilesDir(),
+                                "oxagents/" + agent.id + "/media");
+                        inbox.mkdirs();
+                        File dst = new File(inbox, System.currentTimeMillis() + "_" + photoCount + ".jpg");
+                        try {
+                            java.io.FileInputStream in = new java.io.FileInputStream(path);
+                            java.io.FileOutputStream out = new java.io.FileOutputStream(dst);
+                            byte[] buf = new byte[16384];
+                            int n;
+                            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                            out.close(); in.close();
+                            log("media archived: " + dst.getAbsolutePath());
+                        } catch (Throwable t) {
+                            logErr("media archive failed", t);
+                        }
+                    }
+                    int[] wh = photoSizeOf(photo);
+                    captionAll.append(" [图片 ").append(wh[0]).append("x").append(wh[1]).append("]");
+                } catch (Throwable t) {
+                    logErr("handleOutgoingMedia item failed", t);
+                }
+            }
+        }
+        if (agent != null) {
+            List<OxChatEntry> chat = OxAgentStore.loadChat(agent.id);
+            chat.add(new OxChatEntry("user", (captionAll.toString().trim() + " 已发送").trim(), System.currentTimeMillis()));
+            OxAgentStore.saveChat(agent.id, chat);
+            injectAgentReply(dialogId, "📷 收到 " + photoCount + " 张图片" +
+                    (agent.isEchoMode() ? "。（接入模型后可对图片做视觉理解）" : "，已存入媒体收件箱。"));
+        }
+    }
+
+    private static int[] photoSizeOf(TLRPC.TL_photo photo) {
+        int w = 0, h = 0;
+        if (photo.sizes != null) {
+            for (TLRPC.PhotoSize ps : photo.sizes) {
+                if (ps.w > w) { w = ps.w; h = ps.h; }
+            }
+        }
+        return new int[]{w, h};
+    }
+
     private static void handleOutgoingText(long dialogId, String text) {
         try {
             TLRPC.TL_message msg = new TLRPC.TL_message();
@@ -375,7 +464,7 @@ public class OxAgentsBridge {
     // ---------------- typing indicator (local PrintingUser injection) ----------------
 
     private static final android.os.Handler typingHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-    private static final long TYPING_REFRESH_MS = 4000;
+    private static final long TYPING_REFRESH_MS = 2000;   // native expiry is 5.9s - refresh well inside it
     private static final Runnable typingTicker = new Runnable() {
         @Override
         public void run() {
@@ -387,7 +476,7 @@ public class OxAgentsBridge {
                     setPrintingUser(dialogId, now);
                 }
                 mc.updatePrintingStrings();
-                NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_USER_PRINT);
+                notifyPrintChanged();
                 if (any) {
                     typingHandler.postDelayed(this, TYPING_REFRESH_MS);
                 }
@@ -421,13 +510,19 @@ public class OxAgentsBridge {
         }
     }
 
+    private static void notifyPrintChanged() {
+        // updatePrintingStrings applies its swap via a posted runnable - queue this
+        // notification behind it so consumers read the fresh strings, not the old map
+        AndroidUtilities.runOnUIThread(() -> NotificationCenter.getInstance(0)
+                .postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_USER_PRINT));
+    }
+
     private static void startTyping(long dialogId) {
         AndroidUtilities.runOnUIThread(() -> {
             try {
                 setPrintingUser(dialogId, ConnectionsManager.getInstance(0).getCurrentTime());
-                MessagesController mc = MessagesController.getInstance(0);
-                mc.updatePrintingStrings();
-                NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_USER_PRINT);
+                MessagesController.getInstance(0).updatePrintingStrings();
+                notifyPrintChanged();
                 typingHandler.removeCallbacks(typingTicker);
                 typingHandler.postDelayed(typingTicker, TYPING_REFRESH_MS);
             } catch (Throwable t) {
@@ -442,7 +537,7 @@ public class OxAgentsBridge {
                 MessagesController mc = MessagesController.getInstance(0);
                 if (mc.printingUsers.remove(dialogId) != null) {
                     mc.updatePrintingStrings();
-                    NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_USER_PRINT);
+                    notifyPrintChanged();
                 }
             } catch (Throwable t) {
                 logErr("stopTyping failed", t);
