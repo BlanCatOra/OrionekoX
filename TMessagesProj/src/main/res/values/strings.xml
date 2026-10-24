@@ -11589,4 +11589,6 @@
     <string name="OxAgentEchoName">Echo Assistant</string>
     <string name="OxAgentTranslatorName">Translator</string>
     <string name="OxAgentSummarizerName">Summarizer</string>
+    <string name="OxToolPermissionTitle">Allow tool call?</string>
+    <string name="OxToolPermissionText">This agent wants to run a tool.</string>
 </resources>

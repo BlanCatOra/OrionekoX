@@ -1246,6 +1246,8 @@ public class LocaleController {
         "OxAgentTranslatorName",
         "OxAgents",
         "OxAgentsIntro",
+        "OxToolPermissionText",
+        "OxToolPermissionTitle",
         "TitleSetupVpn",
         "UseVpn",
         "Vpn",
