@@ -11911,6 +11911,11 @@
     <string name="OxWorkspaceFiles">Files</string>
     <string name="OxWorkspaceEmpty">The agent workspace is empty.</string>
     <string name="OxWorkspaceNew">New text file</string>
+    <string name="OxWorkspaceImport">Import file</string>
+    <string name="OxWorkspaceImportHint">Copy a file from this device into the workspace</string>
+    <string name="OxWorkspaceImported">Imported %1$s</string>
+    <string name="OxWorkspaceImportFailed">Import failed</string>
+    <string name="OxWorkspaceImportTooLarge">File is larger than 20 MB</string>
     <string name="OxWorkspaceNewHint">File name, e.g. notes/todo.md</string>
     <string name="OxWorkspaceNewContent">Initial content (optional)</string>
     <string name="OxWorkspaceEdit">Edit</string>
