@@ -128,5 +128,6 @@ gaps that were previously listed as "gap":
 - Actual test: the agent clicked the chat header “🤖 Yuki Waifu” by text and the
   native profile opened.
 - Added `ui_find_text` and `ui_scroll_tap_text` (scroll the first scrollable node
-  up to 12 times, then report/click). Next refinements: live scroll E2E, node cache,
-  ADB/root arbitrary key events.
+  up to 12 times, then report/click). `ui_find_text` was live-tested: it found the
+  “Yuki Waifu” header at `[137,0][943,275]` without scrolling. The scroll-tap branch
+  still needs a long-list E2E. Next refinements: node cache, ADB/root arbitrary keys.
