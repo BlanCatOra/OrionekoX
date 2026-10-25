@@ -397,6 +397,12 @@ public class ConnectionsManager extends BaseController {
     }
 
     private void sendRequestInternal(TLObject object, RequestDelegate onComplete, RequestDelegateTimestamp onCompleteTimestamp, QuickAckDelegate onQuickAck, WriteToSocketDelegate onWriteToSocket, int flags, int datacenterId, int connectionType, boolean immediate, int requestToken) {
+        // Ox local mode is fully offline: drop Telegram RPCs instead of letting the native
+        // connection manager retry against unreachable servers in the background.
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            object.freeResources();
+            return;
+        }
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("send request " + object + " with token = " + requestToken);
         }
@@ -623,6 +629,11 @@ public class ConnectionsManager extends BaseController {
     }
 
     public int getConnectionState() {
+        // Local mode has no server to connect to. Report a stable "connected" state so the UI
+        // does not show Connecting/Waiting banners or retry loops; RPCs are dropped below.
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            return ConnectionStateConnected;
+        }
         if (connectionState == ConnectionStateConnected && isUpdating) {
             return ConnectionStateUpdating;
         }
@@ -630,10 +641,16 @@ public class ConnectionsManager extends BaseController {
     }
 
     public void setUserId(long id) {
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            return;
+        }
         native_setUserId(currentAccount, id);
     }
 
     public void checkConnection() {
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            return;
+        }
         byte selectedStrategy = getIpStrategy();
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("selected ip strategy " + selectedStrategy);
@@ -643,10 +660,18 @@ public class ConnectionsManager extends BaseController {
     }
 
     public void setPushConnectionEnabled(boolean value) {
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            return;
+        }
         native_setPushConnectionEnabled(currentAccount, value);
     }
 
     public void init(int version, int layer, int apiId, String deviceModel, String systemVersion, String appVersion, String langCode, String systemLangCode, String configPath, String logPath, String regId, String cFingerprint, int timezoneOffset, long userId, boolean userPremium, boolean enablePushConnection) {
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            // Never hand the synthetic local account to the native MTProto client.
+            userId = 0;
+            enablePushConnection = false;
+        }
         final SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
         final ProxySettings proxySettings = ProxySettings.fromSharedPreferences(preferences);
         if (preferences.getBoolean("proxy_enabled", false) && proxySettings.isValid()) {
@@ -689,7 +714,18 @@ public class ConnectionsManager extends BaseController {
             packageId = "";
         }
 
-        native_init(currentAccount, version, layer, apiId, deviceModel, systemVersion, appVersion, langCode, systemLangCode, configPath, logPath, regId, cFingerprint, installer, packageId, timezoneOffset, userId, userPremium, enablePushConnection, ApplicationLoader.isNetworkOnline(), ApplicationLoader.getCurrentNetworkType(), SharedConfig.measureDevicePerformanceClass());
+        final boolean oxLocal = org.telegram.ox.OxMode.isAgentOnly();
+        native_init(currentAccount, version, layer, apiId, deviceModel, systemVersion, appVersion, langCode, systemLangCode, configPath, logPath, regId, cFingerprint, installer, packageId, timezoneOffset,
+                oxLocal ? 0 : userId, userPremium, !oxLocal && enablePushConnection,
+                !oxLocal && ApplicationLoader.isNetworkOnline(),
+                oxLocal ? 0 : ApplicationLoader.getCurrentNetworkType(),
+                SharedConfig.measureDevicePerformanceClass());
+        if (oxLocal) {
+            // Keep the native client completely offline: no auth-key creation, no DC probes.
+            native_setNetworkAvailable(currentAccount, false, 0, false);
+            native_pauseNetwork(currentAccount);
+            return;
+        }
         checkConnection();
     }
 
@@ -766,7 +802,10 @@ public class ConnectionsManager extends BaseController {
         native_checkProxy(currentAccount, "127.0.0.1", port, "", "", settings.getSecret(), requestTimeDelegate);
     }
 
-    public void setAppPaused(final boolean value, final boolean byScreenState) {
+    public void setAppPaused(boolean value, final boolean byScreenState) {
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            value = true;
+        }
         if (!byScreenState) {
             appPaused = value;
             if (BuildVars.LOGS_ENABLED) {

@@ -1,21 +1,28 @@
 package org.telegram.ui;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.GradientDrawable;
+import android.text.InputType;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import org.json.JSONArray;
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
@@ -24,50 +31,110 @@ import org.telegram.ox.OxAgent;
 import org.telegram.ox.OxAgentStore;
 import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxMode;
+import org.telegram.ox.OxModelHub;
+import org.telegram.ox.OxProviderPreset;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Cells.EditTextCell;
+import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.LayoutHelper;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.util.UUID;
 
-/**
- * Agent profile ("add friend"-style editor, mirroring the private Orioneko repo's
- * friend form): avatar, name, remark plus the full model wiring. Saving re-mirrors
- * the synthetic Telegram contact so the stock UI (dialogs, chat header, profile)
- * picks the changes up immediately.
- */
-@SuppressLint("ViewConstructor")
+/** Agent editor: provider presets with icons, masked key, custom headers, test connection. */
 public class OxAgentProfileActivity extends BaseFragment {
+
+    public static final int TEMPLATE_API = 0;
+    public static final int TEMPLATE_LAN = 1;
+    public static final int TEMPLATE_CONTAINER = 2;
 
     private static final int MENU_SAVE = 1;
     private static final int REQ_AVATAR = 2001;
 
     private OxAgent agent;
     private final String agentId;
+    private final boolean isNew;
 
     private ImageView avatarPreview;
-    private String pendingAvatarPath;   // picked image, saved on Save
+    private String pendingAvatarPath;
     private boolean avatarCleared;
-    private EditText firstNameField;
-    private EditText remarkField;
-    private EditText baseUrlField;
-    private EditText apiKeyField;
-    private EditText modelField;
-    private EditText mdField;
+
+    private EditTextCell nameCell;
+    private EditTextCell remarkCell;
+    private EditTextCell baseUrlCell;
+    private EditTextCell apiKeyCell;
+    private EditTextCell modelCell;
+    private EditTextCell mdCell;
+    private ImageView providerIcon;
+    private TextView providerName;
+    private TextView providerSub;
+    private LinearLayout headersList;
+    private TextSettingsCell keyUrlRow;
+    private TextSettingsCell modelSuggestRow;
+    private TextSettingsCell testRow;
+    private ImageView keyEye;
+    private boolean keyVisible;
 
     public OxAgentProfileActivity(String id) {
         super();
         agentId = id;
+        isNew = false;
+    }
+
+    private OxAgentProfileActivity(OxAgent draft, boolean create) {
+        super();
+        agent = draft;
+        agentId = draft.id;
+        isNew = create;
+    }
+
+    /** Opens the editor with an unsaved draft; cancelling leaves no agent behind. */
+    public static OxAgentProfileActivity newDraft(int template) {
+        OxProviderPreset p;
+        String name;
+        if (template == TEMPLATE_LAN) {
+            p = OxProviderPreset.byId("ollama");
+            name = LocaleController.getString(R.string.OxAgentDefaultLanName);
+        } else if (template == TEMPLATE_CONTAINER) {
+            p = OxProviderPreset.byId("opencode");
+            name = LocaleController.getString(R.string.OxAgentDefaultContainerName);
+        } else {
+            p = OxProviderPreset.byId("deepseek");
+            name = LocaleController.getString(R.string.OxAgentDefaultApiName);
+        }
+        OxAgent a = new OxAgent();
+        a.id = UUID.randomUUID().toString().substring(0, 8);
+        a.name = name;
+        a.emoji = "🤖";
+        a.providerId = p.id;
+        a.baseUrl = p.baseUrl;
+        a.model = p.defaultModel;
+        a.agentsMd = "# " + name + "\n\nYou are a helpful assistant.";
+        return new OxAgentProfileActivity(a, true);
     }
 
     @Override
     public boolean onFragmentCreate() {
-        agent = OxAgentStore.loadAgent(agentId);
+        if (agent == null) {
+            agent = OxAgentStore.loadAgent(agentId);
+        }
+        if (agent != null && (agent.providerId == null || "custom".equals(agent.providerId))) {
+            String base = agent.baseUrl == null ? "" : agent.baseUrl;
+            for (OxProviderPreset p : OxProviderPreset.ALL) {
+                if (!p.baseUrl.isEmpty() && base.startsWith(p.baseUrl)) {
+                    agent.providerId = p.id;
+                    break;
+                }
+            }
+        }
         return agent != null && super.onFragmentCreate();
     }
 
@@ -75,141 +142,464 @@ public class OxAgentProfileActivity extends BaseFragment {
     public View createView(Context context) {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle(LocaleController.getString(R.string.OxAgentProfile));
+        actionBar.setTitle(LocaleController.getString(isNew ? R.string.OxAgentNewTitle : R.string.OxAgentProfile));
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
-                if (id == -1) finishFragment();
-                else if (id == MENU_SAVE) onSave();
+                if (id == -1) {
+                    finishFragment();
+                } else if (id == MENU_SAVE) {
+                    onSave();
+                }
             }
         });
         ActionBarMenu menu = actionBar.createMenu();
-        menu.addItem(MENU_SAVE, LocaleController.getString(R.string.Save).toUpperCase());
+        menu.addItemWithWidth(MENU_SAVE, R.drawable.ic_ab_done, AndroidUtilities.dp(56));
 
-        LinearLayout scrollChild = new LinearLayout(context);
-        scrollChild.setOrientation(LinearLayout.VERTICAL);
-        int white = getThemedColor(Theme.key_windowBackgroundWhite);
-        scrollChild.setBackgroundColor(white);
+        FrameLayout root = new FrameLayout(context);
+        root.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
 
-        // avatar
+        ScrollView scroll = new ScrollView(context);
+        scroll.setFillViewport(true);
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(0, 0, 0, AndroidUtilities.dp(28));
+        scroll.addView(content, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(scroll, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        fragmentView = root;
+
+        // avatar header
+        LinearLayout avatarBlock = new LinearLayout(context);
+        avatarBlock.setOrientation(LinearLayout.VERTICAL);
+        avatarBlock.setGravity(Gravity.CENTER_HORIZONTAL);
+        avatarBlock.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        avatarBlock.setPadding(0, AndroidUtilities.dp(14), 0, AndroidUtilities.dp(14));
         FrameLayout avatarWrap = new FrameLayout(context);
-        avatarWrap.setBackgroundColor(white);
         avatarPreview = new ImageView(context);
         avatarPreview.setScaleType(ImageView.ScaleType.CENTER_CROP);
         avatarPreview.setClipToOutline(true);
-        avatarPreview.setOutlineProvider(new android.view.ViewOutlineProvider() {
+        avatarPreview.setOutlineProvider(new ViewOutlineProvider() {
             @Override
-            public void getOutline(android.view.View view, android.graphics.Outline outline) {
+            public void getOutline(View view, android.graphics.Outline outline) {
                 outline.setOval(0, 0, view.getWidth(), view.getHeight());
             }
         });
-        avatarWrap.addView(avatarPreview, LayoutHelper.createFrame(AndroidUtilities.dp(84), AndroidUtilities.dp(84), Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, AndroidUtilities.dp(16), 0, 0));
+        avatarWrap.addView(avatarPreview, LayoutHelper.createFrame(84, 84, Gravity.CENTER));
+        avatarBlock.addView(avatarWrap, LayoutHelper.createLinear(84, 84, Gravity.CENTER_HORIZONTAL));
         TextView avatarHint = new TextView(context);
         avatarHint.setText(LocaleController.getString(R.string.OxAgentAvatarPick));
         avatarHint.setTextSize(13);
         avatarHint.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText4));
         avatarHint.setGravity(Gravity.CENTER);
-        avatarWrap.addView(avatarHint, LayoutHelper.createFrame(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM, 0, 0, 0, AndroidUtilities.dp(12)));
-        avatarWrap.setOnClickListener(v -> openAvatarPicker());
-        scrollChild.addView(avatarWrap, LayoutHelper.createLinear(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        avatarHint.setPadding(0, AndroidUtilities.dp(8), 0, 0);
+        avatarBlock.addView(avatarHint);
+        avatarBlock.setOnClickListener(v -> openAvatarPicker());
+        content.addView(avatarBlock, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
-        firstNameField = addField(context, scrollChild, LocaleController.getString(R.string.OxAgentNameHint2), agent.name, true);
-        remarkField = addField(context, scrollChild, LocaleController.getString(R.string.OxAgentRemark), agent.remark, false);
+        // basic
+        content.addView(sectionHeader(context, LocaleController.getString(R.string.OxAgentSectionBasic)));
+        LinearLayout basic = section(context);
+        nameCell = addEditCell(context, basic, LocaleController.getString(R.string.OxAgentNameHint2), agent.name, false, true);
+        nameCell.editText.setTypeface(AndroidUtilities.bold());
+        remarkCell = addEditCell(context, basic, LocaleController.getString(R.string.OxAgentRemark), agent.remark, false, false);
+        content.addView(basic);
 
-        addShadow(context, scrollChild, LocaleController.getString(R.string.OxEndpointPresets));
-        TextView presetCell = addButton(context, scrollChild, "🌐 " + LocaleController.getString(R.string.OxMcpPresetChoose), v -> showPresetChooser());
-        baseUrlField = addField(context, scrollChild, "Base URL", agent.baseUrl, false);
-        apiKeyField = addField(context, scrollChild, "API Key", agent.apiKey, false);
-        modelField = addField(context, scrollChild, LocaleController.getString(R.string.OxAgentModel), agent.model, false);
+        // provider
+        content.addView(sectionHeader(context, LocaleController.getString(R.string.OxAgentSectionProvider)));
+        LinearLayout providerGroup = section(context);
+        LinearLayout providerRow = new LinearLayout(context);
+        providerRow.setOrientation(LinearLayout.HORIZONTAL);
+        providerRow.setGravity(Gravity.CENTER_VERTICAL);
+        providerRow.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(11), AndroidUtilities.dp(16), AndroidUtilities.dp(11));
+        providerRow.setBackground(Theme.getSelectorDrawable(false));
+        FrameLayout providerIconWrap = new FrameLayout(context);
+        GradientDrawable iconBg = new GradientDrawable();
+        iconBg.setShape(GradientDrawable.OVAL);
+        iconBg.setColor(getThemedColor(Theme.key_windowBackgroundGray));
+        providerIconWrap.setBackground(iconBg);
+        providerIcon = new ImageView(context);
+        providerIcon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        providerIconWrap.addView(providerIcon, LayoutHelper.createFrame(22, 22, Gravity.CENTER));
+        providerRow.addView(providerIconWrap, LayoutHelper.createLinear(40, 40, Gravity.CENTER_VERTICAL));
+        LinearLayout providerText = new LinearLayout(context);
+        providerText.setOrientation(LinearLayout.VERTICAL);
+        providerText.setPadding(AndroidUtilities.dp(12), 0, AndroidUtilities.dp(8), 0);
+        providerName = new TextView(context);
+        providerName.setTextSize(16);
+        providerName.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        providerText.addView(providerName);
+        providerSub = new TextView(context);
+        providerSub.setTextSize(12);
+        providerSub.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        providerText.addView(providerSub);
+        providerRow.addView(providerText, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+        TextView providerChevron = new TextView(context);
+        providerChevron.setText("›");
+        providerChevron.setTextSize(22);
+        providerChevron.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        providerRow.addView(providerChevron);
+        providerRow.setOnClickListener(v -> showProviderPicker());
+        providerGroup.addView(providerRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
-        addShadow(context, scrollChild, "AGENTS.md");
-        mdField = new EditText(context);
-        mdField.setText(agent.agentsMd == null ? "" : agent.agentsMd);
-        mdField.setMinLines(6);
-        mdField.setGravity(Gravity.TOP);
-        mdField.setBackground(null);
-        mdField.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-        mdField.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(10), AndroidUtilities.dp(16), AndroidUtilities.dp(10));
-        scrollChild.addView(mdField, LayoutHelper.createLinear(ViewGroup.LayoutParams.MATCH_PARENT, AndroidUtilities.dp(160)));
-        addShadow(context, scrollChild, null);
+        providerGroup.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentEndpointLabel)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        baseUrlCell = addEditCell(context, providerGroup, "Base URL", agent.baseUrl, false, true);
+        baseUrlCell.editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        baseUrlCell.editText.setTextSize(15);
 
-        if (!agent.builtIn) {
-            TextView delete = addButton(context, scrollChild, LocaleController.getString(R.string.OxAgentDeleteTitle), v -> confirmDelete());
+        providerGroup.addView(sectionLabel(context, "API Key"), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        apiKeyCell = addEditCell(context, providerGroup, LocaleController.getString(R.string.OxAgentApiKeyHint), agent.apiKey, false, true);
+        apiKeyCell.editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        apiKeyCell.editText.setTextSize(15);
+        apiKeyCell.editText.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(15), AndroidUtilities.dp(58), AndroidUtilities.dp(15));
+        keyEye = new ImageView(context);
+        keyEye.setImageResource(R.drawable.ox_eye);
+        keyEye.setColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        keyEye.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12));
+        keyEye.setAlpha(0.55f);
+        keyEye.setOnClickListener(v -> {
+            keyVisible = !keyVisible;
+            apiKeyCell.editText.setInputType(InputType.TYPE_CLASS_TEXT | (keyVisible ? 0 : InputType.TYPE_TEXT_VARIATION_PASSWORD) | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+            apiKeyCell.editText.setSelection(apiKeyCell.editText.getText().length());
+            keyEye.setAlpha(keyVisible ? 1f : 0.55f);
+        });
+        apiKeyCell.addView(keyEye, LayoutHelper.createFrame(44, 44, Gravity.RIGHT | Gravity.CENTER_VERTICAL, 0, 0, 8, 0));
+
+        providerGroup.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentModelLabel)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        modelCell = addEditCell(context, providerGroup, LocaleController.getString(R.string.OxAgentModel), agent.model, false, false);
+        modelCell.editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+
+        modelSuggestRow = new TextSettingsCell(context);
+        modelSuggestRow.setTextAndValue(LocaleController.getString(R.string.OxAgentPickModel), "", true);
+        modelSuggestRow.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        modelSuggestRow.setOnClickListener(v -> showModelPicker());
+        providerGroup.addView(modelSuggestRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        keyUrlRow = new TextSettingsCell(context);
+        keyUrlRow.setText(LocaleController.getString(R.string.OxAgentGetKey), true);
+        keyUrlRow.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        keyUrlRow.setOnClickListener(v -> {
+            OxProviderPreset p = OxProviderPreset.byId(agent.providerId);
+            if (getParentActivity() != null && p.keyUrl != null && !p.keyUrl.isEmpty()) {
+                try {
+                    getParentActivity().startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(p.keyUrl)));
+                } catch (Throwable ignored) {
+                }
+            }
+        });
+        providerGroup.addView(keyUrlRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        testRow = new TextSettingsCell(context);
+        testRow.setTextAndValue(LocaleController.getString(R.string.OxAgentTest), LocaleController.getString(R.string.OxAgentTestIdle), false);
+        testRow.setTextValueColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        testRow.setOnClickListener(v -> testConnection());
+        providerGroup.addView(testRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        content.addView(providerGroup);
+
+        // headers
+        content.addView(sectionHeader(context, LocaleController.getString(R.string.OxAgentHeaders)));
+        LinearLayout headerGroup = section(context);
+        headersList = new LinearLayout(context);
+        headersList.setOrientation(LinearLayout.VERTICAL);
+        headerGroup.addView(headersList, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        TextSettingsCell addHeader = new TextSettingsCell(context);
+        addHeader.setText("＋ " + LocaleController.getString(R.string.OxAgentHeaderAdd), true);
+        addHeader.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        addHeader.setOnClickListener(v -> editHeader(-1));
+        headerGroup.addView(addHeader, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        content.addView(headerGroup);
+        rebuildHeaders();
+
+        // AGENTS.md
+        content.addView(sectionHeader(context, "AGENTS.md"));
+        LinearLayout mdGroup = section(context);
+        mdCell = new EditTextCell(context, "AGENTS.md", true);
+        mdCell.setText(agent.agentsMd == null ? "" : agent.agentsMd);
+        mdCell.setDivider(false);
+        mdCell.editText.setTextSize(15);
+        mdGroup.addView(mdCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, AndroidUtilities.dp(150)));
+        content.addView(mdGroup);
+
+        if (!isNew && !agent.builtIn) {
+            content.addView(sectionHeader(context, ""));
+            LinearLayout danger = section(context);
+            TextSettingsCell delete = new TextSettingsCell(context);
+            delete.setText(LocaleController.getString(R.string.OxAgentDeleteTitle), false);
             delete.setTextColor(getThemedColor(Theme.key_text_RedRegular));
+            delete.setOnClickListener(v -> confirmDelete());
+            danger.addView(delete, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            content.addView(danger);
         }
 
-        ScrollView scrollView = new ScrollView(context);
-        scrollView.setFillViewport(true);
-        scrollView.addView(scrollChild, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        FrameLayout frame = new FrameLayout(context);
-        frame.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
-        frame.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-        fragmentView = frame;
-
+        updateProviderInfo();
         renderAvatar();
         return fragmentView;
     }
 
-    private EditText addField(Context context, LinearLayout parent, String hint, String value, boolean bold) {
-        EditText et = new EditText(context);
-        et.setHint(hint);
-        et.setText(value == null ? "" : value);
-        et.setTextSize(17);
-        if (bold) et.setTypeface(AndroidUtilities.bold());
-        et.setBackground(null);
-        et.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-        et.setHintTextColor(getThemedColor(Theme.key_windowBackgroundWhiteHintText));
-        et.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(12), AndroidUtilities.dp(16), AndroidUtilities.dp(12));
-        parent.addView(et, LayoutHelper.createLinear(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        View divider = new View(context);
-        divider.setBackgroundColor(getThemedColor(Theme.key_divider));
-        parent.addView(divider, LayoutHelper.createLinear(ViewGroup.LayoutParams.MATCH_PARENT, 1, 16, 0, 16, 0));
-        return et;
-    }
-
-    private TextView addButton(Context context, LinearLayout parent, String text, View.OnClickListener l) {
+    private TextView sectionLabel(Context context, String text) {
         TextView tv = new TextView(context);
         tv.setText(text);
-        tv.setTextSize(16);
-        tv.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-        tv.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(14), AndroidUtilities.dp(16), AndroidUtilities.dp(14));
-        tv.setBackground(Theme.getSelectorDrawable(false));
-        tv.setOnClickListener(l);
-        parent.addView(tv, LayoutHelper.createLinear(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        View divider = new View(context);
-        divider.setBackgroundColor(getThemedColor(Theme.key_divider));
-        parent.addView(divider, LayoutHelper.createLinear(ViewGroup.LayoutParams.MATCH_PARENT, 1, 16, 0, 16, 0));
+        tv.setTextSize(13);
+        tv.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        tv.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(10), AndroidUtilities.dp(21), AndroidUtilities.dp(2));
         return tv;
     }
 
-    private void addShadow(Context context, LinearLayout parent, String text) {
+    private TextView sectionHeader(Context context, String text) {
         TextView tv = new TextView(context);
-        tv.setText(text == null ? "" : text.toUpperCase());
-        if (text != null) {
-            tv.setTextSize(13);
-            tv.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText6));
-            tv.setTypeface(AndroidUtilities.bold());
-            tv.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(14), AndroidUtilities.dp(16), AndroidUtilities.dp(4));
-        } else {
-            tv.setVisibility(View.INVISIBLE);
-            tv.setPadding(0, AndroidUtilities.dp(6), 0, 0);
-        }
-        parent.addView(tv, LayoutHelper.createLinear(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        tv.setText(text == null ? "" : text);
+        tv.setTextSize(13);
+        tv.setTypeface(AndroidUtilities.bold());
+        tv.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        tv.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(14), AndroidUtilities.dp(21), AndroidUtilities.dp(5));
+        return tv;
     }
+
+    private LinearLayout section(Context context) {
+        LinearLayout l = new LinearLayout(context);
+        l.setOrientation(LinearLayout.VERTICAL);
+        l.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        l.setLayoutParams(LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        return l;
+    }
+
+    private EditTextCell addEditCell(Context context, LinearLayout parent, String hint, String value,
+                                     boolean multiline, boolean divider) {
+        EditTextCell cell = new EditTextCell(context, hint, multiline);
+        cell.setText(value == null ? "" : value);
+        cell.editText.setTextSize(17);
+        cell.setDivider(divider);
+        parent.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        return cell;
+    }
+
+    private void updateProviderInfo() {
+        OxProviderPreset p = OxProviderPreset.byId(agent.providerId);
+        if (providerIcon != null) {
+            providerIcon.setImageResource(p.iconRes);
+        }
+        if (providerName != null) {
+            providerName.setText(p.name);
+        }
+        if (providerSub != null) {
+            String sub = p.defaultModel == null || p.defaultModel.isEmpty() ? p.baseUrl : p.defaultModel;
+            providerSub.setText(sub);
+        }
+        if (keyUrlRow != null) {
+            keyUrlRow.setVisibility(p.keyUrl == null || p.keyUrl.isEmpty() ? View.GONE : View.VISIBLE);
+        }
+        if (modelSuggestRow != null) {
+            modelSuggestRow.setVisibility(p.models.length == 0 ? View.GONE : View.VISIBLE);
+            if (p.models.length > 0) {
+                modelSuggestRow.setTextAndValue(LocaleController.getString(R.string.OxAgentPickModel), p.models[0], true);
+            }
+        }
+    }
+
+    private void showProviderPicker() {
+        if (getParentActivity() == null) return;
+        OxProviderPreset[] list = OxProviderPreset.ALL.toArray(new OxProviderPreset[0]);
+        CharSequence[] names = new CharSequence[list.length];
+        int[] icons = new int[list.length];
+        for (int i = 0; i < list.length; i++) {
+            names[i] = list[i].name;
+            icons[i] = list[i].iconRes;
+        }
+        BottomSheet.Builder b = new BottomSheet.Builder(getParentActivity());
+        b.setItems(names, icons, (dialog, which) -> {
+            OxProviderPreset p = list[which];
+            agent.providerId = p.id;
+            if (p.baseUrl != null && !p.baseUrl.isEmpty()) {
+                baseUrlCell.setText(p.baseUrl);
+                agent.baseUrl = p.baseUrl;
+            }
+            if (p.defaultModel != null && !p.defaultModel.isEmpty()) {
+                modelCell.setText(p.defaultModel);
+                agent.model = p.defaultModel;
+            }
+            if (p.models.length == 0) {
+                // local/custom provider: keep whatever the user typed
+            }
+            updateProviderInfo();
+        });
+        b.show();
+    }
+
+    private void showModelPicker() {
+        if (getParentActivity() == null) return;
+        OxProviderPreset p = OxProviderPreset.byId(agent.providerId);
+        if (p.models.length == 0) {
+            modelCell.editText.requestFocus();
+            return;
+        }
+        CharSequence[] names = new CharSequence[p.models.length];
+        for (int i = 0; i < p.models.length; i++) names[i] = p.models[i];
+        new AlertDialog.Builder(getParentActivity())
+                .setItems(names, (d, which) -> {
+                    modelCell.setText(p.models[which]);
+                    agent.model = p.models[which];
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
+    }
+
+    private OxAgent buildFromFields() {
+        OxAgent a = new OxAgent();
+        a.id = agent.id;
+        a.name = nameCell.getText().toString().trim();
+        a.remark = remarkCell.getText().toString().trim();
+        a.emoji = agent.emoji;
+        a.providerId = agent.providerId;
+        a.baseUrl = baseUrlCell.getText().toString().trim();
+        a.apiKey = apiKeyCell.getText().toString().trim();
+        a.model = modelCell.getText().toString().trim();
+        a.agentsMd = mdCell.getText().toString();
+        a.builtIn = agent.builtIn;
+        a.pinned = agent.pinned;
+        a.tgId = agent.tgId;
+        a.avatarPath = agent.avatarPath;
+        a.toolsPolicy = agent.toolsPolicy;
+        a.headers = agent.headers;
+        return a;
+    }
+
+    private void testConnection() {
+        if (testRow == null) return;
+        testRow.setTextAndValue(LocaleController.getString(R.string.OxAgentTest), LocaleController.getString(R.string.OxAgentTesting), false);
+        testRow.setTextValueColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        OxModelHub.test(buildFromFields(), (ok, message) -> {
+            if (testRow == null || getParentActivity() == null) return;
+            testRow.setTextAndValue(LocaleController.getString(R.string.OxAgentTest),
+                    (ok ? LocaleController.getString(R.string.OxAgentTestOk) : LocaleController.getString(R.string.OxAgentTestFail)) + " · " + message, false);
+            testRow.setTextValueColor(getThemedColor(ok ? Theme.key_chats_actionBackground : Theme.key_text_RedRegular));
+        });
+    }
+
+    // ---------------- headers ----------------
+
+    private void rebuildHeaders() {
+        if (headersList == null) return;
+        headersList.removeAllViews();
+        JSONArray headers = agent.headers == null ? new JSONArray() : agent.headers;
+        for (int i = 0; i < headers.length(); i++) {
+            JSONArray pair = headers.optJSONArray(i);
+            if (pair == null || pair.length() < 2) continue;
+            final int index = i;
+            String name = pair.optString(0, "");
+            String value = pair.optString(1, "");
+            boolean secret = name.toLowerCase().contains("key")
+                    || name.toLowerCase().contains("auth")
+                    || name.toLowerCase().contains("token");
+            TextSettingsCell row = new TextSettingsCell(headersList.getContext());
+            row.setTextAndValue(name, secret ? "••••••" : value, true);
+            row.setOnClickListener(v -> editHeader(index));
+            row.setOnLongClickListener(v -> {
+                confirmRemoveHeader(index);
+                return true;
+            });
+            headersList.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        }
+    }
+
+    private void editHeader(int index) {
+        if (getParentActivity() == null) return;
+        JSONArray headers = agent.headers == null ? new JSONArray() : agent.headers;
+        String oldName = "";
+        String oldValue = "";
+        if (index >= 0 && index < headers.length()) {
+            JSONArray pair = headers.optJSONArray(index);
+            if (pair != null) {
+                oldName = pair.optString(0, "");
+                oldValue = pair.optString(1, "");
+            }
+        }
+        Context ctx = getParentActivity();
+        LinearLayout box = new LinearLayout(ctx);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(8), AndroidUtilities.dp(24), 0);
+        EditText name = new EditText(ctx);
+        name.setHint(LocaleController.getString(R.string.OxAgentHeaderNameHint));
+        name.setText(oldName);
+        name.setSingleLine(true);
+        name.setTextSize(16);
+        box.addView(name, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        EditText value = new EditText(ctx);
+        value.setHint(LocaleController.getString(R.string.OxAgentHeaderValueHint));
+        value.setText(oldValue);
+        value.setSingleLine(true);
+        value.setTextSize(16);
+        box.addView(value, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        AlertDialog.Builder b = new AlertDialog.Builder(ctx);
+        b.setTitle(LocaleController.getString(R.string.OxAgentHeaderAdd));
+        b.setView(box);
+        b.setPositiveButton(LocaleController.getString(R.string.Save), (d, w) -> {
+            String n = name.getText().toString().trim();
+            String v = value.getText().toString();
+            if (n.isEmpty() || n.contains("\r") || n.contains("\n") || v.contains("\r") || v.contains("\n")) {
+                Toast.makeText(ctx, LocaleController.getString(R.string.OxAgentHeaderInvalid), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            try {
+                JSONArray next = new JSONArray();
+                for (int i = 0; i < headers.length(); i++) {
+                    if (i != index) next.put(headers.getJSONArray(i));
+                }
+                next.put(new JSONArray().put(n).put(v));
+                agent.headers = next;
+                rebuildHeaders();
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        });
+        b.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+        if (index >= 0) {
+            b.setNeutralButton(LocaleController.getString(R.string.Delete), (d, w) -> confirmRemoveHeader(index));
+        }
+        b.show();
+    }
+
+    private void confirmRemoveHeader(int index) {
+        JSONArray headers = agent.headers == null ? new JSONArray() : agent.headers;
+        if (index < 0 || index >= headers.length()) return;
+        JSONArray pair = headers.optJSONArray(index);
+        String name = pair == null ? "" : pair.optString(0, "");
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(name)
+                .setMessage(LocaleController.getString(R.string.OxAgentHeaderRemove))
+                .setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
+                    try {
+                        JSONArray next = new JSONArray();
+                        for (int i = 0; i < headers.length(); i++) {
+                            if (i != index) next.put(headers.getJSONArray(i));
+                        }
+                        agent.headers = next;
+                        rebuildHeaders();
+                    } catch (Exception e) {
+                        FileLog.e(e);
+                    }
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
+    }
+
+    // ---------------- avatar / save ----------------
 
     private void renderAvatar() {
         try {
             String path = pendingAvatarPath != null ? pendingAvatarPath : agent.avatarPath;
             if (path == null || path.isEmpty() || !new File(path).exists()) {
                 avatarPreview.setImageDrawable(null);
-                avatarPreview.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
+                GradientDrawable circle = new GradientDrawable();
+                circle.setShape(GradientDrawable.OVAL);
+                circle.setColor(getThemedColor(Theme.key_windowBackgroundGray));
+                avatarPreview.setBackground(circle);
                 return;
             }
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inSampleSize = 2;
             Bitmap bmp = BitmapFactory.decodeFile(path, opts);
             if (bmp != null) {
+                avatarPreview.setBackground(null);
                 avatarPreview.setImageBitmap(bmp);
             }
         } catch (Throwable t) {
@@ -219,9 +609,9 @@ public class OxAgentProfileActivity extends BaseFragment {
 
     private void openAvatarPicker() {
         try {
-            android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_GET_CONTENT);
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("image/*");
-            intent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
             startActivityForResult(intent, REQ_AVATAR);
         } catch (Throwable t) {
             FileLog.e(t);
@@ -229,14 +619,14 @@ public class OxAgentProfileActivity extends BaseFragment {
     }
 
     @Override
-    public void onActivityResultFragment(int requestCode, int resultCode, android.content.Intent data) {
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
         super.onActivityResultFragment(requestCode, resultCode, data);
         if (requestCode != REQ_AVATAR || resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
             return;
         }
         try {
             InputStream in = getParentActivity().getContentResolver().openInputStream(data.getData());
-            File dir = new File(ApplicationLoaderDirs(), "oxavatars");
+            File dir = new File(ApplicationLoader.applicationContext.getFilesDir(), "oxavatars");
             dir.mkdirs();
             File tmp = new File(dir, "pick_" + agent.id + ".jpg");
             FileOutputStream out = new FileOutputStream(tmp);
@@ -253,79 +643,60 @@ public class OxAgentProfileActivity extends BaseFragment {
         }
     }
 
-    private File ApplicationLoaderDirs() {
-        return new File(org.telegram.messenger.ApplicationLoader.applicationContext.getFilesDir(), "oxavatars");
-    }
-
-    private void showPresetChooser() {
-        if (getParentActivity() == null) return;
-        final String[][] presets = {
-            {"DeepSeek (cloud)", "https://api.deepseek.com", "deepseek-chat"},
-            {"Ollama (local/LAN device)", "http://127.0.0.1:11434/v1", "qwen2.5:7b"},
-            {"LM Studio (local/LAN device)", "http://127.0.0.1:1234/v1", ""},
-            {"opencode serve (local/LAN device)", "http://127.0.0.1:4010/v1", ""},
-        };
-        CharSequence[] names = new CharSequence[presets.length];
-        for (int i = 0; i < presets.length; i++) names[i] = presets[i][0];
-        new AlertDialog.Builder(getParentActivity())
-                .setItems(names, (d, which) -> {
-                    baseUrlField.setText(presets[which][1]);
-                    if (!presets[which][2].isEmpty()) modelField.setText(presets[which][2]);
-                })
-                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
-                .show();
-    }
-
     private void onSave() {
-        String name = firstNameField.getText().toString().trim();
+        if (nameCell == null) return;
+        String name = nameCell.getText().toString().trim();
         if (name.isEmpty()) {
-            firstNameField.requestFocus();
+            nameCell.editText.requestFocus();
             return;
         }
-        agent.name = name;
-        agent.remark = remarkField.getText().toString().trim();
-        agent.baseUrl = baseUrlField.getText().toString().trim();
-        agent.apiKey = apiKeyField.getText().toString().trim();
-        agent.model = modelField.getText().toString().trim();
-        agent.agentsMd = mdField.getText().toString();
+        OxAgent next = buildFromFields();
+        next.name = name;
+        next.remark = remarkCell.getText().toString().trim();
+        next.baseUrl = baseUrlCell.getText().toString().trim();
+        next.apiKey = apiKeyCell.getText().toString().trim();
+        next.model = modelCell.getText().toString().trim();
+        next.agentsMd = mdCell.getText().toString();
         if (avatarCleared) {
-            if (agent.avatarPath != null) new File(agent.avatarPath).delete();
-            agent.avatarPath = null;
+            if (next.avatarPath != null) new File(next.avatarPath).delete();
+            next.avatarPath = null;
         } else if (pendingAvatarPath != null) {
-            File master = new File(new File(org.telegram.messenger.ApplicationLoader.applicationContext.getFilesDir(), "oxavatars"), agent.id + ".jpg");
+            File master = new File(new File(ApplicationLoader.applicationContext.getFilesDir(), "oxavatars"), next.id + ".jpg");
             try {
-                java.io.FileInputStream in = new java.io.FileInputStream(pendingAvatarPath);
-                java.io.FileOutputStream out = new java.io.FileOutputStream(master);
+                FileInputStream in = new FileInputStream(pendingAvatarPath);
+                FileOutputStream out = new FileOutputStream(master);
                 byte[] buf = new byte[16384];
                 int n;
                 while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
                 out.close();
                 in.close();
-                agent.avatarPath = master.getAbsolutePath();
+                next.avatarPath = master.getAbsolutePath();
             } catch (Exception e) {
                 FileLog.e(e);
             }
         }
-        OxAgentStore.saveAgent(agent);
-        // refresh the stock UI: new names/remark flow through the synthetic user; avatar files rewritten
+        OxAgentStore.saveAgent(next);
+        agent = next;
         OxAgentsBridge.syncAgents(false);
         if (getParentActivity() != null && OxMode.isAgentOnly()) {
-            NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces, org.telegram.messenger.MessagesController.UPDATE_MASK_NAME | org.telegram.messenger.MessagesController.UPDATE_MASK_AVATAR);
+            NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces,
+                    org.telegram.messenger.MessagesController.UPDATE_MASK_NAME
+                            | org.telegram.messenger.MessagesController.UPDATE_MASK_AVATAR);
         }
         finishFragment();
     }
 
     private void confirmDelete() {
         if (getParentActivity() == null) return;
-        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
-        builder.setTitle(LocaleController.getString(R.string.OxAgentDeleteTitle));
-        builder.setMessage(LocaleController.formatString("OxDeleteAgentConfirm", R.string.OxDeleteAgentConfirm, agent.name));
-        builder.setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
-            OxAgentsBridge.onAgentDeleted(agent.tgId);
-            OxAgentStore.deleteAgent(agent.id);
-            finishFragment();
-        });
-        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
-        builder.show();
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxAgentDeleteTitle))
+                .setMessage(LocaleController.formatString("OxDeleteAgentConfirm", R.string.OxDeleteAgentConfirm, agent.name))
+                .setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
+                    OxAgentsBridge.onAgentDeleted(agent.tgId);
+                    OxAgentStore.deleteAgent(agent.id);
+                    finishFragment();
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
     }
 }

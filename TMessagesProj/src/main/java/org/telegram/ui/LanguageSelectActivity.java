@@ -702,7 +702,7 @@ public class LanguageSelectActivity extends BaseFragment implements Notification
                         last = position == sortedLanguages.size() - 1;
                     }
                     if (localeInfo != null) {
-                        if (localeInfo.isLocal()) {
+                        if (localeInfo.isLocal() && !localeInfo.isBuiltIn()) {
                             textSettingsCell.setTextAndValueAndCheck(String.format("%1$s (%2$s)", localeInfo.name, LocaleController.getString(R.string.LanguageCustom)), localeInfo.nameEnglish, false, false, !last);
                         } else {
                             textSettingsCell.setTextAndValueAndCheck(localeInfo.name, localeInfo.nameEnglish, false, false, !last);

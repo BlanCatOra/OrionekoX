@@ -2,42 +2,50 @@ package org.telegram.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.graphics.Typeface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ox.OxAgent;
 import org.telegram.ox.OxAgentStore;
+import org.telegram.ox.OxAgentsBridge;
+import org.telegram.ox.OxMode;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.LayoutHelper;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
-// OrionekoX M2 slice: agent list ("以 bot 形态" 的管理入口). Chat itself lives in OxAgentChatActivity;
-// the pseudo-dialog chat-list integration is the next slice.
+/** Agent list: Telegram-style contact rows, one section, clear add/import actions. */
 @SuppressLint("ViewConstructor")
 public class OxAgentsActivity extends BaseFragment {
 
     private static final int REQ_EXPORT = 1001;
     private static final int REQ_IMPORT = 1002;
     private static final int MENU_MCP = 1;
-    private static final int MENU_LOGIN = 2;
-    private static final int MENU_SETTINGS = 3;
+    private static final int MENU_SETTINGS = 2;
+    private static final int MENU_LOGIN = 3;
 
     private LinearLayout listContainer;
     private String pendingExportId;
@@ -50,36 +58,34 @@ public class OxAgentsActivity extends BaseFragment {
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
-                if (id == -1) finishFragment();
-                else if (id == MENU_MCP) presentFragment(new OxMcpActivity());
-                else if (id == MENU_SETTINGS) presentFragment(new OxSettingsActivity());
-                else if (id == MENU_LOGIN) {
-                    if (getParentActivity() == null) return;
-                    AlertDialog.Builder b = new AlertDialog.Builder(getParentActivity());
-                    b.setTitle(LocaleController.getString(R.string.OxLoginTelegram));
-                    b.setMessage(LocaleController.getString(R.string.OxLoginTelegramText));
-                    b.setPositiveButton(LocaleController.getString(R.string.OK), (d, w) ->
-                            org.telegram.ox.OxAgentsBridge.exitAgentOnly());
-                    b.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
-                    b.show();
+                if (id == -1) {
+                    finishFragment();
+                } else if (id == MENU_MCP) {
+                    presentFragment(new OxMcpActivity());
+                } else if (id == MENU_SETTINGS) {
+                    presentFragment(new OxSettingsActivity());
+                } else if (id == MENU_LOGIN) {
+                    confirmSwitchToLogin();
                 }
             }
         });
         ActionBarMenu menu = actionBar.createMenu();
-        menu.addItem(MENU_MCP, R.drawable.filled_bot_approve_24);
+        menu.addItem(MENU_MCP, R.drawable.msg_link);
         menu.addItem(MENU_SETTINGS, R.drawable.msg_settings_old);
-        if (org.telegram.ox.OxMode.isAgentOnly()) {
+        if (OxMode.isAgentOnly()) {
             menu.addItem(MENU_LOGIN, R.drawable.outline_add_account);
         }
 
-        FrameLayout rootLayout = new FrameLayout(context);
-        ScrollView scrollView = new ScrollView(context);
-        scrollView.setFillViewport(true);
+        FrameLayout root = new FrameLayout(context);
+        root.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
+        ScrollView scroll = new ScrollView(context);
+        scroll.setFillViewport(true);
         listContainer = new LinearLayout(context);
         listContainer.setOrientation(LinearLayout.VERTICAL);
-        scrollView.addView(listContainer, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        rootLayout.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-        fragmentView = rootLayout;
+        listContainer.setPadding(0, 0, 0, AndroidUtilities.dp(24));
+        scroll.addView(listContainer, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(scroll, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        fragmentView = root;
         return fragmentView;
     }
 
@@ -87,9 +93,8 @@ public class OxAgentsActivity extends BaseFragment {
     public void onResume() {
         super.onResume();
         rebuild();
-        // local-account mode: materialize agents as contacts/dialogs
-        if (org.telegram.ox.OxMode.isAgentOnly()) {
-            org.telegram.ox.OxAgentsBridge.syncAgents(false);
+        if (OxMode.isAgentOnly()) {
+            OxAgentsBridge.syncAgents(false);
         }
     }
 
@@ -100,76 +105,162 @@ public class OxAgentsActivity extends BaseFragment {
 
         TextView intro = new TextView(context);
         intro.setText(LocaleController.getString(R.string.OxAgentsIntro));
-        intro.setTextSize(14);
-        intro.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
-        intro.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(12), AndroidUtilities.dp(16), AndroidUtilities.dp(4));
-        listContainer.addView(intro);
+        intro.setTextSize(13);
+        intro.setLineSpacing(AndroidUtilities.dp(3), 1f);
+        intro.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        intro.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(12), AndroidUtilities.dp(21), AndroidUtilities.dp(10));
+        listContainer.addView(intro, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         List<OxAgent> agents = OxAgentStore.listAgents();
-        for (OxAgent agent : agents) {
-            listContainer.addView(row(context, agent));
+        LinearLayout group = new LinearLayout(context);
+        group.setOrientation(LinearLayout.VERTICAL);
+        group.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        for (int i = 0; i < agents.size(); i++) {
+            OxAgent agent = agents.get(i);
+            group.addView(agentRow(context, agent, i < agents.size() - 1), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         }
+        listContainer.addView(group, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
-        TextView add = new TextView(context);
-        add.setText("＋ " + LocaleController.getString(R.string.OxAgentNew));
-        add.setTextSize(16);
-        add.setTypeface(Typeface.DEFAULT_BOLD);
-        add.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-        add.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(18), AndroidUtilities.dp(16), AndroidUtilities.dp(18));
-        add.setOnClickListener(v -> showCreateDialog());
-        listContainer.addView(add);
-
-        TextView imp = new TextView(context);
-        imp.setText("📥 " + LocaleController.getString(R.string.OxImportAgent));
-        imp.setTextSize(16);
-        imp.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-        imp.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(4), AndroidUtilities.dp(16), AndroidUtilities.dp(18));
+        LinearLayout actions = new LinearLayout(context);
+        actions.setOrientation(LinearLayout.VERTICAL);
+        actions.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        TextSettingsCell add = new TextSettingsCell(context);
+        add.setText("＋ " + LocaleController.getString(R.string.OxAgentNew), true);
+        add.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        add.setOnClickListener(v -> presentFragment(OxAgentProfileActivity.newDraft(OxAgentProfileActivity.TEMPLATE_API)));
+        actions.addView(add, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        TextSettingsCell imp = new TextSettingsCell(context);
+        imp.setText(LocaleController.getString(R.string.OxImportAgent), false);
+        imp.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
         imp.setOnClickListener(v -> importFromOxAgent());
-        listContainer.addView(imp);
+        actions.addView(imp, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        LinearLayout.LayoutParams lp = LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0);
+        listContainer.addView(actions, lp);
     }
 
-    private View row(Context context, OxAgent agent) {
+    private View agentRow(Context context, OxAgent agent, boolean divider) {
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10), AndroidUtilities.dp(12), AndroidUtilities.dp(10));
-
-        TextView emoji = new TextView(context);
-        emoji.setText(agent.emoji);
-        emoji.setTextSize(28);
-        row.addView(emoji, LayoutHelper.createLinear(48, 48, Gravity.CENTER_VERTICAL));
-
-        LinearLayout textCol = new LinearLayout(context);
-        textCol.setOrientation(LinearLayout.VERTICAL);
-
-        TextView name = new TextView(context);
-        name.setText(agent.pinned ? "📌 " + agent.name : agent.name);
-        name.setTextSize(17);
-        name.setTypeface(Typeface.DEFAULT_BOLD);
-        name.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-        textCol.addView(name);
-
-        TextView status = new TextView(context);
-        status.setText(agent.statusLine());
-        status.setTextSize(13);
-        status.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
-        textCol.addView(status);
-
-        row.addView(textCol, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
-
+        row.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(8), AndroidUtilities.dp(12), AndroidUtilities.dp(8));
         row.setBackground(Theme.getSelectorDrawable(false));
+
+        FrameLayout avatarWrap = new FrameLayout(context);
+        GradientDrawable fallback = new GradientDrawable();
+        fallback.setShape(GradientDrawable.OVAL);
+        fallback.setColor(avatarColor(agent));
+        avatarWrap.setBackground(fallback);
+        TextView initial = new TextView(context);
+        initial.setText(initial(agent));
+        initial.setTextSize(20);
+        initial.setTypeface(AndroidUtilities.bold());
+        initial.setTextColor(0xffffffff);
+        initial.setGravity(Gravity.CENTER);
+        avatarWrap.addView(initial, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        if (agent.avatarPath != null && !agent.avatarPath.isEmpty() && new File(agent.avatarPath).exists()) {
+            try {
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inSampleSize = 2;
+                Bitmap bmp = BitmapFactory.decodeFile(agent.avatarPath, opts);
+                if (bmp != null) {
+                    ImageView iv = new ImageView(context);
+                    iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    iv.setImageBitmap(bmp);
+                    iv.setClipToOutline(true);
+                    iv.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                        @Override
+                        public void getOutline(View view, android.graphics.Outline outline) {
+                            outline.setOval(0, 0, view.getWidth(), view.getHeight());
+                        }
+                    });
+                    avatarWrap.addView(iv, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+                }
+            } catch (Throwable t) {
+                FileLog.e(t);
+            }
+        }
+        row.addView(avatarWrap, LayoutHelper.createLinear(50, 50, Gravity.CENTER_VERTICAL));
+
+        LinearLayout text = new LinearLayout(context);
+        text.setOrientation(LinearLayout.VERTICAL);
+        text.setPadding(AndroidUtilities.dp(12), 0, AndroidUtilities.dp(6), 0);
+        LinearLayout nameRow = new LinearLayout(context);
+        nameRow.setOrientation(LinearLayout.HORIZONTAL);
+        nameRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView name = new TextView(context);
+        name.setText(agent.name);
+        name.setTextSize(16);
+        name.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        name.setMaxLines(1);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        nameRow.addView(name, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+        if (agent.builtIn) {
+            TextView badge = new TextView(context);
+            badge.setText("BOT");
+            badge.setTextSize(9);
+            badge.setTypeface(AndroidUtilities.bold());
+            badge.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+            badge.setPadding(AndroidUtilities.dp(6), AndroidUtilities.dp(1), AndroidUtilities.dp(6), AndroidUtilities.dp(1));
+            GradientDrawable b = new GradientDrawable();
+            b.setCornerRadius(AndroidUtilities.dp(4));
+            b.setColor(getThemedColor(Theme.key_windowBackgroundGray));
+            badge.setBackground(b);
+            nameRow.addView(badge, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 0));
+        }
+        text.addView(nameRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        TextView status = new TextView(context);
+        status.setText(agent.remark != null && !agent.remark.isEmpty() ? agent.remark : agent.statusLine());
+        status.setTextSize(13);
+        status.setMaxLines(1);
+        status.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        status.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        status.setPadding(0, AndroidUtilities.dp(2), 0, 0);
+        text.addView(status, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        row.addView(text, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+
+        if (agent.pinned) {
+            ImageView pin = new ImageView(context);
+            pin.setImageResource(R.drawable.chats_pin);
+            pin.setColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+            row.addView(pin, LayoutHelper.createLinear(18, 18, Gravity.CENTER_VERTICAL));
+        }
+
         row.setOnClickListener(v -> {
-            if (agent.tgId != 0 && org.telegram.ox.OxMode.isAgentOnly()) {
-                presentFragment(org.telegram.ui.ChatActivity.of(agent.tgId));
+            if (agent.tgId != 0 && OxMode.isAgentOnly()) {
+                presentFragment(ChatActivity.of(agent.tgId));
             } else {
-                presentFragment(new OxAgentChatActivity(agent.id));
+                // Outside local mode there is no native chat surface for a synthetic agent yet;
+                // send the user to the native-style editor instead of the legacy custom chat.
+                presentFragment(new OxAgentProfileActivity(agent.id));
             }
         });
         row.setOnLongClickListener(v -> {
             showAgentMenu(agent);
             return true;
         });
+        if (divider) {
+            LinearLayout outer = new LinearLayout(context);
+            outer.setOrientation(LinearLayout.VERTICAL);
+            outer.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            View line = new View(context);
+            line.setBackgroundColor(getThemedColor(Theme.key_divider));
+            LinearLayout.LayoutParams lp = LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 1);
+            lp.leftMargin = AndroidUtilities.dp(74);
+            outer.addView(line, lp);
+            return outer;
+        }
         return row;
+    }
+
+    private int avatarColor(OxAgent agent) {
+        int[] colors = {0xff2AABEE, 0xff34C759, 0xff8E44AD, 0xffF39C12, 0xffE91E63, 0xff00BCD4};
+        int h = agent.name == null ? 0 : agent.name.hashCode();
+        return colors[(h & 0x7fffffff) % colors.length];
+    }
+
+    private String initial(OxAgent agent) {
+        String n = agent.name == null ? "?" : agent.name.trim();
+        return n.isEmpty() ? "?" : n.substring(0, 1).toUpperCase();
     }
 
     private void showAgentMenu(OxAgent agent) {
@@ -191,14 +282,36 @@ public class OxAgentsActivity extends BaseFragment {
             actions.add(() -> showDeleteDialog(agent));
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
-        builder.setTitle(agent.emoji + " " + agent.name);
+        builder.setTitle(agent.name);
         builder.setItems(items.toArray(new CharSequence[0]), (d, which) -> {
             if (which >= 0 && which < actions.size()) actions.get(which).run();
         });
         builder.show();
     }
 
-    // ---------------- .oxagent import/export (API key is never exported) ----------------
+    private void confirmSwitchToLogin() {
+        if (getParentActivity() == null) return;
+        AlertDialog.Builder b = new AlertDialog.Builder(getParentActivity());
+        b.setTitle(LocaleController.getString(R.string.OxObSwitchTitle));
+        b.setMessage(LocaleController.getString(R.string.OxObSwitchWarnLogin));
+        b.setPositiveButton(LocaleController.getString(R.string.OxObSwitchLogin), (d, w) -> {
+            OxMode.setPendingMode(OxMode.PENDING_LOGIN);
+            OxAgentsBridge.exitAgentOnly();
+        });
+        b.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+        b.show();
+    }
+
+    private void importFromOxAgent() {
+        try {
+            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
+            i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+            startActivityForResult(i, REQ_IMPORT);
+        } catch (Exception e) {
+            toast("⚠ " + e);
+        }
+    }
 
     private void exportOxAgent(OxAgent agent) {
         if (getParentActivity() == null) return;
@@ -211,17 +324,6 @@ public class OxAgentsActivity extends BaseFragment {
             startActivityForResult(i, REQ_EXPORT);
         } catch (Exception e) {
             pendingExportId = null;
-            toast("⚠ " + e);
-        }
-    }
-
-    private void importFromOxAgent() {
-        try {
-            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
-            i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
-            i.setType("*/*");
-            startActivityForResult(i, REQ_IMPORT);
-        } catch (Exception e) {
             toast("⚠ " + e);
         }
     }
@@ -273,7 +375,7 @@ public class OxAgentsActivity extends BaseFragment {
                     is.close();
                     JSONObject o = new JSONObject(new String(bos.toByteArray(), StandardCharsets.UTF_8));
                     String name = o.optString("name", "").trim();
-                    if (name.isEmpty() || uri == null) throw new org.json.JSONException("not a .oxagent file");
+                    if (name.isEmpty()) throw new org.json.JSONException("not a .oxagent file");
                     OxAgent a = OxAgent.fromJson(o);
                     a.name = name;
                     a.builtIn = false;
@@ -300,30 +402,8 @@ public class OxAgentsActivity extends BaseFragment {
 
     private void toast(String s) {
         if (getParentActivity() != null) {
-            android.widget.Toast.makeText(getParentActivity(), s, android.widget.Toast.LENGTH_SHORT).show();
+            Toast.makeText(getParentActivity(), s, Toast.LENGTH_SHORT).show();
         }
-    }
-
-    private void showCreateDialog() {
-        if (getParentActivity() == null) return;
-        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
-        builder.setTitle(LocaleController.getString(R.string.OxAgentNew));
-        final android.widget.EditText input = new android.widget.EditText(getParentActivity());
-        input.setHint(LocaleController.getString(R.string.OxAgentNameHint2));
-        builder.setView(input);
-        builder.setPositiveButton(LocaleController.getString(R.string.Done), (dialog, which) -> {
-            String name = input.getText().toString().trim();
-            if (name.isEmpty()) return;
-            OxAgent a = new OxAgent();
-            a.id = UUID.randomUUID().toString().substring(0, 8);
-            a.name = name;
-            a.emoji = "🤖";
-            a.agentsMd = "# " + name + "\n\n(在聊天页右上角菜单里编辑这个人设与模型配置)";
-            OxAgentStore.saveAgent(a);
-            rebuild();
-        });
-        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
-        builder.show();
     }
 
     private void showDeleteDialog(OxAgent agent) {
@@ -332,7 +412,7 @@ public class OxAgentsActivity extends BaseFragment {
         builder.setTitle(LocaleController.getString(R.string.OxAgentDeleteTitle));
         builder.setMessage(LocaleController.getString(R.string.OxAgentDeleteText));
         builder.setPositiveButton(LocaleController.getString(R.string.Delete), (dialog, which) -> {
-            org.telegram.ox.OxAgentsBridge.onAgentDeleted(agent.tgId);
+            OxAgentsBridge.onAgentDeleted(agent.tgId);
             OxAgentStore.deleteAgent(agent.id);
             rebuild();
         });

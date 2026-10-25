@@ -683,6 +683,24 @@ public class LocaleController {
         languages.add(localeInfo);
         languagesDict.put(localeInfo.shortName, localeInfo);
 
+        // OrionekoX: bundled Simplified Chinese pack. Telegram normally downloads language
+        // packs from its servers after login, which never happens in local/Ox mode; shipping
+        // the pack as an asset gives a fully Chinese UI offline, including the first-run guide.
+        File oxZhFile = ensureBundledZhPack();
+        if (oxZhFile != null) {
+            localeInfo = new LocaleInfo();
+            localeInfo.name = "简体中文";
+            localeInfo.nameEnglish = "Chinese (Simplified)";
+            localeInfo.shortName = "zh_cn";
+            localeInfo.pluralLangCode = "zh";
+            localeInfo.pathToFile = oxZhFile.getAbsolutePath();
+            localeInfo.builtIn = true;
+            languages.add(localeInfo);
+            languagesDict.put(localeInfo.getKey(), localeInfo);
+            languagesDict.put("zh_cn", localeInfo);
+            languagesDict.put("zh", localeInfo);
+        }
+
         loadOtherLanguages();
         if (remoteLanguages.isEmpty()) {
             AndroidUtilities.runOnUIThread(() -> loadRemoteLanguages(UserConfig.selectedAccount));
@@ -1231,76 +1249,50 @@ public class LocaleController {
     // bundled English asset, so we merge these, localized from packaged resources, into the
     // external localization at build time.
     private static final String[] ORIONEKO_FORK_KEYS = {
-        "OxObOpenTitle",
-        "OxObOpenBody",
-        "OxObRepoHint",
-        "OxObAiNote",
-        "OxObLegalTitle",
-        "OxObLegalBody",
-        "OxObLoginTitle",
-        "OxObLoginHint",
-        "OxObLoginGo",
-        "OxObLoginLater",
-        "OxObAgentTitle",
-        "OxObAgentSubtitle",
-        "OxObAgentApi",
-        "OxObAgentLinux",
-        "OxObAgentLan",
-        "OxObPermTitle",
-        "OxObPermSubtitle",
-        "OxObPermNormal",
-        "OxObPermAccessibility",
-        "OxObPermAdb",
-        "OxObPermShizuku",
-        "OxObPermAdmin",
-        "OxObPermRoot",
-        "OxObPermGranted",
-        "OxObPermMissing",
-        "OxObPermNotDetected",
-        "OxObPermNotInstalled",
-        "OxObPermEnableInSystem",
-        "OxObContainerTitle",
-        "OxObContainerMirror",
-        "OxObContainerVersion",
-        "OxObContainerComponents",
-        "OxObContainerNote",
-        "OxObStep",
-        "OxObStepLast",
-        "OxObNext",
-        "OxObStart",
-        "OxObSkip",
-        "OxObSkipHint",
-        "OxSettingsTitle",
-        "OxSettingsRerun",
-        "OxSettingsMode",
-        "OxSettingsModeOx",
-        "OxSettingsModeTg",
-        "OxAccessibilityLabel",
         "OxAccessibilityDesc",
-"AddVpn",
-        "ConnectingToVpn",
-        "ConnectingToVpnWithDots",
+        "OxAccessibilityLabel",
+        "OxAgentAvatarPick",
+        "OxAgentDefaultApiName",
+        "OxAgentDefaultContainerName",
+        "OxAgentDefaultLanName",
         "OxAgentDeleteText",
         "OxAgentDeleteTitle",
         "OxAgentEchoName",
+        "OxAgentEndpointLabel",
         "OxAgentExported",
-        "OxAgentsOnlyEntry",
+        "OxAgentGetKey",
         "OxAgentGreeting",
-        "OxAgentImported",
+        "OxAgentHeaderAdd",
+        "OxAgentHeaderInvalid",
+        "OxAgentHeaderNameHint",
+        "OxAgentHeaderRemove",
+        "OxAgentHeaderValueHint",
+        "OxAgentHeaders",
         "OxAgentImportFailed",
+        "OxAgentImported",
         "OxAgentInListStatus",
         "OxAgentInputHint",
+        "OxAgentModel",
+        "OxAgentModelLabel",
         "OxAgentNameHint2",
         "OxAgentNew",
+        "OxAgentNewTitle",
+        "OxAgentPickModel",
         "OxAgentProfile",
         "OxAgentRemark",
-        "OxAgentModel",
-        "OxAgentAvatarPick",
+        "OxAgentSectionBasic",
+        "OxAgentSectionProvider",
         "OxAgentSettings",
         "OxAgentSummarizerName",
+        "OxAgentTest",
+        "OxAgentTestFail",
+        "OxAgentTestIdle",
+        "OxAgentTestOk",
+        "OxAgentTesting",
         "OxAgentTranslatorName",
         "OxAgents",
         "OxAgentsIntro",
+        "OxAgentsOnlyEntry",
         "OxDeleteAgentConfirm",
         "OxEditAgent",
         "OxEndpointPresets",
@@ -1312,51 +1304,159 @@ public class LocaleController {
         "OxMcpAdd",
         "OxMcpDisabled",
         "OxMcpEmpty",
-        "OxMcpIntro",
-        "OxMcpNameHint",
         "OxMcpHeadersHint",
+        "OxMcpIntro",
+        "OxMcpInvalid",
+        "OxMcpInvalidHeaders",
+        "OxMcpNameHint",
+        "OxMcpPresetChoose",
         "OxMcpRefresh",
         "OxMcpRefreshing",
+        "OxMcpToggleHint",
         "OxMcpToolsAvailable",
         "OxMcpToolsFound",
         "OxMcpUrlHint",
-        "OxMcpPresetChoose",
+        "OxObAgentApi",
+        "OxObAgentApiSub",
+        "OxObAgentApiTitle",
+        "OxObAgentConfigured",
+        "OxObAgentLan",
+        "OxObAgentLanSub",
+        "OxObAgentLanTitle",
+        "OxObAgentLinux",
+        "OxObAgentLinuxSub",
+        "OxObAgentLinuxTitle",
+        "OxObAgentSubtitle",
+        "OxObAgentTitle",
+        "OxObAiNote",
+        "OxObContainerComponents",
+        "OxObContainerEnable",
+        "OxObContainerEnableSub",
+        "OxObContainerEnabled",
+        "OxObContainerMirror",
+        "OxObContainerNote",
+        "OxObContainerTitle",
+        "OxObContainerVersion",
+        "OxObExit",
+        "OxObExitConfirm",
+        "OxObExitText",
+        "OxObExitTitle",
+        "OxObLegalAgree",
+        "OxObLegalBody",
+        "OxObLegalRequired",
+        "OxObLegalTitle",
+        "OxObLoginGo",
+        "OxObLoginHint",
+        "OxObLoginLater",
+        "OxObLoginTitle",
+        "OxObModeOxSub",
+        "OxObModeOxTitle",
+        "OxObModeTgSub",
+        "OxObModeTgTitle",
+        "OxObNext",
+        "OxObOpenBody",
+        "OxObOpenTitle",
+        "OxObPermAccessibility",
+        "OxObPermAdb",
+        "OxObPermAdbUsb",
+        "OxObPermAdbWifi",
+        "OxObPermAdmin",
+        "OxObPermCount",
+        "OxObPermDetected",
+        "OxObPermEnableInSystem",
+        "OxObPermGranted",
+        "OxObPermInstalled",
+        "OxObPermMissing",
+        "OxObPermNormal",
+        "OxObPermNotDetected",
+        "OxObPermNotInstalled",
+        "OxObPermRoot",
+        "OxObPermRootHint",
+        "OxObPermShizuku",
+        "OxObPermSubtitle",
+        "OxObPermTitle",
+        "OxObRepoHint",
+        "OxObRepoOpening",
+        "OxObRepoTitle",
+        "OxObSkip",
+        "OxObSkipHint",
+        "OxObSkipStep",
+        "OxObStart",
+        "OxObStartLogin",
+        "OxObStep",
+        "OxObStepLast",
+        "OxObSwitchLogin",
+        "OxObSwitchOx",
+        "OxObSwitchTitle",
+        "OxObSwitchWarnLogin",
+        "OxObSwitchWarnOx",
         "OxPinAgent",
+        "OxSettingsDisabled",
+        "OxSettingsEnabled",
+        "OxSettingsLanguage",
+        "OxSettingsLicense",
+        "OxSettingsMode",
+        "OxSettingsModeLabel",
+        "OxSettingsModeNone",
+        "OxSettingsModeOx",
+        "OxSettingsModeTg",
+        "OxSettingsRepository",
+        "OxSettingsRerun",
+        "OxSettingsSectionAbout",
+        "OxSettingsSectionAgents",
+        "OxSettingsSectionGuide",
+        "OxSettingsSectionMode",
+        "OxSettingsTitle",
+        "OxSettingsVersion",
         "OxToolPermissionText",
         "OxToolPermissionTitle",
         "OxUnpinAgent",
         "OxVpnKeepAlive",
         "OxVpnKeepAliveInfo",
-        "TitleSetupVpn",
-        "UseVpn",
-        "Vpn",
-        "VpnAddInfo",
-        "VpnAutoSwitch",
-        "VpnAutoSwitchInfo",
-        "VpnAutoSwitchTimeoutMinutes",
-        "VpnConnections",
-        "VpnDeleteText",
-        "VpnDeleteTitle",
-        "VpnDetails",
-        "VpnDetailsInfo",
-        "VpnForegroundActive",
-        "VpnInfo",
-        "VpnInvalidKey",
-        "VpnKeyHint",
-        "VpnNameHint",
-        "VpnQrPart",
-        "VpnRouteCalls",
-        "VpnRouteCallsInfo",
-        "VpnScanQr",
-        "VpnSettings",
-        "VpnSupportedProtocols",
-        "VpnSupportedProtocolsInfo",
-        "VpnUpdateAvailable",
         "VpnUpdateDownloading"
     };
 
     private static HashMap<String, String> orionekoForkStringsCache;
     private static String orionekoForkStringsCacheKey;
+
+    private static final int OX_ZH_PACK_VERSION = 2;
+
+    /** Copies assets/oxlang/zh-cn.xml to files/ox_zh-cn.xml once per pack version. */
+    private static File ensureBundledZhPack() {
+        try {
+            Context ctx = ApplicationLoader.applicationContext;
+            if (ctx == null) {
+                return null;
+            }
+            File out = new File(ApplicationLoader.getFilesDirFixed(), "ox_zh-cn.xml");
+            SharedPreferences p = ctx.getSharedPreferences("langconfig", Context.MODE_PRIVATE);
+            if (out.exists() && out.length() > 100_000 && p.getInt("ox_zh_version", 0) == OX_ZH_PACK_VERSION) {
+                return out;
+            }
+            java.io.InputStream in = ctx.getAssets().open("oxlang/zh-cn.xml");
+            File tmp = new File(out.getAbsolutePath() + ".tmp");
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(tmp);
+            byte[] buffer = new byte[32768];
+            int read;
+            while ((read = in.read(buffer)) > 0) {
+                fos.write(buffer, 0, read);
+            }
+            fos.close();
+            in.close();
+            if (out.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                out.delete();
+            }
+            if (!tmp.renameTo(out)) {
+                return tmp.exists() ? tmp : null;
+            }
+            p.edit().putInt("ox_zh_version", OX_ZH_PACK_VERSION).apply();
+            return out;
+        } catch (Throwable t) {
+            FileLog.e(t);
+            return null;
+        }
+    }
 
     private static HashMap<String, String> getOrionekoForkStrings(LocaleInfo localeInfo) {
         HashMap<String, String> empty = new HashMap<>();
@@ -3324,6 +3424,9 @@ public class LocaleController {
     }
 
     public void loadRemoteLanguages(final int currentAccount, boolean applyCurrent) {
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            return;
+        }
         if (loadingRemoteLanguages) {
             return;
         }
@@ -3399,6 +3502,12 @@ public class LocaleController {
     }
 
     private int applyRemoteLanguage(LocaleInfo localeInfo, String langCode, boolean force, final int currentAccount, Runnable onDone) {
+        if (org.telegram.ox.OxMode.isAgentOnly()) {
+            if (onDone != null) {
+                AndroidUtilities.runOnUIThread(onDone);
+            }
+            return 0;
+        }
         if (localeInfo == null || !localeInfo.isRemote() && !localeInfo.isUnofficial()) {
             return 0;
         }
