@@ -11942,6 +11942,10 @@
     <string name="OxWorkflowDailyAt">Every day at %1$s</string>
     <string name="OxWorkflowDailyAtOption">Every day at a set time…</string>
     <string name="OxWorkflowPickTime">Pick a time</string>
+    <string name="OxWorkflowHistory">Run history</string>
+    <string name="OxWorkflowHistoryEmpty">No runs yet.</string>
+    <string name="OxWorkflowRunOk">OK</string>
+    <string name="OxWorkflowRunFailed">Failed</string>
     <string name="OxWorkflowEnabled">Enabled</string>
     <string name="OxWorkflowPaused">Paused</string>
     <string name="OxWorkflowRunNow">Run now</string>

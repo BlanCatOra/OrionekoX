@@ -17,6 +17,10 @@ public class OxWorkflow {
     public long lastRunMs;
     public long nextRunMs;
     public String lastResult = "";
+    /** Newest-last run log, capped at MAX_RUNS entries: {ts, ok, text}. */
+    public org.json.JSONArray runs = new org.json.JSONArray();
+
+    private static final int MAX_RUNS = 10;
 
     public OxWorkflow() {
     }
@@ -36,6 +40,18 @@ public class OxWorkflow {
         return dailyMinute >= 0;
     }
 
+    public void addRun(long ts, boolean ok, String text) {
+        try {
+            org.json.JSONObject o = new org.json.JSONObject();
+            o.put("ts", ts);
+            o.put("ok", ok);
+            o.put("text", text == null ? "" : text);
+            runs.put(o);
+            while (runs.length() > MAX_RUNS) runs.remove(0);
+        } catch (Exception ignored) {
+        }
+    }
+
     public JSONObject toJson() {
         JSONObject o = new JSONObject();
         try {
@@ -49,6 +65,7 @@ public class OxWorkflow {
             o.put("last_run", lastRunMs);
             o.put("next_run", nextRunMs);
             o.put("last_result", lastResult == null ? "" : lastResult);
+            o.put("runs", runs == null ? new org.json.JSONArray() : runs);
         } catch (Exception ignored) {
         }
         return o;
@@ -67,6 +84,8 @@ public class OxWorkflow {
         w.lastRunMs = o.optLong("last_run", 0);
         w.nextRunMs = o.optLong("next_run", 0);
         w.lastResult = o.optString("last_result", "");
+        w.runs = o.optJSONArray("runs");
+        if (w.runs == null) w.runs = new org.json.JSONArray();
         return w;
     }
 }

@@ -202,6 +202,7 @@ public class OxWorkflowService extends Service {
         }
         if (w != null) {
             w.lastResult = snippet.length() > 300 ? snippet.substring(0, 300) : snippet;
+            w.addRun(System.currentTimeMillis(), !error && !timedOut, snippet);
             OxWorkflowScheduler.onFinished(w, System.currentTimeMillis());
             org.telegram.ui.OxWorkflowActivity.notifyChanged();
         }

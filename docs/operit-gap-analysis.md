@@ -176,3 +176,13 @@ of a separate automation graph:
   row showed `每天 09:00 · 下次 09:00`, and `dumpsys alarm` reported
   `origWhen=2026-10-26 09:00:00.000`. Run-now delivered the Echo reply and the
   result notification; deleting the workflow removed the alarm.
+
+### 0.8.42 workflow run history
+
+- Each workflow keeps the newest 10 runs (`ts`, `ok`, `text`) inside its JSON; the
+  long-press menu opens `运行记录`, newest first, and tapping an entry shows the
+  full output. Empty state and success/failure labels are localized.
+- Verified with a real-model run: the entry read
+  `10-26 04:34 · 成功 · workflow ok`, and the detail dialog showed the full text.
+  History is independent from `last_result`, so editing the agent or prompt does
+  not erase past runs.
