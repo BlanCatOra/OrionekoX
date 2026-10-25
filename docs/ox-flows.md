@@ -20,7 +20,7 @@ flowchart TD
 
 规则：
 
-- 本地模式（Ox mode）的“主页”就是 `MainTabsActivity`，与正常登录完全一致；
+- Ox 模式的“主页”就是 `MainTabsActivity`，与正常登录完全一致；
   不再从引导页 `presentFragment(new DialogsActivity())` 另起一套主页。
 - 引导页只负责“决定模式”，不负责长期停在栈里。完成后必须把自己从返回栈移除。
 - 首次引导只出现一次（`onboarding_done`）；之后从 `Ox 设置 → 重新运行引导` 进入。
@@ -119,7 +119,7 @@ flowchart TD
 | `OxAgentsActivity` | 抽屉 / 设置 | `finishFragment()` |
 | `OxAgentProfileActivity` | Agents / 引导第 4 步 | `finishFragment()`，不重建主页 |
 | `OxMcpActivity` | 抽屉 / 设置 | `finishFragment()` |
-| `OxAgentChatActivity` | 仅非本地模式兜底 | `finishFragment()` |
+| `OxAgentChatActivity` | 仅非 Ox 模式兜底 | `finishFragment()` |
 
 禁止事项：
 
@@ -182,12 +182,12 @@ flowchart TD
 | 1 | 第 3 步任一选项直接 `finishOnboarding` | 第 4–6 步永远不可达；`choseLogin` 成死代码 | 选项只设模式，继续流程 |
 | 2 | 第 4 步容器入口 `setCurrentItem(5)` | 跳过第 5 步，步数跳变 | 只置开关，顺序前进 |
 | 3 | 第 4 步立即保存占位 Agent | 取消也留垃圾，重复引导重复创建 | 草稿 + 保存才落盘 |
-| 4 | 完成引导 `presentFragment(new DialogsActivity())` | 本地模式主页与启动路由不一致 | 统一用 `MainTabsActivity` |
+| 4 | 完成引导 `presentFragment(new DialogsActivity())` | Ox 模式主页与启动路由不一致 | 统一用 `MainTabsActivity` |
 | 5 | 再次运行引导选“不是现在”会 `setAgentOnly(true)` | 已登录用户被强制切模式 | 再次运行只关闭，不改模式 |
 | 6 | `skipButton` 在部分页 `GONE` | 主按钮上下跳动 | 固定槽位 + `INVISIBLE` |
 | 7 | 退出/跳过/下一步样式相同 | 三个动作无法区分 | 位置 + 文案 + 主次层级区分 |
 | 8 | 无页面切换/按钮按压动效 | 不像 Telegram | `ScaleStateListAnimator`、页面视差淡入、步数淡入、勾选缩放 |
-| 9 | Ox 模式仍走 `ConnectionsManager` | 后台一直连 Telegram | 本地模式禁 `setUserId`/`sendRequest`/语言包下载，连接状态本地化 |
+| 9 | Ox 模式仍走 `ConnectionsManager` | 后台一直连 Telegram | Ox 模式禁 `setUserId`/`sendRequest`/语言包下载，连接状态本地化 |
 | 10 | 中文本地化只覆盖 fork 字符串 | 上游界面仍为英文 | 内置完整 zh-Hans 语言包 + 中文系统自动选择 |
 | 11 | 第 4 步同时给“局域网”和“Bot 兼容其他设备” | 未登录无法用 Telegram Bot 兼容；局域网本质是 API | 局域网并入 API Key；Bot 兼容容器仅 LOGIN 模式显示 |
 | 12 | 权限/容器页最后几行被底部栏遮住 | 内容不可见、不可滚 | 内容区 + 底部栏改为垂直布局，不再覆盖 |
