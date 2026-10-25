@@ -133,10 +133,18 @@ public class OxAccessibilityService extends AccessibilityService {
         return service.dispatchGesture(new GestureDescription.Builder().addStroke(stroke).build(), null, null);
     }
 
-    /** getRootInActiveWindow can be null while a dialog/IME is animating; fall back to the newest app window. */
+    /** getRootInActiveWindow can be null or a floating tab bar; prefer the main app window. */
     private AccessibilityNodeInfo activeRoot() {
-        AccessibilityNodeInfo root = getRootInActiveWindow();
-        if (root != null) return root;
+        AccessibilityNodeInfo active = getRootInActiveWindow();
+        Rect activeBounds = new Rect();
+        if (active != null) active.getBoundsInScreen(activeBounds);
+        int cx = AndroidUtilities.displaySize.x / 2;
+        int cy = AndroidUtilities.displaySize.y / 2;
+        // Dialogs and full-screen pages contain the screen center; the glass tab bar
+        // at the bottom does not, and its root only exposes the five tab labels.
+        if (active != null && activeBounds.contains(cx, cy)) return active;
+        AccessibilityNodeInfo best = null;
+        long bestArea = 0;
         try {
             java.util.List<AccessibilityWindowInfo> windows = getWindows();
             if (windows != null) {
@@ -144,12 +152,25 @@ public class OxAccessibilityService extends AccessibilityService {
                     AccessibilityWindowInfo w = windows.get(i);
                     if (w == null || w.getType() != AccessibilityWindowInfo.TYPE_APPLICATION) continue;
                     AccessibilityNodeInfo r = w.getRoot();
-                    if (r != null) return r;
+                    if (r == null) continue;
+                    Rect b = new Rect();
+                    r.getBoundsInScreen(b);
+                    if (!b.contains(cx, cy)) continue;
+                    long area = (long) b.width() * b.height();
+                    if (area > bestArea) {
+                        best = r;
+                        bestArea = area;
+                    }
                 }
             }
         } catch (Throwable ignored) {
         }
-        return null;
+        if (best != null) {
+            android.util.Log.i("OxA11y", "activeRoot fallback active=" + activeBounds
+                    + " area=" + bestArea);
+            return best;
+        }
+        return active;
     }
 
     public static boolean longPress(int x, int y, int durationMs) {
@@ -219,9 +240,29 @@ public class OxAccessibilityService extends AccessibilityService {
                         lpShown++;
                     }
                 }
+                Rect activeRect = new Rect();
+                root.getBoundsInScreen(activeRect);
                 android.util.Log.i("OxA11y", "longPressText rootPkg=" + root.getPackageName()
-                        + " cls=" + root.getClassName() + " nodes=" + nodes.size()
+                        + " cls=" + root.getClassName() + " bounds=" + activeRect
+                        + " nodes=" + nodes.size()
                         + " matches=" + matches.size() + " sample=" + lpSample);
+                if (matches.isEmpty()) {
+                    try {
+                        java.util.List<AccessibilityWindowInfo> ws = service.getWindows();
+                        if (ws != null) {
+                            for (AccessibilityWindowInfo w : ws) {
+                                if (w == null || w.getType() != AccessibilityWindowInfo.TYPE_APPLICATION) continue;
+                                AccessibilityNodeInfo wr = w.getRoot();
+                                Rect wb = new Rect();
+                                if (wr != null) wr.getBoundsInScreen(wb);
+                                android.util.Log.i("OxA11y", "win layer=" + w.getLayer()
+                                        + " bounds=" + wb + " nodes=" + countNodes(wr, 0)
+                                        + " cls=" + (wr == null ? "null" : wr.getClassName()));
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                }
                 for (AccessibilityNodeInfo match : matches) {
                     CharSequence text = match.getText();
                     CharSequence desc = match.getContentDescription();
@@ -452,6 +493,15 @@ public class OxAccessibilityService extends AccessibilityService {
             }
         }
         return "not found after " + limit + " scroll(s): " + query;
+    }
+
+    private static int countNodes(AccessibilityNodeInfo node, int depth) {
+        if (node == null || depth > 20) return 0;
+        int count = 1;
+        for (int i = 0; i < node.getChildCount(); i++) {
+            count += countNodes(node.getChild(i), depth + 1);
+        }
+        return count;
     }
 
     private static AccessibilityNodeInfo findScrollable(AccessibilityNodeInfo node, int depth) {
