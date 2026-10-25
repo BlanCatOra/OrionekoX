@@ -126,4 +126,7 @@ gaps that were previously listed as "gap":
 - Added an `activeRoot()` fallback via `getWindows()` when
   `getRootInActiveWindow()` is null during dialog/IME transitions.
 - Actual test: the agent clicked the chat header “🤖 Yuki Waifu” by text and the
-  native profile opened. Next refinements: scroll-until-found, node caching.
+  native profile opened.
+- Added `ui_find_text` and `ui_scroll_tap_text` (scroll the first scrollable node
+  up to 12 times, then report/click). Next refinements: live scroll E2E, node cache,
+  ADB/root arbitrary key events.
