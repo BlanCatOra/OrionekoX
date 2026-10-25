@@ -249,3 +249,18 @@ of a separate automation graph:
   readable text, so text-based long-press cannot target them; use `ui_dump` plus
   `ui_long_press` coordinates there. Text long-press works on settings and agent
   list rows.
+
+### 0.8.51–0.8.54 chat-list accessibility investigation
+
+- Added `flagIncludeNotImportantViews` to the accessibility service and a
+  center-covering `activeRoot()` fallback (prefer the main window over a bottom
+  floating bar; dialogs/full-screen pages still win).
+- The chat list still exposes only one full-screen application window: 30 nodes
+  before the flag, 70 after, with labels for the title, search box, tab bar and a
+  few framework nodes, but **no chat rows**. The rows are not just missing text;
+  they are absent from the service-visible tree even though `DialogCell` sets a
+  content description in `onInitializeAccessibilityNodeInfo`.
+- Consequence: text-based tap/long-press cannot target chat rows without a
+  Telegram-side accessibility change; use `ui_dump` and coordinate tools there.
+  Regression check: agent-list `ui_long_press_text("Echo Assistant")` still works
+  (95 nodes, menu opened).
