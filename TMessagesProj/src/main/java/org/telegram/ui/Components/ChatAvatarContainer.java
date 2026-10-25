@@ -558,6 +558,13 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
         }
         TLRPC.User user = parentFragment.getCurrentUser();
         TLRPC.Chat chat = parentFragment.getCurrentChat();
+        if (user != null && org.telegram.ox.OxAgentsBridge.isAgentDialog(user.id)) {
+            org.telegram.ox.OxAgent agent = org.telegram.ox.OxAgentsBridge.agentByTgId(user.id);
+            if (agent != null) {
+                parentFragment.presentFragment(new org.telegram.ui.OxAgentProfileActivity(agent.id), removeLast);
+                return;
+            }
+        }
         final boolean monoforum = chat != null && chat.monoforum;
         if (chat != null && chat.monoforum) {
             TLRPC.Chat channel = parentFragment.getMessagesController().getChat(chat.linked_monoforum_id);

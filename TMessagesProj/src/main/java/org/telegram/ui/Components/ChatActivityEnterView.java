@@ -6077,7 +6077,9 @@ public class ChatActivityEnterView extends FrameLayout implements
 
     private boolean shownAiButton;
     private void showAiButton(boolean show_) {
-        final boolean show = (show_ || richDraftActive) && parentFragment != null && !parentFragment.isSecretChat();
+        // Telegram's AI editor is a cloud feature; local Ox agent chats must stay offline.
+        final boolean show = (show_ || richDraftActive) && parentFragment != null && !parentFragment.isSecretChat()
+                && !org.telegram.ox.OxAgentsBridge.isAgentDialog(dialog_id);
 
         if (shownAiButton == show) return;
         if (show) {

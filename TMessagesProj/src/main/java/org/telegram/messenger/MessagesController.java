@@ -9307,6 +9307,12 @@ public class MessagesController extends BaseController implements NotificationCe
         if ((messages == null || messages.isEmpty()) && taskId == 0) {
             return;
         }
+        // Local agent message ids do not exist on the server; messages.deleteMessages
+        // deletes by bare id and could hit unrelated real messages with the same id.
+        if (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId)) {
+            cacheOnly = true;
+            android.util.Log.i("OxBridge", "deleteMessages local-only did=" + dialogId + " count=" + (messages == null ? 0 : messages.size()) + " cacheOnly=" + cacheOnly);
+        }
         ArrayList<Integer> toSend = null;
         long channelId;
         if (taskId == 0) {
@@ -11507,6 +11513,12 @@ public class MessagesController extends BaseController implements NotificationCe
         }
         if (BuildVars.LOGS_ENABLED && loaderLogger == null && mode == 0) {
             loaderLogger = new Timer("MessageLoaderLogger dialogId=" + dialogId + " index=" + loadIndex + " count=" + count);
+        }
+        // Synthetic Ox agent dialogs exist only in the local database. Their history is
+        // delivered by the cache pass above; a server refresh for a peer the account does
+        // not know can only fail (and would hit Telegram with a fake user id).
+        if (!fromCache && org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId)) {
+            return;
         }
         if ((threadMessageId == 0 || isTopic || mode == ChatActivity.MODE_SUGGESTIONS || mode == ChatActivity.MODE_SAVED || mode == ChatActivity.MODE_QUICK_REPLIES || mode == ChatActivity.MODE_WELCOME_MESSAGES) && mode != ChatActivity.MODE_PINNED && (fromCache || DialogObject.isEncryptedDialog(dialogId))) {
             getMessagesStorage().getMessages(dialogId, mergeDialogId, loadInfo, count, max_id, offset_date, minDate, classGuid, load_type, mode, threadMessageId, loadIndex, processMessages, isTopic, loaderLogger);
@@ -23149,6 +23161,22 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void deleteMessagesRange(long dialogId, long channelId, int minDate, int maxDate, boolean forAll, Runnable callback) {
+        if (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId)) {
+            // No server history exists for a synthetic agent: clear the local rows and
+            // answer the UI directly instead of waiting for a dropped RPC callback.
+            getMessagesStorage().getStorageQueue().postRunnable(() -> {
+                ArrayList<Integer> dbMessages = getMessagesStorage().getCachedMessagesInRange(dialogId, minDate, maxDate);
+                getMessagesStorage().markMessagesAsDeleted(dialogId, dbMessages, false, true, 0, 0);
+                getMessagesStorage().updateDialogsWithDeletedMessages(dialogId, 0, dbMessages, null);
+                AndroidUtilities.runOnUIThread(() -> {
+                    getNotificationCenter().postNotificationName(NotificationCenter.messagesDeleted, dbMessages, channelId, false);
+                    if (callback != null) {
+                        callback.run();
+                    }
+                });
+            });
+            return;
+        }
         TLRPC.TL_messages_deleteHistory req = new TLRPC.TL_messages_deleteHistory();
         req.peer = getInputPeer(dialogId);
         req.flags = (1 << 2) | (1 << 3);

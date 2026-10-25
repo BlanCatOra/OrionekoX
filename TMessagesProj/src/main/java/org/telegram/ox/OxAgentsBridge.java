@@ -61,6 +61,60 @@ public class OxAgentsBridge {
         return dialogId >= AGENT_BASE && dialogId < AGENT_BASE + AGENT_RANGE;
     }
 
+    /**
+     * True when a TL request targets a synthetic agent peer. Such peers only exist in the
+     * local database, so the request must never leave the device (Telegram would answer
+     * PEER_ID_INVALID and the account would be poking at ids it does not own).
+     */
+    public static boolean isAgentRequest(org.telegram.tgnet.TLObject req) {
+        if (req == null) {
+            return false;
+        }
+        try {
+            if (isAgentPeer(field(req, "peer"))) return true;
+            if (isAgentPeer(field(req, "to_peer"))) return true;
+            if (isAgentPeer(field(req, "from_peer"))) return true;
+            if (isAgentPeer(field(req, "id"))) return true;
+            if (isAgentPeer(field(req, "user_id"))) return true;
+        } catch (Throwable ignore) {
+        }
+        return false;
+    }
+
+    private static boolean isAgentPeer(Object peer) {
+        long uid = userIdOf(peer);
+        return uid != 0 && isAgentDialog(uid);
+    }
+
+    private static long userIdOf(Object peer) {
+        if (peer instanceof org.telegram.tgnet.TLRPC.TL_inputPeerUser) {
+            return ((org.telegram.tgnet.TLRPC.TL_inputPeerUser) peer).user_id;
+        }
+        if (peer instanceof org.telegram.tgnet.TLRPC.TL_inputUser) {
+            return ((org.telegram.tgnet.TLRPC.TL_inputUser) peer).user_id;
+        }
+        if (peer instanceof Long) {
+            return (Long) peer;
+        }
+        return 0;
+    }
+
+    private static Object field(Object target, String name) {
+        Class<?> c = target.getClass();
+        while (c != null && c != Object.class) {
+            try {
+                java.lang.reflect.Field f = c.getDeclaredField(name);
+                f.setAccessible(true);
+                return f.get(target);
+            } catch (NoSuchFieldException e) {
+                c = c.getSuperclass();
+            } catch (Throwable t) {
+                return null;
+            }
+        }
+        return null;
+    }
+
     private static SharedPreferences prefs() {
         return ApplicationLoader.applicationContext.getSharedPreferences("orioneko_config", android.content.Context.MODE_PRIVATE);
     }
@@ -303,7 +357,10 @@ public class OxAgentsBridge {
         });
     }
 
-    private static int nextLocalIncomingId() {
+    /** Monotonic local message id for synthetic dialogs. UserConfig.getNewMessageId()
+     *  restarts at -210000 on every launch, so ids collided across sessions and the local
+     *  REPLACE INTO messages_v2 overwrote earlier turns. */
+    private static synchronized int nextLocalMessageId() {
         int id = prefs().getInt("local_msg_seq", 100000) + 1;
         prefs().edit().putInt("local_msg_seq", id).apply();
         return id;
@@ -318,15 +375,74 @@ public class OxAgentsBridge {
         if (p.retryMessageObject != null || p.photo != null || p.document != null || p.location != null
                 || p.poll != null || p.invoice != null || p.todo != null || p.game != null
                 || p.videoEditedInfo != null || p.sendingStory != null) {
-            return false;   // media to agents lands later (M4)
+            // Photos arrive through prepareSendingMedia, which has its own local handler.
+            // Everything else has no local pipeline yet: answer instead of letting the
+            // SendMessagesHelper fall through to a server send for a peer that does not exist.
+            log("interceptOutgoing unsupported type dialog=" + p.peer);
+            injectAgentReply(p.peer, "（暂不支持向智能体发送这类内容）");
+            return true;
         }
         String text = p.message != null ? p.message : p.caption;
         if (text == null || text.trim().isEmpty()) {
-            return false;
+            return true;
         }
         log("interceptOutgoing dialog=" + p.peer + " text=" + text);
         handleOutgoingText(p.peer, text.trim());
         return true;
+    }
+
+    /**
+     * Makes a synthetic agent recognizable to the stock ChatActivity in a real account:
+     * its dialog is not part of the server dialog list, so ChatActivity would wait for
+     * messages.getHistory forever. Inject the last local message into dialogs_dict so the
+     * cached history and the peer header resolve immediately.
+     */
+    public static void ensureNativeDialog(final OxAgent agent, final Runnable onReady) {
+        if (agent == null || agent.tgId == 0) {
+            if (onReady != null) AndroidUtilities.runOnUIThread(onReady);
+            return;
+        }
+        final long tgId = agent.tgId;
+        MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
+            long mid = 0;
+            int date = 0;
+            try {
+                org.telegram.SQLite.SQLiteCursor cur = MessagesStorage.getInstance(0).getDatabase()
+                        .queryFinalized("SELECT mid, date FROM messages_v2 WHERE uid = " + tgId + " ORDER BY date DESC, mid DESC LIMIT 1");
+                if (cur.next()) {
+                    mid = cur.longValue(0);
+                    date = (int) cur.longValue(1);
+                }
+                cur.dispose();
+            } catch (Throwable t) {
+                logErr("ensureNativeDialog query failed did=" + tgId, t);
+            }
+            final long lastMid = mid;
+            final int lastDate = date;
+            AndroidUtilities.runOnUIThread(() -> {
+                try {
+                    TLRPC.TL_user u = buildAgentUser(agent);
+                    ArrayList<TLRPC.User> users = new ArrayList<>();
+                    users.add(u);
+                    MessagesStorage.getInstance(0).putUsersAndChats(users, null, true, true);
+                    MessagesController.getInstance(0).putUser(u, false);
+                } catch (Throwable t) {
+                    logErr("ensureNativeDialog user failed", t);
+                }
+                try {
+                    TLRPC.TL_dialog d = new TLRPC.TL_dialog();
+                    d.id = tgId;
+                    d.top_message = (int) lastMid;
+                    d.last_message_date = lastDate;
+                    d.unread_count = 0;
+                    d.folder_id = 0;
+                    MessagesController.getInstance(0).dialogs_dict.put(tgId, d);
+                } catch (Throwable t) {
+                    logErr("ensureNativeDialog inject failed", t);
+                }
+                if (onReady != null) onReady.run();
+            });
+        });
     }
 
     // ---------------- media (photos) to agents ----------------
@@ -356,7 +472,7 @@ public class OxAgentsBridge {
                     }
                     TLRPC.TL_message msg = new TLRPC.TL_message();
                     msg.flags = 256 | 512;   // HAS_FROM_ID | HAS_MEDIA
-                    msg.id = UserConfig.getInstance(0).getNewMessageId();
+                    msg.id = nextLocalMessageId();
                     msg.local_id = msg.id;
                     msg.out = true;
                     msg.date = (int) (System.currentTimeMillis() / 1000);
@@ -426,7 +542,7 @@ public class OxAgentsBridge {
         try {
             TLRPC.TL_message msg = new TLRPC.TL_message();
             msg.flags = 256;
-            msg.id = UserConfig.getInstance(0).getNewMessageId();
+            msg.id = nextLocalMessageId();
             msg.local_id = msg.id;
             msg.out = true;
             msg.date = (int) (System.currentTimeMillis() / 1000);
@@ -794,6 +910,10 @@ public class OxAgentsBridge {
                 ArrayList<MessageObject> objArr = new ArrayList<>();
                 objArr.add(obj);
                 MessagesController.getInstance(0).updateInterfaceWithMessages(dialogId, objArr, 0);
+                // A stock ChatActivity only appends live messages when it sees this notification;
+                // without it the local agent conversation updates in the list but not on screen.
+                NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.didReceiveNewMessages,
+                        dialogId, objArr, false, 0);
                 NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.dialogsNeedReload);
                 log("persistAndShow shown did=" + dialogId + " id=" + msg.id + " out=" + out);
             } catch (Throwable t) {
@@ -819,7 +939,7 @@ public class OxAgentsBridge {
         try {
             TLRPC.TL_message msg = new TLRPC.TL_message();
             msg.flags = 256;
-            msg.id = nextLocalIncomingId();
+            msg.id = nextLocalMessageId();
             msg.local_id = msg.id;
             msg.out = false;
             msg.date = (int) (System.currentTimeMillis() / 1000);
@@ -847,7 +967,7 @@ public class OxAgentsBridge {
             if (first) {
                 s.msg = new TLRPC.TL_message();
                 s.msg.flags = 256;
-                s.msg.id = nextLocalIncomingId();
+                s.msg.id = nextLocalMessageId();
                 s.msg.local_id = s.msg.id;
                 s.msg.out = false;
                 s.msg.date = (int) (System.currentTimeMillis() / 1000);
@@ -877,6 +997,9 @@ public class OxAgentsBridge {
                 objArr.add(obj);
                 if (isFirst) {
                     MessagesController.getInstance(0).updateInterfaceWithMessages(s.dialogId, objArr, 0);
+                    // stock ChatActivity inserts a live message only from this notification
+                    NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.didReceiveNewMessages,
+                            s.dialogId, objArr, false, 0);
                 } else {
                     NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.replaceMessagesObjects, s.dialogId, objArr);
                 }
