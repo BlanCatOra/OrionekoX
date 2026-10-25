@@ -263,8 +263,9 @@ public class OxAgentsBridge {
         u.first_name = (a.emoji == null || a.emoji.isEmpty() ? "" : a.emoji + " ") + a.name;
         u.last_name = a.remark == null ? "" : a.remark;
         u.username = "agent_" + (Math.abs(a.tgId) % 100000);
-        u.phone = "+779" + String.valueOf(10000000 + (int) (Math.abs(a.tgId) % 10000000));
+        u.phone = "779" + String.valueOf(10000000 + (int) (Math.abs(a.tgId) % 10000000));
         u.contact = true;
+        u.bot = true;
         u.status = onlineStatus();
         attachAvatar(u, a);
         return u;
@@ -392,8 +393,12 @@ public class OxAgentsBridge {
         if (p == null || !isAgentDialog(p.peer)) {
             return false;
         }
-        if (p.retryMessageObject != null || p.photo != null || p.document != null || p.location != null
-                || p.poll != null || p.invoice != null || p.todo != null || p.game != null
+        if (p.user != null || p.document != null || p.location != null || p.poll != null
+                || p.todo != null || p.mediaWebPage != null || p.webPage != null) {
+            return handleOutgoingSpecial(p);
+        }
+        if (p.retryMessageObject != null || p.photo != null
+                || p.invoice != null || p.game != null
                 || p.videoEditedInfo != null || p.sendingStory != null) {
             // Photos arrive through prepareSendingMedia, which has its own local handler.
             // Everything else has no local pipeline yet: answer instead of letting the
@@ -407,7 +412,7 @@ public class OxAgentsBridge {
             return true;
         }
         log("interceptOutgoing dialog=" + p.peer + " text=" + text);
-        handleOutgoingText(p.peer, text.trim());
+        handleOutgoingText(p.peer, text.trim(), p.replyToMsg);
         return true;
     }
 
@@ -446,6 +451,16 @@ public class OxAgentsBridge {
                     users.add(u);
                     MessagesStorage.getInstance(0).putUsersAndChats(users, null, true, true);
                     MessagesController.getInstance(0).putUser(u, false);
+                    TLRPC.TL_userFull full = new TLRPC.TL_userFull();
+                    full.flags |= 1;   // has about
+                    full.id = u.id;
+                    full.user = u;
+                    full.about = agent.agentsMd != null && !agent.agentsMd.trim().isEmpty()
+                            ? agent.agentsMd.trim() : "OrionekoX local agent";
+                    full.settings = new TLRPC.TL_peerSettings();
+                    full.notify_settings = new TLRPC.TL_peerNotifySettings();
+                    full.common_chats_count = 0;
+                    MessagesController.getInstance(0).putUserFull(full);
                 } catch (Throwable t) {
                     logErr("ensureNativeDialog user failed", t);
                 }
@@ -465,7 +480,262 @@ public class OxAgentsBridge {
         });
     }
 
-    // ---------------- media (photos) to agents ----------------
+    // ---------------- special messages (documents, location, contact, poll, todo) ----------------
+
+    private static boolean handleOutgoingSpecial(SendMessagesHelper.SendMessageParams p) {
+        long dialogId = p.peer;
+        OxAgent agent = agentByTgId(dialogId);
+        String caption = p.caption != null ? p.caption : (p.message != null ? p.message : "");
+        log("handleOutgoingSpecial dialog=" + dialogId + " doc=" + (p.document != null)
+                + " loc=" + (p.location != null) + " poll=" + (p.poll != null)
+                + " todo=" + (p.todo != null) + " user=" + (p.user != null));
+        try {
+            if (p.mediaWebPage != null || p.webPage != null) {
+                TLRPC.TL_message msg = baseOutgoing(dialogId);
+                msg.flags = 256 | 512;
+                if (p.mediaWebPage != null) {
+                    msg.media = p.mediaWebPage;
+                } else {
+                    TLRPC.TL_messageMediaWebPage media = new TLRPC.TL_messageMediaWebPage();
+                    media.webpage = p.webPage;
+                    msg.media = media;
+                }
+                msg.message = caption == null ? "" : caption;
+                persistAndShow(dialogId, msg);
+                TLRPC.WebPage page = p.webPage;
+                if (page == null && p.mediaWebPage != null) page = p.mediaWebPage.webpage;
+                StringBuilder prompt = new StringBuilder("用户分享了一篇文章");
+                if (page != null) {
+                    if (page.title != null && !page.title.isEmpty()) prompt.append("：").append(page.title);
+                    if (page.url != null && !page.url.isEmpty()) prompt.append("\n链接：").append(page.url);
+                    if (page.description != null && !page.description.isEmpty()) prompt.append("\n摘要：").append(page.description);
+                }
+                if (caption != null && !caption.trim().isEmpty()) prompt.append("\n附带说明：").append(caption.trim());
+                startMediaTurn(agent, dialogId, prompt.toString(), null, prompt.toString());
+                return true;
+            }
+            if (p.document != null) {
+                TLRPC.TL_document doc = p.document;
+                String name = documentName(doc);
+                String mime = doc.mime_type == null ? "" : doc.mime_type;
+                boolean video = hasAttribute(doc, TLRPC.TL_documentAttributeVideo.class);
+                TLRPC.DocumentAttribute audio = findAttribute(doc, TLRPC.TL_documentAttributeAudio.class);
+                boolean voice = audio instanceof TLRPC.TL_documentAttributeAudio && ((TLRPC.TL_documentAttributeAudio) audio).voice;
+                boolean animated = hasAttribute(doc, TLRPC.TL_documentAttributeAnimated.class);
+                boolean sticker = hasAttribute(doc, TLRPC.TL_documentAttributeSticker.class);
+                boolean music = audio instanceof TLRPC.TL_documentAttributeAudio && !voice;
+                injectDocument(dialogId, doc, p.path, caption);
+                String kind = video ? "视频" : voice ? "语音消息" : music ? "音乐"
+                        : animated ? "动图（GIF）" : sticker ? "贴纸" : "文件";
+                StringBuilder prompt = new StringBuilder("用户发送了").append(kind);
+                prompt.append("：").append(name);
+                if (!mime.isEmpty()) prompt.append("（").append(mime);
+                if (doc.size > 0) prompt.append(", ").append(doc.size).append(" 字节");
+                if (!mime.isEmpty()) prompt.append("）");
+                if (caption != null && !caption.trim().isEmpty()) prompt.append("\n附带说明：").append(caption.trim());
+                if (sticker) {
+                    TLRPC.DocumentAttribute sa = findAttribute(doc, TLRPC.TL_documentAttributeSticker.class);
+                    if (sa != null && sa.alt != null) prompt.append("\n贴纸表情：").append(sa.alt);
+                } else if (p.path != null) {
+                    String rel = archiveIntoWorkspace(agent, p.path, name);
+                    if (rel != null) prompt.append("\n文件已存入工作区：").append(rel).append("（可用 read_file / list_dir 工具读取）");
+                }
+                startMediaTurn(agent, dialogId, prompt.toString(), null, prompt.toString());
+                return true;
+            }
+            if (p.location != null) {
+                TLRPC.TL_message msg = baseOutgoing(dialogId);
+                msg.flags = 256 | 512;
+                msg.media = p.location;
+                if (caption != null && !caption.trim().isEmpty()) msg.message = caption.trim();
+                persistAndShow(dialogId, msg);
+                String prompt = "用户分享了位置";
+                if (p.location.geo != null && p.location.geo instanceof TLRPC.TL_geoPoint) {
+                    TLRPC.TL_geoPoint gp = (TLRPC.TL_geoPoint) p.location.geo;
+                    prompt += "：纬度 " + gp.lat + "，经度 " + gp._long;
+                }
+                if (caption != null && !caption.trim().isEmpty()) prompt += "\n附带说明：" + caption.trim();
+                startMediaTurn(agent, dialogId, prompt, null, prompt);
+                return true;
+            }
+            if (p.user != null) {
+                TLRPC.TL_message msg = baseOutgoing(dialogId);
+                msg.flags = 256 | 512;
+                TLRPC.TL_messageMediaContact contact = new TLRPC.TL_messageMediaContact();
+                contact.phone_number = p.user.phone;
+                contact.first_name = p.user.first_name;
+                contact.last_name = p.user.last_name;
+                contact.user_id = p.user.id;
+                contact.vcard = "";
+                msg.media = contact;
+                persistAndShow(dialogId, msg);
+                String prompt = "用户分享了联系人：" + (p.user.first_name == null ? "" : p.user.first_name)
+                        + (p.user.last_name == null ? "" : " " + p.user.last_name)
+                        + (p.user.phone == null ? "" : "，电话 " + p.user.phone);
+                startMediaTurn(agent, dialogId, prompt, null, prompt);
+                return true;
+            }
+            if (p.poll != null) {
+                TLRPC.TL_message msg = baseOutgoing(dialogId);
+                msg.flags = 256 | 512;
+                msg.media = p.poll;
+                persistAndShow(dialogId, msg);
+                StringBuilder prompt = new StringBuilder("用户创建了投票：");
+                if (p.poll.poll != null && p.poll.poll.question != null) prompt.append(p.poll.poll.question);
+                if (p.poll.poll != null && p.poll.poll.answers != null) {
+                    for (int i = 0; i < p.poll.poll.answers.size(); i++) {
+                        prompt.append("\n").append(i + 1).append(". ").append(p.poll.poll.answers.get(i).text);
+                    }
+                }
+                startMediaTurn(agent, dialogId, prompt.toString(), null, prompt.toString());
+                return true;
+            }
+            if (p.todo != null) {
+                TLRPC.TL_message msg = baseOutgoing(dialogId);
+                msg.flags = 256 | 512;
+                msg.media = p.todo;
+                persistAndShow(dialogId, msg);
+                StringBuilder prompt = new StringBuilder("用户发送了待办清单：");
+                if (p.todo.todo != null && p.todo.todo.title != null) prompt.append(p.todo.todo.title.text);
+                if (p.todo.todo != null && p.todo.todo.list != null) {
+                    for (int i = 0; i < p.todo.todo.list.size(); i++) {
+                        TLRPC.TodoItem item = p.todo.todo.list.get(i);
+                        prompt.append("\n- ").append(item.title == null ? "" : item.title.text);
+                    }
+                }
+                startMediaTurn(agent, dialogId, prompt.toString(), null, prompt.toString());
+                return true;
+            }
+        } catch (Throwable t) {
+            logErr("handleOutgoingSpecial failed", t);
+            injectAgentReply(dialogId, "（这类内容处理失败：" + t.getMessage() + "）");
+        }
+        injectAgentReply(dialogId, "（暂不支持向智能体发送这类内容）");
+        return true;
+    }
+
+    /** Called from SendMessagesHelper.sendSticker before it would reach the server. */
+    public static boolean handleOutgoingSticker(TLRPC.Document document, long dialogId, CharSequence caption) {
+        if (document == null || !isAgentDialog(dialogId)) {
+            return false;
+        }
+        OxAgent agent = agentByTgId(dialogId);
+        String emoji = "";
+        TLRPC.DocumentAttribute sticker = findAttribute(document, TLRPC.TL_documentAttributeSticker.class);
+        if (sticker != null && sticker.alt != null) emoji = sticker.alt;
+        injectDocument(dialogId, document, null, caption == null ? "" : caption.toString());
+        String prompt = "用户发送了一张贴纸" + (emoji.isEmpty() ? "" : "：" + emoji)
+                + (caption == null || caption.length() == 0 ? "" : "\n附带说明：" + caption);
+        startMediaTurn(agent, dialogId, prompt, null, prompt);
+        return true;
+    }
+
+    private static TLRPC.TL_message baseOutgoing(long dialogId) {
+        TLRPC.TL_message msg = new TLRPC.TL_message();
+        msg.flags = 256;
+        msg.id = nextLocalMessageId();
+        msg.local_id = msg.id;
+        msg.out = true;
+        msg.date = (int) (System.currentTimeMillis() / 1000);
+        msg.peer_id = new TLRPC.TL_peerUser();
+        msg.peer_id.user_id = dialogId;
+        msg.from_id = new TLRPC.TL_peerUser();
+        msg.from_id.user_id = SELF_ID;
+        msg.dialog_id = dialogId;
+        msg.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
+        return msg;
+    }
+
+    private static void injectDocument(long dialogId, TLRPC.Document doc, String localPath, String caption) {
+        TLRPC.TL_message msg = baseOutgoing(dialogId);
+        msg.flags = 256 | 512;
+        TLRPC.TL_messageMediaDocument media = new TLRPC.TL_messageMediaDocument();
+        media.flags |= 1;
+        media.document = doc;
+        if (hasAttribute(doc, TLRPC.TL_documentAttributeVideo.class)) media.video = true;
+        TLRPC.DocumentAttribute audio = findAttribute(doc, TLRPC.TL_documentAttributeAudio.class);
+        if (audio instanceof TLRPC.TL_documentAttributeAudio && ((TLRPC.TL_documentAttributeAudio) audio).voice) media.voice = true;
+        msg.media = media;
+        msg.attachPath = localPath;
+        msg.message = caption == null ? "" : caption;
+        persistAndShow(dialogId, msg);
+    }
+
+    private static boolean hasAttribute(TLRPC.Document doc, Class<?> cls) {
+        return findAttribute(doc, cls) != null;
+    }
+
+    private static TLRPC.DocumentAttribute findAttribute(TLRPC.Document doc, Class<?> cls) {
+        if (doc == null || doc.attributes == null) return null;
+        for (TLRPC.DocumentAttribute a : doc.attributes) {
+            if (cls.isInstance(a)) return a;
+        }
+        return null;
+    }
+
+    private static String documentName(TLRPC.Document doc) {
+        TLRPC.DocumentAttribute a = findAttribute(doc, TLRPC.TL_documentAttributeFilename.class);
+        if (a instanceof TLRPC.TL_documentAttributeFilename && a.file_name != null) return a.file_name;
+        return "file_" + doc.id;
+    }
+
+    private static String archiveIntoWorkspace(OxAgent agent, String path, String name) {
+        if (agent == null || path == null) return null;
+        try {
+            File dir = new File(OxAgentStore.workspaceDir(agent.id), "inbox");
+            dir.mkdirs();
+            File dst = new File(dir, System.currentTimeMillis() + "_" + name.replaceAll("[^a-zA-Z0-9._-]", "_"));
+            java.io.FileInputStream in = new java.io.FileInputStream(path);
+            java.io.FileOutputStream out = new java.io.FileOutputStream(dst);
+            byte[] buf = new byte[16384];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            out.close();
+            in.close();
+            return "inbox/" + dst.getName();
+        } catch (Throwable t) {
+            logErr("archiveIntoWorkspace failed", t);
+            return null;
+        }
+    }
+
+    private static JSONArray visionContent(String text, String imagePath) throws Exception {
+        JSONArray parts = new JSONArray();
+        parts.put(new JSONObject().put("type", "text").put("text", text == null || text.isEmpty() ? "（看这张图片）" : text));
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        java.io.FileInputStream in = new java.io.FileInputStream(imagePath);
+        byte[] buf = new byte[16384];
+        int n;
+        while ((n = in.read(buf)) > 0) bos.write(buf, 0, n);
+        in.close();
+        String b64 = android.util.Base64.encodeToString(bos.toByteArray(), android.util.Base64.NO_WRAP);
+        parts.put(new JSONObject().put("type", "image_url")
+                .put("image_url", new JSONObject().put("url", "data:image/jpeg;base64," + b64)));
+        return parts;
+    }
+
+    private static void startMediaTurn(OxAgent agent, long dialogId, String prompt, String imagePath, String displayText) {
+        if (agent == null) {
+            return;
+        }
+        if (agent.isEchoMode()) {
+            String reply = "⚡ 离线回声模式（未配置模型后端）\n\n" + displayText
+                    + "\n\n👉 打开 智能体 管理 → 长按 → 编辑设置，填写 Base URL / API Key / 模型后即可接入真实模型与工具调用。";
+            injectAgentReply(dialogId, reply);
+            try {
+                List<OxChatEntry> chat = OxAgentStore.loadChat(agent.id);
+                chat.add(new OxChatEntry("user", displayText, System.currentTimeMillis(), imagePath));
+                chat.add(new OxChatEntry("assistant", reply, System.currentTimeMillis()));
+                OxAgentStore.saveChat(agent.id, chat);
+            } catch (Throwable t) {
+                logErr("startMediaTurn history failed", t);
+            }
+            return;
+        }
+        startTurn(agent, dialogId, prompt, imagePath);
+    }
+
+    // ---------------- media (photos/videos) to agents ----------------
 
     /** Routes media the user sends to an agent dialog. Photos become real outgoing
      *  photo messages in the chat (sizes written locally by generatePhotoSizes) and
@@ -473,9 +743,9 @@ public class OxAgentsBridge {
     public static void handleOutgoingMedia(long dialogId, java.util.List<SendMessagesHelper.SendingMediaInfo> infos) {
         log("handleOutgoingMedia dialog=" + dialogId + " count=" + (infos == null ? 0 : infos.size()));
         final OxAgent agent = agentByTgId(dialogId);
-        StringBuilder captionAll = new StringBuilder();
-        int photoCount = 0;
-        String lastArchivedPath = null;
+        StringBuilder prompt = new StringBuilder();
+        String firstImagePath = null;
+        int images = 0, videos = 0, gifs = 0;
         if (infos != null) {
             for (SendMessagesHelper.SendingMediaInfo info : infos) {
                 String path = info.path;
@@ -483,69 +753,129 @@ public class OxAgentsBridge {
                     injectAgentReply(dialogId, "（该类型媒体暂不支持发送给智能体）");
                     continue;
                 }
+                String name = new File(path).getName();
+                String lower = name.toLowerCase();
                 try {
-                    SendMessagesHelper smh = SendMessagesHelper.getInstance(0);
-                    TLRPC.TL_photo photo = smh.generatePhotoSizes(path, null);
-                    if (photo == null) {
-                        injectAgentReply(dialogId, "（图片读取失败：" + path + "）");
-                        continue;
-                    }
-                    TLRPC.TL_message msg = new TLRPC.TL_message();
-                    msg.flags = 256 | 512;   // HAS_FROM_ID | HAS_MEDIA
-                    msg.id = nextLocalMessageId();
-                    msg.local_id = msg.id;
-                    msg.out = true;
-                    msg.date = (int) (System.currentTimeMillis() / 1000);
-                    msg.media = new TLRPC.TL_messageMediaPhoto();
-                    msg.media.flags |= 1;   // photo
-                    msg.media.photo = photo;
-                    msg.media.ttl_seconds = 0;
-                    msg.message = "";
-                    msg.peer_id = new TLRPC.TL_peerUser();
-                    msg.peer_id.user_id = dialogId;
-                    msg.from_id = new TLRPC.TL_peerUser();
-                    msg.from_id.user_id = SELF_ID;
-                    msg.dialog_id = dialogId;
-                    msg.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
-                    persistAndShow(dialogId, msg);
-                    photoCount++;
-
-                    // archive into the agent's media inbox
-                    String archivedPath = null;
-                    if (agent != null) {
-                        File inbox = new File(ApplicationLoader.applicationContext.getFilesDir(),
-                                "oxagents/" + agent.id + "/media");
-                        inbox.mkdirs();
-                        File dst = new File(inbox, System.currentTimeMillis() + "_" + photoCount + ".jpg");
-                        try {
-                            java.io.FileInputStream in = new java.io.FileInputStream(path);
-                            java.io.FileOutputStream out = new java.io.FileOutputStream(dst);
-                            byte[] buf = new byte[16384];
-                            int n;
-                            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-                            out.close(); in.close();
-                            archivedPath = dst.getAbsolutePath();
-                            log("media archived: " + archivedPath);
-                        } catch (Throwable t) {
-                            logErr("media archive failed", t);
+                    if (info.isVideo || lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".mov")
+                            || lower.endsWith(".webm") || lower.endsWith(".3gp")) {
+                        long[] meta = videoMeta(path);
+                        TLRPC.TL_document doc = buildLocalDocument(path, name,
+                                lower.endsWith(".webm") ? "video/webm" : "video/mp4",
+                                true, false, (int) meta[0], (int) meta[1], meta[2] / 1000.0);
+                        injectDocument(dialogId, doc, path, info.caption);
+                        videos++;
+                        prompt.append("用户发送了视频：").append(name);
+                        if (meta[2] > 0) prompt.append("（时长 ").append(meta[2] / 1000).append(" 秒）");
+                        if (info.caption != null && !info.caption.trim().isEmpty()) prompt.append("\n附带说明：").append(info.caption.trim());
+                    } else if (lower.endsWith(".gif")) {
+                        TLRPC.TL_document doc = buildLocalDocument(path, name, "image/gif", false, true, 0, 0, 0);
+                        injectDocument(dialogId, doc, path, info.caption);
+                        gifs++;
+                        prompt.append("用户发送了一张动图（GIF）：").append(name);
+                        if (info.caption != null && !info.caption.trim().isEmpty()) prompt.append("\n附带说明：").append(info.caption.trim());
+                    } else {
+                        SendMessagesHelper smh = SendMessagesHelper.getInstance(0);
+                        TLRPC.TL_photo photo = smh.generatePhotoSizes(path, null);
+                        if (photo == null) {
+                            injectAgentReply(dialogId, "（图片读取失败：" + path + "）");
+                            continue;
                         }
+                        TLRPC.TL_message msg = baseOutgoing(dialogId);
+                        msg.flags = 256 | 512;
+                        msg.media = new TLRPC.TL_messageMediaPhoto();
+                        msg.media.flags |= 1;
+                        msg.media.photo = photo;
+                        msg.media.ttl_seconds = 0;
+                        msg.message = info.caption == null ? "" : info.caption;
+                        persistAndShow(dialogId, msg);
+                        images++;
+                        String archivedPath = archiveMedia(agent, path, images);
+                        if (firstImagePath == null) firstImagePath = archivedPath;
+                        int[] wh = photoSizeOf(photo);
+                        prompt.append("用户发送了图片");
+                        if (wh[0] > 0) prompt.append("（").append(wh[0]).append("x").append(wh[1]).append("）");
+                        if (info.caption != null && !info.caption.trim().isEmpty()) prompt.append("\n附带说明：").append(info.caption.trim());
                     }
-                    int[] wh = photoSizeOf(photo);
-                    captionAll.append(" [图片 ").append(wh[0]).append("x").append(wh[1]).append("]");
-                    lastArchivedPath = archivedPath;
+                    prompt.append("\n");
                 } catch (Throwable t) {
                     logErr("handleOutgoingMedia item failed", t);
+                    injectAgentReply(dialogId, "（媒体处理失败：" + t.getMessage() + "）");
                 }
             }
         }
-        if (agent != null) {
-            List<OxChatEntry> chat = OxAgentStore.loadChat(agent.id);
-            chat.add(new OxChatEntry("user", (captionAll.toString().trim() + " 已发送").trim(),
-                    System.currentTimeMillis(), lastArchivedPath));
-            OxAgentStore.saveChat(agent.id, chat);
-            injectAgentReply(dialogId, "📷 收到 " + photoCount + " 张图片" +
-                    (agent.isEchoMode() ? "。（接入模型后可对图片做视觉理解）" : "，已存入媒体收件箱。"));
+        if (agent == null) {
+            return;
         }
+        String text = prompt.toString().trim();
+        if (text.isEmpty()) text = "用户发送了媒体内容";
+        if (images > 1) text = text + "\n（共 " + images + " 张图片）";
+        startMediaTurn(agent, dialogId, text, firstImagePath, text);
+    }
+
+    private static String archiveMedia(OxAgent agent, String path, int index) {
+        if (agent == null) return null;
+        try {
+            File inbox = new File(ApplicationLoader.applicationContext.getFilesDir(), "oxagents/" + agent.id + "/media");
+            inbox.mkdirs();
+            File dst = new File(inbox, System.currentTimeMillis() + "_" + index + ".jpg");
+            java.io.FileInputStream in = new java.io.FileInputStream(path);
+            java.io.FileOutputStream out = new java.io.FileOutputStream(dst);
+            byte[] buf = new byte[16384];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            out.close();
+            in.close();
+            return dst.getAbsolutePath();
+        } catch (Throwable t) {
+            logErr("archiveMedia failed", t);
+            return null;
+        }
+    }
+
+    private static long[] videoMeta(String path) {
+        long w = 0, h = 0, duration = 0;
+        try {
+            android.media.MediaMetadataRetriever r = new android.media.MediaMetadataRetriever();
+            r.setDataSource(path);
+            String sw = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH);
+            String sh = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
+            String sd = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION);
+            if (sw != null) w = Long.parseLong(sw);
+            if (sh != null) h = Long.parseLong(sh);
+            if (sd != null) duration = Long.parseLong(sd);
+            r.release();
+        } catch (Throwable ignored) {
+        }
+        return new long[]{w, h, duration};
+    }
+
+    private static TLRPC.TL_document buildLocalDocument(String path, String name, String mime,
+                                                        boolean video, boolean animated,
+                                                        int w, int h, double durationSec) {
+        TLRPC.TL_document doc = new TLRPC.TL_document();
+        doc.id = 0;
+        doc.access_hash = 0;
+        doc.date = (int) (System.currentTimeMillis() / 1000);
+        doc.mime_type = mime;
+        doc.size = new File(path).length();
+        doc.dc_id = 0;
+        doc.file_reference = new byte[0];
+        doc.attributes = new ArrayList<>();
+        TLRPC.TL_documentAttributeFilename fn = new TLRPC.TL_documentAttributeFilename();
+        fn.file_name = name;
+        doc.attributes.add(fn);
+        if (video) {
+            TLRPC.TL_documentAttributeVideo v = new TLRPC.TL_documentAttributeVideo();
+            v.supports_streaming = true;
+            v.duration = durationSec;
+            v.w = w;
+            v.h = h;
+            doc.attributes.add(v);
+        }
+        if (animated) {
+            doc.attributes.add(new TLRPC.TL_documentAttributeAnimated());
+        }
+        return doc;
     }
 
     private static int[] photoSizeOf(TLRPC.TL_photo photo) {
@@ -559,6 +889,15 @@ public class OxAgentsBridge {
     }
 
     private static void handleOutgoingText(long dialogId, String text) {
+        handleOutgoingText(dialogId, text, null);
+    }
+
+    private static void handleOutgoingText(long dialogId, String text, MessageObject replyTo) {
+        String quoted = null;
+        if (replyTo != null && replyTo.messageOwner != null) {
+            quoted = replyTo.messageOwner.message;
+            if (quoted == null || quoted.trim().isEmpty()) quoted = "（媒体消息）";
+        }
         try {
             TLRPC.TL_message msg = new TLRPC.TL_message();
             msg.flags = 256;
@@ -567,6 +906,13 @@ public class OxAgentsBridge {
             msg.out = true;
             msg.date = (int) (System.currentTimeMillis() / 1000);
             msg.message = text;
+            if (replyTo != null) {
+                msg.flags |= TLRPC.MESSAGE_FLAG_REPLY;
+                TLRPC.TL_messageReplyHeader header = new TLRPC.TL_messageReplyHeader();
+                header.flags |= 16;
+                header.reply_to_msg_id = replyTo.getId();
+                msg.reply_to = header;
+            }
             msg.peer_id = new TLRPC.TL_peerUser();
             msg.peer_id.user_id = dialogId;
             msg.from_id = new TLRPC.TL_peerUser();
@@ -583,6 +929,10 @@ public class OxAgentsBridge {
         if (agent == null) {
             injectAgentReply(dialogId, "（该智能体已被删除）");
             return;
+        }
+        if (quoted != null) {
+            if (quoted.length() > 300) quoted = quoted.substring(0, 300) + "…";
+            text = "（回复：" + quoted + "）\n" + text;
         }
         if (agent.isEchoMode()) {
             StringBuilder sb = new StringBuilder();
@@ -606,6 +956,7 @@ public class OxAgentsBridge {
         JSONArray messages;
         int depth;
         String userText;
+        String imagePath;
         TLRPC.TL_message msg;
         final StringBuilder text = new StringBuilder();
         final List<OxChatEntry> acc = new ArrayList<>();
@@ -698,14 +1049,23 @@ public class OxAgentsBridge {
     }
 
     private static void startTurn(OxAgent agent, long dialogId, String userText) {
-        log("startTurn agent=" + agent.id + " dialog=" + dialogId);
+        startTurn(agent, dialogId, userText, null);
+    }
+
+    private static void startTurn(OxAgent agent, long dialogId, String userText, String imagePath) {
+        log("startTurn agent=" + agent.id + " dialog=" + dialogId + " image=" + (imagePath != null));
         Stream s = new Stream();
         s.dialogId = dialogId;
         s.agent = agent;
         s.userText = userText;
+        s.imagePath = imagePath;
         try {
             s.messages = baseMessages(agent, agent.id);
-            s.messages.put(new JSONObject().put("role", "user").put("content", userText));
+            if (imagePath != null && new File(imagePath).exists()) {
+                s.messages.put(new JSONObject().put("role", "user").put("content", visionContent(userText, imagePath)));
+            } else {
+                s.messages.put(new JSONObject().put("role", "user").put("content", userText));
+            }
         } catch (Exception e) {
             injectAgentReply(dialogId, "⚠ " + e.getMessage());
             return;
@@ -1057,7 +1417,7 @@ public class OxAgentsBridge {
         // persist the turn into the shared agent history
         try {
             List<OxChatEntry> chat = OxAgentStore.loadChat(s.agent.id);
-            chat.add(new OxChatEntry("user", s.userText, System.currentTimeMillis()));
+            chat.add(new OxChatEntry("user", s.userText, System.currentTimeMillis(), s.imagePath));
             chat.addAll(s.acc);
             chat.add(new OxChatEntry("assistant", finalText, System.currentTimeMillis()));
             OxAgentStore.saveChat(s.agent.id, chat);

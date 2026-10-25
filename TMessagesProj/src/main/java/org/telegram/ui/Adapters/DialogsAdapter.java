@@ -1763,19 +1763,6 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
             }
         }
 
-        // OrionekoX: local agents live at the very top of the main chat list.
-        // In local-account (agent-only) mode agents are REAL dialogs instead - skip.
-        if (dialogsType == 0 && folderId == 0 && communityId == 0 && parentFragment != null
-                && !parentFragment.isArchive() && !org.telegram.ox.OxMode.isAgentOnly()) {
-            try {
-                for (org.telegram.ox.OxAgent agent : org.telegram.ox.OxAgentStore.listAgents()) {
-                    itemInternals.add(new ItemInternal(agent));
-                }
-            } catch (Throwable t) {
-                org.telegram.messenger.FileLog.e(t);
-            }
-        }
-
         if (requestPeerType != null) {
             itemInternals.add(new ItemInternal(VIEW_TYPE_REQUIREMENTS));
         }

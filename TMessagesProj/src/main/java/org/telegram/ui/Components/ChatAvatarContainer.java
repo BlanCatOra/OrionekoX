@@ -561,7 +561,13 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
         if (user != null && org.telegram.ox.OxAgentsBridge.isAgentDialog(user.id)) {
             org.telegram.ox.OxAgent agent = org.telegram.ox.OxAgentsBridge.agentByTgId(user.id);
             if (agent != null) {
-                parentFragment.presentFragment(new org.telegram.ui.OxAgentProfileActivity(agent.id), removeLast);
+                Bundle args = new Bundle();
+                args.putLong("user_id", user.id);
+                boolean hasPhoto = user.photo != null && !(user.photo instanceof TLRPC.TL_userProfilePhotoEmpty);
+                args.putBoolean("expandPhoto", hasPhoto);
+                org.telegram.ui.ProfileActivity fragment = new org.telegram.ui.ProfileActivity(args);
+                fragment.setPlayProfileAnimation(1);
+                parentFragment.presentFragment(fragment, removeLast);
                 return;
             }
         }
@@ -1240,6 +1246,9 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
                     newStatus = getString(R.string.ServiceNotifications);
                 } else if (MessagesController.isSupportUser(user)) {
                     newStatus = getString(R.string.SupportStatus);
+                } else if (org.telegram.ox.OxAgentsBridge.isAgentDialog(user.id)) {
+                    newStatus = getString(R.string.Online);
+                    useOnlineColor = true;
                 } else if (user.bot && user.bot_active_users != 0) {
                     newStatus = LocaleController.formatPluralStringComma("BotUsers", user.bot_active_users, ',');
                 } else if (user.bot) {

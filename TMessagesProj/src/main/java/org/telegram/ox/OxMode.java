@@ -38,6 +38,22 @@ public class OxMode {
         prefs().edit().putBoolean("onboarding_done", value).apply();
     }
 
+    /** Local "premium": unlocks Telegram's premium UI locally, with no subscription or server call. */
+    public static boolean isLocalPremium() {
+        try {
+            return prefs().getBoolean("local_premium", false);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static void setLocalPremium(boolean value) {
+        try {
+            prefs().edit().putBoolean("local_premium", value).apply();
+        } catch (Exception ignored) {
+        }
+    }
+
     public static String getContainerMirror() {
         return prefs().getString("container_mirror", "official");
     }

@@ -116,6 +116,13 @@
     <string name="OxObSkip">跳过</string>
     <string name="OxObSkipHint">你可以先跳过此设置；之后可在 Ox 设置 → 重新运行引导 中修改。</string>
     <string name="OxSettingsTitle">Ox 设置</string>
+    <string name="OxLocalPremium">本地大会员</string>
+    <string name="OxLocalPremiumInfo">在本地解锁 Telegram 大会员功能，无需订阅，也不会请求服务器。</string>
+    <string name="OxSettingsInfo">模式、本地大会员、Agent 与工具</string>
+    <string name="OxTerminal">终端</string>
+    <string name="OxTerminalRestart">重启</string>
+    <string name="OxTerminalClear">清空</string>
+    <string name="OxTerminalHint">输入命令…</string>
     <string name="OxSettingsRerun">重新运行引导</string>
     <string name="OxSettingsMode">当前模式：%1$s</string>
     <string name="OxSettingsModeOx">Ox 模式（仅智能体）</string>

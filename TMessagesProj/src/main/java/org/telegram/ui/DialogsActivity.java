@@ -3516,7 +3516,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 logoDrawable = context.getResources().getDrawable(R.drawable.telegram_logo_2).mutate();
                 logoDrawable.setBounds(0, dp(2), logoDrawable.getIntrinsicWidth(), dp(2) + logoDrawable.getIntrinsicHeight());
                 logoDrawable.setColorFilter(getThemedColor(Theme.key_telegram_color_dialogsLogo), PorterDuff.Mode.MULTIPLY);
-                SpannableStringBuilder ssb = new SpannableStringBuilder(getString(R.string.AppName));
+                SpannableStringBuilder ssb = new SpannableStringBuilder("OrionekoX");
                 ssb.setSpan(new ImageSpan(logoDrawable), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 actionBar.setTitle(ssb, statusDrawable);
                 updateStatus(UserConfig.getInstance(currentAccount).getCurrentUser(), false);
@@ -4367,6 +4367,15 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             viewPage.listView.setVerticalScrollbarPosition(LocaleController.isRTL ? RecyclerListView.SCROLLBAR_POSITION_LEFT : RecyclerListView.SCROLLBAR_POSITION_RIGHT);
             viewPage.addView(viewPage.listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
             viewPage.listView.setOnItemClickListener((view, position, x, y) -> {
+                if (view instanceof DialogCell && org.telegram.ox.OxAgentsBridge.isAgentDialog(((DialogCell) view).getDialogId())) {
+                    org.telegram.ox.OxAgent agent = org.telegram.ox.OxAgentsBridge.agentByTgId(((DialogCell) view).getDialogId());
+                    if (agent != null) {
+                        final org.telegram.ox.OxAgent openAgent = agent;
+                        org.telegram.ox.OxAgentsBridge.ensureNativeDialog(openAgent, () ->
+                                presentFragment(ChatActivity.of(openAgent.tgId)));
+                    }
+                    return;
+                }
                 if (view instanceof DialogsAdapter.OxAgentCell) {
                     org.telegram.ox.OxAgent agent = ((DialogsAdapter.OxAgentCell) view).getAgent();
                     if (agent != null) {
@@ -13859,20 +13868,13 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         io.add(R.drawable.filled_bot_approve_24, getString(R.string.OxMcp), () -> {
             presentFragment(new OxMcpActivity());
         });
-        io.add(R.drawable.msg_settings_old, getString(R.string.OxSettingsTitle), () -> {
-            presentFragment(new OxSettingsActivity());
-        });
         if (oxAgentOnly) {
             io.add(R.drawable.outline_add_account, getString(R.string.OxLoginTelegram), () -> confirmExitAgentOnly());
         }
         if (!oxAgentOnly && ApplicationLoader.applicationLoaderInstance != null) {
             ApplicationLoader.applicationLoaderInstance.addItemOptions(io);
         }
-        if (!oxAgentOnly && getMessagesController().config.walletAvailable.get()) {
-            io.add(R.drawable.ic_gram, LocaleController.getString(R.string.WalletAttachMoney), () -> {
-                presentFragment(new WalletActivity());
-            });
-        } else {
+        {
             TLRPC.TL_attachMenuBots menuBots = MediaDataController.getInstance(UserConfig.selectedAccount).getAttachMenuBots();
             if (launchActivity != null && menuBots != null && menuBots.bots != null && !menuBots.bots.isEmpty()) {
                 for (TLRPC.TL_attachMenuBot attachMenuBot : menuBots.bots) {

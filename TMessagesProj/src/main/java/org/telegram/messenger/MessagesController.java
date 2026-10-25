@@ -926,7 +926,8 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public boolean isPremiumUser(TLRPC.User currentUser) {
-        return currentUser != null && currentUser.premium && !isSupportUser(currentUser);
+        return currentUser != null && (currentUser.premium
+                || (currentUser.self && org.telegram.ox.OxMode.isLocalPremium())) && !isSupportUser(currentUser);
     }
 
     public boolean didPressTranscribeButtonEnough() {
@@ -7292,6 +7293,13 @@ public class MessagesController extends BaseController implements NotificationCe
 
     public TLRPC.UserFull getUserFull(long uid) {
         return fullUsers.get(uid);
+    }
+
+    /** OrionekoX: synthetic agents have no server-side full user; inject one locally. */
+    public void putUserFull(TLRPC.UserFull full) {
+        if (full != null) {
+            fullUsers.put(full.id, full);
+        }
     }
 
     public TLRPC.ChatFull getChatFull(long chatId) {

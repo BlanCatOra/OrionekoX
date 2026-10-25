@@ -197,12 +197,9 @@ public class DataSettingsActivity extends BaseFragment {
         useLessDataForCallsRow = rowCount++;
 //        quickRepliesRow = rowCount++;
         callsSection2Row = rowCount++;
-        proxySectionRow = rowCount++;
-        proxyRow = rowCount++;
-        proxySection2Row = rowCount++;
-        vpnSectionRow = rowCount++;
-        vpnRow = rowCount++;
-        vpnSection2Row = rowCount++;
+        // Proxy and VPN are top-level entries in Settings now.
+        proxySectionRow = proxyRow = proxySection2Row = -1;
+        vpnSectionRow = vpnRow = vpnSection2Row = -1;
         clearDraftsRow = rowCount++;
         clearDraftsSectionRow = rowCount++;
 

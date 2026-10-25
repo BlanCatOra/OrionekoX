@@ -2072,6 +2072,9 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         if (document == null) {
             return;
         }
+        if (org.telegram.ox.OxAgentsBridge.handleOutgoingSticker(document, peer, caption)) {
+            return;
+        }
         if (DialogObject.isEncryptedDialog(peer)) {
             int encryptedId = DialogObject.getEncryptedChatId(peer);
             TLRPC.EncryptedChat encryptedChat = getMessagesController().getEncryptedChat(encryptedId);

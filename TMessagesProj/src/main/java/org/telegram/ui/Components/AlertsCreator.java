@@ -8096,7 +8096,8 @@ public class AlertsCreator {
                     }
                 }
             }
-            if (myMessagesCount > 0 && hasNonDiceMessages && (user == null || !UserObject.isDeleted(user))) {
+            if (myMessagesCount > 0 && hasNonDiceMessages && (user == null || !UserObject.isDeleted(user))
+                    && !org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId)) {
                 hasDeleteForAllCheck = true;
                 FrameLayout frameLayout = new FrameLayout(activity);
                 CheckBoxCell cell = new CheckBoxCell(activity, 1, resourcesProvider);
