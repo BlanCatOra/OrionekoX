@@ -11745,4 +11745,6 @@
     <string name="OxToolDescUiKey">执行返回、主页、最近任务等系统导航。</string>
     <string name="OxToolDescUiScreenshot">截屏并保存为 PNG 文件。</string>
     <string name="OxToolDescUiTapText">查找屏幕上的文字并点击。</string>
+    <string name="OxToolDescUiFindText">查找文字，必要时滚动。</string>
+    <string name="OxToolDescUiScrollTapText">滚动找到文字并点击。</string>
 </resources>
