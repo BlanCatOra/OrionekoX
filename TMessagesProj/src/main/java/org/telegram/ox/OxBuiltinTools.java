@@ -637,6 +637,32 @@ public class OxBuiltinTools {
         });
 
         register(new OxTool() {
+            @Override public String name() { return "ui_find_text"; }
+            @Override public String description() { return "Find visible text by scrolling the active scrollable container up to max_scrolls times. Returns label, bounds and clickable flag without clicking."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"text", "max_scrolls"}); }
+            @Override public String execute(JSONObject args) {
+                String text = args.optString("text", "").trim();
+                if (text.isEmpty()) return "error: text is required";
+                int max = intArg(args, "max_scrolls");
+                return OxAccessibilityService.findTextScrolled(text, max > 0 ? max : 5, false);
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "ui_scroll_tap_text"; }
+            @Override public String description() { return "Scroll the active container until the text is found, then click it. max_scrolls defaults to 5."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"text", "max_scrolls"}); }
+            @Override public String execute(JSONObject args) {
+                String text = args.optString("text", "").trim();
+                if (text.isEmpty()) return "error: text is required";
+                int max = intArg(args, "max_scrolls");
+                return OxAccessibilityService.findTextScrolled(text, max > 0 ? max : 5, true);
+            }
+        });
+
+        register(new OxTool() {
             @Override public String name() { return "ui_screenshot"; }
             @Override public String description() { return "Capture the current screen to a PNG in the app's oxauto folder and return the absolute path. Requires Android 11+ and the accessibility service."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }

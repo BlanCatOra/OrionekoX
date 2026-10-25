@@ -213,6 +213,98 @@ public class OxAccessibilityService extends AccessibilityService {
         }
     }
 
+    public static String findTextScrolled(String query, int maxScrolls, boolean click) {
+        OxAccessibilityService service = instance;
+        if (service == null) return "error: accessibility service is not enabled";
+        if (query == null || query.trim().isEmpty()) return "error: text is required";
+        final String needle = query.trim().toLowerCase();
+        int limit = Math.max(0, Math.min(12, maxScrolls));
+        for (int step = 0; step <= limit; step++) {
+            final int stepFinal = step;
+            final String[] out = new String[1];
+            final CountDownLatch latch = new CountDownLatch(1);
+            AndroidUtilities.runOnUIThread(() -> {
+                AccessibilityNodeInfo root = null;
+                try {
+                    root = service.activeRoot();
+                    if (root == null) {
+                        out[0] = "error: no active window";
+                        return;
+                    }
+                    java.util.ArrayList<AccessibilityNodeInfo> nodes = new java.util.ArrayList<>();
+                    collect(root, nodes, 0);
+                    AccessibilityNodeInfo match = null;
+                    String label = null;
+                    for (int pass = 0; pass < 2 && match == null; pass++) {
+                        for (AccessibilityNodeInfo node : nodes) {
+                            CharSequence text = node.getText();
+                            CharSequence desc = node.getContentDescription();
+                            String l = text != null && text.length() > 0 ? text.toString()
+                                    : (desc != null ? desc.toString() : null);
+                            if (l == null) continue;
+                            boolean hit = pass == 0 ? l.toLowerCase().equals(needle) : l.toLowerCase().contains(needle);
+                            if (hit) {
+                                match = node;
+                                label = l;
+                                break;
+                            }
+                        }
+                    }
+                    if (match != null) {
+                        Rect r = new Rect();
+                        match.getBoundsInScreen(r);
+                        AccessibilityNodeInfo clickable = match;
+                        while (clickable != null && !clickable.isClickable()) clickable = clickable.getParent();
+                        if (click) {
+                            boolean ok = clickable != null && clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                            out[0] = ok ? "clicked \"" + label + "\" after " + stepFinal + " scroll(s) bounds=[" + r.left + "," + r.top + "][" + r.right + "," + r.bottom + "]"
+                                    : "found but click failed: " + label;
+                        } else {
+                            out[0] = "found \"" + label + "\" after " + stepFinal + " scroll(s) bounds=[" + r.left + "," + r.top + "][" + r.right + "," + r.bottom + "] clickable=" + (clickable != null);
+                        }
+                        return;
+                    }
+                    AccessibilityNodeInfo scrollable = findScrollable(root, 0);
+                    if (scrollable == null) {
+                        out[0] = "not found and no scrollable container: " + query;
+                        return;
+                    }
+                    scrollable.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
+                    out[0] = null;
+                } catch (Throwable t) {
+                    out[0] = "error: " + t.getMessage();
+                } finally {
+                    latch.countDown();
+                }
+            });
+            try {
+                latch.await(8, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            if (out[0] != null) return out[0];
+            try {
+                Thread.sleep(450);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return "not found after " + limit + " scroll(s): " + query;
+    }
+
+    private static AccessibilityNodeInfo findScrollable(AccessibilityNodeInfo node, int depth) {
+        if (node == null || depth > 24) return null;
+        if (node.isScrollable()) return node;
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child == null) continue;
+            AccessibilityNodeInfo hit = findScrollable(child, depth + 1);
+            if (hit != null) return hit;
+        }
+        return null;
+    }
+
     public static boolean globalAction(String name) {
         OxAccessibilityService service = instance;
         if (service == null) return false;
