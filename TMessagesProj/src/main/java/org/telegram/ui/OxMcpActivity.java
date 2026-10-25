@@ -2,16 +2,11 @@ package org.telegram.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import org.telegram.messenger.AndroidUtilities;
@@ -22,16 +17,23 @@ import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.UItem;
+import org.telegram.ui.Components.UniversalAdapter;
+import org.telegram.ui.Components.UniversalRecyclerView;
 
+import java.util.ArrayList;
 import java.util.List;
 
-/** MCP servers, rendered with Telegram settings cells. */
+/** MCP servers, rendered with Telegram's native settings list. */
 @SuppressLint("ViewConstructor")
 public class OxMcpActivity extends BaseFragment {
 
-    private LinearLayout listContainer;
+    private static final int ID_MARKET = 1;
+    private static final int ID_ADD = 2;
+    private static final int SERVER_BASE = 100;
+
+    private UniversalRecyclerView listView;
 
     @Override
     public View createView(Context context) {
@@ -44,18 +46,16 @@ public class OxMcpActivity extends BaseFragment {
                 if (id == -1) finishFragment();
             }
         });
-
-        FrameLayout rootLayout = new FrameLayout(context);
-        rootLayout.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
-        ScrollView scrollView = new ScrollView(context);
-        scrollView.setFillViewport(true);
-        listContainer = new LinearLayout(context);
-        listContainer.setOrientation(LinearLayout.VERTICAL);
-        listContainer.setPadding(0, 0, 0, AndroidUtilities.dp(24));
-        scrollView.addView(listContainer, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        rootLayout.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-        fragmentView = rootLayout;
-        return fragmentView;
+        FrameLayout root = new FrameLayout(context);
+        root.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
+        listView = new UniversalRecyclerView(this, this::fillItems, this::onClick, this::onLongClick);
+        listView.adapter.setApplyBackground(false);
+        listView.setSections();
+        listView.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(12));
+        listView.setClipToPadding(false);
+        root.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL));
+        fragmentView = root;
+        return root;
     }
 
     @Override
@@ -72,129 +72,74 @@ public class OxMcpActivity extends BaseFragment {
         }
     }
 
-    private void rebuild() {
-        if (fragmentView == null) return;
-        listContainer.removeAllViews();
-        Context context = listContainer.getContext();
-
-        TextView intro = new TextView(context);
-        String introText = LocaleController.getString(R.string.OxMcpIntro);
-        int count = OxMcpManager.mcpToolCount();
-        if (count > 0) {
-            introText += "\n\n" + LocaleController.formatString("OxMcpToolsAvailable", R.string.OxMcpToolsAvailable, count);
-        }
-        intro.setText(introText);
-        intro.setTextSize(13);
-        intro.setLineSpacing(AndroidUtilities.dp(3), 1f);
-        intro.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        intro.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(12), AndroidUtilities.dp(21), AndroidUtilities.dp(10));
-        listContainer.addView(intro, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-
-        LinearLayout marketGroup = new LinearLayout(context);
-        marketGroup.setOrientation(LinearLayout.VERTICAL);
-        marketGroup.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
-        TextSettingsCell market = new TextSettingsCell(context);
-        market.setText("🛍 " + LocaleController.getString(R.string.OxMcpMarket), true);
-        market.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
-        market.setOnClickListener(v -> presentFragment(new OxMcpMarketActivity()));
-        marketGroup.addView(market, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        listContainer.addView(marketGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
+        items.add(UItem.asHeader(LocaleController.getString(R.string.OxMcp)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_MARKET, 0xFF9C6ADE, 0xFF7B4FD1,
+                R.drawable.wallet_intro_store, LocaleController.getString(R.string.OxMcpMarket)));
+        items.add(UItem.asShadow(LocaleController.getString(R.string.OxMcpIntro)));
 
         List<OxMcpManager.McpServer> servers = OxMcpManager.getServers();
         if (servers.isEmpty()) {
-            LinearLayout empty = new LinearLayout(context);
-            empty.setOrientation(LinearLayout.VERTICAL);
-            empty.setGravity(Gravity.CENTER_HORIZONTAL);
-            empty.setPadding(AndroidUtilities.dp(32), AndroidUtilities.dp(32), AndroidUtilities.dp(32), AndroidUtilities.dp(18));
-            FrameLayout iconWrap = new FrameLayout(context);
-            GradientDrawable circle = new GradientDrawable();
-            circle.setShape(GradientDrawable.OVAL);
-            circle.setColor(getThemedColor(Theme.key_windowBackgroundGray));
-            iconWrap.setBackground(circle);
-            ImageView icon = new ImageView(context);
-            icon.setImageResource(R.drawable.msg_link);
-            icon.setColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-            iconWrap.addView(icon, LayoutHelper.createFrame(28, 28, Gravity.CENTER));
-            empty.addView(iconWrap, LayoutHelper.createLinear(64, 64, Gravity.CENTER_HORIZONTAL));
-            TextView title = new TextView(context);
-            title.setText(LocaleController.getString(R.string.OxMcpEmptyTitle));
-            title.setTextSize(17);
-            title.setTypeface(AndroidUtilities.bold());
-            title.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-            title.setGravity(Gravity.CENTER);
-            title.setPadding(0, AndroidUtilities.dp(14), 0, 0);
-            empty.addView(title, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-            TextView sub = new TextView(context);
-            sub.setText(LocaleController.getString(R.string.OxMcpEmpty));
-            sub.setTextSize(13);
-            sub.setLineSpacing(AndroidUtilities.dp(3), 1f);
-            sub.setGravity(Gravity.CENTER);
-            sub.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-            sub.setPadding(0, AndroidUtilities.dp(6), 0, 0);
-            empty.addView(sub, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-            listContainer.addView(empty, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            items.add(UItem.asShadow(LocaleController.getString(R.string.OxMcpEmptyTitle) + "\n" + LocaleController.getString(R.string.OxMcpEmpty)));
         } else {
-            LinearLayout group = new LinearLayout(context);
-            group.setOrientation(LinearLayout.VERTICAL);
-            group.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+            items.add(UItem.asHeader(LocaleController.getString(R.string.OxMcp)));
             for (int i = 0; i < servers.size(); i++) {
                 OxMcpManager.McpServer s = servers.get(i);
-                TextSettingsCell cell = new TextSettingsCell(context);
                 String value;
                 if (!s.enabled) {
                     value = LocaleController.getString(R.string.OxMcpDisabled);
                 } else if (s.lastError != null) {
                     value = s.lastError;
-                    cell.setTextValueColor(getThemedColor(Theme.key_text_RedRegular));
                 } else if (s.toolCount >= 0) {
                     value = LocaleController.formatString("OxMcpToolsFound", R.string.OxMcpToolsFound, s.toolCount);
                 } else {
-                    value = s.url;
+                    value = "";
                 }
-                cell.setTextAndValue(s.name, value, i < servers.size() - 1);
-                cell.setOnClickListener(v -> {
-                    s.enabled = !s.enabled;
-                    OxMcpManager.saveServer(s);
-                    if (s.enabled) {
-                        new Thread(() -> {
-                            OxMcpManager.refreshServer(s);
-                            AndroidUtilities.runOnUIThread(this::rebuild);
-                        }, "ox-mcp-ui-refresh").start();
-                    }
-                    rebuild();
-                });
-                cell.setOnLongClickListener(v -> {
-                    showServerMenu(s);
-                    return true;
-                });
-                group.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+                items.add(SettingsActivity.SettingCell.Factory.of(SERVER_BASE + i, 0xFF1CA5ED, 0xFF1488E1,
+                        R.drawable.msg_link, s.name, s.url, value));
             }
-            listContainer.addView(group, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-
-            TextView hint = new TextView(context);
-            hint.setText(LocaleController.getString(R.string.OxMcpToggleHint));
-            hint.setTextSize(12);
-            hint.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-            hint.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(8), AndroidUtilities.dp(21), 0);
-            listContainer.addView(hint, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            items.add(UItem.asShadow(LocaleController.getString(R.string.OxMcpToggleHint)));
         }
 
-        LinearLayout addGroup = new LinearLayout(context);
-        addGroup.setOrientation(LinearLayout.VERTICAL);
-        addGroup.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
-        TextSettingsCell add = new TextSettingsCell(context);
-        add.setText("＋ " + LocaleController.getString(R.string.OxMcpAdd), false);
-        add.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
-        add.setOnClickListener(v -> showAddDialog());
-        addGroup.addView(add, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        LinearLayout.LayoutParams lp = LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0);
-        listContainer.addView(addGroup, lp);
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_ADD, 0, 0,
+                0, "＋ " + LocaleController.getString(R.string.OxMcpAdd)));
+        items.add(UItem.asShadow(null));
+    }
+
+    private void onClick(UItem item, View view, int position, float x, float y) {
+        if (item.id == ID_MARKET) {
+            presentFragment(new OxMcpMarketActivity());
+        } else if (item.id == ID_ADD) {
+            showAddDialog();
+        } else if (item.id >= SERVER_BASE) {
+            int index = item.id - SERVER_BASE;
+            List<OxMcpManager.McpServer> servers = OxMcpManager.getServers();
+            if (index >= 0 && index < servers.size()) {
+                OxMcpManager.McpServer s = servers.get(index);
+                s.enabled = !s.enabled;
+                OxMcpManager.saveServer(s);
+                if (s.enabled) refreshNow(s);
+                rebuild();
+            }
+        }
+    }
+
+    private boolean onLongClick(UItem item, View view, int position, float x, float y) {
+        if (item.id >= SERVER_BASE) {
+            int index = item.id - SERVER_BASE;
+            List<OxMcpManager.McpServer> servers = OxMcpManager.getServers();
+            if (index >= 0 && index < servers.size()) {
+                showServerMenu(servers.get(index));
+                return true;
+            }
+        }
+        return false;
     }
 
     private void showServerMenu(OxMcpManager.McpServer s) {
         if (getParentActivity() == null) return;
-        java.util.ArrayList<CharSequence> items = new java.util.ArrayList<>();
-        java.util.ArrayList<Runnable> actions = new java.util.ArrayList<>();
+        ArrayList<CharSequence> items = new ArrayList<>();
+        ArrayList<Runnable> actions = new ArrayList<>();
         items.add(LocaleController.getString(R.string.OxMcpRefresh));
         actions.add(() -> refreshNow(s));
         items.add(LocaleController.getString(R.string.Delete));
@@ -268,6 +213,10 @@ public class OxMcpActivity extends BaseFragment {
         });
         builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
         builder.show();
+    }
+
+    private void rebuild() {
+        if (listView != null) listView.adapter.update(true);
     }
 
     private void toast(String s) {

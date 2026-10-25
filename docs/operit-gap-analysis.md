@@ -55,3 +55,37 @@ not feature-count parity.
   advanced parameters collapsed, MCP page, container page.
 - Safety is explicit: destructive mode switches require confirmation; every tool
   can be denied; memory/workspace are per-agent and never leave the device.
+
+
+## 0.8.21 deep-use pass (2026-10-25)
+
+This pass used Operit's actual screens/source as the reference and closed several
+gaps that were previously listed as "gap":
+
+| Area | Operit behavior studied | Now in OrionekoX |
+| --- | --- | --- |
+| Settings visual language | every settings page uses the stock Telegram list, 28dp tinted icons, title + subtitle, blue value, grouped cards, shadow/info rows | Ox settings, Proxy & VPN, Terminal settings and Skills all use `UniversalRecyclerView` + `SettingsActivity.SettingCell`, native switches/radio rows and native section headers |
+| Network | proxy and VPN are configured in one settings surface | one `代理与 VPN` page with proxy switch/server/port/type and VPN switch/node list/add inline; chat-list overflow "代理与 VPN" opens the same page |
+| Terminal sessions | Operit terminal has browser-like tabs, and a terminal can be assigned to an agent | TTY 1/2/3 are direct-click tabs (no cycling); long-press a tab to assign an agent; the tab shows `TTY 2 · QA2` and the assignment persists |
+| Skills | Operit `Download/Operit/skills/<id>/SKILL.md`, list/read/execute | read-only skill library (`技能库`), scans Operit/Operit2 skill folders; agents get `list_skills` / `read_skill` tools |
+| MCP ecosystem | Operit MCP catalogue, local stdio plugins, install/refresh | catalogue + one-tap remote HTTP install (DeepWiki/Context7); local stdio entries are browsable with copyable config |
+| Agent in groups | Operit characters participate in group chats | agents can be added to a normal Telegram basic group locally; participant list, member count, group header and in-group reply bubbles work |
+| Local premium | paid appearance features | local premium already makes `UserConfig.isPremium()` true; resale gift appearance now applies locally with a "使用 · 本地会员已解锁" action instead of the server payment flow |
+| Branding / polish | — | chat header and Stories wordmark are OrionekoX; theme menu says 日间模式/夜间模式; bottom labels are equal-width and centred |
+
+### Still missing, in priority order
+
+1. **Android UI automation** — `ui_dump`, `tap`, `swipe`, `screenshot`, `key_event`
+   behind ask-by-default policies. Permissions already exist; this is still the
+   highest-value Operit difference.
+2. **Executable ToolPkg / JS/Wasm packages** — skills are readable now; executing
+   package code needs a sandbox/runtime.
+3. **Local stdio MCP runtime** — Operit's catalogue is mostly Python/Node/npx.
+   Needs an installed OxLinux rootfs (or bundled runtime) plus a stdio JSON-RPC
+   bridge. Remote MCP already works.
+4. **Workflows / scheduled tasks** — background scheduler, battery budget, and
+   tool runs that survive process death.
+5. **Browser/OCR/voice** — WebView/accessibility automation, ML Kit OCR, and
+   on-device STT/TTS.
+6. **Full Operit skill execution semantics** — Operit skills can carry scripts and
+   per-skill permissions; ours are documentation-only for now.

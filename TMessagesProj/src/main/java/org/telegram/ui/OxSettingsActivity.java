@@ -5,14 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.provider.Settings;
+import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BuildVars;
@@ -27,12 +23,32 @@ import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.UItem;
+import org.telegram.ui.Components.UniversalAdapter;
+import org.telegram.ui.Components.UniversalRecyclerView;
 
-/** Ox settings, built from the same cells as Telegram's own settings pages. */
+import java.util.ArrayList;
+
+/** Ox settings, built on Telegram's stock UniversalRecyclerView + SettingCell. */
 @SuppressLint("ViewConstructor")
 public class OxSettingsActivity extends BaseFragment {
+
+    private static final int ID_LANGUAGE = 101;
+    private static final int ID_PREMIUM = 102;
+    private static final int ID_ONBOARDING = 103;
+    private static final int ID_LICENSE = 104;
+    private static final int ID_AGENTS = 105;
+    private static final int ID_MCP = 106;
+    private static final int ID_IMPORT = 107;
+    private static final int ID_TOOLS = 108;
+    private static final int ID_CONTAINER = 109;
+    private static final int ID_TERMINAL_SETTINGS = 110;
+    private static final int ID_TERMINAL_OPEN = 111;
+    private static final int ID_REPOSITORY = 112;
+    private static final int ID_SKILLS = 113;
+
+    private UniversalRecyclerView listView;
 
     @Override
     public View createView(Context context) {
@@ -48,92 +64,123 @@ public class OxSettingsActivity extends BaseFragment {
 
         FrameLayout root = new FrameLayout(context);
         root.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
-        ScrollView scroll = new ScrollView(context);
-        scroll.setFillViewport(true);
-        LinearLayout content = new LinearLayout(context);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(0, 0, 0, AndroidUtilities.dp(24));
-        scroll.addView(content, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(scroll, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        listView = new UniversalRecyclerView(this, this::fillItems, this::onClick, this::onLongClick);
+        listView.adapter.setApplyBackground(false);
+        listView.setSections();
+        listView.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(12));
+        listView.setClipToPadding(false);
+        root.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL));
         fragmentView = root;
+        return root;
+    }
 
-        content.addView(header(context, LocaleController.getString(R.string.OxSettingsSectionMode)));
-        LinearLayout modeGroup = group(context);
-        modeGroup.addView(cell(context, LocaleController.getString(R.string.OxSettingsModeLabel), currentMode(), true), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        modeGroup.addView(cell(context, LocaleController.getString(R.string.OxSettingsLanguage), currentLanguage(), true, v ->
-                presentFragment(new LanguageSelectActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        content.addView(modeGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
+        items.add(UItem.asHeader(LocaleController.getString(R.string.OxSettingsSectionMode)));
+        items.add(SettingsActivity.SettingCell.Factory.of(0, 0xFF419FD9, 0xFF2B7CB8,
+                R.drawable.settings_account, currentMode()));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_LANGUAGE, 0xFF9C6ADE, 0xFF7B4FD1,
+                R.drawable.settings_language, LocaleController.getString(R.string.OxSettingsLanguage), null, currentLanguage()));
+        items.add(UItem.asShadow(null));
 
-        content.addView(header(context, LocaleController.getString(R.string.OxLocalPremium)));
-        LinearLayout premiumGroup = group(context);
-        final String enabled = LocaleController.getString(R.string.OxSettingsEnabled);
-        final String disabled = LocaleController.getString(R.string.OxSettingsDisabled);
-        TextSettingsCell premiumCell = cell(context, LocaleController.getString(R.string.OxLocalPremium),
-                OxMode.isLocalPremium() ? enabled : disabled, false, null);
-        premiumCell.setOnClickListener(v -> {
-            OxMode.setLocalPremium(!OxMode.isLocalPremium());
-            premiumCell.setTextAndValue(LocaleController.getString(R.string.OxLocalPremium),
-                    OxMode.isLocalPremium() ? enabled : disabled, false);
-        });
-        premiumGroup.addView(premiumCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        content.addView(premiumGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        items.add(UItem.asHeader(LocaleController.getString(R.string.OxLocalPremium)));
+        items.add(UItem.asCheck(ID_PREMIUM, LocaleController.getString(R.string.OxLocalPremium)).setChecked(OxMode.isLocalPremium()));
+        items.add(UItem.asShadow(LocaleController.getString(R.string.OxLocalPremiumInfo)));
 
-        TextView premiumInfo = new TextView(context);
-        premiumInfo.setText(LocaleController.getString(R.string.OxLocalPremiumInfo));
-        premiumInfo.setTextSize(13);
-        premiumInfo.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        premiumInfo.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(8), AndroidUtilities.dp(21), AndroidUtilities.dp(10));
-        content.addView(premiumInfo, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        items.add(UItem.asHeader(LocaleController.getString(R.string.OxSettingsSectionGuide)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_ONBOARDING, 0xFFE8A33D, 0xFFD98A1F,
+                R.drawable.settings_ask, LocaleController.getString(R.string.OxSettingsRerun)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_LICENSE, 0xFF55CA47, 0xFF27B434,
+                R.drawable.settings_policy, LocaleController.getString(R.string.OxSettingsLicense), null, "GPL-2.0"));
+        items.add(UItem.asShadow(null));
 
-        content.addView(header(context, LocaleController.getString(R.string.OxSettingsSectionGuide)));
-        LinearLayout guideGroup = group(context);
-        guideGroup.addView(cell(context, LocaleController.getString(R.string.OxSettingsRerun), "", true, v ->
-                presentFragment(new OxOnboardingActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        guideGroup.addView(cell(context, LocaleController.getString(R.string.OxSettingsLicense), "GPL-2.0", true, v ->
-                open("https://github.com/BlanCatOra/OrionekoX/blob/HEAD/docs/LICENSING.md")), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        content.addView(guideGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        items.add(UItem.asHeader(LocaleController.getString(R.string.OxSettingsSectionAgents)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_AGENTS, 0xFF7C5CFF, 0xFF5B3FE0,
+                R.drawable.filled_bot_approve_24, LocaleController.getString(R.string.OxAgents),
+                LocaleController.getString(R.string.OxAgentSettingsEntryInfo)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_MCP, 0xFF1CA5ED, 0xFF1488E1,
+                R.drawable.msg_link, LocaleController.getString(R.string.OxMcp)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_IMPORT, 0xFF55CA47, 0xFF27B434,
+                R.drawable.settings_data, LocaleController.getString(R.string.OxImportOperit)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_TOOLS, 0xFFE8A33D, 0xFFD98A1F,
+                R.drawable.settings_privacy, LocaleController.getString(R.string.OxToolsTitle)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_SKILLS, 0xFF55CA47, 0xFF27B434,
+                R.drawable.settings_folders, LocaleController.getString(R.string.OxSkillsTitle)));
+        items.add(UItem.asShadow(null));
 
-        content.addView(header(context, LocaleController.getString(R.string.OxSettingsSectionAgents)));
-        LinearLayout agentGroup = group(context);
-        agentGroup.addView(cell(context, LocaleController.getString(R.string.OxAgents), "", true, v ->
-                presentFragment(new OxAgentsActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        agentGroup.addView(cell(context, LocaleController.getString(R.string.OxMcp), "", true, v ->
-                presentFragment(new OxMcpActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        agentGroup.addView(cell(context, LocaleController.getString(R.string.OxImportOperit),
-                "", true, v -> startOperitImport()),
-                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        agentGroup.addView(cell(context, LocaleController.getString(R.string.OxToolsTitle), "", true, v ->
-                presentFragment(new OxToolsActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        content.addView(agentGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-
-        content.addView(header(context, "OxLinux"));
-        LinearLayout containerGroup = group(context);
-        containerGroup.addView(cell(context, LocaleController.getString(R.string.OxObContainerTitle),
+        items.add(UItem.asHeader("OxLinux"));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_CONTAINER, 0xFF4FC3F7, 0xFF2196D6,
+                R.drawable.settings_devices, LocaleController.getString(R.string.OxObContainerTitle),
+                LocaleController.getString(R.string.OxObContainerEnableSub),
                 OxMode.isContainerEnabled() ? LocaleController.getString(R.string.OxSettingsEnabled)
-                        : LocaleController.getString(R.string.OxSettingsDisabled), true, v -> {
-                    presentFragment(new OxOnboardingActivity().setStartPage(5));
-                }), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        content.addView(containerGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+                        : LocaleController.getString(R.string.OxSettingsDisabled)));
+        items.add(UItem.asShadow(null));
 
-        content.addView(header(context, LocaleController.getString(R.string.OxTerminal)));
-        LinearLayout terminalGroup = group(context);
-        terminalGroup.addView(cell(context, LocaleController.getString(R.string.OxTerminalSettings), "", true, v ->
-                presentFragment(new OxTerminalSettingsActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        terminalGroup.addView(cell(context, LocaleController.getString(R.string.OxTerminalOpen), "", false, v -> {
-            Bundle args = new Bundle();
-            args.putBoolean("presented", true);
-            presentFragment(new OxTerminalActivity(args));
-        }), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        content.addView(terminalGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        items.add(UItem.asHeader(LocaleController.getString(R.string.OxTerminal)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_TERMINAL_SETTINGS, 0, 0,
+                0, LocaleController.getString(R.string.OxTerminalSettings),
+                LocaleController.getString(R.string.OxTerminalSettingsInfo)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_TERMINAL_OPEN, 0xFF2E9E5B, 0xFF1E7A43,
+                R.drawable.ox_terminal_24, LocaleController.getString(R.string.OxTerminalOpen)));
+        items.add(UItem.asShadow(null));
 
-        content.addView(header(context, LocaleController.getString(R.string.OxSettingsSectionAbout)));
-        LinearLayout about = group(context);
-        about.addView(cell(context, LocaleController.getString(R.string.OxSettingsVersion), BuildVars.BUILD_VERSION_STRING, true), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        about.addView(cell(context, LocaleController.getString(R.string.OxSettingsRepository), "BlanCatOra/OrionekoX", true, v ->
-                open("https://github.com/BlanCatOra/OrionekoX")), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        content.addView(about, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        items.add(UItem.asHeader(LocaleController.getString(R.string.OxSettingsSectionAbout)));
+        items.add(SettingsActivity.SettingCell.Factory.of(0, 0, 0, 0,
+                LocaleController.getString(R.string.OxSettingsVersion), null, BuildVars.BUILD_VERSION_STRING));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_REPOSITORY, 0, 0,
+                0, LocaleController.getString(R.string.OxSettingsRepository), null, "BlanCatOra/OrionekoX"));
+        items.add(UItem.asShadow(null));
+    }
 
-        return fragmentView;
+    private void onClick(UItem item, View view, int position, float x, float y) {
+        switch (item.id) {
+            case ID_LANGUAGE:
+                presentFragment(new LanguageSelectActivity());
+                break;
+            case ID_PREMIUM:
+                OxMode.setLocalPremium(!OxMode.isLocalPremium());
+                if (listView != null) listView.adapter.update(true);
+                break;
+            case ID_ONBOARDING:
+                presentFragment(new OxOnboardingActivity());
+                break;
+            case ID_LICENSE:
+                open("https://github.com/BlanCatOra/OrionekoX/blob/HEAD/docs/LICENSING.md");
+                break;
+            case ID_AGENTS:
+                presentFragment(new OxAgentsActivity());
+                break;
+            case ID_MCP:
+                presentFragment(new OxMcpActivity());
+                break;
+            case ID_IMPORT:
+                startOperitImport();
+                break;
+            case ID_TOOLS:
+                presentFragment(new OxToolsActivity());
+                break;
+            case ID_SKILLS:
+                presentFragment(new OxSkillsActivity());
+                break;
+            case ID_CONTAINER:
+                presentFragment(new OxOnboardingActivity().setStartPage(5));
+                break;
+            case ID_TERMINAL_SETTINGS:
+                presentFragment(new OxTerminalSettingsActivity());
+                break;
+            case ID_TERMINAL_OPEN: {
+                Bundle args = new Bundle();
+                args.putBoolean("presented", true);
+                presentFragment(new OxTerminalActivity(args));
+                break;
+            }
+            case ID_REPOSITORY:
+                open("https://github.com/BlanCatOra/OrionekoX");
+                break;
+        }
+    }
+
+    private boolean onLongClick(UItem item, View view, int position, float x, float y) {
+        return false;
     }
 
     private String currentMode() {
@@ -151,35 +198,6 @@ public class OxSettingsActivity extends BaseFragment {
         return info == null ? "" : info.name;
     }
 
-    private TextView header(Context context, String text) {
-        TextView tv = new TextView(context);
-        tv.setText(text);
-        tv.setTextSize(13);
-        tv.setTypeface(AndroidUtilities.bold());
-        tv.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        tv.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(14), AndroidUtilities.dp(21), AndroidUtilities.dp(5));
-        return tv;
-    }
-
-    private LinearLayout group(Context context) {
-        LinearLayout l = new LinearLayout(context);
-        l.setOrientation(LinearLayout.VERTICAL);
-        l.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
-        return l;
-    }
-
-    private TextSettingsCell cell(Context context, String text, String value, boolean divider) {
-        TextSettingsCell cell = new TextSettingsCell(context);
-        cell.setTextAndValue(text, value, divider);
-        return cell;
-    }
-
-    private TextSettingsCell cell(Context context, String text, String value, boolean divider, View.OnClickListener onClick) {
-        TextSettingsCell cell = cell(context, text, value, divider);
-        cell.setOnClickListener(onClick);
-        return cell;
-    }
-
     private void open(String url) {
         if (getParentActivity() == null) return;
         try {
@@ -187,6 +205,7 @@ public class OxSettingsActivity extends BaseFragment {
         } catch (Throwable ignored) {
         }
     }
+
     private void startOperitImport() {
         if (getParentActivity() == null) return;
         if (!OxOperitImporter.storageReady()) {
@@ -224,5 +243,4 @@ public class OxSettingsActivity extends BaseFragment {
             });
         }, "ox-operit-import").start();
     }
-
 }

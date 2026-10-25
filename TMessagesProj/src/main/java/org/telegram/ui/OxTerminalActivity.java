@@ -23,6 +23,8 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
+import org.telegram.ox.OxAgent;
+import org.telegram.ox.OxAgentStore;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
@@ -33,6 +35,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 
 /**
  * Local terminal with several independent shells ("TTY" sessions). Each shell is
@@ -55,7 +58,8 @@ public class OxTerminalActivity extends BaseFragment {
     private ScrollView scrollView;
     private EditText inputField;
     private TextView statusView;
-    private TextView sessionButton;
+    private LinearLayout tabStrip;
+    private final TextView[] tabViews = new TextView[SESSION_COUNT];
     private LinearLayout inputRow;
     private TextView promptView;
     private TextView sendView;
@@ -161,8 +165,6 @@ public class OxTerminalActivity extends BaseFragment {
         statusView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
         toolbar.addView(statusView, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
 
-        sessionButton = toolbarButton(context, "TTY 1", v -> switchSession((currentSession + 1) % SESSION_COUNT));
-        toolbar.addView(sessionButton);
         android.widget.ImageView keyboard = new android.widget.ImageView(context);
         keyboard.setImageResource(R.drawable.ox_keyboard_24);
         keyboard.setColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
@@ -175,6 +177,26 @@ public class OxTerminalActivity extends BaseFragment {
         TextView restart = toolbarButton(context, LocaleController.getString(R.string.OxTerminalRestart), v -> restartCurrentSession());
         toolbar.addView(restart);
         content.addView(toolbar, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        // Browser-style TTY tabs: tap a tab to switch directly instead of cycling.
+        tabStrip = new LinearLayout(context);
+        tabStrip.setOrientation(LinearLayout.HORIZONTAL);
+        tabStrip.setPadding(0, AndroidUtilities.dp(2), 0, AndroidUtilities.dp(6));
+        for (int i = 0; i < SESSION_COUNT; i++) {
+            final int index = i;
+            TextView tab = new TextView(context);
+            tab.setText("TTY " + (i + 1));
+            tab.setTextSize(12);
+            tab.setTypeface(AndroidUtilities.bold());
+            tab.setGravity(Gravity.CENTER);
+            tab.setPadding(AndroidUtilities.dp(6), 0, AndroidUtilities.dp(6), 0);
+            tab.setOnClickListener(v -> switchSession(index));
+            tab.setOnLongClickListener(v -> { showAssignAgent(index); return true; });
+            tabViews[i] = tab;
+            tabStrip.addView(tab, LayoutHelper.createLinear(0, 34, 1f, 2, 0, 2, 0));
+        }
+        content.addView(tabStrip, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        updateTabStrip();
 
         scrollView = new ScrollView(context);
         scrollView.setFillViewport(true);
@@ -474,9 +496,7 @@ public class OxTerminalActivity extends BaseFragment {
             }
         }
         if (outputView != null) outputView.setText("");
-        if (sessionButton != null) {
-            sessionButton.setText("TTY " + (currentSession + 1));
-        }
+        updateTabStrip();
     }
 
     private void restartCurrentSession() {
@@ -489,13 +509,56 @@ public class OxTerminalActivity extends BaseFragment {
         currentSession = index;
         if (outputView != null) outputView.setText("");
         if (inputField != null) inputField.setText("");
-        if (sessionButton != null) sessionButton.setText("TTY " + (index + 1));
+        updateTabStrip();
         Session session = sessions[index];
         if (session == null || !session.started) {
             startSession(index, true);
         } else {
             if (!session.running) startSession(index, false);
             refreshOutputFromSession();
+        }
+    }
+
+    private void showAssignAgent(int index) {
+        if (getParentActivity() == null) return;
+        java.util.List<OxAgent> agents = OxAgentStore.listAgents();
+        String current = prefs().getString("tty_agent_" + index, "");
+        ArrayList<CharSequence> names = new ArrayList<>();
+        ArrayList<String> ids = new ArrayList<>();
+        for (OxAgent a : agents) {
+            names.add(a.name + (a.id.equals(current) ? " ✓" : ""));
+            ids.add(a.id);
+        }
+        names.add(LocaleController.getString(R.string.OxTerminalUnassign));
+        ids.add("");
+        new org.telegram.ui.ActionBar.AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxTerminalAssignAgent))
+                .setItems(names.toArray(new CharSequence[0]), (d, which) -> {
+                    String id = ids.get(which);
+                    prefs().edit().putString("tty_agent_" + index, id).apply();
+                    updateTabStrip();
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
+    }
+
+    private void updateTabStrip() {
+        if (tabViews[0] == null) return;
+        int selectedBg = getThemedColor(Theme.key_featuredStickers_addButton);
+        int selectedText = getThemedColor(Theme.key_featuredStickers_buttonText);
+        int normalBg = getThemedColor(Theme.key_windowBackgroundWhite);
+        int normalText = getThemedColor(Theme.key_windowBackgroundWhiteBlackText);
+        for (int i = 0; i < SESSION_COUNT; i++) {
+            TextView tab = tabViews[i];
+            if (tab == null) continue;
+            String assigned = prefs().getString("tty_agent_" + i, "");
+            OxAgent agent = assigned == null || assigned.isEmpty() ? null : OxAgentStore.loadAgent(assigned);
+            tab.setText("TTY " + (i + 1) + (agent != null ? " · " + agent.name : ""));
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(AndroidUtilities.dp(9));
+            bg.setColor(i == currentSession ? selectedBg : normalBg);
+            tab.setBackground(bg);
+            tab.setTextColor(i == currentSession ? selectedText : normalText);
         }
     }
 

@@ -562,6 +562,22 @@ public class OxBuiltinTools {
                 return "opened " + url;
             }
         });
+
+        register(new OxTool() {
+            @Override public String name() { return "list_skills"; }
+            @Override public String description() { return "List Operit SKILL.md packages found under Download/Operit/skills and Download/Operit2/skills."; }
+            @Override public String defaultPolicy() { return POLICY_AUTO; }
+            @Override public JSONObject parameters() { return schema(new String[0]); }
+            @Override public String execute(JSONObject args) { return OxSkillStore.listJson(); }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "read_skill"; }
+            @Override public String description() { return "Read one Operit SKILL.md package by its name or folder id."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"name"}); }
+            @Override public String execute(JSONObject args) { return OxSkillStore.read(args.optString("name", "")); }
+        });
     }
 
     private static String oxDialogTitle(org.telegram.messenger.MessagesController mc, org.telegram.tgnet.TLRPC.Dialog d) {
