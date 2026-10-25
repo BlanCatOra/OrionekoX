@@ -372,6 +372,10 @@
     <string name="OxWorkspaceExport">导出到设备</string>
     <string name="OxWorkspaceExported">已导出 %1$s</string>
     <string name="OxWorkspaceExportFailed">导出失败</string>
+    <string name="OxWorkspaceRename">重命名</string>
+    <string name="OxWorkspaceRenamed">已重命名为 %1$s</string>
+    <string name="OxWorkspaceRenameFailed">重命名失败</string>
+    <string name="OxWorkspaceRenameExists">同名文件已存在</string>
     <string name="OxWorkspaceNewHint">文件名，例如 notes/todo.md</string>
     <string name="OxWorkspaceNewContent">初始内容（可选）</string>
     <string name="OxWorkspaceEdit">编辑</string>
