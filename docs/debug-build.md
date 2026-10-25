@@ -6,7 +6,7 @@
 |---|---|---|
 | applicationId | `io.github.blancatora.orionekox` | `io.github.blancatora.orionekox.debug` |
 | 桌面名称 | OrionekoX | OrionekoX Debug |
-| versionName | `0.8.19` | `0.8.19-debug` |
+| versionName | `0.8.20` | `0.8.20-debug` |
 | 构建类型 | `standalone`（R8、资源压缩、release 签名） | `debug`（不混淆、完整日志、同一签名） |
 | 数据目录 | `/data/data/io.github.blancatora.orionekox` | `/data/data/io.github.blancatora.orionekox.debug` |
 

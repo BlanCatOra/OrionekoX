@@ -332,6 +332,9 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         tabsView.addTabToIgnoreClick(tabs[INDEX_PROFILE]);
         tabsView.addTabToIgnoreClick(tabs[INDEX_CALLS]);
         tabsView.addTabToIgnoreClick(tabs[INDEX_TERMINAL]);
+        // Settings is the only tab whose touch is otherwise caught by ClickHelper,
+        // which plays its own click sound on top of the tab's sound.
+        tabsView.addTabToIgnoreClick(tabs[INDEX_SETTINGS]);
 
         for (int index = 0; index < tabs.length; index++) {
             final GlassTabView view = tabs[index];
