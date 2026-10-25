@@ -214,6 +214,10 @@ public class OxAccessibilityService extends AccessibilityService {
     }
 
     public static String findTextScrolled(String query, int maxScrolls, boolean click) {
+        return findTextScrolled(query, maxScrolls, click, false);
+    }
+
+    public static String findTextScrolled(String query, int maxScrolls, boolean click, boolean backward) {
         OxAccessibilityService service = instance;
         if (service == null) return "error: accessibility service is not enabled";
         if (query == null || query.trim().isEmpty()) return "error: text is required";
@@ -271,7 +275,9 @@ public class OxAccessibilityService extends AccessibilityService {
                         out[0] = "not found and no scrollable container: " + query;
                         return;
                     }
-                    scrollable.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
+                    scrollable.performAction(backward
+                            ? AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+                            : AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
                     out[0] = null;
                 } catch (Throwable t) {
                     out[0] = "error: " + t.getMessage();
