@@ -22,7 +22,7 @@ not feature-count parity.
 | ToolPkg / Skills / marketplace | full runtime | MCP market + read-only SKILL.md library + per-agent skill prompt injection | partial (no code execution) |
 | Browser agent / OCR / voice | yes | `ui_ocr` implemented; emulator screenshot works after reboot, OCR model is not installed in the Play Services image | partial |
 | Character cards / group chats | yes | AGENTS.md + .oxagent export + memory editor; local groups with agents now persist outgoing text locally and keep a per-group conversation log for model context (0.8.55–56) | partial |
-| Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/delete/import (SAF, 20 MB cap) | partial (basic text editor, no syntax highlighting) |
+| Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/delete/import/export (SAF, 20 MB import cap) | partial (basic text editor, no syntax highlighting) |
 | Workflows / scheduled tasks | yes | **Ox workflows**: named prompt + agent + interval or daily wall-clock time, AlarmManager + foreground runner, result notification, manual run, pause/delete | **done v1** |
 | Local inference (MNN/llama.cpp) | built-in | external Ollama/LM Studio only | medium gap |
 | Cross-device Space | Operit2 | LAN API agents only | partial |
@@ -298,3 +298,13 @@ of a separate automation graph:
   file with size/time, preview rendered both lines, and deleting it restored the
   empty state and removed the on-disk file. No crashes; no chat or contact data was
   touched.
+
+### 0.8.60 workspace export
+
+- Long-pressing a workspace file now opens a native menu: preview, export to the
+  device, or delete. Export uses SAF `ACTION_CREATE_DOCUMENT` (MIME guessed from the
+  extension, original name as the default) and copies the file on a background
+  thread.
+- Verified by exporting Yuki's `hello.md` (18 B) to Downloads, checking the content
+  (`# Hello from Yuki`), then deleting the exported test copy. The original
+  workspace was untouched and no chat data was involved.
