@@ -129,10 +129,17 @@ public class OxAgentStore {
     }
 
     public static void deleteAgent(String id) {
-        File dir = agentDir(id);
-        File[] files = dir.listFiles();
-        if (files != null) for (File f : files) f.delete();
-        dir.delete();
+        // Agents may carry subdirectories (media/), so remove the whole tree;
+        // otherwise a half-deleted folder survives with no agent.json.
+        deleteRecursive(agentDir(id));
+    }
+
+    private static void deleteRecursive(File f) {
+        File[] children = f.listFiles();
+        if (children != null) {
+            for (File child : children) deleteRecursive(child);
+        }
+        f.delete();
     }
 
     public static List<OxChatEntry> loadChat(String id) {

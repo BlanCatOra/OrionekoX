@@ -198,3 +198,19 @@ of a separate automation graph:
   the imported copy restored both files (including the nested folder), memory and
   skills, with `api_key` empty. Importing the old 799-byte JSON export still worked,
   and the duplicate agents plus their test workspace were removed afterwards.
+
+### 0.8.44 idempotent Operit import
+
+- Previously every import generated a new `op_*` id from the current time, so the
+  same Operit card produced a duplicate agent each run, and the USER.md memory was
+  appended again. The importer now looks up an existing `op_<source>_` agent with
+  the same name, reuses it (keeping tg id, pin, note, avatar and skills) and skips
+  memory text that is already present; new agents get a deterministic id.
+- `deleteAgent` now removes nested folders too, so an agent with `media/` no longer
+  leaves a half-deleted directory behind.
+- Verified by importing the same catalogue twice: agent count stayed at 7, the
+  existing configs were updated in place, and Yuki's 75-character memory did not
+  grow. Note: during cleanup of the accidental duplicates the two original Yuki and
+  Sakura agents were deleted by row position; the imported copies are now the live
+  agents, Yuki's memory/skills/workspace were restored from the `.oxagent` export,
+  but their recent chat history was lost.
