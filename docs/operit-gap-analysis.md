@@ -21,7 +21,7 @@ not feature-count parity.
 | Container/terminal | PRoot Ubuntu, SSH/SFTP, editor | PRoot PoC, blocked by W^X; companion host pending | gap |
 | ToolPkg / Skills / marketplace | full runtime | MCP only | medium gap |
 | Browser agent / OCR / voice | yes | none | medium gap |
-| Character cards / group chats | yes | AGENTS.md + .oxagent export | partial |
+| Character cards / group chats | yes | AGENTS.md + .oxagent export + memory viewer/editor | partial |
 | Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/delete | partial (basic text editor, no syntax highlighting) |
 | Workflows / scheduled tasks | yes | none | medium gap |
 | Local inference (MNN/llama.cpp) | built-in | external Ollama/LM Studio only | medium gap |

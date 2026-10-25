@@ -365,4 +365,10 @@
     <string name="OxWorkspaceSave">保存</string>
     <string name="OxWorkspaceCopyPath">复制路径</string>
     <string name="OxWorkspaceInvalidName">请输入工作区内的相对路径（不能包含 .. 或以 / 开头）。</string>
+    <string name="OxMemory">记忆</string>
+    <string name="OxMemoryInfo">这里保存 remember 工具写入的长期记忆；智能体每轮都会读取。可以直接编辑或清空。</string>
+    <string name="OxMemoryEmpty">还没有记忆。可以让智能体记住一件事。</string>
+    <string name="OxMemoryClear">清空记忆</string>
+    <string name="OxMemoryClearConfirm">删除这个智能体的所有记忆？</string>
+    <string name="OxMemorySaved">记忆已保存</string>
 </resources>
