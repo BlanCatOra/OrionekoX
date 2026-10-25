@@ -6796,7 +6796,7 @@
     <string name="OxAgentTranslatorName">翻译官</string>
     <string name="OxAgents">智能体</string>
     <string name="OxAgentsIntro">智能体完全在你的设备上运行。点按开始对话；长按可编辑、置顶、导出或删除。</string>
-    <string name="OxAgentsOnlyEntry">🤖 使用本地模式</string>
+    <string name="OxAgentsOnlyEntry">🤖 使用 Ox 模式</string>
     <string name="OxDeleteAgentConfirm">删除智能体 %1$s 及其聊天记录？</string>
     <string name="OxEditAgent">编辑设置</string>
     <string name="OxEndpointPresets">端点预设（云端 / 局域网其他设备）</string>
@@ -6845,7 +6845,7 @@
     <string name="OxObContainerVersion">系统版本</string>
     <string name="OxObExit">退出引导</string>
     <string name="OxObExitConfirm">退出并启动</string>
-    <string name="OxObExitText">将以 Ox 本地模式启动。之后可在 Ox 设置中重新运行本引导。</string>
+    <string name="OxObExitText">将以 Ox 模式启动。之后可在 Ox 设置中重新运行本引导。</string>
     <string name="OxObExitTitle">退出引导？</string>
     <string name="OxObLegalAgree">我已阅读并同意上述声明</string>
     <string name="OxObLegalBody">本应用仅面向非中国大陆地区用户提供第三方 Telegram 客户端相关服务。你需要自行遵守所在地区的法律法规以及 Telegram 的服务条款。\n\n开发者不对 Agent、工具、容器、VPN 或任何第三方服务可能造成的资料丢失、数据损坏、隐私信息泄露及其他损害承担责任，请自行评估风险后使用。</string>
@@ -6894,7 +6894,7 @@
     <string name="OxObSwitchLogin">切换到 Telegram</string>
     <string name="OxObSwitchOx">切换到 Ox 模式</string>
     <string name="OxObSwitchTitle">切换模式？</string>
-    <string name="OxObSwitchWarnLogin">登录后会退出 Ox 本地模式并清除本地聊天数据库，Agent 配置会保留。</string>
+    <string name="OxObSwitchWarnLogin">登录后会退出 Ox 模式并清除本地聊天数据库，Agent 配置会保留。</string>
     <string name="OxObSwitchWarnOx">切换到 Ox 模式会退出当前 Telegram 账号并清除该账号的本地数据，此操作不可撤销。</string>
     <string name="OxPinAgent">置顶</string>
     <string name="OxSettingsDisabled">未启用</string>
@@ -6944,7 +6944,7 @@
     <string name="OxToolsPolicyDeny">禁止</string>
     <string name="OxToolsTitle">工具与权限</string>
     <string name="OxUnpinAgent">取消置顶</string>
-    <string name="OxUseLocalMode">使用本地模式</string>
+    <string name="OxUseLocalMode">使用 Ox 模式</string>
     <string name="OxVpnKeepAlive">后台保活</string>
     <string name="OxVpnKeepAliveInfo">将应用加入电池优化白名单，并每分钟发送一个极小的保活数据包，让 VPN 隧道在后台持续存活、进程被杀后自动恢复连接。</string>
     <string name="P2PContacts">我的联系人</string>

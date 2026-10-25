@@ -1,6 +1,6 @@
 # QA report — OrionekoX 0.8.4
 
-Environment: Android emulator API 34, 1080×2400, Chinese UI, Ox local mode.
+Environment: Android emulator API 34, 1080×2400, Chinese UI, Ox mode.
 Package `io.github.blancatora.orionekox`, versionCode 19.
 
 ## Coverage matrix

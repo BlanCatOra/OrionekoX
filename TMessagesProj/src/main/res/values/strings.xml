@@ -11603,7 +11603,7 @@
     <string name="OxAgentImported">Imported agent %1$s</string>
     <string name="OxAgentImportFailed">Import failed: not a valid .oxagent file</string>
     <string name="OxAgentExported">Exported %1$s (API key is not included)</string>
-    <string name="OxAgentsOnlyEntry">🤖 Use local mode</string>
+    <string name="OxAgentsOnlyEntry">🤖 Use Ox mode</string>
     <string name="OxMcp">MCP Servers</string>
     <string name="OxMcpIntro">Remote MCP servers (same transport as the Operit/Operit2 plugin ecosystem). Tools provided by enabled servers join the agent tool set automatically, behind the same permission gate.</string>
     <string name="OxMcpEmpty">No servers yet. Add one - e.g. a remote MCP endpoint from the Operit plugin market.</string>
@@ -11694,14 +11694,14 @@
     <string name="OxObPermRootHint">ROOT must be granted by your system. Ox never escalates privileges by itself.</string>
     <string name="OxObExit">Exit guide</string>
     <string name="OxObExitTitle">Exit the guide?</string>
-    <string name="OxObExitText">OrionekoX will start in Ox local mode. You can run this guide again from Ox Settings.</string>
+    <string name="OxObExitText">OrionekoX will start in Ox mode. You can run this guide again from Ox Settings.</string>
     <string name="OxObExitConfirm">Exit and start</string>
     <string name="OxObSkipStep">Skip step</string>
     <string name="OxObStartLogin">Sign in to Telegram</string>
     <string name="OxObSwitchTitle">Switch mode?</string>
     <string name="OxObSwitchLogin">Switch to Telegram</string>
     <string name="OxObSwitchOx">Switch to Ox mode</string>
-    <string name="OxObSwitchWarnLogin">Signing in will exit Ox local mode and remove the local chat database. Agent configurations are kept.</string>
+    <string name="OxObSwitchWarnLogin">Signing in will exit Ox mode and remove the local chat database. Agent configurations are kept.</string>
     <string name="OxObSwitchWarnOx">Switching to Ox mode will sign out of your Telegram account and clear this account\'s local data. This cannot be undone.</string>
     <string name="OxAgentNewTitle">New agent</string>
     <string name="OxAgentSectionBasic">Profile</string>
@@ -11805,5 +11805,5 @@
     <string name="OxToolDescNotify">Show a device toast.</string>
     <string name="OxToolDescOpenUrl">Open a link in the browser.</string>
     <string name="OxLoginTimeout">Could not reach Telegram. Check your network or proxy and try again.</string>
-    <string name="OxUseLocalMode">Use local mode</string>
+    <string name="OxUseLocalMode">Use Ox mode</string>
 </resources>
