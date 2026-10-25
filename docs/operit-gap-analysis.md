@@ -26,7 +26,7 @@ not feature-count parity.
 | Workflows / scheduled tasks | yes | **Ox workflows**: named prompt + agent + interval or daily wall-clock time, AlarmManager + foreground runner, result notification, manual run, pause/delete | **done v1** |
 | Local inference (MNN/llama.cpp) | built-in | external Ollama/LM Studio only | medium gap |
 | Cross-device Space | Operit2 | LAN API agents only | partial |
-| Backup / migration | snapshot export/restore | .oxagent per agent includes memory + skills; export/import round-trip verified | partial (workspace files not included) |
+| Backup / migration | snapshot export/restore | .oxagent per agent: plain JSON when there is no workspace, zip with agent.json + workspace files otherwise; export/import round-trip verified for memory, skills and nested workspace files | parity for single agents |
 
 ## Does the user need it?
 
@@ -186,3 +186,15 @@ of a separate automation graph:
   `10-26 04:34 · 成功 · workflow ok`, and the detail dialog showed the full text.
   History is independent from `last_result`, so editing the agent or prompt does
   not erase past runs.
+
+### 0.8.43 .oxagent with workspace files
+
+- Export switches to a zip only when the agent has workspace files: `agent.json`
+  plus `workspace/...` entries; agents without files keep the legacy plain-JSON
+  format. Limits are 200 files, 8 MB per file and 32 MB total.
+- Import detects both formats, creates the agent first (with an `imp*` id on a
+  collision), then restores workspace entries through the path-checked resolver.
+- Verified: Yuki's export contained `agent.json`, `hello.md` and `notes/note.txt`;
+  the imported copy restored both files (including the nested folder), memory and
+  skills, with `api_key` empty. Importing the old 799-byte JSON export still worked,
+  and the duplicate agents plus their test workspace were removed afterwards.

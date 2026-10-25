@@ -6736,6 +6736,7 @@
     <string name="OxAgentEndpointLabel">接口地址</string>
     <string name="OxAgentExpand">展开</string>
     <string name="OxAgentExported">已导出 %1$s（不包含 API 密钥）</string>
+    <string name="OxAgentExportedFiles">已导出 %1$s（含 %2$d 个工作区文件，不含 API 密钥）</string>
     <string name="OxAgentExtraBody">额外请求体（JSON）</string>
     <string name="OxAgentFetchModels">从 API 获取模型列表</string>
     <string name="OxAgentFetching">获取中…</string>
@@ -6750,6 +6751,7 @@
     <string name="OxAgentHeaders">自定义请求头</string>
     <string name="OxAgentImportFailed">导入失败：不是有效的 .oxagent 文件</string>
     <string name="OxAgentImported">已导入智能体 %1$s</string>
+    <string name="OxAgentImportedFiles">已导入智能体 %1$s（含 %2$d 个工作区文件）</string>
     <string name="OxAgentInListStatus">本地智能体 · 点击对话</string>
     <string name="OxAgentInputHint">给智能体发消息…</string>
     <string name="OxAgentInvalidJson">额外请求体不是合法的 JSON。</string>
