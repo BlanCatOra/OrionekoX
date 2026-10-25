@@ -205,6 +205,18 @@ public class OxAgentStore {
         }
     }
 
+    public static synchronized void saveMemory(String id, String content) {
+        try {
+            File dir = agentDir(id);
+            dir.mkdirs();
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(memoryFile(id))) {
+                out.write((content == null ? "" : content).getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (Exception e) {
+            FileLog.e(TAG, e);
+        }
+    }
+
     public static synchronized String searchMemory(String id, String query, int maxResults) {
         try {
             File f = memoryFile(id);

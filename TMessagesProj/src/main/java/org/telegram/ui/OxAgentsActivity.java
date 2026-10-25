@@ -279,6 +279,8 @@ public class OxAgentsActivity extends BaseFragment {
         });
         items.add(LocaleController.getString(R.string.OxEditAgent));
         actions.add(() -> presentFragment(new OxAgentProfileActivity(agent.id)));
+        items.add(LocaleController.getString(R.string.OxMemory));
+        actions.add(() -> presentFragment(new OxAgentMemoryActivity(agent.id)));
         items.add(LocaleController.getString(R.string.OxExportAgent));
         actions.add(() -> exportOxAgent(agent));
         if (!agent.builtIn) {

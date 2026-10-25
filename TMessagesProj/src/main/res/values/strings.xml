@@ -11913,4 +11913,10 @@
     <string name="OxWorkspaceSave">Save</string>
     <string name="OxWorkspaceCopyPath">Copy path</string>
     <string name="OxWorkspaceInvalidName">Enter a relative path inside the workspace (no &quot;..&quot; or leading slash).</string>
+    <string name="OxMemory">Memory</string>
+    <string name="OxMemoryInfo">Lines saved by the remember tool. The agent reads this file in every turn; edit or clear it here.</string>
+    <string name="OxMemoryEmpty">No memories yet. Ask the agent to remember something.</string>
+    <string name="OxMemoryClear">Clear memory</string>
+    <string name="OxMemoryClearConfirm">Delete all memories for this agent?</string>
+    <string name="OxMemorySaved">Memory saved</string>
 </resources>
