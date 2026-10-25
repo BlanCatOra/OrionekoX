@@ -21,7 +21,7 @@ not feature-count parity.
 | Container/terminal | PRoot Ubuntu, SSH/SFTP, editor | PRoot PoC, blocked by W^X; companion host pending | gap |
 | ToolPkg / Skills / marketplace | full runtime | MCP market + read-only SKILL.md library + per-agent skill prompt injection | partial (no code execution) |
 | Browser agent / OCR / voice | yes | `ui_ocr` implemented; emulator screenshot works after reboot, OCR model is not installed in the Play Services image | partial |
-| Character cards / group chats | yes | AGENTS.md + .oxagent export + memory viewer/editor | partial |
+| Character cards / group chats | yes | AGENTS.md + .oxagent export + memory editor; local groups with agents now persist outgoing text locally and keep a per-group conversation log for model context (0.8.55–56) | partial |
 | Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/delete | partial (basic text editor, no syntax highlighting) |
 | Workflows / scheduled tasks | yes | **Ox workflows**: named prompt + agent + interval or daily wall-clock time, AlarmManager + foreground runner, result notification, manual run, pause/delete | **done v1** |
 | Local inference (MNN/llama.cpp) | built-in | external Ollama/LM Studio only | medium gap |
@@ -264,3 +264,22 @@ of a separate automation graph:
   Telegram-side accessibility change; use `ui_dump` and coordinate tools there.
   Regression check: agent-list `ui_long_press_text("Echo Assistant")` still works
   (95 nodes, menu opened).
+
+### 0.8.55–0.8.56 local group sends and history
+
+- A local group (synthetic agents only) used to send user text to the server, so the
+  bubble showed a red failure mark even though the agent answered. `SendMessagesHelper`
+  now routes `peer<0 && OxGroupStore.isLocalGroup(peer)` through
+  `sendLocalGroupText`, which persists the message as sent and triggers the group
+  turn; real groups with agents keep the normal server send.
+- `OxGroupStore` gained `isLocalGroup` and a capped per-group log (40 entries).
+  `groupMessages` includes that log, `startGroupTurn` records the user line, and
+  `finishTurn` writes group replies only to the group log instead of the agent's
+  one-to-one history.
+- Verified: after the send fix, a new group message showed double checks (no red
+  mark) and Yuki replied in the group. The per-group history change is built and
+  installed (0.8.56) but its two-message context test could not be completed: the
+  emulator repeatedly lost `adb` as soon as the group chat opened, in both normal
+  and `-gpu off -no-window` modes, with only SwiftShader/Vulkan warnings and no
+  app FATAL. Treat the history change as **unverified** until a stable device or
+  emulator is available.

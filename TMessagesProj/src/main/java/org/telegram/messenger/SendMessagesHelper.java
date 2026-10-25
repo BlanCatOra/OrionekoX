@@ -4483,6 +4483,13 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         if (org.telegram.ox.OxAgentsBridge.interceptOutgoing(sendMessageParams)) {
             return;
         }
+        // A locally created group has no server counterpart: persist the text as sent
+        // and trigger its agent instead of letting the send fail with a red mark.
+        if (peer < 0 && message != null && !message.trim().isEmpty()
+                && org.telegram.ox.OxGroupStore.isLocalGroup(peer)) {
+            org.telegram.ox.OxAgentsBridge.sendLocalGroupText(peer, message, replyToMsg);
+            return;
+        }
         // A normal group that contains local Ox agents also gets a local answer. The
         // user's message itself still goes through the regular server pipeline.
         if (peer < 0 && message != null && !message.trim().isEmpty()
