@@ -600,6 +600,19 @@ public class OxBuiltinTools {
         });
 
         register(new OxTool() {
+            @Override public String name() { return "ui_long_press"; }
+            @Override public String description() { return "Long-press a screen coordinate in pixels (default 900 ms) using the accessibility gesture API. Requires the accessibility service."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"x", "y", "duration_ms"}); }
+            @Override public String execute(JSONObject args) {
+                int x = intArg(args, "x"), y = intArg(args, "y"), duration = intArg(args, "duration_ms");
+                if (x < 0 || y < 0) return "error: x and y are required";
+                return OxAccessibilityService.longPress(x, y, duration > 0 ? duration : 900)
+                        ? "long-pressed " + x + "," + y : "error: gesture dispatch failed or service disabled";
+            }
+        });
+
+        register(new OxTool() {
             @Override public String name() { return "ui_swipe"; }
             @Override public String description() { return "Swipe from one screen coordinate to another in pixels. Optional duration_ms (50-2000). Requires the accessibility service."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }
@@ -633,6 +646,18 @@ public class OxBuiltinTools {
                 String text = args.optString("text", "").trim();
                 if (text.isEmpty()) return "error: text is required";
                 return OxAccessibilityService.tapText(text);
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "ui_long_press_text"; }
+            @Override public String description() { return "Find visible text or content description and long-press its center (default 900 ms), useful for Telegram context menus. Requires the accessibility service."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"text", "duration_ms"}); }
+            @Override public String execute(JSONObject args) {
+                String text = args.optString("text", "").trim();
+                if (text.isEmpty()) return "error: text is required";
+                return OxAccessibilityService.longPressText(text, intArg(args, "duration_ms"));
             }
         });
 

@@ -152,6 +152,114 @@ public class OxAccessibilityService extends AccessibilityService {
         return null;
     }
 
+    public static boolean longPress(int x, int y, int durationMs) {
+        OxAccessibilityService service = instance;
+        if (service == null) return false;
+        int duration = Math.max(400, Math.min(3000, durationMs));
+        Path path = new Path();
+        path.moveTo(x, y);
+        GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(path, 0, duration);
+        return service.dispatchGesture(new GestureDescription.Builder().addStroke(stroke).build(), null, null);
+    }
+
+    /** Finds visible text and long-presses its center (Telegram rows have no clickable ancestor). */
+    public static String longPressText(String query, int durationMs) {
+        OxAccessibilityService service = instance;
+        if (service == null) return "error: accessibility service is not enabled";
+        if (query == null || query.trim().isEmpty()) return "error: text is required";
+        final String needle = query.trim().toLowerCase();
+        final int duration = Math.max(400, Math.min(3000, durationMs <= 0 ? 900 : durationMs));
+        final String[] result = new String[1];
+        final CountDownLatch latch = new CountDownLatch(1);
+        AndroidUtilities.runOnUIThread(() -> {
+            try {
+                AccessibilityNodeInfo root = service.activeRoot();
+                if (root == null) {
+                    result[0] = "error: no active window";
+                    return;
+                }
+                java.util.ArrayList<AccessibilityNodeInfo> nodes = new java.util.ArrayList<>();
+                collect(root, nodes, 0);
+                java.util.ArrayList<AccessibilityNodeInfo> matches = new java.util.ArrayList<>();
+                try {
+                    java.util.List<AccessibilityNodeInfo> byText =
+                            root.findAccessibilityNodeInfosByText(query.trim());
+                    if (byText != null) {
+                        for (AccessibilityNodeInfo n : byText) {
+                            if (n != null && !matches.contains(n)) matches.add(n);
+                        }
+                    }
+                } catch (Throwable ignored) {
+                }
+                for (int pass = 0; pass < 2; pass++) {
+                    for (AccessibilityNodeInfo node : nodes) {
+                        CharSequence text = node.getText();
+                        CharSequence desc = node.getContentDescription();
+                        String label = text != null && text.length() > 0 ? text.toString()
+                                : (desc != null ? desc.toString() : null);
+                        if (label == null) continue;
+                        String lower = label.toLowerCase();
+                        boolean match = pass == 0 ? lower.equals(needle) : lower.contains(needle);
+                        if (match && !matches.contains(node)) matches.add(node);
+                    }
+                    if (!matches.isEmpty()) break;
+                }
+                StringBuilder lpSample = new StringBuilder();
+                int lpShown = 0;
+                for (AccessibilityNodeInfo n : nodes) {
+                    CharSequence t = n.getText();
+                    CharSequence d = n.getContentDescription();
+                    String l = t != null && t.length() > 0 ? t.toString() : (d != null ? d.toString() : null);
+                    if (l == null || lpShown >= 5) continue;
+                    String low = l.toLowerCase();
+                    if (low.contains("echo") || low.contains("assistant")) {
+                        Rect rr = new Rect();
+                        n.getBoundsInScreen(rr);
+                        lpSample.append(l.replace('\n', ' ')).append('@').append(rr).append(';');
+                        lpShown++;
+                    }
+                }
+                android.util.Log.i("OxA11y", "longPressText rootPkg=" + root.getPackageName()
+                        + " cls=" + root.getClassName() + " nodes=" + nodes.size()
+                        + " matches=" + matches.size() + " sample=" + lpSample);
+                for (AccessibilityNodeInfo match : matches) {
+                    CharSequence text = match.getText();
+                    CharSequence desc = match.getContentDescription();
+                    String label = text != null && text.length() > 0 ? text.toString()
+                            : (desc != null ? desc.toString() : "");
+                    Rect r = new Rect();
+                    match.getBoundsInScreen(r);
+                    int cx = (r.left + r.right) / 2;
+                    int cy = (r.top + r.bottom) / 2;
+                    android.util.Log.i("OxA11y", "lp match=\"" + label.replace('\n', ' ') + "\" bounds=" + r
+                            + " screenH=" + AndroidUtilities.displaySize.y);
+                    if (r.top < 0 || r.bottom > AndroidUtilities.displaySize.y || cx <= 0 || cy <= 0) continue;
+                    AccessibilityNodeInfo clickable = match;
+                    while (clickable != null && !clickable.isClickable()) clickable = clickable.getParent();
+                    if (clickable != null && clickable.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)) {
+                        result[0] = "long-pressed \"" + label + "\" bounds=[" + r.left + "," + r.top + "][" + r.right + "," + r.bottom + "]";
+                        return;
+                    }
+                    if (longPress(cx, cy, duration)) {
+                        result[0] = "long-pressed \"" + label + "\" bounds=[" + r.left + "," + r.top + "][" + r.right + "," + r.bottom + "] (coordinate)";
+                        return;
+                    }
+                }
+                result[0] = "not found or off screen: " + query;
+            } catch (Throwable t) {
+                result[0] = "error: " + t.getMessage();
+            } finally {
+                latch.countDown();
+            }
+        });
+        try {
+            latch.await(8, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return result[0] == null ? "timeout" : result[0];
+    }
+
     public static String tapText(String query) {
         OxAccessibilityService service = instance;
         if (service == null) return "error: accessibility service is not enabled";

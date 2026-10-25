@@ -349,6 +349,8 @@
     <string name="OxToolDescReadSkill">读取一个 Operit SKILL.md 技能包。</string>
     <string name="OxToolDescUiDump">读取当前屏幕的无障碍节点树。</string>
     <string name="OxToolDescUiTap">按屏幕坐标点击。</string>
+    <string name="OxToolDescUiLongPress">按屏幕坐标长按。</string>
+    <string name="OxToolDescUiLongPressText">查找屏幕上的文字并长按。</string>
     <string name="OxToolDescUiSwipe">按屏幕坐标滑动。</string>
     <string name="OxToolDescUiKey">执行返回、主页、最近任务等系统导航。</string>
     <string name="OxToolDescUiScreenshot">截屏并保存为 PNG 文件。</string>
