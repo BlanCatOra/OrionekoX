@@ -10821,7 +10821,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
     @UiThread
     public static void prepareSendingMedia(AccountInstance accountInstance, ArrayList<SendingMediaInfo> media, long dialogId, MessageObject replyToMsg, MessageObject replyToTopMsg, TL_stories.StoryItem storyItem, ChatActivity.ReplyQuote quote, boolean forceDocument, boolean groupMedia, MessageObject editingMessageObject, TLRPC.TL_inputPollAnswer pollToAddOptionMessageObject, boolean notify, int scheduleDate, int scheduleRepeatPeriod, int mode, boolean updateStikcersOrder, InputContentInfoCompat inputContent, SendMessageChatArguments sendMessageChatArguments, long effectId, boolean invertMedia, long payStars, long monoForumPeerId, MessageSuggestionParams suggestionParams, PollSendParams pollSendParams, boolean forcedPollDoNotSendFinal) {
         // OrionekoX: media destined for local agents goes through the bridge (no server round-trip)
-        if (org.telegram.ox.OxMode.isAgentOnly() && org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId) && editingMessageObject == null && storyItem == null) {
+        if (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId) && editingMessageObject == null && storyItem == null) {
             org.telegram.ox.OxAgentsBridge.handleOutgoingMedia(dialogId, media);
             return;
         }

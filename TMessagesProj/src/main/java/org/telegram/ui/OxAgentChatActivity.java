@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -11,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -82,6 +84,7 @@ public class OxAgentChatActivity extends BaseFragment {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(false);
         actionBar.setTitle(agent.emoji + " " + agent.name);
+        actionBar.setSubtitle(LocaleController.getString(R.string.Online));
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
@@ -96,31 +99,43 @@ public class OxAgentChatActivity extends BaseFragment {
         menu.addItem(MENU_SETTINGS, R.drawable.outline_profile_edit_24);
 
         FrameLayout rootLayout = new FrameLayout(context);
+        rootLayout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
 
         chatList = new LinearLayout(context);
         chatList.setOrientation(LinearLayout.VERTICAL);
+        chatList.setPadding(0, AndroidUtilities.dp(6), 0, AndroidUtilities.dp(6));
         scrollView = new ScrollView(context);
         scrollView.setFillViewport(true);
+        scrollView.setClipToPadding(false);
+        scrollView.setPadding(0, 0, 0, AndroidUtilities.dp(74) + Math.max(AndroidUtilities.navigationBarHeight, 0));
         scrollView.addView(chatList, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         rootLayout.addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         LinearLayout bottom = new LinearLayout(context);
         bottom.setOrientation(LinearLayout.HORIZONTAL);
         bottom.setGravity(Gravity.CENTER_VERTICAL);
-        bottom.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+        bottom.setBackgroundColor(Theme.getColor(Theme.key_chat_messagePanelBackground));
+        bottom.setElevation(AndroidUtilities.dp(6));
+        int nav = Math.max(AndroidUtilities.navigationBarHeight, AndroidUtilities.dp(4));
+        bottom.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(6), AndroidUtilities.dp(8), nav);
 
         inputField = new EditText(context);
         inputField.setHint(LocaleController.getString(R.string.OxAgentInputHint));
-        inputField.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-        inputField.setHintTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteHintText));
+        inputField.setTextColor(Theme.getColor(Theme.key_chat_messagePanelText));
+        inputField.setHintTextColor(Theme.getColor(Theme.key_chat_messagePanelHint));
+        inputField.setTextSize(16);
+        inputField.setBackground(null);
+        inputField.setMaxLines(5);
+        inputField.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8), AndroidUtilities.dp(8));
         bottom.addView(inputField, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
 
-        TextView send = new TextView(context);
-        send.setText("➤");
-        send.setTextSize(22);
-        send.setPadding(AndroidUtilities.dp(14), AndroidUtilities.dp(10), AndroidUtilities.dp(14), AndroidUtilities.dp(10));
+        ImageView send = new ImageView(context);
+        send.setImageResource(R.drawable.ic_send);
+        send.setColorFilter(Theme.getColor(Theme.key_chat_messagePanelSend));
+        send.setContentDescription(LocaleController.getString(R.string.Send));
+        send.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12));
         send.setOnClickListener(v -> onSend());
-        bottom.addView(send);
+        bottom.addView(send, LayoutHelper.createLinear(48, 48, Gravity.CENTER_VERTICAL));
 
         rootLayout.addView(bottom, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM, 0, 0, 0, 0));
         fragmentView = rootLayout;
@@ -194,6 +209,7 @@ public class OxAgentChatActivity extends BaseFragment {
             finishTurn(userText, "⚠ 工具调用轮数达上限（" + MAX_TOOL_ROUNDS + "）", acc);
             return;
         }
+        actionBar.setSubtitle(LocaleController.getString(R.string.Typing));
         final TextView bubble = addBubble("assistant", "…");
         OxModelHub.completeRound(agent, messages, true, new OxModelHub.RoundCallback() {
             @Override
@@ -343,6 +359,7 @@ public class OxAgentChatActivity extends BaseFragment {
 
     private void finishTurn(String userText, String reply, List<OxChatEntry> toolAcc) {
         generating = false;
+        if (actionBar != null) actionBar.setSubtitle(LocaleController.getString(R.string.Online));
         List<OxChatEntry> chat = OxAgentStore.loadChat(agentId);
         if (chat.isEmpty()) chat = new ArrayList<>();
         chat.add(new OxChatEntry("user", userText, System.currentTimeMillis()));
@@ -366,39 +383,73 @@ public class OxAgentChatActivity extends BaseFragment {
         Context context = chatList.getContext();
         boolean mine = "user".equals(role);
 
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(mine ? Gravity.END : Gravity.START);
+        row.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(3), AndroidUtilities.dp(8), AndroidUtilities.dp(3));
+
+        if (!mine) {
+            TextView avatar = new TextView(context);
+            avatar.setText(agent.emoji == null ? "🤖" : agent.emoji);
+            avatar.setTextSize(15);
+            avatar.setGravity(Gravity.CENTER);
+            GradientDrawable ab = new GradientDrawable();
+            ab.setShape(GradientDrawable.OVAL);
+            ab.setColor(Theme.getColor(Theme.key_chat_inBubble));
+            avatar.setBackground(ab);
+            row.addView(avatar, LayoutHelper.createLinear(28, 28, Gravity.TOP, 0, 2, 6, 0));
+        }
+
+        LinearLayout bubbleCol = new LinearLayout(context);
+        bubbleCol.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(AndroidUtilities.dp(16));
+        bg.setColor(mine ? Theme.getColor(Theme.key_chat_outBubble) : Theme.getColor(Theme.key_chat_inBubble));
+        bubbleCol.setBackground(bg);
+        bubbleCol.setElevation(AndroidUtilities.dp(1));
+        bubbleCol.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(7), AndroidUtilities.dp(12), AndroidUtilities.dp(5));
+
         TextView bubble = new TextView(context);
         bubble.setText(text);
         bubble.setTextSize(16);
         bubble.setTag(text);
-        bubble.setTextColor(mine ? Color.WHITE : Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        bubble.setLineSpacing(AndroidUtilities.dp(2), 1f);
+        bubble.setTextColor(Theme.getColor(mine ? Theme.key_chat_messageTextOut : Theme.key_chat_messageTextIn));
+        bubbleCol.addView(bubble, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT));
 
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(AndroidUtilities.dp(14));
-        bg.setColor(mine ? Theme.getColor(Theme.key_chat_outBubble) : Theme.getColor(Theme.key_chat_inBubble));
-        bubble.setBackground(bg);
+        TextView time = new TextView(context);
+        time.setText(new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(new java.util.Date()));
+        time.setTextSize(11);
+        time.setGravity(Gravity.END);
+        time.setTextColor(Theme.getColor(mine ? Theme.key_chat_outTimeText : Theme.key_chat_inTimeText));
+        time.setPadding(0, AndroidUtilities.dp(2), 0, 0);
+        bubbleCol.addView(time, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
-        int pad = AndroidUtilities.dp(12);
-        bubble.setPadding(pad, pad / 2 + AndroidUtilities.dp(4), pad, pad / 2 + AndroidUtilities.dp(4));
-
-        LinearLayout row = new LinearLayout(context);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(mine ? Gravity.END : Gravity.START);
-        row.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(4), AndroidUtilities.dp(10), AndroidUtilities.dp(4));
-        row.addView(bubble, new LinearLayout.LayoutParams(Math.min(AndroidUtilities.displaySize.x - AndroidUtilities.dp(120), ViewGroup.LayoutParams.WRAP_CONTENT), ViewGroup.LayoutParams.WRAP_CONTENT));
-
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                Math.min(AndroidUtilities.displaySize.x - AndroidUtilities.dp(96), ViewGroup.LayoutParams.WRAP_CONTENT),
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        row.addView(bubbleCol, lp);
         chatList.addView(row);
         return bubble;
     }
 
     private void addToolBubble(String text, boolean result) {
         Context context = chatList.getContext();
+        LinearLayout row = new LinearLayout(context);
+        row.setGravity(Gravity.CENTER_HORIZONTAL);
+        row.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(2), AndroidUtilities.dp(20), AndroidUtilities.dp(2));
         TextView tv = new TextView(context);
         tv.setText(text);
-        tv.setTextSize(13);
+        tv.setTextSize(12);
         tv.setTypeface(Typeface.MONOSPACE);
         tv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
-        tv.setPadding(AndroidUtilities.dp(14), AndroidUtilities.dp(2), AndroidUtilities.dp(14), AndroidUtilities.dp(2));
-        chatList.addView(tv);
+        tv.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(4), AndroidUtilities.dp(10), AndroidUtilities.dp(4));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(AndroidUtilities.dp(10));
+        bg.setColor(Theme.getColor(Theme.key_windowBackgroundGray));
+        tv.setBackground(bg);
+        row.addView(tv);
+        chatList.addView(row);
         scrollToBottom();
     }
 
@@ -484,6 +535,7 @@ public class OxAgentChatActivity extends BaseFragment {
             OxAgentStore.saveAgent(agent);
             if (actionBar != null) {
                 actionBar.setTitle(agent.emoji + " " + agent.name);
+        actionBar.setSubtitle(LocaleController.getString(R.string.Online));
             }
         });
         builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);

@@ -312,7 +312,7 @@ public class OxAgentsBridge {
     // ---------------- outgoing interception (called from SendMessagesHelper) ----------------
 
     public static boolean interceptOutgoing(SendMessagesHelper.SendMessageParams p) {
-        if (!OxMode.isAgentOnly() || p == null || !isAgentDialog(p.peer)) {
+        if (p == null || !isAgentDialog(p.peer)) {
             return false;
         }
         if (p.retryMessageObject != null || p.photo != null || p.document != null || p.location != null
