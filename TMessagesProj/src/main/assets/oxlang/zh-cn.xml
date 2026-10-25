@@ -6804,6 +6804,7 @@
     <string name="OxImportAgent">导入 .oxagent</string>
     <string name="OxLoginTelegram">登录 Telegram</string>
     <string name="OxLoginTelegramText">将退出智能体模式并清除本地账号数据（智能体及其聊天记录）。继续？</string>
+    <string name="OxLoginTimeout">无法连接 Telegram，请检查网络或代理后重试。</string>
     <string name="OxMcp">MCP 服务</string>
     <string name="OxMcpAdd">添加 MCP 服务器</string>
     <string name="OxMcpDisabled">已停用</string>

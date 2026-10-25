@@ -1335,6 +1335,7 @@ public class LocaleController {
         "OxImportAgent",
         "OxLoginTelegram",
         "OxLoginTelegramText",
+        "OxLoginTimeout",
         "OxMcp",
         "OxMcpAdd",
         "OxMcpDisabled",
@@ -1482,7 +1483,7 @@ public class LocaleController {
     private static HashMap<String, String> orionekoForkStringsCache;
     private static String orionekoForkStringsCacheKey;
 
-    private static final int OX_ZH_PACK_VERSION = 7;
+    private static final int OX_ZH_PACK_VERSION = 8;
 
     /** Copies assets/oxlang/zh-cn.xml to files/ox_zh-cn.xml once per pack version. */
     private static File ensureBundledZhPack() {
