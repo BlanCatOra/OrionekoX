@@ -21840,7 +21840,7 @@ public class MessagesController extends BaseController implements NotificationCe
 
     private boolean updatePrintingUsersWithNewMessages(long uid, ArrayList<MessageObject> messages) {
         // OrionekoX: agent typing is locally driven - incoming/outgoing message lands must not clear it
-        if (uid > 0 && org.telegram.ox.OxMode.isAgentOnly() && org.telegram.ox.OxAgentsBridge.isAgentDialog(uid)) {
+        if (uid > 0 && org.telegram.ox.OxAgentsBridge.isAgentDialog(uid)) {
             return false;
         }
         if (uid > 0) {

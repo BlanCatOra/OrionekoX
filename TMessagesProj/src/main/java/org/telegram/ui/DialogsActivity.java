@@ -4370,6 +4370,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 if (view instanceof DialogsAdapter.OxAgentCell) {
                     org.telegram.ox.OxAgent agent = ((DialogsAdapter.OxAgentCell) view).getAgent();
                     if (agent != null) {
+                        // In a logged-in account the synthetic dialog is not part of the server
+                        // dialog list, so native ChatActivity would spin forever. Use the local
+                        // agent chat surface until native dialog injection lands.
                         presentFragment(new OxAgentChatActivity(agent.id));
                     }
                     return;

@@ -159,7 +159,7 @@ public class OxAgentProfileActivity extends BaseFragment {
     @Override
     public View createView(Context context) {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setAllowOverlayTitle(true);
+        actionBar.setAllowOverlayTitle(false);
         actionBar.setTitle(LocaleController.getString(isNew ? R.string.OxAgentNewTitle : R.string.OxAgentProfile));
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
