@@ -461,7 +461,17 @@ public class OxBuiltinTools {
             @Override public String executeWithAgent(JSONObject args, OxAgent agent) {
                 String q = args.optString("query", "").trim();
                 String r = OxAgentStore.searchMemory(agent.id, q, 30);
-                return r.isEmpty() ? "no matching memory" : r;
+                if (!r.isEmpty()) return r;
+                // Imported agents may carry their facts only in the migrated chat history.
+                StringBuilder sb = new StringBuilder();
+                int n = 0;
+                for (OxChatEntry e : OxAgentStore.loadChat(agent.id)) {
+                    if (e.content != null && (q.isEmpty() || e.content.toLowerCase().contains(q.toLowerCase()))) {
+                        sb.append(e.role).append(": ").append(e.content).append('\n');
+                        if (++n >= 10) break;
+                    }
+                }
+                return sb.length() == 0 ? "no matching memory" : sb.toString().trim();
             }
         });
 

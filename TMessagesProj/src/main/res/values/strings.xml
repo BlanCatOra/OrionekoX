@@ -11664,6 +11664,13 @@
     <string name="OxObSkip">Skip</string>
     <string name="OxObSkipHint">You can skip this setting for now; change it later in Ox Settings → Run onboarding again.</string>
     <string name="OxSettingsTitle">Ox Settings</string>
+    <string name="OxImportOperit">Import from Operit / Operit2</string>
+    <string name="OxImportOperitInfo">Operit / Operit2 backups</string>
+    <string name="OxImportStorageTitle">File access needed</string>
+    <string name="OxImportStorageText">Ox needs all-files access to read the Operit export folders. Grant it in the system settings, then tap import again.</string>
+    <string name="OxImportGrant">Open settings</string>
+    <string name="OxImportRunning">Importing…</string>
+    <string name="OxImportDone">Import finished</string>
     <string name="OxLocalPremium">Local Premium</string>
     <string name="OxLocalPremiumInfo">Unlock Telegram Premium features locally, without a subscription or server call.</string>
     <string name="OxSettingsInfo">Mode, local premium, agents and tools</string>

@@ -198,8 +198,14 @@ public class OxModelHub {
                             if (tc.has("id")) c.id = tc.getString("id");
                             JSONObject fn = tc.optJSONObject("function");
                             if (fn != null) {
-                                if (fn.has("name")) c.name += fn.getString("name");
-                                if (fn.has("arguments")) c.arguments += fn.getString("arguments");
+                                if (fn.has("name") && !fn.isNull("name")) {
+                                    String n = fn.optString("name", "");
+                                    if (!n.isEmpty() && !"null".equals(n)) c.name += n;
+                                }
+                                if (fn.has("arguments") && !fn.isNull("arguments")) {
+                                    String a = fn.optString("arguments", "");
+                                    if (!"null".equals(a)) c.arguments += a;
+                                }
                             }
                         }
                     }

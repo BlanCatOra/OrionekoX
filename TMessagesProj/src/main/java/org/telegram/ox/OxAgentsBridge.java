@@ -1302,6 +1302,48 @@ public class OxAgentsBridge {
         });
     }
 
+    /**
+     * After importing an Operit/Operit2 chat into the Ox store, replace the synthetic
+     * dialog's native messages with that history so the stock ChatActivity shows it.
+     */
+    public static void replayImportedHistory(final String agentId) {
+        final OxAgent a = OxAgentStore.loadAgent(agentId);
+        if (a == null || a.tgId == 0) return;
+        final long did = a.tgId;
+        final java.util.List<OxChatEntry> chat = OxAgentStore.loadChat(agentId);
+        synchronized (GREET_LOCK) {
+            GREETED.add(did);   // do not add a second greeting on top of imported history
+        }
+        MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
+            try {
+                MessagesStorage.getInstance(0).getDatabase().executeFast(
+                        "DELETE FROM messages_v2 WHERE uid = " + did).stepThis().dispose();
+                MessagesStorage.getInstance(0).getDatabase().executeFast(
+                        "DELETE FROM dialogs WHERE did = " + did).stepThis().dispose();
+            } catch (Throwable t) {
+                logErr("replayImportedHistory clear failed did=" + did, t);
+            }
+            AndroidUtilities.runOnUIThread(() -> {
+                for (OxChatEntry e : chat) {
+                    if (e == null || e.content == null || e.content.trim().isEmpty()) continue;
+                    boolean out = "user".equals(e.role);
+                    TLRPC.TL_message msg = baseOutgoing(did);
+                    msg.out = out;
+                    msg.date = e.ts > 0 ? (int) (e.ts / 1000) : (int) (System.currentTimeMillis() / 1000);
+                    msg.message = e.content;
+                    msg.media = new TLRPC.TL_messageMediaEmpty();
+                    msg.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
+                    msg.from_id = new TLRPC.TL_peerUser();
+                    msg.from_id.user_id = out ? SELF_ID : did;
+                    if (!out) msg.unread = false;
+                    persistAndShow(did, msg);
+                }
+                NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.dialogsNeedReload);
+                log("replayImportedHistory did=" + did + " entries=" + chat.size());
+            });
+        });
+    }
+
     /** Recomputes the dialogs row (date/last_mid) from messages_v2 so the chat list shows it. */
     private static void refreshDialogRow(long dialogId) {
         MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
