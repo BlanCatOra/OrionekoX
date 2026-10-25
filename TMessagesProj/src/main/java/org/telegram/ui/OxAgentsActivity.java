@@ -21,6 +21,7 @@ import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ox.OxAgent;
+import org.telegram.ox.OxAgentArchive;
 import org.telegram.ox.OxAgentStore;
 import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxMode;
@@ -33,7 +34,6 @@ import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.LayoutHelper;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -354,15 +354,14 @@ public class OxAgentsActivity extends BaseFragment {
                 try {
                     OxAgent a = OxAgentStore.loadAgent(id);
                     if (a == null || uri == null) throw new IllegalStateException("agent or uri gone");
-                    JSONObject o = a.toJson();
-                    o.put("format", "oxagent");
-                    o.put("api_key", "");
-                    o.put("built_in", false);
-                    o.put("memory", OxAgentStore.loadMemory(id, 200000));
+                    String memory = OxAgentStore.loadMemory(id, 200000);
                     java.io.OutputStream os = ctx.getContentResolver().openOutputStream(uri);
-                    os.write(o.toString().getBytes(StandardCharsets.UTF_8));
+                    int files = OxAgentArchive.write(os, a, memory);
                     os.close();
-                    msg = LocaleController.formatString("OxAgentExported", R.string.OxAgentExported, a.name);
+                    msg = files > 0
+                            ? LocaleController.formatString("OxAgentExportedFiles",
+                                    R.string.OxAgentExportedFiles, a.name, files)
+                            : LocaleController.formatString("OxAgentExported", R.string.OxAgentExported, a.name);
                 } catch (Exception e) {
                     msg = "⚠ " + e;
                 }
@@ -378,9 +377,15 @@ public class OxAgentsActivity extends BaseFragment {
                     java.io.InputStream is = ctx.getContentResolver().openInputStream(uri);
                     byte[] buf = new byte[8192];
                     int n;
-                    while ((n = is.read(buf)) > 0) bos.write(buf, 0, n);
+                    long total = 0;
+                    while ((n = is.read(buf)) > 0) {
+                        total += n;
+                        if (total > 64L * 1024 * 1024) throw new IllegalStateException("archive too large");
+                        bos.write(buf, 0, n);
+                    }
                     is.close();
-                    JSONObject o = new JSONObject(new String(bos.toByteArray(), StandardCharsets.UTF_8));
+                    OxAgentArchive.ReadResult res = OxAgentArchive.read(bos.toByteArray());
+                    JSONObject o = res.agent;
                     String name = o.optString("name", "").trim();
                     if (name.isEmpty()) throw new org.json.JSONException("not a .oxagent file");
                     OxAgent a = OxAgent.fromJson(o);
@@ -392,7 +397,11 @@ public class OxAgentsActivity extends BaseFragment {
                     OxAgentStore.saveAgent(a);
                     String memory = o.optString("memory", "");
                     if (!memory.isEmpty()) OxAgentStore.saveMemory(a.id, memory);
-                    msg = LocaleController.formatString("OxAgentImported", R.string.OxAgentImported, a.name);
+                    OxAgentArchive.restoreWorkspace(a.id, res);
+                    msg = res.workspace.isEmpty()
+                            ? LocaleController.formatString("OxAgentImported", R.string.OxAgentImported, a.name)
+                            : LocaleController.formatString("OxAgentImportedFiles",
+                                    R.string.OxAgentImportedFiles, a.name, res.workspace.size());
                 } catch (Exception e) {
                     msg = LocaleController.getString(R.string.OxAgentImportFailed);
                 }

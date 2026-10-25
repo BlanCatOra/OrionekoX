@@ -11601,8 +11601,10 @@
     <string name="OxImportAgent">Import .oxagent</string>
     <string name="OxExportAgent">Export .oxagent</string>
     <string name="OxAgentImported">Imported agent %1$s</string>
+    <string name="OxAgentImportedFiles">Imported agent %1$s with %2$d workspace files</string>
     <string name="OxAgentImportFailed">Import failed: not a valid .oxagent file</string>
     <string name="OxAgentExported">Exported %1$s (API key is not included)</string>
+    <string name="OxAgentExportedFiles">Exported %1$s with %2$d workspace files (API key is not included)</string>
     <string name="OxAgentsOnlyEntry">🤖 Use Ox mode</string>
     <string name="OxMcp">MCP Servers</string>
     <string name="OxMcpIntro">Remote MCP servers (same transport as the Operit/Operit2 plugin ecosystem). Tools provided by enabled servers join the agent tool set automatically, behind the same permission gate.</string>
