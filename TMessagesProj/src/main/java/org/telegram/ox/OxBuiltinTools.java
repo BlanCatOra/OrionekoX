@@ -665,6 +665,44 @@ public class OxBuiltinTools {
         });
 
         register(new OxTool() {
+            @Override public String name() { return "ui_ocr"; }
+            @Override public String description() { return "Take the current screen and run on-device text recognition. Returns recognized text blocks with approximate bounds. Requires the accessibility service and Google Play Services OCR."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[0]); }
+            @Override public String execute(JSONObject args) {
+                String path = OxAccessibilityService.screenshot();
+                if (path == null || path.startsWith("error:") || path.equals("timeout")) return path;
+                android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeFile(path);
+                if (bitmap == null) return "error: could not decode screenshot";
+                com.google.android.gms.vision.text.TextRecognizer recognizer = null;
+                try {
+                    recognizer = new com.google.android.gms.vision.text.TextRecognizer.Builder(ApplicationLoader.applicationContext).build();
+                    if (!recognizer.isOperational()) {
+                        return "error: OCR model is not available yet (Google Play Services may still be downloading it)";
+                    }
+                    com.google.android.gms.vision.Frame frame = new com.google.android.gms.vision.Frame.Builder().setBitmap(bitmap).build();
+                    android.util.SparseArray<com.google.android.gms.vision.text.TextBlock> blocks = recognizer.detect(frame);
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < blocks.size(); i++) {
+                        com.google.android.gms.vision.text.TextBlock block = blocks.valueAt(i);
+                        if (block == null) continue;
+                        android.graphics.Rect r = block.getBoundingBox();
+                        if (sb.length() > 0) sb.append('\n');
+                        sb.append(block.getValue());
+                        if (r != null) sb.append(" [").append(r.left).append(',').append(r.top).append("][").append(r.right).append(',').append(r.bottom).append(']');
+                        if (sb.length() > 8000) break;
+                    }
+                    return sb.length() == 0 ? "(no text recognized)" : sb.toString();
+                } catch (Throwable t) {
+                    return "error: " + (t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage());
+                } finally {
+                    if (recognizer != null) recognizer.release();
+                    bitmap.recycle();
+                }
+            }
+        });
+
+        register(new OxTool() {
             @Override public String name() { return "ui_screenshot"; }
             @Override public String description() { return "Capture the current screen to a PNG in the app's oxauto folder and return the absolute path. Requires Android 11+ and the accessibility service."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }

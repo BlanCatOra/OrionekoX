@@ -11922,4 +11922,5 @@
     <string name="OxAgentSkills">Skills</string>
     <string name="OxAgentSkillsNone">No skills enabled</string>
     <string name="OxAgentSkillsCount">%1$d enabled</string>
+    <string name="OxToolDescUiOcr">Recognize text on the current screen.</string>
 </resources>

@@ -374,4 +374,5 @@
     <string name="OxAgentSkills">技能</string>
     <string name="OxAgentSkillsNone">未启用技能</string>
     <string name="OxAgentSkillsCount">已启用 %1$d 个</string>
+    <string name="OxToolDescUiOcr">识别当前屏幕上的文字。</string>
 </resources>

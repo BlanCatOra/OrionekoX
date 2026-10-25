@@ -247,6 +247,7 @@ public class OxToolsActivity extends BaseFragment {
             case "ui_swipe": id = R.string.OxToolDescUiSwipe; break;
             case "ui_key": id = R.string.OxToolDescUiKey; break;
             case "ui_screenshot": id = R.string.OxToolDescUiScreenshot; break;
+            case "ui_ocr": id = R.string.OxToolDescUiOcr; break;
             default: return tool.description();
         }
         return LocaleController.getString(id);
