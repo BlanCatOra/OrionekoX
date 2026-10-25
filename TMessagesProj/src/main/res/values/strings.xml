@@ -11902,4 +11902,8 @@
     <string name="OxToolDescUiFindText">Find text, scrolling if needed.</string>
     <string name="OxToolDescUiScrollTapText">Scroll until text is found, then click it.</string>
     <string name="OxAgentBadgeLocal">LOCAL</string>
+    <string name="OxWorkspace">Workspace</string>
+    <string name="OxWorkspaceInfo">Files written by the agent tools live here. Tap to preview, long-press to delete.</string>
+    <string name="OxWorkspaceFiles">Files</string>
+    <string name="OxWorkspaceEmpty">The agent workspace is empty.</string>
 </resources>
