@@ -11788,6 +11788,10 @@
     <string name="OxWorkflowDailyAt">每天 %1$s</string>
     <string name="OxWorkflowDailyAtOption">每天指定时间…</string>
     <string name="OxWorkflowPickTime">选择时间</string>
+    <string name="OxWorkflowHistory">运行记录</string>
+    <string name="OxWorkflowHistoryEmpty">还没有运行记录。</string>
+    <string name="OxWorkflowRunOk">成功</string>
+    <string name="OxWorkflowRunFailed">失败</string>
     <string name="OxWorkflowEnabled">已启用</string>
     <string name="OxWorkflowPaused">已暂停</string>
     <string name="OxWorkflowRunNow">立即运行</string>

@@ -206,6 +206,8 @@ public class OxWorkflowActivity extends BaseFragment {
         ArrayList<Runnable> actions = new ArrayList<>();
         items.add(LocaleController.getString(R.string.OxWorkflowRunNow));
         actions.add(() -> runNow(w));
+        items.add(LocaleController.getString(R.string.OxWorkflowHistory));
+        actions.add(() -> showHistory(w));
         items.add(LocaleController.getString(R.string.Edit));
         actions.add(() -> showEditor(w));
         if (w.isDaily() || w.intervalMinutes > 0) {
@@ -231,8 +233,52 @@ public class OxWorkflowActivity extends BaseFragment {
         builder.show();
     }
 
-    private void runNow(OxWorkflow w) {
+    private void showHistory(OxWorkflow w) {
         if (getParentActivity() == null) return;
+        if (w.runs == null || w.runs.length() == 0) {
+            toast(LocaleController.getString(R.string.OxWorkflowHistoryEmpty));
+            return;
+        }
+        ArrayList<CharSequence> items = new ArrayList<>();
+        ArrayList<String> bodies = new ArrayList<>();
+        for (int i = w.runs.length() - 1; i >= 0; i--) {
+            org.json.JSONObject o = w.runs.optJSONObject(i);
+            if (o == null) continue;
+            long ts = o.optLong("ts");
+            boolean ok = o.optBoolean("ok");
+            String text = o.optString("text", "");
+            String head = formatTimestamp(ts) + " · "
+                    + LocaleController.getString(ok ? R.string.OxWorkflowRunOk : R.string.OxWorkflowRunFailed);
+            String oneLine = text.replace('\n', ' ').replace('\r', ' ').trim();
+            if (oneLine.length() > 60) oneLine = oneLine.substring(0, 60) + "…";
+            items.add(head + " · " + oneLine);
+            bodies.add(head + "\n\n" + text);
+        }
+        if (items.isEmpty()) {
+            toast(LocaleController.getString(R.string.OxWorkflowHistoryEmpty));
+            return;
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.OxWorkflowHistory));
+        builder.setItems(items.toArray(new CharSequence[0]), (d, which) ->
+                new AlertDialog.Builder(getParentActivity())
+                        .setTitle(LocaleController.getString(R.string.OxWorkflowHistory))
+                        .setMessage(bodies.get(which))
+                        .setPositiveButton(LocaleController.getString(R.string.OK), null)
+                        .show());
+        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+        builder.show();
+    }
+
+    private String formatTimestamp(long ms) {
+        try {
+            return new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(new Date(ms));
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
+    private void runNow(OxWorkflow w) {        if (getParentActivity() == null) return;
         if (OxAgentStore.loadAgent(w.agentId) == null) {
             toast(LocaleController.getString(R.string.OxWorkflowAgentMissing));
             return;
