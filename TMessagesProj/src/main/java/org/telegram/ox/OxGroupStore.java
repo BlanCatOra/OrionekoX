@@ -3,7 +3,9 @@ package org.telegram.ox;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import org.json.JSONArray;
 import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.FileLog;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -80,8 +82,39 @@ public class OxGroupStore {
         return out;
     }
 
+    public static synchronized boolean isLocalGroup(long chatId) {
+        return prefs().contains("chat_" + key(chatId));
+    }
+
+    /** Recent conversation log for the group, capped at 40 entries. */
+    public static synchronized List<OxChatEntry> loadChat(long chatId) {
+        ArrayList<OxChatEntry> out = new ArrayList<>();
+        try {
+            String raw = prefs().getString("log_" + key(chatId), "");
+            if (raw != null && !raw.isEmpty()) {
+                out.addAll(OxChatEntry.fromJsonArray(new JSONArray(raw)));
+            }
+        } catch (Throwable t) {
+            FileLog.e("OxGroupStore.loadChat", t);
+        }
+        return out;
+    }
+
+    public static synchronized void appendChat(long chatId, String role, String content) {
+        if (content == null || content.trim().isEmpty()) return;
+        try {
+            List<OxChatEntry> chat = loadChat(chatId);
+            chat.add(new OxChatEntry(role, content, System.currentTimeMillis()));
+            while (chat.size() > 40) chat.remove(0);
+            prefs().edit().putString("log_" + key(chatId),
+                    OxChatEntry.toJsonArray(chat).toString()).apply();
+        } catch (Throwable t) {
+            FileLog.e("OxGroupStore.appendChat", t);
+        }
+    }
+
     public static synchronized void clearChat(long chatId) {
-        prefs().edit().remove("chat_" + key(chatId)).apply();
+        prefs().edit().remove("chat_" + key(chatId)).remove("log_" + key(chatId)).apply();
     }
 
     private static String join(Iterable<String> ids) {

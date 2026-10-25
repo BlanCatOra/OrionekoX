@@ -1521,6 +1521,39 @@ public class OxAgentsBridge {
 
     // ---------------- group turns ----------------
 
+    /** Persists an outgoing text in a locally created group and triggers its agent. */
+    public static void sendLocalGroupText(long dialogId, String text, MessageObject replyTo) {
+        if (dialogId >= 0 || text == null || text.trim().isEmpty()) return;
+        String clean = text.trim();
+        try {
+            TLRPC.TL_message msg = new TLRPC.TL_message();
+            msg.flags = 256;
+            msg.id = nextLocalMessageId();
+            msg.local_id = msg.id;
+            msg.out = true;
+            msg.date = (int) (System.currentTimeMillis() / 1000);
+            msg.message = clean;
+            if (replyTo != null && replyTo.messageOwner != null) {
+                msg.flags |= TLRPC.MESSAGE_FLAG_REPLY;
+                TLRPC.TL_messageReplyHeader header = new TLRPC.TL_messageReplyHeader();
+                header.flags |= 16;
+                header.reply_to_msg_id = replyTo.getId();
+                msg.reply_to = header;
+            }
+            msg.peer_id = new TLRPC.TL_peerChat();
+            msg.peer_id.chat_id = -dialogId;
+            msg.from_id = new TLRPC.TL_peerUser();
+            msg.from_id.user_id = SELF_ID;
+            msg.dialog_id = dialogId;
+            msg.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
+            msg.media = new TLRPC.TL_messageMediaEmpty();
+            persistAndShow(dialogId, msg);
+        } catch (Throwable t) {
+            logErr("sendLocalGroupText persist failed", t);
+        }
+        onGroupMessage(dialogId, clean, replyTo);
+    }
+
     /** Triggered for an outgoing message in a group that has local Ox agents. */
     public static void onGroupMessage(long dialogId, String text, MessageObject replyTo) {
         try {
@@ -1564,6 +1597,7 @@ public class OxAgentsBridge {
             injectAgentReply(dialogId, agent.tgId, "⚠ " + e.getMessage());
             return;
         }
+        OxGroupStore.appendChat(dialogId, "user", userText);
         active.put(dialogId, s);
         startTyping(dialogId, agent.tgId);
         runRound(s, 0);
@@ -1585,6 +1619,10 @@ public class OxAgentsBridge {
         }
         appendSkills(system, agent);
         messages.put(new JSONObject().put("role", "system").put("content", system.toString()));
+        for (OxChatEntry e : OxGroupStore.loadChat(dialogId)) {
+            if (e.content == null || e.content.trim().isEmpty()) continue;
+            messages.put(new JSONObject().put("role", e.role).put("content", e.content));
+        }
         messages.put(new JSONObject().put("role", "user").put("content", userText));
         return messages;
     }
@@ -2015,13 +2053,18 @@ public class OxAgentsBridge {
         } else {
             injectAgentReply(s.dialogId, s.senderTgId, finalText);
         }
-        // persist the turn into the shared agent history
+        // persist the turn: groups keep their own log so group lines do not leak
+        // into the agent's one-to-one history
         try {
-            List<OxChatEntry> chat = OxAgentStore.loadChat(s.agent.id);
-            chat.add(new OxChatEntry("user", s.userText, System.currentTimeMillis(), s.imagePath));
-            chat.addAll(s.acc);
-            chat.add(new OxChatEntry("assistant", finalText, System.currentTimeMillis()));
-            OxAgentStore.saveChat(s.agent.id, chat);
+            if (s.group) {
+                OxGroupStore.appendChat(s.dialogId, "assistant", finalText);
+            } else {
+                List<OxChatEntry> chat = OxAgentStore.loadChat(s.agent.id);
+                chat.add(new OxChatEntry("user", s.userText, System.currentTimeMillis(), s.imagePath));
+                chat.addAll(s.acc);
+                chat.add(new OxChatEntry("assistant", finalText, System.currentTimeMillis()));
+                OxAgentStore.saveChat(s.agent.id, chat);
+            }
         } catch (Throwable t) {
             logErr("finishTurn history failed", t);
         }
