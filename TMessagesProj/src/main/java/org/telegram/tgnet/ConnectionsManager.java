@@ -403,6 +403,12 @@ public class ConnectionsManager extends BaseController {
             object.freeResources();
             return;
         }
+        // Agent peers are local-only even inside a logged-in account: history, read marks,
+        // typing and deletes for them are handled from the local database.
+        if (org.telegram.ox.OxAgentsBridge.isAgentRequest(object)) {
+            object.freeResources();
+            return;
+        }
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("send request " + object + " with token = " + requestToken);
         }

@@ -14,7 +14,7 @@
     <string name="AIEditorEmojify">电动</string>
     <string name="AIEditorFrom">发件人%s</string>
     <string name="AIEditorFromOther">发件人%s</string>
-    <string name="AIEditorHint">重写、翻译或修改文本AI.</string>
+    <string name="AIEditorHint">用 AI 重写、翻译或纠正你的文本。</string>
     <string name="AIEditorLimitButton">增加限制</string>
     <string name="AIEditorLimitText">获取**Telegram Premium**用于**50 个**再来AI每日文字变换.</string>
     <string name="AIEditorLimitTitle">每日限制</string>
@@ -8737,9 +8737,9 @@
     <string name="ScheduleNotifyOnGroup">将通知各成员</string>
     <string name="ScheduleNotifyOnSelf">我会通知你</string>
     <string name="ScheduleWhenOnline">当 %1$s 上线时发送</string>
-    <string name="ScheduledHint">长的音响,稍后发送你的消息。</string>
+    <string name="ScheduledHint">长按可定时发送消息。</string>
     <string name="ScheduledMessages">定时消息</string>
-    <string name="ScheduledOrNoSoundHint">按住这个按钮来定时或静音发送您的消息。</string>
+    <string name="ScheduledOrNoSoundHint">按住此按钮可定时发送或静音发送。</string>
     <string name="ScheduledTimeApprox">appx. (英语).%s</string>
     <string name="ScreenCapture">允许屏幕抓取</string>
     <string name="ScreenCaptureAlert">这将在最近任务界面中隐藏聊天或聊天列表的内容，但您将无法在 ChatAir 上截取屏幕截图。\n\n您可能需要重新启动应用才能生效。</string>

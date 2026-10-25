@@ -119,7 +119,6 @@ flowchart TD
 | `OxAgentsActivity` | 抽屉 / 设置 | `finishFragment()` |
 | `OxAgentProfileActivity` | Agents / 引导第 4 步 | `finishFragment()`，不重建主页 |
 | `OxMcpActivity` | 抽屉 / 设置 | `finishFragment()` |
-| `OxAgentChatActivity` | 仅非 Ox 模式兜底 | `finishFragment()` |
 
 禁止事项：
 

@@ -226,11 +226,15 @@ public class OxAgentsActivity extends BaseFragment {
         }
 
         row.setOnClickListener(v -> {
-            if (agent.tgId != 0 && OxMode.isAgentOnly()) {
-                presentFragment(ChatActivity.of(agent.tgId));
+            OxAgent a = agent;
+            if (a.tgId == 0) {
+                OxAgentsBridge.syncAgents(false);
+                a = OxAgentStore.loadAgent(a.id);
+            }
+            final OxAgent open = a;
+            if (open != null && open.tgId != 0) {
+                OxAgentsBridge.ensureNativeDialog(open, () -> presentFragment(ChatActivity.of(open.tgId)));
             } else {
-                // Outside local mode there is no native chat surface for a synthetic agent yet;
-                // send the user to the native-style editor instead of the legacy custom chat.
                 presentFragment(new OxAgentProfileActivity(agent.id));
             }
         });
