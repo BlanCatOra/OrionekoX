@@ -577,6 +577,9 @@ public class OxAgentsBridge {
             }
             for (OxAgent a : agents) putAgentFull(a);
             syncAgentContacts(agents);
+            sanitizeLocalGroupTitles();
+            AndroidUtilities.runOnUIThread(OxAgentsBridge::sanitizeLocalGroupTitles, 2500);
+            AndroidUtilities.runOnUIThread(OxAgentsBridge::sanitizeLocalGroupTitles, 7000);
             final StringBuilder liveIds = new StringBuilder();
             for (OxAgent a : agents) {
                 ensureDialogRow(a.tgId);
@@ -750,6 +753,32 @@ public class OxAgentsBridge {
             return out;
         } catch (Throwable t) {
             return src;
+        }
+    }
+
+    /** Old local groups were named with a machine-translated "and" marker; repair them. */
+    private static void sanitizeLocalGroupTitles() {
+        try {
+            ArrayList<TLRPC.Chat> changed = new ArrayList<>();
+            for (long id : OxGroupStore.chatIds()) {
+                TLRPC.Chat chat = MessagesController.getInstance(0).getChat(id);
+                if (chat == null || chat.title == null) continue;
+                String title = chat.title;
+                if (title.contains("(单位:千美元)")) title = title.replace("(单位:千美元)", "、");
+                if (title.contains("（单位：千美元）")) title = title.replace("（单位：千美元）", "、");
+                if (!title.equals(chat.title)) {
+                    chat.title = title;
+                    changed.add(chat);
+                }
+            }
+            if (!changed.isEmpty()) {
+                for (TLRPC.Chat chat : changed) MessagesController.getInstance(0).putChat(chat, false);
+                MessagesStorage.getInstance(0).putUsersAndChats(new ArrayList<>(), changed, true, true);
+                AndroidUtilities.runOnUIThread(() -> NotificationCenter.getInstance(0)
+                        .postNotificationName(NotificationCenter.dialogsNeedReload));
+            }
+        } catch (Throwable t) {
+            logErr("sanitizeLocalGroupTitles failed", t);
         }
     }
 

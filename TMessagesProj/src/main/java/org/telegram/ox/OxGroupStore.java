@@ -65,6 +65,21 @@ public class OxGroupStore {
         prefs().edit().putString("chat_" + key(chatId), join(ids)).apply();
     }
 
+    public static synchronized List<Long> chatIds() {
+        ArrayList<Long> out = new ArrayList<>();
+        try {
+            for (String key : prefs().getAll().keySet()) {
+                if (key == null || !key.startsWith("chat_")) continue;
+                try {
+                    out.add(Long.parseLong(key.substring(5)));
+                } catch (Throwable ignored) {
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return out;
+    }
+
     public static synchronized void clearChat(long chatId) {
         prefs().edit().remove("chat_" + key(chatId)).apply();
     }
