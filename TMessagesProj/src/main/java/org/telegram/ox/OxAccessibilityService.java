@@ -233,9 +233,8 @@ public class OxAccessibilityService extends AccessibilityService {
                     }
                     java.util.ArrayList<AccessibilityNodeInfo> nodes = new java.util.ArrayList<>();
                     collect(root, nodes, 0);
-                    AccessibilityNodeInfo match = null;
-                    String label = null;
-                    for (int pass = 0; pass < 2 && match == null; pass++) {
+                    java.util.ArrayList<AccessibilityNodeInfo> matches = new java.util.ArrayList<>();
+                    for (int pass = 0; pass < 2; pass++) {
                         for (AccessibilityNodeInfo node : nodes) {
                             CharSequence text = node.getText();
                             CharSequence desc = node.getContentDescription();
@@ -243,26 +242,29 @@ public class OxAccessibilityService extends AccessibilityService {
                                     : (desc != null ? desc.toString() : null);
                             if (l == null) continue;
                             boolean hit = pass == 0 ? l.toLowerCase().equals(needle) : l.toLowerCase().contains(needle);
-                            if (hit) {
-                                match = node;
-                                label = l;
-                                break;
+                            if (hit && !matches.contains(node)) matches.add(node);
+                        }
+                        if (!matches.isEmpty()) break;
+                    }
+                    if (!matches.isEmpty()) {
+                        for (AccessibilityNodeInfo match : matches) {
+                            CharSequence text = match.getText();
+                            CharSequence desc = match.getContentDescription();
+                            String label = text != null && text.length() > 0 ? text.toString()
+                                    : (desc != null ? desc.toString() : "");
+                            Rect r = new Rect();
+                            match.getBoundsInScreen(r);
+                            AccessibilityNodeInfo clickable = match;
+                            while (clickable != null && !clickable.isClickable()) clickable = clickable.getParent();
+                            if (!click) {
+                                out[0] = "found \"" + label + "\" after " + stepFinal + " scroll(s) bounds=[" + r.left + "," + r.top + "][" + r.right + "," + r.bottom + "] clickable=" + (clickable != null);
+                                return;
+                            }
+                            if (clickable != null && clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                                out[0] = "clicked \"" + label + "\" after " + stepFinal + " scroll(s) bounds=[" + r.left + "," + r.top + "][" + r.right + "," + r.bottom + "]";
+                                return;
                             }
                         }
-                    }
-                    if (match != null) {
-                        Rect r = new Rect();
-                        match.getBoundsInScreen(r);
-                        AccessibilityNodeInfo clickable = match;
-                        while (clickable != null && !clickable.isClickable()) clickable = clickable.getParent();
-                        if (click) {
-                            boolean ok = clickable != null && clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                            out[0] = ok ? "clicked \"" + label + "\" after " + stepFinal + " scroll(s) bounds=[" + r.left + "," + r.top + "][" + r.right + "," + r.bottom + "]"
-                                    : "found but click failed: " + label;
-                        } else {
-                            out[0] = "found \"" + label + "\" after " + stepFinal + " scroll(s) bounds=[" + r.left + "," + r.top + "][" + r.right + "," + r.bottom + "] clickable=" + (clickable != null);
-                        }
-                        return;
                     }
                     AccessibilityNodeInfo scrollable = findScrollable(root, 0);
                     if (scrollable == null) {
