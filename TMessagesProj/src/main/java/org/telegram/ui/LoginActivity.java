@@ -3181,7 +3181,11 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
             phoneInputData.phoneNumber = "+" + codeField.getText() + " " + phoneField.getText();
             phoneInputData.country = currentCountry;
             phoneInputData.patterns = phoneFormatMap.get(codeField.getText().toString());
+            final boolean[] loginTimedOut = new boolean[1];
             int reqId = ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+                if (loginTimedOut[0]) {
+                    return;
+                }
                 nextPressed = false;
                 if (error == null) {
                     if (response instanceof TLRPC.TL_auth_sentCodeSuccess) {
@@ -3247,6 +3251,15 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 }
             }), ConnectionsManager.RequestFlagFailOnServerErrors | ConnectionsManager.RequestFlagWithoutLogin | ConnectionsManager.RequestFlagTryDifferentDc | ConnectionsManager.RequestFlagEnableUnauthorized);
             needShowProgress(reqId);
+            final int timeoutId = reqId;
+            AndroidUtilities.runOnUIThread(() -> {
+                if (timeoutId != 0 && progressRequestId == timeoutId) {
+                    loginTimedOut[0] = true;
+                    nextPressed = false;
+                    needHideProgress(true);
+                    needShowAlert(LocaleController.getString(R.string.AppName), LocaleController.getString(R.string.OxLoginTimeout));
+                }
+            }, 25000);
         }
 
         private boolean numberFilled;

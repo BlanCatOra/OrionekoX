@@ -11804,4 +11804,5 @@
     <string name="OxToolDescWriteFile">Write a text file to the agent workspace.</string>
     <string name="OxToolDescNotify">Show a device toast.</string>
     <string name="OxToolDescOpenUrl">Open a link in the browser.</string>
+    <string name="OxLoginTimeout">Could not reach Telegram. Check your network or proxy and try again.</string>
 </resources>
