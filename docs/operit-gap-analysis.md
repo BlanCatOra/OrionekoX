@@ -20,7 +20,7 @@ not feature-count parity.
 | UI automation | accessibility/ADB/root, PhoneAgent | accessibility bridge + `ui_dump` / `ui_tap` / `ui_swipe` / `ui_screenshot` / `ui_key` tools | **done v1** |
 | Container/terminal | PRoot Ubuntu, SSH/SFTP, editor | PRoot PoC, blocked by W^X; companion host pending | gap |
 | ToolPkg / Skills / marketplace | full runtime | MCP market + read-only SKILL.md library + per-agent skill prompt injection | partial (no code execution) |
-| Browser agent / OCR / voice | yes | none | medium gap |
+| Browser agent / OCR / voice | yes | `ui_ocr` implemented (screenshot → Play Services TextRecognizer); emulator screenshot API failed with error 1 | partial |
 | Character cards / group chats | yes | AGENTS.md + .oxagent export + memory viewer/editor | partial |
 | Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/delete | partial (basic text editor, no syntax highlighting) |
 | Workflows / scheduled tasks | yes | none | medium gap |
