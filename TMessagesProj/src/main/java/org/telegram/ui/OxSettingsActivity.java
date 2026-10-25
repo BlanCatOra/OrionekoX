@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
 import android.view.View;
@@ -113,6 +114,17 @@ public class OxSettingsActivity extends BaseFragment {
                     presentFragment(new OxOnboardingActivity().setStartPage(5));
                 }), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         content.addView(containerGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        content.addView(header(context, LocaleController.getString(R.string.OxTerminal)));
+        LinearLayout terminalGroup = group(context);
+        terminalGroup.addView(cell(context, LocaleController.getString(R.string.OxTerminalSettings), "", true, v ->
+                presentFragment(new OxTerminalSettingsActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        terminalGroup.addView(cell(context, LocaleController.getString(R.string.OxTerminalOpen), "", false, v -> {
+            Bundle args = new Bundle();
+            args.putBoolean("presented", true);
+            presentFragment(new OxTerminalActivity(args));
+        }), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        content.addView(terminalGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         content.addView(header(context, LocaleController.getString(R.string.OxSettingsSectionAbout)));
         LinearLayout about = group(context);

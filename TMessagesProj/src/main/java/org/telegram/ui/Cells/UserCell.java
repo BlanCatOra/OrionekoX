@@ -707,7 +707,9 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
         } else if (currentUser != null) {
             if (currentUser.bot) {
                 statusTextView.setTextColor(statusColor);
-                if (currentUser.bot_chat_history || adminTextView != null && adminTextView.getVisibility() == VISIBLE) {
+                if (org.telegram.ox.OxAgentsBridge.isAgentDialog(currentUser.id)) {
+                    statusTextView.setText(getString(R.string.OxAgentStatusLocal));
+                } else if (currentUser.bot_chat_history || adminTextView != null && adminTextView.getVisibility() == VISIBLE) {
                     statusTextView.setText(getString(R.string.BotStatusRead));
                 } else {
                     statusTextView.setText(getString(R.string.BotStatusCantRead));

@@ -90,6 +90,16 @@ public class OxMcpActivity extends BaseFragment {
         intro.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(12), AndroidUtilities.dp(21), AndroidUtilities.dp(10));
         listContainer.addView(intro, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
+        LinearLayout marketGroup = new LinearLayout(context);
+        marketGroup.setOrientation(LinearLayout.VERTICAL);
+        marketGroup.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        TextSettingsCell market = new TextSettingsCell(context);
+        market.setText("🛍 " + LocaleController.getString(R.string.OxMcpMarket), true);
+        market.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        market.setOnClickListener(v -> presentFragment(new OxMcpMarketActivity()));
+        marketGroup.addView(market, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        listContainer.addView(marketGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
         List<OxMcpManager.McpServer> servers = OxMcpManager.getServers();
         if (servers.isEmpty()) {
             LinearLayout empty = new LinearLayout(context);

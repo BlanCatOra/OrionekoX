@@ -293,7 +293,9 @@ public class ManageChatUserCell extends FrameLayout {
                     } else if (currentUser.bot_chat_history || isAdmin) {
                         statusTextView.setText(LocaleController.getString(R.string.BotStatusRead));
                     } else {
-                        statusTextView.setText(LocaleController.getString(R.string.BotStatusCantRead));
+                        statusTextView.setText(org.telegram.ox.OxAgentsBridge.isAgentDialog(currentUser.id)
+                            ? LocaleController.getString(R.string.OxAgentStatusLocal)
+                            : LocaleController.getString(R.string.BotStatusCantRead));
                     }
                 } else {
                     if (subtitleUsername && !TextUtils.isEmpty(username)) {

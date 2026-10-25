@@ -810,9 +810,47 @@ public class NewContactBottomSheet extends BottomSheet implements AdapterView.On
         doneButtonContainer.setBackground(Theme.AdaptiveRipple.filledRect(parentFragment.getThemedColor(Theme.key_featuredStickers_addButton), 24));
         doneButtonContainer.setOnClickListener(v -> doOnDone());
 
+        TextView addAgentButton = new TextView(context);
+        addAgentButton.setText(LocaleController.getString(R.string.OxAddAgent));
+        addAgentButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        addAgentButton.setTypeface(AndroidUtilities.bold());
+        addAgentButton.setGravity(Gravity.CENTER);
+        addAgentButton.setTextColor(parentFragment.getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        android.graphics.drawable.GradientDrawable agentOutline = new android.graphics.drawable.GradientDrawable();
+        agentOutline.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        agentOutline.setCornerRadius(dp(24));
+        agentOutline.setColor(Color.TRANSPARENT);
+        agentOutline.setStroke(dp(1.4f), parentFragment.getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        addAgentButton.setBackground(agentOutline);
+        ScaleStateListAnimator.apply(addAgentButton, .02f, 1.2f);
+        addAgentButton.setOnClickListener(v -> showAddAgentPicker());
+        contentLayout.addView(addAgentButton, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 0, 0, 8, 0, 6));
+
         plusTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         codeDividerView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhiteInputField));
         return fragmentView;
+    }
+
+    private void showAddAgentPicker() {
+        if (parentFragment == null || parentFragment.getParentActivity() == null) {
+            return;
+        }
+        dismiss();
+        AlertDialog.Builder builder = new AlertDialog.Builder(parentFragment.getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.OxAgentPickerTitle));
+        CharSequence[] entries = new CharSequence[]{
+                LocaleController.getString(R.string.OxAgentPickerApi) + " — " + LocaleController.getString(R.string.OxAgentPickerApiDesc),
+                LocaleController.getString(R.string.OxAgentPickerLan) + " — " + LocaleController.getString(R.string.OxAgentPickerLanDesc),
+                LocaleController.getString(R.string.OxAgentPickerContainer) + " — " + LocaleController.getString(R.string.OxAgentPickerContainerDesc)
+        };
+        builder.setItems(entries, (dialog, which) -> {
+            int template = which == 1 ? OxAgentProfileActivity.TEMPLATE_LAN
+                    : which == 2 ? OxAgentProfileActivity.TEMPLATE_CONTAINER
+                    : OxAgentProfileActivity.TEMPLATE_API;
+            parentFragment.presentFragment(OxAgentProfileActivity.newDraft(template));
+        });
+        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+        parentFragment.showDialog(builder.create());
     }
 
     private void updateBottomTranslation(boolean empty) {

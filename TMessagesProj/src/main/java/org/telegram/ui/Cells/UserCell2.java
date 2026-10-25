@@ -263,7 +263,9 @@ public class UserCell2 extends FrameLayout {
         } else if (currentUser != null) {
             if (currentUser.bot) {
                 statusTextView.setTextColor(statusColor);
-                if (currentUser.bot_chat_history) {
+                if (org.telegram.ox.OxAgentsBridge.isAgentDialog(currentUser.id)) {
+                    statusTextView.setText(LocaleController.getString(R.string.OxAgentStatusLocal));
+                } else if (currentUser.bot_chat_history) {
                     statusTextView.setText(LocaleController.getString(R.string.BotStatusRead));
                 } else {
                     statusTextView.setText(LocaleController.getString(R.string.BotStatusCantRead));

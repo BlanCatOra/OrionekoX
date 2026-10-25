@@ -421,6 +421,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         try {
             if (org.telegram.ox.OxMode.isAgentOnly()) {
                 org.telegram.ox.OxAgentsBridge.ensureLocalAccount();
+            } else {
+                org.telegram.ox.OxAgentsBridge.syncAgents(false);
             }
         } catch (Throwable t) {
             FileLog.e(t);

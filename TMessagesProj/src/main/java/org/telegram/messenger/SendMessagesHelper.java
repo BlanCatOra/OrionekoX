@@ -4483,6 +4483,12 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         if (org.telegram.ox.OxAgentsBridge.interceptOutgoing(sendMessageParams)) {
             return;
         }
+        // A normal group that contains local Ox agents also gets a local answer. The
+        // user's message itself still goes through the regular server pipeline.
+        if (peer < 0 && message != null && !message.trim().isEmpty()
+                && org.telegram.ox.OxGroupStore.hasAgents(peer)) {
+            org.telegram.ox.OxAgentsBridge.onGroupMessage(peer, message, replyToMsg);
+        }
         if (richMessage != null && DialogObject.isEncryptedDialog(peer)) {
             return;
         }

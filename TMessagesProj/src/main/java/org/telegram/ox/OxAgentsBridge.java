@@ -76,6 +76,14 @@ public class OxAgentsBridge {
             if (isAgentPeer(field(req, "from_peer"))) return true;
             if (isAgentPeer(field(req, "id"))) return true;
             if (isAgentPeer(field(req, "user_id"))) return true;
+            if (req instanceof TLRPC.TL_channels_inviteToChannel) {
+                Object users = field(req, "users");
+                if (users instanceof Iterable) {
+                    for (Object u : (Iterable<?>) users) {
+                        if (isAgentPeer(u)) return true;
+                    }
+                }
+            }
         } catch (Throwable ignore) {
         }
         return false;
@@ -97,6 +105,322 @@ public class OxAgentsBridge {
             return (Long) peer;
         }
         return 0;
+    }
+
+    // ---------------- agents in ordinary groups ----------------
+
+    /**
+     * Handles server requests that would otherwise be dropped because they target a
+     * synthetic agent. Only adding an agent to a basic group is supported: membership
+     * is recorded locally, the stock participant list is updated, and the original
+     * request callback receives a synthetic updates object.
+     */
+    public static boolean handleAgentRequest(org.telegram.tgnet.TLObject req, org.telegram.tgnet.RequestDelegate onComplete) {
+        try {
+            if (req instanceof TLRPC.TL_messages_addChatUser) {
+                TLRPC.TL_messages_addChatUser r = (TLRPC.TL_messages_addChatUser) req;
+                OxAgent agent = agentByTgId(userIdOf(r.user_id));
+                if (agent == null) return false;
+                OxGroupStore.addAgent(r.chat_id, agent.id);
+                final TLRPC.TL_updates updates = participantUpdates(r.chat_id, agent);
+                req.freeResources();
+                if (onComplete != null) {
+                    new Thread(() -> onComplete.run(updates, null), "ox-group-add").start();
+                }
+                log("local add-to-group chat=" + r.chat_id + " agent=" + agent.id);
+                return true;
+            }
+            if (req instanceof TLRPC.TL_channels_inviteToChannel) {
+                TLRPC.TL_channels_inviteToChannel r = (TLRPC.TL_channels_inviteToChannel) req;
+                long channelId = r.channel.channel_id;
+                ArrayList<OxAgent> added = new ArrayList<>();
+                for (TLRPC.InputUser iu : r.users) {
+                    OxAgent agent = agentByTgId(userIdOf(iu));
+                    if (agent != null) {
+                        OxGroupStore.addAgent(channelId, agent.id);
+                        added.add(agent);
+                    }
+                }
+                if (added.isEmpty()) return false;
+                TLRPC.TL_updates updates = new TLRPC.TL_updates();
+                for (OxAgent a : added) updates.users.add(buildAgentUser(a));
+                TLRPC.Chat chat = MessagesController.getInstance(0).getChat(channelId);
+                if (chat != null) {
+                    org.telegram.tgnet.tl.TL_update.TL_updateChannel uc = new org.telegram.tgnet.tl.TL_update.TL_updateChannel();
+                    uc.channel_id = channelId;
+                    updates.updates.add(uc);
+                    updates.chats.add(chat);
+                }
+                req.freeResources();
+                if (onComplete != null) {
+                    final TLRPC.TL_updates finalUpdates = updates;
+                    new Thread(() -> onComplete.run(finalUpdates, null), "ox-group-add").start();
+                }
+                log("local invite-to-channel channel=" + channelId + " agents=" + added.size());
+                return true;
+            }
+        } catch (Throwable t) {
+            logErr("handleAgentRequest failed", t);
+        }
+        return false;
+    }
+
+    private static TLRPC.TL_updates participantUpdates(long chatId, OxAgent agent) {
+        TLRPC.TL_updates updates = new TLRPC.TL_updates();
+        updates.users.add(buildAgentUser(agent));
+        TLRPC.ChatFull full = MessagesController.getInstance(0).getChatFull(chatId);
+        TLRPC.Chat chat = MessagesController.getInstance(0).getChat(chatId);
+        if (chat != null) updates.chats.add(chat);
+        // Without a loaded participant snapshot there is nothing safe to merge; the
+        // calling screen still inserts the new row into its own list, and the next
+        // full-chat load is patched by ensureGroupParticipants().
+        if (full == null || full.participants == null) {
+            return updates;
+        }
+        TLRPC.TL_chatParticipants participants = new TLRPC.TL_chatParticipants();
+        participants.chat_id = chatId;
+        participants.version = full.participants.version + 1;
+        boolean present = false;
+        for (TLRPC.ChatParticipant p : full.participants.participants) {
+            if (p == null) continue;
+            if (p.user_id == agent.tgId) present = true;
+            participants.participants.add(p);
+        }
+        if (!present) {
+            TLRPC.TL_chatParticipant p = new TLRPC.TL_chatParticipant();
+            p.user_id = agent.tgId;
+            p.inviter_id = SELF_ID;
+            p.date = (int) (System.currentTimeMillis() / 1000);
+            participants.participants.add(p);
+        }
+        full.participants = participants;
+        full.participants_count = participants.participants.size();
+        org.telegram.tgnet.tl.TL_update.TL_updateChatParticipants update = new org.telegram.tgnet.tl.TL_update.TL_updateChatParticipants();
+        update.participants = participants;
+        updates.updates.add(update);
+        return updates;
+    }
+
+    // ---------------- local group creation ----------------
+
+    /** Called before the normal createChat request: returns false when no agent is selected. */
+    public static boolean handleCreateChat(TLRPC.TL_messages_createChat req,
+                                           org.telegram.tgnet.RequestDelegate onComplete) {
+        try {
+            ArrayList<TLRPC.InputUser> real = new ArrayList<>();
+            ArrayList<OxAgent> agents = new ArrayList<>();
+            for (TLRPC.InputUser iu : req.users) {
+                OxAgent a = agentByTgId(userIdOf(iu));
+                if (a != null) agents.add(a);
+                else real.add(iu);
+            }
+            if (agents.isEmpty()) return false;
+
+            if (!real.isEmpty()) {
+                TLRPC.TL_messages_createChat clone = new TLRPC.TL_messages_createChat();
+                clone.flags = req.flags;
+                clone.title = req.title;
+                clone.ttl_period = req.ttl_period;
+                clone.users.addAll(real);
+                req.freeResources();
+                org.telegram.tgnet.ConnectionsManager.getInstance(0).sendRequest(clone, (response, error) -> {
+                    if (error == null && response != null) {
+                        try {
+                            ArrayList<TLRPC.Chat> chats = chatsFromCreateResponse(response);
+                            if (!chats.isEmpty()) {
+                                TLRPC.Chat chat = chats.get(0);
+                                for (OxAgent a : agents) OxGroupStore.addAgent(chat.id, a.id);
+                                chat.participants_count += agents.size();
+                            }
+                        } catch (Throwable t) {
+                            logErr("createChat agent post-add failed", t);
+                        }
+                    }
+                    if (onComplete != null) onComplete.run(response, error);
+                }, org.telegram.tgnet.ConnectionsManager.RequestFlagFailOnServerErrors);
+                log("createChat split real=" + real.size() + " agents=" + agents.size());
+                return true;
+            }
+
+            final TLRPC.TL_messages_invitedUsers result = createLocalGroup(req.title, agents);
+            req.freeResources();
+            if (onComplete != null) {
+                new Thread(() -> onComplete.run(result, null), "ox-group-create").start();
+            }
+            return true;
+        } catch (Throwable t) {
+            logErr("handleCreateChat failed", t);
+            return false;
+        }
+    }
+
+    private static ArrayList<TLRPC.Chat> chatsFromCreateResponse(Object response) {
+        ArrayList<TLRPC.Chat> out = new ArrayList<>();
+        TLRPC.Updates updates = null;
+        if (response instanceof TLRPC.TL_messages_invitedUsers) {
+            updates = ((TLRPC.TL_messages_invitedUsers) response).updates;
+        } else if (response instanceof TLRPC.Updates) {
+            updates = (TLRPC.Updates) response;
+        }
+        if (updates != null && updates.chats != null) out.addAll(updates.chats);
+        return out;
+    }
+
+    private static long nextLocalChatId() {
+        int seq = prefs().getInt("next_local_chat", 1800000000);
+        prefs().edit().putInt("next_local_chat", seq + 1).apply();
+        return seq;
+    }
+
+    private static TLRPC.TL_messages_invitedUsers createLocalGroup(String title, ArrayList<OxAgent> agents) {
+        long chatId = nextLocalChatId();
+        int now = (int) (System.currentTimeMillis() / 1000);
+        TLRPC.User me = MessagesController.getInstance(0).getUser(SELF_ID);
+        if (me == null) {
+            me = MessagesController.getInstance(0).getUser(UserConfig.getInstance(0).getClientUserId());
+        }
+        long selfId = me == null ? SELF_ID : me.id;
+
+        TLRPC.TL_chat chat = new TLRPC.TL_chat();
+        chat.id = chatId;
+        chat.title = title == null || title.trim().isEmpty() ? "Ox Group" : title.trim();
+        chat.photo = new TLRPC.TL_chatPhotoEmpty();
+        chat.participants_count = 1 + agents.size();
+        chat.date = now;
+        chat.version = 1;
+        chat.creator = true;
+        chat.admin_rights = new TLRPC.TL_chatAdminRights();
+        chat.default_banned_rights = new TLRPC.TL_chatBannedRights();
+
+        TLRPC.TL_chatParticipants participants = new TLRPC.TL_chatParticipants();
+        participants.chat_id = chatId;
+        participants.version = 1;
+        TLRPC.TL_chatParticipantCreator selfPart = new TLRPC.TL_chatParticipantCreator();
+        selfPart.user_id = selfId;
+        participants.participants.add(selfPart);
+        ArrayList<TLRPC.User> users = new ArrayList<>();
+        if (me != null) users.add(me);
+        for (OxAgent a : agents) {
+            TLRPC.TL_chatParticipant p = new TLRPC.TL_chatParticipant();
+            p.user_id = a.tgId;
+            p.inviter_id = selfId;
+            p.date = now;
+            participants.participants.add(p);
+            OxGroupStore.addAgent(chatId, a.id);
+            users.add(buildAgentUser(a));
+        }
+
+        TLRPC.TL_chatFull full = new TLRPC.TL_chatFull();
+        full.id = chatId;
+        full.about = "";
+        full.participants = participants;
+        full.participants_count = participants.participants.size();
+        full.notify_settings = new TLRPC.TL_peerNotifySettings();
+        full.can_view_participants = true;
+
+        try {
+            MessagesStorage.getInstance(0).putUsersAndChats(users, new ArrayList<>(java.util.Collections.singletonList(chat)), true, true);
+            for (TLRPC.User u : users) MessagesController.getInstance(0).putUser(u, false);
+            MessagesController.getInstance(0).putChat(chat, false);
+            MessagesController.getInstance(0).putChatFull(full);
+        } catch (Throwable t) {
+            logErr("createLocalGroup persist failed", t);
+        }
+
+        // A local service message makes the group appear in the dialog list and
+        // gives the stock ChatActivity something to render immediately.
+        TLRPC.TL_messageService service = new TLRPC.TL_messageService();
+        service.id = nextLocalMessageId();
+        service.local_id = service.id;
+        service.out = true;
+        service.date = now;
+        service.peer_id = peerFor(-chatId);
+        service.from_id = new TLRPC.TL_peerUser();
+        service.from_id.user_id = selfId;
+        service.dialog_id = -chatId;
+        service.unread = false;
+        service.flags = 256;
+        TLRPC.TL_messageActionChatCreate action = new TLRPC.TL_messageActionChatCreate();
+        action.title = chat.title;
+        action.users = new ArrayList<>();
+        action.users.add(selfId);
+        for (OxAgent a : agents) action.users.add(a.tgId);
+        service.action = action;
+        persistAndShow(-chatId, service);
+        refreshDialogRow(-chatId);
+
+        TLRPC.TL_updates updates = new TLRPC.TL_updates();
+        org.telegram.tgnet.tl.TL_update.TL_updateNewMessage newMessageUpdate =
+                new org.telegram.tgnet.tl.TL_update.TL_updateNewMessage();
+        newMessageUpdate.message = service;
+        updates.updates.add(newMessageUpdate);
+        updates.users.addAll(users);
+        updates.chats.add(chat);
+        TLRPC.TL_messages_invitedUsers result = new TLRPC.TL_messages_invitedUsers();
+        result.updates = updates;
+        log("createLocalGroup id=" + chatId + " agents=" + agents.size());
+        return result;
+    }
+
+    /** Re-adds locally stored agents after every full-chat load from Telegram. */
+    public static void ensureGroupParticipants(TLRPC.ChatFull full) {
+        if (full == null || full.id == 0) return;
+        List<OxAgent> agents = OxGroupStore.agents(full.id);
+        if (agents.isEmpty()) return;
+        if (!(full.participants instanceof TLRPC.TL_chatParticipants)) return;
+        boolean changed = false;
+        java.util.HashSet<Long> ids = new java.util.HashSet<>();
+        for (TLRPC.ChatParticipant p : full.participants.participants) {
+            if (p != null) ids.add(p.user_id);
+        }
+        for (OxAgent a : agents) {
+            if (ids.contains(a.tgId)) continue;
+            TLRPC.TL_chatParticipant p = new TLRPC.TL_chatParticipant();
+            p.user_id = a.tgId;
+            p.inviter_id = SELF_ID;
+            p.date = (int) (System.currentTimeMillis() / 1000);
+            full.participants.participants.add(p);
+            ids.add(a.tgId);
+            changed = true;
+        }
+        if (changed) {
+            full.participants_count = Math.max(full.participants_count, full.participants.participants.size());
+            AndroidUtilities.runOnUIThread(() -> NotificationCenter.getInstance(0)
+                    .postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_CHAT_MEMBERS));
+            log("ensureGroupParticipants chat=" + full.id + " agents=" + agents.size());
+        }
+    }
+
+    private static volatile boolean groupObserverInstalled;
+
+    private static void installGroupObserver() {
+        if (groupObserverInstalled) return;
+        groupObserverInstalled = true;
+        NotificationCenter.getInstance(0).addObserver((id, account, args) -> {
+            if (id == NotificationCenter.chatInfoDidLoad && args != null && args.length > 0
+                    && args[0] instanceof TLRPC.ChatFull) {
+                ensureGroupParticipants((TLRPC.ChatFull) args[0]);
+            }
+        }, NotificationCenter.chatInfoDidLoad);
+    }
+
+    /** Installs the observers and mirrors agents into the stock contacts list. */
+    public static void ensureAgentContacts() {
+        installGroupObserver();
+        installContactsObserver();
+        syncAgentContacts(OxAgentStore.listAgents());
+    }
+
+    private static volatile boolean contactsObserverInstalled;
+
+    private static void installContactsObserver() {
+        if (contactsObserverInstalled) return;
+        contactsObserverInstalled = true;
+        NotificationCenter.getInstance(0).addObserver((id, account, args) -> {
+            if (id == NotificationCenter.contactsDidLoad) {
+                syncAgentContacts(OxAgentStore.listAgents());
+            }
+        }, NotificationCenter.contactsDidLoad);
     }
 
     private static Object field(Object target, String name) {
@@ -169,6 +493,7 @@ public class OxAgentsBridge {
             } catch (Throwable t) {
                 logErr("ensureLocalAccount failed", t);
             }
+            installGroupObserver();
             syncAgents(true);
         }
     }
@@ -182,9 +507,55 @@ public class OxAgentsBridge {
 
     // ---------------- agents -> synthetic contacts ----------------
 
+    /** Agents are real contact rows for the stock "add members" / "new group" pickers. */
+    private static void syncAgentContacts(List<OxAgent> agents) {
+        try {
+            org.telegram.messenger.ContactsController cc = org.telegram.messenger.ContactsController.getInstance(0);
+            java.util.HashSet<Long> wanted = new java.util.HashSet<>();
+            ArrayList<TLRPC.TL_contact> persist = new ArrayList<>();
+            for (OxAgent a : agents) {
+                if (a.tgId == 0) continue;
+                wanted.add(a.tgId);
+                TLRPC.TL_contact row = cc.contactsDict.get(a.tgId);
+                if (row == null) {
+                    row = new TLRPC.TL_contact();
+                    row.user_id = a.tgId;
+                    cc.contactsDict.put(a.tgId, row);
+                }
+                boolean present = false;
+                for (int i = 0; i < cc.contacts.size(); i++) {
+                    if (cc.contacts.get(i).user_id == a.tgId) {
+                        present = true;
+                        break;
+                    }
+                }
+                if (!present) {
+                    TLRPC.TL_contact added = new TLRPC.TL_contact();
+                    added.user_id = a.tgId;
+                    cc.contacts.add(added);
+                    persist.add(added);
+                }
+            }
+            if (!persist.isEmpty()) {
+                MessagesStorage.getInstance(0).putContacts(persist, false);
+            }
+            for (int i = cc.contacts.size() - 1; i >= 0; i--) {
+                long uid = cc.contacts.get(i).user_id;
+                if (isAgentDialog(uid) && !wanted.contains(uid)) {
+                    cc.contacts.remove(i);
+                    cc.contactsDict.remove(uid);
+                }
+            }
+        } catch (Throwable t) {
+            logErr("syncAgentContacts failed", t);
+        }
+    }
+
     public static void syncAgents(boolean greetNew) {
         try {
             List<OxAgent> agents = OxAgentStore.listAgents();
+            installGroupObserver();
+            installContactsObserver();
             log("syncAgents: " + agents.size() + " agents");
             ArrayList<TLRPC.User> users = new ArrayList<>();
             for (OxAgent a : agents) {
@@ -204,6 +575,8 @@ public class OxAgentsBridge {
                 // existing (photo-less) user object is kept and avatars never render
                 MessagesController.getInstance(0).putUser(u, false);
             }
+            for (OxAgent a : agents) putAgentFull(a);
+            syncAgentContacts(agents);
             final StringBuilder liveIds = new StringBuilder();
             for (OxAgent a : agents) {
                 ensureDialogRow(a.tgId);
@@ -269,6 +642,32 @@ public class OxAgentsBridge {
         u.status = onlineStatus();
         attachAvatar(u, a);
         return u;
+    }
+
+    /** Builds and caches the stock UserFull (bio) for an agent so any profile screen can render it. */
+    public static void putAgentFull(OxAgent agent) {
+        if (agent == null) return;
+        try {
+            TLRPC.TL_user u = buildAgentUser(agent);
+            TLRPC.TL_userFull full = new TLRPC.TL_userFull();
+            full.flags |= 1;
+            full.id = u.id;
+            full.user = u;
+            String about = agent.remark == null ? "" : agent.remark.trim();
+            if (about.isEmpty()) {
+                about = org.telegram.messenger.LocaleController.formatString(
+                        "OxAgentProfileAbout", org.telegram.messenger.R.string.OxAgentProfileAbout,
+                        agent.model == null || agent.model.isEmpty() ? "OpenAI-compatible" : agent.model);
+            }
+            full.about = about;
+            full.settings = new TLRPC.TL_peerSettings();
+            full.notify_settings = new TLRPC.TL_peerNotifySettings();
+            full.common_chats_count = 0;
+            MessagesController.getInstance(0).putUserFull(full);
+            MessagesStorage.getInstance(0).updateUserInfo(full, false);
+        } catch (Throwable t) {
+            logErr("putAgentFull failed", t);
+        }
     }
 
     /** Materializes the agent's custom avatar as a real UserProfilePhoto backed by
@@ -455,12 +854,18 @@ public class OxAgentsBridge {
                     full.flags |= 1;   // has about
                     full.id = u.id;
                     full.user = u;
-                    full.about = agent.agentsMd != null && !agent.agentsMd.trim().isEmpty()
-                            ? agent.agentsMd.trim() : "OrionekoX local agent";
+                    String about = agent.remark == null ? "" : agent.remark.trim();
+                    if (about.isEmpty()) {
+                        about = org.telegram.messenger.LocaleController.formatString(
+                                "OxAgentProfileAbout", org.telegram.messenger.R.string.OxAgentProfileAbout,
+                                agent.model == null || agent.model.isEmpty() ? "OpenAI-compatible" : agent.model);
+                    }
+                    full.about = about;
                     full.settings = new TLRPC.TL_peerSettings();
                     full.notify_settings = new TLRPC.TL_peerNotifySettings();
                     full.common_chats_count = 0;
                     MessagesController.getInstance(0).putUserFull(full);
+                    MessagesStorage.getInstance(0).updateUserInfo(full, false);
                 } catch (Throwable t) {
                     logErr("ensureNativeDialog user failed", t);
                 }
@@ -720,7 +1125,7 @@ public class OxAgentsBridge {
         }
         if (agent.isEchoMode()) {
             String reply = "⚡ 离线回声模式（未配置模型后端）\n\n" + displayText
-                    + "\n\n👉 打开 智能体 管理 → 长按 → 编辑设置，填写 Base URL / API Key / 模型后即可接入真实模型与工具调用。";
+                    + "\n\n👉 打开 智能体 管理 → 长按 → 编辑设置，填写接口地址 / API Key / 模型后即可接入真实模型与工具调用。";
             injectAgentReply(dialogId, reply);
             try {
                 List<OxChatEntry> chat = OxAgentStore.loadChat(agent.id);
@@ -937,7 +1342,7 @@ public class OxAgentsBridge {
         if (agent.isEchoMode()) {
             StringBuilder sb = new StringBuilder();
             sb.append("⚡ 离线回声模式（未配置模型后端）\n\n你说：").append(text).append('\n');
-            sb.append("\n👉 打开 智能体 管理 → 长按 → 编辑设置，填写 Base URL / API Key / 模型后即可接入真实模型与工具调用。");
+            sb.append("\n👉 打开 智能体 管理 → 长按 → 编辑设置，填写接口地址 / API Key / 模型后即可接入真实模型与工具调用。");
             injectAgentReply(dialogId, sb.toString());
             List<OxChatEntry> chat = OxAgentStore.loadChat(agent.id);
             chat.add(new OxChatEntry("user", text, System.currentTimeMillis()));
@@ -952,6 +1357,8 @@ public class OxAgentsBridge {
 
     private static class Stream {
         long dialogId;
+        long senderTgId;
+        boolean group;
         OxAgent agent;
         JSONArray messages;
         int depth;
@@ -975,8 +1382,8 @@ public class OxAgentsBridge {
                 MessagesController mc = MessagesController.getInstance(0);
                 int now = ConnectionsManager.getInstance(0).getCurrentTime();
                 boolean any = !active.isEmpty();
-                for (Long dialogId : active.keySet()) {
-                    setPrintingUser(dialogId, now);
+                for (Stream stream : active.values()) {
+                    setPrintingUser(stream.dialogId, stream.senderTgId, now);
                 }
                 mc.updatePrintingStrings();
                 notifyPrintChanged();
@@ -989,7 +1396,7 @@ public class OxAgentsBridge {
         }
     };
 
-    private static void setPrintingUser(long dialogId, int now) {
+    private static void setPrintingUser(long dialogId, long senderTgId, int now) {
         try {
             MessagesController mc = MessagesController.getInstance(0);
             java.util.concurrent.ConcurrentHashMap<Integer, java.util.ArrayList<MessagesController.PrintingUser>> threads = mc.printingUsers.get(dialogId);
@@ -1004,7 +1411,7 @@ public class OxAgentsBridge {
             }
             arr.clear();
             MessagesController.PrintingUser pu = new MessagesController.PrintingUser();
-            pu.userId = dialogId;
+            pu.userId = senderTgId;
             pu.lastTime = now;
             pu.action = new TLRPC.TL_sendMessageTypingAction();
             arr.add(pu);
@@ -1020,10 +1427,10 @@ public class OxAgentsBridge {
                 .postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_USER_PRINT));
     }
 
-    private static void startTyping(long dialogId) {
+    private static void startTyping(long dialogId, long senderTgId) {
         AndroidUtilities.runOnUIThread(() -> {
             try {
-                setPrintingUser(dialogId, ConnectionsManager.getInstance(0).getCurrentTime());
+                setPrintingUser(dialogId, senderTgId, ConnectionsManager.getInstance(0).getCurrentTime());
                 MessagesController.getInstance(0).updatePrintingStrings();
                 notifyPrintChanged();
                 typingHandler.removeCallbacks(typingTicker);
@@ -1056,6 +1463,8 @@ public class OxAgentsBridge {
         log("startTurn agent=" + agent.id + " dialog=" + dialogId + " image=" + (imagePath != null));
         Stream s = new Stream();
         s.dialogId = dialogId;
+        s.senderTgId = dialogId;
+        s.group = false;
         s.agent = agent;
         s.userText = userText;
         s.imagePath = imagePath;
@@ -1071,8 +1480,77 @@ public class OxAgentsBridge {
             return;
         }
         active.put(dialogId, s);
-        startTyping(dialogId);
+        startTyping(dialogId, s.senderTgId);
         runRound(s, 0);
+    }
+
+    // ---------------- group turns ----------------
+
+    /** Triggered for an outgoing message in a group that has local Ox agents. */
+    public static void onGroupMessage(long dialogId, String text, MessageObject replyTo) {
+        try {
+            if (dialogId >= 0 || text == null || text.trim().isEmpty()) return;
+            List<OxAgent> agents = OxGroupStore.agents(dialogId);
+            if (agents.isEmpty()) return;
+            OxAgent chosen = null;
+            if (replyTo != null) {
+                long sender = replyTo.getSenderId();
+                for (OxAgent a : agents) {
+                    if (a.tgId == sender) { chosen = a; break; }
+                }
+            }
+            String lower = text.toLowerCase();
+            if (chosen == null) {
+                for (OxAgent a : agents) {
+                    String name = a.name == null ? "" : a.name.toLowerCase();
+                    if (!name.isEmpty() && (lower.contains("@" + name) || lower.contains(name))) {
+                        chosen = a;
+                        break;
+                    }
+                }
+            }
+            if (chosen == null) chosen = agents.get(0);
+            startGroupTurn(chosen, dialogId, text.trim());
+        } catch (Throwable t) {
+            logErr("onGroupMessage failed", t);
+        }
+    }
+
+    private static void startGroupTurn(OxAgent agent, long dialogId, String userText) {
+        Stream s = new Stream();
+        s.dialogId = dialogId;
+        s.senderTgId = agent.tgId;
+        s.group = true;
+        s.agent = agent;
+        s.userText = userText;
+        try {
+            s.messages = groupMessages(agent, dialogId, userText);
+        } catch (Exception e) {
+            injectAgentReply(dialogId, agent.tgId, "⚠ " + e.getMessage());
+            return;
+        }
+        active.put(dialogId, s);
+        startTyping(dialogId, agent.tgId);
+        runRound(s, 0);
+    }
+
+    private static JSONArray groupMessages(OxAgent agent, long dialogId, String userText) throws Exception {
+        JSONArray messages = new JSONArray();
+        StringBuilder system = new StringBuilder();
+        if (agent.agentsMd != null) system.append(agent.agentsMd.trim());
+        TLRPC.Chat chat = MessagesController.getInstance(0).getChat(-dialogId);
+        String title = chat == null || chat.title == null ? "群聊" : chat.title;
+        if (system.length() > 0) system.append("\n\n");
+        system.append("# 群聊模式\n你正在群聊「").append(title)
+                .append("」中以普通成员身份发言。只回复与当前消息相关的内容，称呼用户时保持自然；");
+        system.append("不要提及自己是本地合成的账号。");
+        String memory = OxAgentStore.loadMemory(agent.id, 4000);
+        if (!memory.isEmpty()) {
+            system.append("\n\n# 长期记忆\n").append(memory);
+        }
+        messages.put(new JSONObject().put("role", "system").put("content", system.toString()));
+        messages.put(new JSONObject().put("role", "user").put("content", userText));
+        return messages;
     }
 
     private static JSONArray baseMessages(OxAgent agent, String agentId) throws Exception {
@@ -1199,7 +1677,7 @@ public class OxAgentsBridge {
         }
         final String argsPretty = call.arguments == null || call.arguments.trim().isEmpty() ? "{}" : call.arguments;
         Runnable run = () -> {
-            injectAgentReply(s.dialogId, "🔧 " + call.name + "(" + argsPretty + ") …");
+            injectAgentReply(s.dialogId, s.senderTgId, "🔧 " + call.name + "(" + argsPretty + ") …");
             new Thread(() -> {
                 String result;
                 try {
@@ -1266,7 +1744,7 @@ public class OxAgentsBridge {
      * on the main thread (it is not thread-safe off it); storage write goes through the
      * storage queue from any thread.
      */
-    private static void persistAndShow(long dialogId, TLRPC.TL_message msg) {
+    private static void persistAndShow(long dialogId, TLRPC.Message msg) {
         final boolean out = msg.out;
         ArrayList<TLRPC.Message> arr = new ArrayList<>();
         arr.add(msg);
@@ -1275,7 +1753,9 @@ public class OxAgentsBridge {
         } catch (Throwable t) {
             logErr("putMessages failed did=" + dialogId, t);
         }
-        refreshDialogRow(dialogId);
+        if (dialogId >= 0) {
+            refreshDialogRow(dialogId);
+        }
         AndroidUtilities.runOnUIThread(() -> {
             try {
                 MessageObject obj = new MessageObject(0, msg, true, false);
@@ -1358,6 +1838,10 @@ public class OxAgentsBridge {
     }
 
     public static void injectAgentReply(long dialogId, String text) {
+        injectAgentReply(dialogId, dialogId, text);
+    }
+
+    public static void injectAgentReply(long dialogId, long senderTgId, String text) {
         try {
             TLRPC.TL_message msg = new TLRPC.TL_message();
             msg.flags = 256;
@@ -1366,17 +1850,37 @@ public class OxAgentsBridge {
             msg.out = false;
             msg.date = (int) (System.currentTimeMillis() / 1000);
             msg.message = text;
-            msg.peer_id = new TLRPC.TL_peerUser();
-            msg.peer_id.user_id = dialogId;
-            msg.from_id = new TLRPC.TL_peerUser();
-            msg.from_id.user_id = dialogId;
-            msg.dialog_id = dialogId;
+            setPeerAndSender(msg, dialogId, senderTgId);
             msg.unread = false;
             msg.media = new TLRPC.TL_messageMediaEmpty();
             persistAndShow(dialogId, msg);
         } catch (Throwable t) {
             logErr("injectAgentReply failed", t);
         }
+    }
+
+    /** Peer for a private user dialog or a basic group / channel dialog. */
+    private static TLRPC.Peer peerFor(long dialogId) {
+        if (dialogId < 0) {
+            if (dialogId <= -1000000000000L) {
+                TLRPC.TL_peerChannel peer = new TLRPC.TL_peerChannel();
+                peer.channel_id = -dialogId - 1000000000000L;
+                return peer;
+            }
+            TLRPC.TL_peerChat peer = new TLRPC.TL_peerChat();
+            peer.chat_id = -dialogId;
+            return peer;
+        }
+        TLRPC.TL_peerUser peer = new TLRPC.TL_peerUser();
+        peer.user_id = dialogId;
+        return peer;
+    }
+
+    private static void setPeerAndSender(TLRPC.TL_message msg, long dialogId, long senderTgId) {
+        msg.peer_id = peerFor(dialogId);
+        msg.from_id = new TLRPC.TL_peerUser();
+        msg.from_id.user_id = senderTgId;
+        msg.dialog_id = dialogId;
     }
 
     // ---------------- streaming bubble ----------------
@@ -1393,11 +1897,7 @@ public class OxAgentsBridge {
                 s.msg.local_id = s.msg.id;
                 s.msg.out = false;
                 s.msg.date = (int) (System.currentTimeMillis() / 1000);
-                s.msg.peer_id = new TLRPC.TL_peerUser();
-                s.msg.peer_id.user_id = s.dialogId;
-                s.msg.from_id = new TLRPC.TL_peerUser();
-                s.msg.from_id.user_id = s.dialogId;
-                s.msg.dialog_id = s.dialogId;
+                setPeerAndSender(s.msg, s.dialogId, s.senderTgId);
                 s.msg.unread = false;
                 s.msg.media = new TLRPC.TL_messageMediaEmpty();
             }
@@ -1454,7 +1954,7 @@ public class OxAgentsBridge {
                 }
             });
         } else {
-            injectAgentReply(s.dialogId, finalText);
+            injectAgentReply(s.dialogId, s.senderTgId, finalText);
         }
         // persist the turn into the shared agent history
         try {
