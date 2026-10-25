@@ -459,7 +459,7 @@ public class OxAgentChatActivity extends BaseFragment {
         md.setMinLines(6);
         md.setGravity(Gravity.TOP);
         md.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-        wrap.addView(md, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, AndroidUtilities.dp(140)));
+        wrap.addView(md, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 140));
 
         StringBuilder toolsInfo = new StringBuilder("工具策略：get_time/device_info/get_me=自动；http_get=每次询问（可在 agent.json tools_policy 调整）");
         TextView tLabel = new TextView(context);

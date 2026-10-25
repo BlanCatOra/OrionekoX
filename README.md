@@ -47,8 +47,4 @@ We moved all translations to https://translations.telegram.org/en/android/. Plea
 
 ## License
 
-- Upstream Telegram Android: **GPL-2.0** (top-level `LICENSE`).
-- OrionekoX original code (`org.telegram.ox`, `Ox*` UI, docs, scripts, icon artwork):
-  **AGPL-3.0** (`LICENSE-AGPL-3.0`), also available under GPL-2.0 as part of the
-  combined APK. See [docs/LICENSING.md](docs/LICENSING.md) for the exact scope and
-  why the combined binary remains GPL-2.0.
+GPL-2.0. See [LICENSE](LICENSE) and [docs/LICENSING.md](docs/LICENSING.md).

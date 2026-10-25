@@ -1,15 +1,22 @@
 package org.telegram.ox;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.SystemClock;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -425,6 +432,124 @@ public class OxBuiltinTools {
                 } finally {
                     if (conn != null) conn.disconnect();
                 }
+            }
+        });
+    }
+
+
+    static {
+        register(new OxTool() {
+            @Override public String name() { return "remember"; }
+            @Override public String description() { return "Save a durable fact about the user into this agent's long-term memory."; }
+            @Override public String defaultPolicy() { return POLICY_AUTO; }
+            @Override public JSONObject parameters() { return schema(new String[]{"text"}); }
+            @Override public String execute(JSONObject args) { return "use executeWithAgent"; }
+            @Override public String executeWithAgent(JSONObject args, OxAgent agent) throws Exception {
+                String text = args.optString("text", "").trim();
+                if (text.isEmpty()) throw new IllegalArgumentException("text is empty");
+                OxAgentStore.appendMemory(agent.id, text);
+                return "remembered: " + text;
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "recall"; }
+            @Override public String description() { return "Search this agent's long-term memory for a keyword."; }
+            @Override public String defaultPolicy() { return POLICY_AUTO; }
+            @Override public JSONObject parameters() { return schema(new String[]{"query"}); }
+            @Override public String execute(JSONObject args) { return "use executeWithAgent"; }
+            @Override public String executeWithAgent(JSONObject args, OxAgent agent) {
+                String q = args.optString("query", "").trim();
+                String r = OxAgentStore.searchMemory(agent.id, q, 30);
+                return r.isEmpty() ? "no matching memory" : r;
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "list_dir"; }
+            @Override public String description() { return "List files in this agent's private workspace."; }
+            @Override public String defaultPolicy() { return POLICY_AUTO; }
+            @Override public JSONObject parameters() { return schema(new String[]{"path"}); }
+            @Override public String execute(JSONObject args) { return "use executeWithAgent"; }
+            @Override public String executeWithAgent(JSONObject args, OxAgent agent) throws Exception {
+                File f = OxAgentStore.resolveWorkspace(agent.id, args.optString("path", "."));
+                if (!f.exists()) throw new java.io.FileNotFoundException("not found");
+                if (!f.isDirectory()) throw new IllegalArgumentException("not a directory");
+                File[] files = f.listFiles();
+                if (files == null) return "";
+                java.util.Arrays.sort(files, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+                StringBuilder sb = new StringBuilder();
+                int n = 0;
+                for (File c : files) {
+                    if (n++ >= 200) { sb.append("...\n"); break; }
+                    sb.append(c.isDirectory() ? "d " : "f ").append(c.getName());
+                    if (c.isFile()) sb.append("  ").append(c.length()).append("B");
+                    sb.append('\n');
+                }
+                return sb.toString().trim();
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "read_file"; }
+            @Override public String description() { return "Read a UTF-8 text file from this agent's private workspace (max 64 KB)."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"path"}); }
+            @Override public String execute(JSONObject args) { return "use executeWithAgent"; }
+            @Override public String executeWithAgent(JSONObject args, OxAgent agent) throws Exception {
+                File f = OxAgentStore.resolveWorkspace(agent.id, args.optString("path", ""));
+                if (!f.exists() || !f.isFile()) throw new java.io.FileNotFoundException("not found");
+                try (FileInputStream in = new FileInputStream(f)) {
+                    byte[] buf = new byte[(int) Math.min(f.length(), 65536)];
+                    int off = 0, n;
+                    while (off < buf.length && (n = in.read(buf, off, buf.length - off)) > 0) off += n;
+                    return new String(buf, 0, off, StandardCharsets.UTF_8);
+                }
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "write_file"; }
+            @Override public String description() { return "Write a UTF-8 text file inside this agent's private workspace."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"path", "content"}); }
+            @Override public String execute(JSONObject args) { return "use executeWithAgent"; }
+            @Override public String executeWithAgent(JSONObject args, OxAgent agent) throws Exception {
+                File f = OxAgentStore.resolveWorkspace(agent.id, args.optString("path", ""));
+                File parent = f.getParentFile();
+                if (parent != null) parent.mkdirs();
+                byte[] data = args.optString("content", "").getBytes(StandardCharsets.UTF_8);
+                try (FileOutputStream out = new FileOutputStream(f)) {
+                    out.write(data);
+                }
+                return "wrote " + data.length + " bytes to " + args.optString("path", "");
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "notify"; }
+            @Override public String description() { return "Show a short toast notification on the device."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"text"}); }
+            @Override public String execute(JSONObject args) {
+                final String text = args.optString("text", "");
+                AndroidUtilities.runOnUIThread(() -> Toast.makeText(ApplicationLoader.applicationContext, text, Toast.LENGTH_LONG).show());
+                return "notified";
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "open_url"; }
+            @Override public String description() { return "Open an http(s) URL in the system browser."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"url"}); }
+            @Override public String execute(JSONObject args) throws Exception {
+                String url = args.optString("url", "").trim();
+                if (!url.startsWith("http://") && !url.startsWith("https://")) throw new IllegalArgumentException("only http(s)");
+                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ApplicationLoader.applicationContext.startActivity(i);
+                return "opened " + url;
             }
         });
     }

@@ -65,6 +65,24 @@ public class OxModelHub {
                 body.put("model", agent.model == null ? "" : agent.model);
                 body.put("messages", messages);
                 body.put("stream", true);
+                if (agent.temperature >= 0) body.put("temperature", agent.temperature);
+                if (agent.topP >= 0) body.put("top_p", agent.topP);
+                if (agent.maxTokens > 0) body.put("max_tokens", agent.maxTokens);
+                if (agent.presencePenalty != 0) body.put("presence_penalty", agent.presencePenalty);
+                if (agent.frequencyPenalty != 0) body.put("frequency_penalty", agent.frequencyPenalty);
+                if (agent.topK > 0) body.put("top_k", agent.topK);
+                if (agent.seed >= 0) body.put("seed", agent.seed);
+                if (agent.stop != null && !agent.stop.trim().isEmpty()) {
+                    JSONArray stop = new JSONArray();
+                    for (String part : agent.stop.split(",")) {
+                        if (!part.trim().isEmpty()) stop.put(part.trim());
+                    }
+                    if (stop.length() > 0) body.put("stop", stop);
+                }
+                if (agent.reasoningEffort != null && !agent.reasoningEffort.isEmpty()
+                        && !"auto".equals(agent.reasoningEffort)) {
+                    body.put("reasoning_effort", agent.reasoningEffort);
+                }
                 java.util.Collection<OxTool> availableTools;
                 if (withTools && OxMcpManager.hasEnabledServers() && OxMcpManager.mcpToolCount() == 0) {
                     // first use in this process: fetch MCP tool lists synchronously -
@@ -84,7 +102,27 @@ public class OxModelHub {
                         tools.put(new JSONObject().put("type", "function").put("function", fn));
                     }
                     body.put("tools", tools);
-                    body.put("tool_choice", "auto");
+                    if (agent.toolChoice != null && !agent.toolChoice.isEmpty()
+                            && !"auto".equals(agent.toolChoice)) {
+                        body.put("tool_choice", agent.toolChoice);
+                    } else {
+                        body.put("tool_choice", "auto");
+                    }
+                    if (agent.parallelToolCalls == false) {
+                        body.put("parallel_tool_calls", false);
+                    }
+                }
+                if (agent.extraBody != null && !agent.extraBody.trim().isEmpty()) {
+                    try {
+                        JSONObject extra = new JSONObject(agent.extraBody);
+                        java.util.Iterator<String> keys = extra.keys();
+                        while (keys.hasNext()) {
+                            String k = keys.next();
+                            if ("messages".equals(k) || "stream".equals(k)) continue;
+                            body.put(k, extra.get(k));
+                        }
+                    } catch (Exception ignored) {
+                    }
                 }
 
                 String url = agent.baseUrl.replaceAll("/+$", "") + "/chat/completions";
@@ -236,6 +274,64 @@ public class OxModelHub {
             } catch (Throwable ignored) {
             }
         }
+    }
+
+    public interface ModelsCallback {
+        void onResult(java.util.List<String> ids, String error);
+    }
+
+    /** GET /models with the agent's auth and custom headers. */
+    public static void fetchModels(final OxAgent agent, final ModelsCallback cb) {
+        if (agent == null || agent.baseUrl == null || agent.baseUrl.trim().isEmpty()) {
+            MAIN.post(() -> cb.onResult(new ArrayList<>(), "Base URL is empty"));
+            return;
+        }
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            try {
+                String url = agent.baseUrl.replaceAll("/+$", "") + "/models";
+                conn = (HttpURLConnection) new URL(url).openConnection();
+                conn.setRequestMethod("GET");
+                if (agent.apiKey != null && !agent.apiKey.trim().isEmpty()) {
+                    conn.setRequestProperty("Authorization", "Bearer " + agent.apiKey);
+                }
+                applyHeaders(conn, agent);
+                conn.setConnectTimeout(15_000);
+                conn.setReadTimeout(30_000);
+                int code = conn.getResponseCode();
+                String raw = code == 200 ? readAll(conn.getInputStream()) : readAll(conn.getErrorStream());
+                if (code != 200) {
+                    final String msg = "HTTP " + code + (raw.isEmpty() ? "" : ": " + raw.substring(0, Math.min(raw.length(), 160)));
+                    MAIN.post(() -> cb.onResult(new ArrayList<>(), msg));
+                    return;
+                }
+                JSONObject obj = new JSONObject(raw);
+                JSONArray data = obj.optJSONArray("data");
+                if (data == null) data = obj.optJSONArray("models");
+                java.util.List<String> ids = new ArrayList<>();
+                if (data != null) {
+                    for (int i = 0; i < data.length(); i++) {
+                        JSONObject m = data.optJSONObject(i);
+                        String id = m == null ? data.optString(i) : m.optString("id", m.optString("name", ""));
+                        if (id == null || id.isEmpty()) continue;
+                        String lower = id.toLowerCase();
+                        if (lower.contains("embedding") || lower.contains("whisper") || lower.contains("tts")
+                                || lower.contains("dall-e") || lower.contains("moderation")) {
+                            continue;
+                        }
+                        if (!ids.contains(id)) ids.add(id);
+                    }
+                }
+                java.util.Collections.sort(ids);
+                final java.util.List<String> out = ids;
+                MAIN.post(() -> cb.onResult(out, out.isEmpty() ? "No models returned" : null));
+            } catch (Exception e) {
+                final String msg = e.getClass().getSimpleName() + ": " + e.getMessage();
+                MAIN.post(() -> cb.onResult(new ArrayList<>(), msg));
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }, "ox-model-list").start();
     }
 
     public interface TestCallback {

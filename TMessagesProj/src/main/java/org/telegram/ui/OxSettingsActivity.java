@@ -61,8 +61,8 @@ public class OxSettingsActivity extends BaseFragment {
         LinearLayout guideGroup = group(context);
         guideGroup.addView(cell(context, LocaleController.getString(R.string.OxSettingsRerun), "", true, v ->
                 presentFragment(new OxOnboardingActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        guideGroup.addView(cell(context, LocaleController.getString(R.string.OxSettingsLicense), "AGPL-3.0", true, v ->
-                open("https://github.com/BlanCatOra/OrionekoX/blob/main/docs/LICENSING.md")), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        guideGroup.addView(cell(context, LocaleController.getString(R.string.OxSettingsLicense), "GPL-2.0", true, v ->
+                open("https://github.com/BlanCatOra/OrionekoX/blob/HEAD/docs/LICENSING.md")), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         content.addView(guideGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         content.addView(header(context, LocaleController.getString(R.string.OxSettingsSectionAgents)));
@@ -71,6 +71,8 @@ public class OxSettingsActivity extends BaseFragment {
                 presentFragment(new OxAgentsActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         agentGroup.addView(cell(context, LocaleController.getString(R.string.OxMcp), "", true, v ->
                 presentFragment(new OxMcpActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        agentGroup.addView(cell(context, LocaleController.getString(R.string.OxToolsTitle), "", true, v ->
+                presentFragment(new OxToolsActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         content.addView(agentGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         content.addView(header(context, "OxLinux"));

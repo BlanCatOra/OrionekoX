@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
@@ -69,6 +70,7 @@ public class OxOnboardingActivity extends BaseFragment {
 
     private ViewPager viewPager;
     private BottomPagesView bottomPages;
+    private final View[] progressSegments = new View[PAGES];
     private TextView stepText;
     private TextView hintText;
     private TextView nextButton;
@@ -85,6 +87,9 @@ public class OxOnboardingActivity extends BaseFragment {
 
     // page 3
     private TextView agentSummary;
+    private View containerOptionRow;
+    private View containerOptionCard;
+    private View containerOptionDivider;
     private final TextView[] modeChecks = new TextView[2];
     private final View[] modeRows = new View[2];
     private TextView modeWarning;
@@ -144,8 +149,9 @@ public class OxOnboardingActivity extends BaseFragment {
         ActionBarMenu menu = actionBar.createMenu();
         menu.addItemWithWidth(MENU_CLOSE, R.drawable.ic_ab_close, AndroidUtilities.dp(56));
 
-        FrameLayout root = new FrameLayout(context);
-        root.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
 
         viewPager = new ViewPager(context);
         viewPager.setOffscreenPageLimit(2);
@@ -163,7 +169,6 @@ public class OxOnboardingActivity extends BaseFragment {
         });
         viewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
             @Override public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-                bottomPages.setPageOffset(position, positionOffset);
             }
             @Override public void onPageSelected(int position) {
                 updateChrome(position);
@@ -177,24 +182,43 @@ public class OxOnboardingActivity extends BaseFragment {
             page.setTranslationX(-position * AndroidUtilities.dp(26));
             page.setTranslationY(Math.abs(position) * AndroidUtilities.dp(6));
         });
-        root.addView(viewPager, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
-
-        LinearLayout chrome = new LinearLayout(context);
-        chrome.setOrientation(LinearLayout.VERTICAL);
-        chrome.setGravity(Gravity.CENTER_HORIZONTAL);
-        bottomPages = new BottomPagesView(context, viewPager, PAGES);
-        bottomPages.setColor(Theme.key_windowBackgroundWhiteGrayText, Theme.key_chats_actionBackground);
-        chrome.addView(bottomPages, LayoutHelper.createLinear(66, 5, Gravity.CENTER_HORIZONTAL, 0, 0, 0, 8));
+        // Fixed progress header: six segments + the exact step counter. It sits above
+        // the pager so the page content is never covered by chrome.
+        LinearLayout progressHeader = new LinearLayout(context);
+        progressHeader.setOrientation(LinearLayout.VERTICAL);
+        progressHeader.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        progressHeader.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(10), AndroidUtilities.dp(20), AndroidUtilities.dp(10));
+        LinearLayout segments = new LinearLayout(context);
+        segments.setOrientation(LinearLayout.HORIZONTAL);
+        for (int i = 0; i < PAGES; i++) {
+            View seg = new View(context);
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(AndroidUtilities.dp(2));
+            bg.setColor(getThemedColor(Theme.key_divider));
+            seg.setBackground(bg);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, AndroidUtilities.dp(3), 1f);
+            lp.leftMargin = AndroidUtilities.dp(i == 0 ? 0 : 3);
+            lp.rightMargin = AndroidUtilities.dp(i == PAGES - 1 ? 0 : 3);
+            segments.addView(seg, lp);
+            progressSegments[i] = seg;
+        }
+        progressHeader.addView(segments, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 3));
         stepText = new TextView(context);
-        stepText.setTextSize(13);
+        stepText.setTextSize(12);
         stepText.setGravity(Gravity.CENTER);
         stepText.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        chrome.addView(stepText, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL));
+        stepText.setPadding(0, AndroidUtilities.dp(8), 0, 0);
+        progressHeader.addView(stepText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        root.addView(progressHeader, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        root.addView(viewPager, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 0, 1f));
+
 
         // Fixed bottom action area: hint (fixed), secondary left/right slots (fixed),
         // primary button (fixed). Nothing uses GONE, so positions never change.
         FrameLayout bottomBar = new FrameLayout(context);
         bottomBar.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        bottomBar.setElevation(AndroidUtilities.dp(8));
         View divider = new View(context);
         divider.setBackgroundColor(getThemedColor(Theme.key_divider));
         bottomBar.addView(divider, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 1, Gravity.TOP));
@@ -204,8 +228,6 @@ public class OxOnboardingActivity extends BaseFragment {
         int nav = Math.max(AndroidUtilities.navigationBarHeight, AndroidUtilities.dp(8));
         bottomCol.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(10), AndroidUtilities.dp(24), nav);
 
-        bottomCol.addView(chrome, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 4));
-
         hintText = new TextView(context);
         hintText.setTextSize(12);
         hintText.setGravity(Gravity.CENTER);
@@ -213,7 +235,7 @@ public class OxOnboardingActivity extends BaseFragment {
         hintText.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
         hintText.setText(LocaleController.getString(R.string.OxObSkipHint));
         hintText.setMaxLines(2);
-        bottomCol.addView(hintText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, AndroidUtilities.dp(32)));
+        bottomCol.addView(hintText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 32));
 
         FrameLayout secondary = new FrameLayout(context);
         exitButton = new TextView(context);
@@ -251,14 +273,19 @@ public class OxOnboardingActivity extends BaseFragment {
         nextButton.setTextColor(0xffffffff);
         GradientDrawable buttonBackground = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                 new int[]{getThemedColor(Theme.key_featuredStickers_addButton), getThemedColor(Theme.key_featuredStickers_addButton2)});
-        buttonBackground.setCornerRadius(AndroidUtilities.dp(24));
+        buttonBackground.setCornerRadius(AndroidUtilities.dp(26));
         nextButton.setBackground(buttonBackground);
         ScaleStateListAnimator.apply(nextButton, .02f, 1.2f);
         nextButton.setOnClickListener(v -> onNext());
-        bottomCol.addView(nextButton, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 0, 8, 0, 0));
+        bottomCol.addView(nextButton, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 52, 0, 10, 0, 0));
 
         bottomBar.addView(bottomCol, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM));
-        root.addView(bottomBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM));
+        View scrollFade = new View(context);
+        GradientDrawable fadeBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x00EFEFF4, 0xFFFFFFFF});
+        scrollFade.setBackground(fadeBg);
+        root.addView(scrollFade, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 14));
+        root.addView(bottomBar, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         buildPages(context);
         fragmentView = root;
@@ -291,13 +318,29 @@ public class OxOnboardingActivity extends BaseFragment {
 
     private View pageWrap(Context context, int iconRes, int iconTint, String title, String body, View extra) {
         ScrollView scroll = new ScrollView(context);
+        scroll.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
         LinearLayout col = new LinearLayout(context);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(AndroidUtilities.dp(26), AndroidUtilities.dp(18), AndroidUtilities.dp(26),
-                AndroidUtilities.dp(190) + Math.max(AndroidUtilities.navigationBarHeight, 0));
+        col.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(14), AndroidUtilities.dp(20), AndroidUtilities.dp(24));
 
         if (iconRes != 0) {
+            FrameLayout hero = new FrameLayout(context);
+            hero.setTag("ox_hero");
+            View glow = new View(context);
+            GradientDrawable glowBg = new GradientDrawable();
+            glowBg.setShape(GradientDrawable.OVAL);
+            glowBg.setColor(iconRes == R.drawable.ox_brand
+                    ? 0x66F3E9D2
+                    : Color.argb(24, Color.red(iconTint), Color.green(iconTint), Color.blue(iconTint)));
+            glow.setBackground(glowBg);
+            hero.addView(glow, LayoutHelper.createFrame(116, 116, Gravity.CENTER));
+
             FrameLayout iconWrap = new FrameLayout(context);
+            GradientDrawable circle = new GradientDrawable();
+            circle.setShape(GradientDrawable.OVAL);
+            circle.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
+            iconWrap.setBackground(circle);
+            iconWrap.setElevation(AndroidUtilities.dp(2));
             ImageView icon = new ImageView(context);
             icon.setImageResource(iconRes);
             if (iconRes == R.drawable.ox_brand) {
@@ -309,34 +352,33 @@ public class OxOnboardingActivity extends BaseFragment {
                         outline.setOval(0, 0, view.getWidth(), view.getHeight());
                     }
                 });
-                iconWrap.addView(icon, LayoutHelper.createFrame(56, 56, Gravity.CENTER));
+                iconWrap.addView(icon, LayoutHelper.createFrame(84, 84, Gravity.CENTER));
+                hero.addView(iconWrap, LayoutHelper.createFrame(84, 84, Gravity.CENTER));
             } else {
-                GradientDrawable circle = new GradientDrawable();
-                circle.setShape(GradientDrawable.OVAL);
-                circle.setColor(getThemedColor(Theme.key_windowBackgroundGray));
-                iconWrap.setBackground(circle);
                 icon.setColorFilter(iconTint);
-                iconWrap.addView(icon, LayoutHelper.createFrame(26, 26, Gravity.CENTER));
+                iconWrap.addView(icon, LayoutHelper.createFrame(32, 32, Gravity.CENTER));
+                hero.addView(iconWrap, LayoutHelper.createFrame(68, 68, Gravity.CENTER));
             }
-            col.addView(iconWrap, LayoutHelper.createLinear(56, 56, Gravity.CENTER_HORIZONTAL));
+            col.addView(hero, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 128));
         }
 
         TextView t = new TextView(context);
         t.setText(title);
-        t.setTextSize(24);
+        t.setTextSize(28);
         t.setTypeface(AndroidUtilities.bold());
         t.setGravity(Gravity.CENTER);
+        t.setLineSpacing(AndroidUtilities.dp(3), 1f);
         t.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
         col.addView(t, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
-                0, iconRes != 0 ? 18 : 0, 0, 0));
+                0, iconRes != 0 ? 12 : 8, 0, 0));
 
         TextView b = new TextView(context);
         b.setText(body);
         b.setTextSize(15);
-        b.setLineSpacing(AndroidUtilities.dp(5), 1f);
+        b.setLineSpacing(AndroidUtilities.dp(6), 1f);
         b.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-        b.setPadding(0, AndroidUtilities.dp(14), 0, 0);
-        col.addView(b);
+        b.setPadding(0, AndroidUtilities.dp(12), 0, 0);
+        col.addView(b, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         if (extra != null) {
             col.addView(extra, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 20, 0, 0));
@@ -346,9 +388,30 @@ public class OxOnboardingActivity extends BaseFragment {
         return scroll;
     }
 
+    private TextView pill(Context context, CharSequence text) {
+        TextView tv = new TextView(context);
+        tv.setText(text);
+        tv.setTextSize(12);
+        tv.setTypeface(AndroidUtilities.bold());
+        tv.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        bg.setCornerRadius(AndroidUtilities.dp(14));
+        tv.setBackground(bg);
+        tv.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(6), AndroidUtilities.dp(12), AndroidUtilities.dp(6));
+        return tv;
+    }
+
     private LinearLayout sectionList(Context context) {
         LinearLayout list = new LinearLayout(context);
         list.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        bg.setCornerRadius(AndroidUtilities.dp(16));
+        list.setBackground(bg);
+        list.setClipToOutline(true);
+        list.setElevation(AndroidUtilities.dp(1));
+        list.setPadding(0, AndroidUtilities.dp(4), 0, AndroidUtilities.dp(4));
         return list;
     }
 
@@ -356,15 +419,17 @@ public class OxOnboardingActivity extends BaseFragment {
         View v = new View(context);
         v.setBackgroundColor(getThemedColor(Theme.key_divider));
         LinearLayout.LayoutParams lp = LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 1);
-        lp.leftMargin = AndroidUtilities.dp(56);
+        lp.leftMargin = AndroidUtilities.dp(74);
         v.setLayoutParams(lp);
         return v;
     }
 
     private void buildPages(Context context) {
         // 1. open source
-        LinearLayout extra1 = sectionList(context);
-        extra1.addView(optionRow(context, R.drawable.msg_link, 0xff2AABEE,
+        LinearLayout extra1 = new LinearLayout(context);
+        extra1.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout repoCard = sectionList(context);
+        repoCard.addView(optionRow(context, R.drawable.msg_link, 0xff2AABEE,
                         LocaleController.getString(R.string.OxObRepoTitle),
                         LocaleController.getString(R.string.OxObRepoOpening), false, () -> {
                             try {
@@ -373,29 +438,35 @@ public class OxOnboardingActivity extends BaseFragment {
                             }
                         }),
                 LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra1.addView(repoCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         TextView ai = new TextView(context);
         ai.setText(LocaleController.getString(R.string.OxObAiNote));
         ai.setTextSize(13);
         ai.setLineSpacing(AndroidUtilities.dp(4), 1f);
         ai.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        ai.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(16), AndroidUtilities.dp(4), 0);
+        ai.setPadding(AndroidUtilities.dp(6), AndroidUtilities.dp(16), AndroidUtilities.dp(6), 0);
         extra1.addView(ai, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         pages.add(pageWrap(context, R.drawable.ox_brand, 0xff3A3A3C, LocaleController.getString(R.string.OxObOpenTitle),
                 LocaleController.getString(R.string.OxObOpenBody), extra1));
 
         // 2. legal
-        LinearLayout extra2 = sectionList(context);
+        LinearLayout extra2 = new LinearLayout(context);
+        extra2.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout legalCard = sectionList(context);
         TextView legalBody = new TextView(context);
         legalBody.setText(LocaleController.getString(R.string.OxObLegalBody));
         legalBody.setTextSize(14);
         legalBody.setLineSpacing(AndroidUtilities.dp(5), 1f);
         legalBody.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-        extra2.addView(legalBody, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        legalBody.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(14), AndroidUtilities.dp(16), AndroidUtilities.dp(14));
+        legalCard.addView(legalBody, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra2.addView(legalCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
+        LinearLayout consentCard = sectionList(context);
         LinearLayout consent = new LinearLayout(context);
         consent.setOrientation(LinearLayout.HORIZONTAL);
         consent.setGravity(Gravity.CENTER_VERTICAL);
-        consent.setPadding(0, AndroidUtilities.dp(20), 0, AndroidUtilities.dp(4));
+        consent.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(14), AndroidUtilities.dp(16), AndroidUtilities.dp(14));
         consent.setBackground(Theme.getSelectorDrawable(false));
         final TextView consentCheck = makeCheck(context);
         consent.addView(consentCheck, LayoutHelper.createLinear(24, 24, Gravity.CENTER_VERTICAL));
@@ -412,11 +483,14 @@ public class OxOnboardingActivity extends BaseFragment {
             setCheck(consentCheck, legalAccepted, true);
             updateNextState();
         });
-        extra2.addView(consent, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        consentCard.addView(consent, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra2.addView(consentCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0));
         pages.add(pageWrap(context, R.drawable.msg_info, LocaleController.getString(R.string.OxObLegalTitle), "", extra2));
 
         // 3. start mode
-        LinearLayout extra3 = sectionList(context);
+        LinearLayout extra3 = new LinearLayout(context);
+        extra3.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout modeCard = sectionList(context);
         modeRows[0] = optionRow(context, R.drawable.msg_language, 0xff2AABEE,
                 LocaleController.getString(R.string.OxObModeTgTitle),
                 LocaleController.getString(R.string.OxObModeTgSub), true, () -> selectMode(MODE_LOGIN));
@@ -425,83 +499,85 @@ public class OxOnboardingActivity extends BaseFragment {
                 LocaleController.getString(R.string.OxObModeOxTitle),
                 LocaleController.getString(R.string.OxObModeOxSub), true, () -> selectMode(MODE_OX));
         modeRows[1] = r1;
-        extra3.addView(r0, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        extra3.addView(divider(context));
-        extra3.addView(r1, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        modeCard.addView(r0, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        modeCard.addView(divider(context));
+        modeCard.addView(r1, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra3.addView(modeCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         modeWarning = new TextView(context);
         modeWarning.setTextSize(13);
         modeWarning.setLineSpacing(AndroidUtilities.dp(4), 1f);
         modeWarning.setTextColor(getThemedColor(Theme.key_text_RedRegular));
         modeWarning.setVisibility(View.GONE);
+        modeWarning.setPadding(AndroidUtilities.dp(6), 0, AndroidUtilities.dp(6), 0);
         extra3.addView(modeWarning, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
                 0, 14, 0, 0));
         TextView modeHint = new TextView(context);
         modeHint.setText(LocaleController.getString(R.string.OxObLoginHint));
         modeHint.setTextSize(13);
         modeHint.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        modeHint.setPadding(AndroidUtilities.dp(6), 0, AndroidUtilities.dp(6), 0);
         extra3.addView(modeHint, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
                 0, 12, 0, 0));
         pages.add(pageWrap(context, R.drawable.msg_language, LocaleController.getString(R.string.OxObLoginTitle), "", extra3));
         updateModeChecks(false);
 
         // 4. agent setup
-        LinearLayout extra4 = sectionList(context);
-        agentSummary = new TextView(context);
-        agentSummary.setTextSize(13);
-        agentSummary.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        agentSummary.setPadding(0, 0, 0, AndroidUtilities.dp(10));
-        extra4.addView(agentSummary, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        extra4.addView(optionRow(context, R.drawable.msg_link, 0xff2AABEE,
+        LinearLayout extra4 = new LinearLayout(context);
+        extra4.setOrientation(LinearLayout.VERTICAL);
+        agentSummary = pill(context, "");
+        extra4.addView(agentSummary, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT));
+        LinearLayout apiCard = sectionList(context);
+        apiCard.addView(optionRow(context, R.drawable.msg_link, 0xff2AABEE,
                 LocaleController.getString(R.string.OxObAgentApiTitle),
                 LocaleController.getString(R.string.OxObAgentApiSub), false, () ->
                         presentFragment(OxAgentProfileActivity.newDraft(OxAgentProfileActivity.TEMPLATE_API))),
                 LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        extra4.addView(divider(context));
-        extra4.addView(optionRow(context, R.drawable.msg_download, 0xff8E44AD,
+        extra4.addView(apiCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0));
+
+        containerOptionCard = sectionList(context);
+        containerOptionRow = optionRow(context, R.drawable.msg_download, 0xff8E44AD,
                 LocaleController.getString(R.string.OxObAgentLinuxTitle),
                 LocaleController.getString(R.string.OxObAgentLinuxSub), false, () -> {
                     OxMode.setContainerEnabled(true);
                     updateContainerState();
                     updateModeChecks(true);
                     toast(LocaleController.getString(R.string.OxObContainerEnabled));
-                }),
-                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        extra4.addView(divider(context));
-        extra4.addView(optionRow(context, R.drawable.outline_add_account, 0xffF39C12,
-                LocaleController.getString(R.string.OxObAgentLanTitle),
-                LocaleController.getString(R.string.OxObAgentLanSub), false, () ->
-                        presentFragment(OxAgentProfileActivity.newDraft(OxAgentProfileActivity.TEMPLATE_LAN))),
-                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+                });
+        ((LinearLayout) containerOptionCard).addView(containerOptionRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra4.addView(containerOptionCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0));
 
         pages.add(pageWrap(context, R.drawable.input_ai_star, LocaleController.getString(R.string.OxObAgentTitle), "", extra4));
+        updateAgentOptions();
 
         // 5. permissions
-        LinearLayout extra5 = sectionList(context);
-        permSummary = new TextView(context);
-        permSummary.setTextSize(13);
-        permSummary.setTypeface(AndroidUtilities.bold());
-        permSummary.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        extra5.addView(permSummary, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
-                0, 0, 0, 6));
+        LinearLayout extra5 = new LinearLayout(context);
+        extra5.setOrientation(LinearLayout.VERTICAL);
+        permSummary = pill(context, "");
+        extra5.addView(permSummary, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT));
         TextView sub5 = new TextView(context);
         sub5.setText(LocaleController.getString(R.string.OxObPermSubtitle));
         sub5.setTextSize(13);
         sub5.setLineSpacing(AndroidUtilities.dp(3), 1f);
         sub5.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        extra5.addView(sub5, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
-                0, 0, 0, 10));
+        sub5.setPadding(AndroidUtilities.dp(6), AndroidUtilities.dp(10), AndroidUtilities.dp(6), 0);
+        extra5.addView(sub5, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         permList = new LinearLayout(context);
         permList.setOrientation(LinearLayout.VERTICAL);
-        extra5.addView(permList);
+        LinearLayout permCard = sectionList(context);
+        permCard.addView(permList, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra5.addView(permCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0));
         pages.add(pageWrap(context, R.drawable.msg_permissions, LocaleController.getString(R.string.OxObPermTitle), "", extra5));
 
         // 6. container
-        LinearLayout extra6 = sectionList(context);
+        LinearLayout extra6 = new LinearLayout(context);
+        extra6.setOrientation(LinearLayout.VERTICAL);
+
+        LinearLayout enableCard = sectionList(context);
         LinearLayout enableRow = new LinearLayout(context);
         enableRow.setOrientation(LinearLayout.HORIZONTAL);
         enableRow.setGravity(Gravity.CENTER_VERTICAL);
-        enableRow.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(12), AndroidUtilities.dp(4), AndroidUtilities.dp(12));
+        enableRow.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(14), AndroidUtilities.dp(16), AndroidUtilities.dp(14));
         enableRow.setBackground(Theme.getSelectorDrawable(false));
         LinearLayout enableText = new LinearLayout(context);
         enableText.setOrientation(LinearLayout.VERTICAL);
@@ -525,9 +601,10 @@ public class OxOnboardingActivity extends BaseFragment {
         });
         enableRow.addView(containerSwitch, LayoutHelper.createLinear(48, 32, Gravity.CENTER_VERTICAL));
         enableRow.setOnClickListener(v -> containerSwitch.setChecked(!containerSwitch.isChecked(), true));
-        extra6.addView(enableRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        extra6.addView(divider(context));
+        enableCard.addView(enableRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra6.addView(enableCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
+        LinearLayout configCard = sectionList(context);
         mirrorRow = settingRow(context, LocaleController.getString(R.string.OxObContainerMirror), mirrorName(), () -> {
             if (getParentActivity() == null) return;
             new AlertDialog.Builder(getParentActivity())
@@ -539,8 +616,8 @@ public class OxOnboardingActivity extends BaseFragment {
                     .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                     .show();
         });
-        extra6.addView(mirrorRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        extra6.addView(divider(context));
+        configCard.addView(mirrorRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        configCard.addView(divider(context));
         versionRow = settingRow(context, LocaleController.getString(R.string.OxObContainerVersion), OxMode.getContainerVersion(), () -> {
             if (getParentActivity() == null) return;
             new AlertDialog.Builder(getParentActivity())
@@ -552,22 +629,23 @@ public class OxOnboardingActivity extends BaseFragment {
                     .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                     .show();
         });
-        extra6.addView(versionRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        extra6.addView(divider(context));
+        configCard.addView(versionRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra6.addView(configCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0));
 
+        LinearLayout compCard = sectionList(context);
         TextView compTitle = new TextView(context);
         compTitle.setText(LocaleController.getString(R.string.OxObContainerComponents));
-        compTitle.setTextSize(13);
+        compTitle.setTextSize(12);
         compTitle.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        compTitle.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(14), 0, AndroidUtilities.dp(4));
-        extra6.addView(compTitle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        compTitle.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(12), AndroidUtilities.dp(16), AndroidUtilities.dp(4));
+        compCard.addView(compTitle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         String[][] comps = {{"nodejs", "Node.js"}, {"python3", "Python 3"}, {"git", "Git"}, {"curl", "curl"}, {"tools", "命令行工具"}};
         for (String[] c : comps) {
             final String key = c[0];
             LinearLayout row = new LinearLayout(context);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(9), AndroidUtilities.dp(4), AndroidUtilities.dp(9));
+            row.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(10), AndroidUtilities.dp(16), AndroidUtilities.dp(10));
             row.setBackground(Theme.getSelectorDrawable(false));
             TextView name = new TextView(context);
             name.setText(c[1]);
@@ -584,14 +662,15 @@ public class OxOnboardingActivity extends BaseFragment {
                 setCheck(checkRef, componentOn(key), true);
             });
             componentRows.add(check);
-            extra6.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            compCard.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         }
+        extra6.addView(compCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0));
 
         containerNote = new TextView(context);
         containerNote.setTextSize(12);
         containerNote.setLineSpacing(AndroidUtilities.dp(3), 1f);
         containerNote.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        containerNote.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(14), AndroidUtilities.dp(4), 0);
+        containerNote.setPadding(AndroidUtilities.dp(6), AndroidUtilities.dp(14), AndroidUtilities.dp(6), 0);
         containerNote.setText(LocaleController.getString(R.string.OxObContainerNote));
         extra6.addView(containerNote, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         pages.add(pageWrap(context, R.drawable.msg_download, LocaleController.getString(R.string.OxObContainerTitle), "", extra6));
@@ -615,7 +694,7 @@ public class OxOnboardingActivity extends BaseFragment {
         tv.setTextSize(15);
         tv.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
         tv.setGravity(Gravity.CENTER_VERTICAL);
-        tv.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(15), AndroidUtilities.dp(4), AndroidUtilities.dp(15));
+        tv.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(15), AndroidUtilities.dp(16), AndroidUtilities.dp(15));
         tv.setBackground(Theme.getSelectorDrawable(false));
         tv.setText(label + "  ·  " + value);
         tv.setOnClickListener(v -> onClick.run());
@@ -627,19 +706,20 @@ public class OxOnboardingActivity extends BaseFragment {
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(12), AndroidUtilities.dp(4), AndroidUtilities.dp(12));
+        row.setMinimumHeight(AndroidUtilities.dp(64));
+        row.setPadding(AndroidUtilities.dp(14), AndroidUtilities.dp(12), AndroidUtilities.dp(14), AndroidUtilities.dp(12));
         row.setBackground(Theme.getSelectorDrawable(false));
 
         FrameLayout iconWrap = new FrameLayout(context);
         GradientDrawable circle = new GradientDrawable();
-        circle.setShape(GradientDrawable.OVAL);
-        circle.setColor(color);
+        circle.setCornerRadius(AndroidUtilities.dp(14));
+        circle.setColor(Color.argb(30, Color.red(color), Color.green(color), Color.blue(color)));
         iconWrap.setBackground(circle);
         ImageView icon = new ImageView(context);
         icon.setImageResource(iconRes);
-        icon.setColorFilter(0xffffffff);
-        iconWrap.addView(icon, LayoutHelper.createFrame(20, 20, Gravity.CENTER));
-        row.addView(iconWrap, LayoutHelper.createLinear(40, 40, Gravity.CENTER_VERTICAL));
+        icon.setColorFilter(color);
+        iconWrap.addView(icon, LayoutHelper.createFrame(22, 22, Gravity.CENTER));
+        row.addView(iconWrap, LayoutHelper.createLinear(44, 44, Gravity.CENTER_VERTICAL));
 
         LinearLayout text = new LinearLayout(context);
         text.setOrientation(LinearLayout.VERTICAL);
@@ -710,6 +790,7 @@ public class OxOnboardingActivity extends BaseFragment {
         updateModeChecks(true);
         updateNextState();
         updateModeWarning();
+        updateAgentOptions();
     }
 
     private void updateModeChecks(boolean animate) {
@@ -738,6 +819,13 @@ public class OxOnboardingActivity extends BaseFragment {
     }
 
     // ---------------- permissions (page 5) ----------------
+
+    private void updateAgentOptions() {
+        boolean login = selectedMode == MODE_LOGIN;
+        if (containerOptionCard != null) {
+            containerOptionCard.setVisibility(login ? View.VISIBLE : View.GONE);
+        }
+    }
 
     @Override
     public void onResume() {
@@ -835,7 +923,7 @@ public class OxOnboardingActivity extends BaseFragment {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setBackground(Theme.getSelectorDrawable(false));
-        row.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(11), AndroidUtilities.dp(4), AndroidUtilities.dp(11));
+        row.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(10), AndroidUtilities.dp(16), AndroidUtilities.dp(10));
 
         boolean granted = "1".equals(status[1]);
         boolean detected = "1".equals(status[2]);
@@ -1016,14 +1104,35 @@ public class OxOnboardingActivity extends BaseFragment {
 
     private void animatePageIn(View page) {
         if (page == null) return;
-        page.setAlpha(0.55f);
-        page.setTranslationY(AndroidUtilities.dp(10));
+        page.setAlpha(0.6f);
+        page.setTranslationY(AndroidUtilities.dp(8));
         page.animate().alpha(1f).translationY(0f).setDuration(220)
                 .setInterpolator(CubicBezierInterpolator.EASE_OUT).start();
+        View hero = page.findViewWithTag("ox_hero");
+        if (hero != null) {
+            hero.setScaleX(0.92f);
+            hero.setScaleY(0.92f);
+            hero.setAlpha(0.7f);
+            hero.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(260)
+                    .setInterpolator(CubicBezierInterpolator.EASE_OUT).start();
+        }
     }
 
     private void updateChrome(int position) {
         if (stepText == null) return;
+        int accent = getThemedColor(Theme.key_chats_actionBackground);
+        int accentSoft = Color.argb(110, Color.red(accent), Color.green(accent), Color.blue(accent));
+        for (int i = 0; i < progressSegments.length; i++) {
+            View seg = progressSegments[i];
+            if (seg == null) continue;
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(AndroidUtilities.dp(2));
+            bg.setColor(i < position ? accentSoft : (i == position ? accent : getThemedColor(Theme.key_divider)));
+            seg.setBackground(bg);
+            seg.animate().cancel();
+            seg.animate().scaleY(i == position ? 1.8f : 1f).setDuration(160)
+                    .setInterpolator(CubicBezierInterpolator.EASE_OUT).start();
+        }
         boolean last = position == PAGES - 1;
         String text = last
                 ? LocaleController.formatString("OxObStepLast", R.string.OxObStepLast, position + 1, PAGES)
@@ -1037,6 +1146,7 @@ public class OxOnboardingActivity extends BaseFragment {
         }
         boolean skippable = position >= IDX_AGENT;
         skipStepButton.setVisibility(skippable ? View.VISIBLE : View.INVISIBLE);
+        hintText.setVisibility(skippable ? View.VISIBLE : View.INVISIBLE);
         hintText.setText(LocaleController.getString(R.string.OxObSkipHint));
         if (last) {
             nextButton.setText(LocaleController.getString(selectedMode == MODE_LOGIN ? R.string.OxObStartLogin : R.string.OxObStart));

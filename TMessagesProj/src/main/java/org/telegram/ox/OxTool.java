@@ -21,4 +21,9 @@ public abstract class OxTool {
      * Throw on failure - the message becomes the tool result so the model can react.
      */
     public abstract String execute(JSONObject args) throws Exception;
+
+    /** Agent-aware execution for tools that need a workspace/memory scope. */
+    public String executeWithAgent(JSONObject args, OxAgent agent) throws Exception {
+        return execute(args);
+    }
 }

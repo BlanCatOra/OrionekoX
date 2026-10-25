@@ -25,6 +25,19 @@ public class OxAgent {
     public String providerId = "custom"; // OxProviderPreset id, for the editor only
     /** Custom request headers: [["X-Header","value"], ...]. Applied after defaults. */
     public JSONArray headers = new JSONArray();
+    public double temperature = 0.7;
+    public double topP = 1.0;
+    public int maxTokens = 0;       // 0 = let the provider decide
+    public int contextLength = 0;   // 0 = auto (roughly last 20 messages)
+    public double presencePenalty = 0;
+    public double frequencyPenalty = 0;
+    public int topK = 0;            // 0 = omit
+    public int seed = -1;           // -1 = omit / random
+    public String stop = "";        // comma-separated stop sequences
+    public String reasoningEffort = "auto"; // auto | low | medium | high
+    public String toolChoice = "auto";      // auto | required | none
+    public boolean parallelToolCalls = true;
+    public String extraBody = "";   // JSON object merged into the request body
     // tool name -> "auto" | "ask" | "deny"; missing entries fall back to the tool default
     public JSONObject toolsPolicy = new JSONObject();
 
@@ -45,6 +58,19 @@ public class OxAgent {
         a.providerId = o.optString("provider_id", "custom");
         JSONArray h = o.optJSONArray("headers");
         a.headers = h == null ? new JSONArray() : h;
+        a.temperature = o.optDouble("temperature", 0.7);
+        a.topP = o.optDouble("top_p", 1.0);
+        a.maxTokens = o.optInt("max_tokens", 0);
+        a.contextLength = o.optInt("context_length", 0);
+        a.presencePenalty = o.optDouble("presence_penalty", 0);
+        a.frequencyPenalty = o.optDouble("frequency_penalty", 0);
+        a.topK = o.optInt("top_k", 0);
+        a.seed = o.optInt("seed", -1);
+        a.stop = o.optString("stop", "");
+        a.reasoningEffort = o.optString("reasoning_effort", "auto");
+        a.toolChoice = o.optString("tool_choice", "auto");
+        a.parallelToolCalls = o.optBoolean("parallel_tool_calls", true);
+        a.extraBody = o.optString("extra_body", "");
         JSONObject tp = o.optJSONObject("tools_policy");
         a.toolsPolicy = tp == null ? new JSONObject() : tp;
         return a;
@@ -67,6 +93,19 @@ public class OxAgent {
         o.put("avatar_path", avatarPath == null ? "" : avatarPath);
         o.put("provider_id", providerId == null ? "custom" : providerId);
         o.put("headers", headers == null ? new JSONArray() : headers);
+        o.put("temperature", temperature);
+        o.put("top_p", topP);
+        o.put("max_tokens", maxTokens);
+        o.put("context_length", contextLength);
+        o.put("presence_penalty", presencePenalty);
+        o.put("frequency_penalty", frequencyPenalty);
+        o.put("top_k", topK);
+        o.put("seed", seed);
+        o.put("stop", stop == null ? "" : stop);
+        o.put("reasoning_effort", reasoningEffort == null ? "auto" : reasoningEffort);
+        o.put("tool_choice", toolChoice == null ? "auto" : toolChoice);
+        o.put("parallel_tool_calls", parallelToolCalls);
+        o.put("extra_body", extraBody == null ? "" : extraBody);
         o.put("tools_policy", toolsPolicy);
         return o;
     }

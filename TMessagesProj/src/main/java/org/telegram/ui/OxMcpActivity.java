@@ -2,10 +2,12 @@ package org.telegram.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -90,12 +92,36 @@ public class OxMcpActivity extends BaseFragment {
 
         List<OxMcpManager.McpServer> servers = OxMcpManager.getServers();
         if (servers.isEmpty()) {
-            TextView empty = new TextView(context);
-            empty.setText(LocaleController.getString(R.string.OxMcpEmpty));
-            empty.setTextSize(14);
-            empty.setGravity(Gravity.CENTER);
-            empty.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-            empty.setPadding(AndroidUtilities.dp(32), AndroidUtilities.dp(36), AndroidUtilities.dp(32), AndroidUtilities.dp(24));
+            LinearLayout empty = new LinearLayout(context);
+            empty.setOrientation(LinearLayout.VERTICAL);
+            empty.setGravity(Gravity.CENTER_HORIZONTAL);
+            empty.setPadding(AndroidUtilities.dp(32), AndroidUtilities.dp(32), AndroidUtilities.dp(32), AndroidUtilities.dp(18));
+            FrameLayout iconWrap = new FrameLayout(context);
+            GradientDrawable circle = new GradientDrawable();
+            circle.setShape(GradientDrawable.OVAL);
+            circle.setColor(getThemedColor(Theme.key_windowBackgroundGray));
+            iconWrap.setBackground(circle);
+            ImageView icon = new ImageView(context);
+            icon.setImageResource(R.drawable.msg_link);
+            icon.setColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+            iconWrap.addView(icon, LayoutHelper.createFrame(28, 28, Gravity.CENTER));
+            empty.addView(iconWrap, LayoutHelper.createLinear(64, 64, Gravity.CENTER_HORIZONTAL));
+            TextView title = new TextView(context);
+            title.setText(LocaleController.getString(R.string.OxMcpEmptyTitle));
+            title.setTextSize(17);
+            title.setTypeface(AndroidUtilities.bold());
+            title.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+            title.setGravity(Gravity.CENTER);
+            title.setPadding(0, AndroidUtilities.dp(14), 0, 0);
+            empty.addView(title, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            TextView sub = new TextView(context);
+            sub.setText(LocaleController.getString(R.string.OxMcpEmpty));
+            sub.setTextSize(13);
+            sub.setLineSpacing(AndroidUtilities.dp(3), 1f);
+            sub.setGravity(Gravity.CENTER);
+            sub.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+            sub.setPadding(0, AndroidUtilities.dp(6), 0, 0);
+            empty.addView(sub, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
             listContainer.addView(empty, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         } else {
             LinearLayout group = new LinearLayout(context);

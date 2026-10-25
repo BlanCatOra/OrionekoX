@@ -155,21 +155,28 @@ public class OxAgentsBridge {
 
     /** Greets on first materialization: injects a welcome message when the dialog has none
      *  (a dialog row without a last message does not show in the chat list). */
+    private static final Object GREET_LOCK = new Object();
+    private static final java.util.HashSet<Long> GREETED = new java.util.HashSet<>();
+
     private static void greetIfEmpty(OxAgent a) {
         MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
-            boolean empty;
-            try {
-                org.telegram.SQLite.SQLiteCursor cur = MessagesStorage.getInstance(0).getDatabase()
-                        .queryFinalized("SELECT COUNT(mid) FROM messages_v2 WHERE uid = " + a.tgId);
-                empty = !cur.next() || cur.longValue(0) == 0;
-                cur.dispose();
-            } catch (Throwable t) {
-                logErr("greetIfEmpty query failed did=" + a.tgId, t);
-                return;
-            }
-            if (empty) {
-                log("greeting empty dialog " + a.tgId);
-                injectAgentReply(a.tgId, "你好，我是 " + a.emoji + " " + a.name + "。直接发消息即可开始对话。");
+            synchronized (GREET_LOCK) {
+                if (GREETED.contains(a.tgId)) return;
+                boolean empty;
+                try {
+                    org.telegram.SQLite.SQLiteCursor cur = MessagesStorage.getInstance(0).getDatabase()
+                            .queryFinalized("SELECT COUNT(mid) FROM messages_v2 WHERE uid = " + a.tgId);
+                    empty = !cur.next() || cur.longValue(0) == 0;
+                    cur.dispose();
+                } catch (Throwable t) {
+                    logErr("greetIfEmpty query failed did=" + a.tgId, t);
+                    return;
+                }
+                GREETED.add(a.tgId);
+                if (empty) {
+                    log("greeting empty dialog " + a.tgId);
+                    injectAgentReply(a.tgId, "你好，我是 " + a.emoji + " " + a.name + "。直接发消息即可开始对话。");
+                }
             }
         });
     }
@@ -574,11 +581,31 @@ public class OxAgentsBridge {
 
     private static JSONArray baseMessages(OxAgent agent, String agentId) throws Exception {
         JSONArray messages = new JSONArray();
-        if (agent.agentsMd != null && !agent.agentsMd.trim().isEmpty()) {
-            messages.put(new JSONObject().put("role", "system").put("content", agent.agentsMd));
+        StringBuilder system = new StringBuilder();
+        if (agent.agentsMd != null) system.append(agent.agentsMd.trim());
+        String memory = OxAgentStore.loadMemory(agent.id, 6000);
+        if (!memory.isEmpty()) {
+            if (system.length() > 0) system.append("\n\n");
+            system.append("# 长期记忆（用户允许你记住的事实）\n").append(memory);
+        }
+        if (system.length() > 0) {
+            messages.put(new JSONObject().put("role", "system").put("content", system.toString()));
         }
         List<OxChatEntry> history = OxAgentStore.loadChat(agentId);
         int from = Math.max(0, history.size() - 20);
+        if (agent.contextLength > 0) {
+            int budget = Math.max(4000, agent.contextLength * 2);
+            int chars = 0;
+            int start = history.size();
+            for (int i = history.size() - 1; i >= 0 && history.size() - i <= 60; i--) {
+                OxChatEntry e = history.get(i);
+                int c = e.imagePath != null ? 2000 : (e.content == null ? 0 : e.content.length());
+                if (chars + c > budget && start < history.size()) break;
+                chars += c;
+                start = i;
+            }
+            from = start;
+        }
         for (int i = from; i < history.size(); i++) {
             OxChatEntry e = history.get(i);
             if ("user".equals(e.role) || "assistant".equals(e.role)) {
@@ -682,7 +709,7 @@ public class OxAgentsBridge {
                 try {
                     JSONObject args = call.arguments == null || call.arguments.trim().isEmpty()
                             ? new JSONObject() : new JSONObject(call.arguments);
-                    result = tool.execute(args);
+                    result = tool.executeWithAgent(args, s.agent);
                 } catch (Exception e) {
                     result = "error: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
                 }
