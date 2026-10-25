@@ -365,8 +365,14 @@ public class OxOperitImporter {
                 }
             }
             if (owner != null) {
-                OxAgentStore.appendMemory(owner.id, text);
-                r.memoryFiles++;
+                String line = text.trim().replace('\n', ' ');
+                if (!line.isEmpty()) {
+                    String existing = OxAgentStore.loadMemory(owner.id, 200000);
+                    if (!existing.contains(line)) {
+                        OxAgentStore.appendMemory(owner.id, text);
+                        r.memoryFiles++;
+                    }
+                }
             }
         }
         deleteTree(tmp);
@@ -509,22 +515,39 @@ public class OxOperitImporter {
     }
 
     private static OxAgent createAgent(String name, String md, String opening, Provider provider, String source) {
-        OxAgent a = new OxAgent();
-        a.id = "op_" + source + "_" + Math.abs((name + System.currentTimeMillis()).hashCode());
-        a.name = name == null || name.trim().isEmpty() ? "Operit Agent" : name.trim();
+        String cleanName = name == null || name.trim().isEmpty() ? "Operit Agent" : name.trim();
+        // Re-importing the same Operit card must update that agent, not create another one.
+        OxAgent a = findImported(cleanName, source);
+        if (a == null) {
+            a = new OxAgent();
+            a.id = "op_" + source + "_" + Math.abs((source + ":" + cleanName).hashCode());
+            a.pinned = false;
+            a.remark = "";
+        }
+        a.name = cleanName;
         a.emoji = "🤖";
         a.agentsMd = md;
         a.builtIn = false;
-        a.pinned = false;
-        a.remark = "";
         applyProvider(a, provider);
         OxAgentStore.saveAgent(a);
         if (opening != null && !opening.trim().isEmpty()) {
-            List<OxChatEntry> chat = new ArrayList<>();
-            chat.add(new OxChatEntry("assistant", opening.trim(), System.currentTimeMillis()));
-            OxAgentStore.saveChat(a.id, chat);
+            List<OxChatEntry> chat = OxAgentStore.loadChat(a.id);
+            if (chat.isEmpty()) {
+                chat.add(new OxChatEntry("assistant", opening.trim(), System.currentTimeMillis()));
+                OxAgentStore.saveChat(a.id, chat);
+            }
         }
         return a;
+    }
+
+    /** Existing agent created from the same Operit source and card name, if any. */
+    private static OxAgent findImported(String name, String source) {
+        for (OxAgent a : OxAgentStore.listAgents()) {
+            if (a.builtIn || a.id == null) continue;
+            if (!name.equals(a.name)) continue;
+            if (a.id.startsWith("op_" + source + "_")) return a;
+        }
+        return null;
     }
 
     private static void applyProvider(OxAgent a, Provider p) {
