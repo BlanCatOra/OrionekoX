@@ -37,6 +37,7 @@ import java.util.Locale;
 public class OxWorkspaceActivity extends BaseFragment {
 
     private static final int ID_AGENT = 1;
+    private static final int ID_NEW = 2;
     private static final int FILE_BASE = 1000;
 
     private UniversalRecyclerView listView;
@@ -80,6 +81,8 @@ public class OxWorkspaceActivity extends BaseFragment {
                 R.drawable.filled_bot_approve_24, LocaleController.getString(R.string.OxToolsAgent),
                 null, selectedAgent == null ? LocaleController.getString(R.string.OxToolsNoAgent) : selectedAgent.name));
         items.add(UItem.asShadow(LocaleController.getString(R.string.OxWorkspaceInfo)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_NEW, 0, 0, 0,
+                "＋ " + LocaleController.getString(R.string.OxWorkspaceNew)));
 
         files.clear();
         if (selectedAgent != null) {
@@ -133,6 +136,10 @@ public class OxWorkspaceActivity extends BaseFragment {
             showAgentPicker();
             return;
         }
+        if (item.id == ID_NEW) {
+            if (selectedAgent != null) showNewFileDialog();
+            return;
+        }
         int index = item.id - FILE_BASE;
         if (index >= 0 && index < files.size()) preview(files.get(index));
     }
@@ -173,6 +180,7 @@ public class OxWorkspaceActivity extends BaseFragment {
         } catch (Throwable t) {
             text = "error: " + t.getMessage();
         }
+        final String initial = text;
         ScrollView scroll = new ScrollView(getParentActivity());
         TextView tv = new TextView(getParentActivity());
         tv.setText(text);
@@ -183,7 +191,79 @@ public class OxWorkspaceActivity extends BaseFragment {
         new AlertDialog.Builder(getParentActivity())
                 .setTitle(relative(f))
                 .setView(scroll)
-                .setPositiveButton(LocaleController.getString(R.string.OK), null)
+                .setPositiveButton(LocaleController.getString(R.string.OxWorkspaceEdit), (d, w) -> showEditDialog(f, initial))
+                .setNeutralButton(LocaleController.getString(R.string.OxWorkspaceCopyPath), (d, w) -> {
+                    AndroidUtilities.addToClipboard(f.getAbsolutePath());
+                    android.widget.Toast.makeText(getParentActivity(), f.getAbsolutePath(), android.widget.Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Close), null)
+                .show();
+    }
+
+    private void showEditDialog(File f, String initial) {
+        if (getParentActivity() == null) return;
+        android.widget.EditText edit = new android.widget.EditText(getParentActivity());
+        edit.setText(initial == null ? "" : initial);
+        edit.setTextSize(13);
+        edit.setTypeface(android.graphics.Typeface.MONOSPACE);
+        edit.setMinLines(6);
+        edit.setGravity(android.view.Gravity.TOP | android.view.Gravity.START);
+        edit.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(12), AndroidUtilities.dp(16), AndroidUtilities.dp(12));
+        ScrollView scroll = new ScrollView(getParentActivity());
+        scroll.addView(edit, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(relative(f))
+                .setView(scroll)
+                .setPositiveButton(LocaleController.getString(R.string.OxWorkspaceSave), (d, w) -> {
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(f)) {
+                        out.write(edit.getText().toString().getBytes(StandardCharsets.UTF_8));
+                    } catch (Throwable t) {
+                        android.widget.Toast.makeText(getParentActivity(), "error: " + t.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+                    }
+                    rebuild();
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
+    }
+
+    private void showNewFileDialog() {
+        if (getParentActivity() == null) return;
+        android.widget.LinearLayout wrap = new android.widget.LinearLayout(getParentActivity());
+        wrap.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = AndroidUtilities.dp(24);
+        wrap.setPadding(pad, AndroidUtilities.dp(8), pad, 0);
+        android.widget.EditText name = new android.widget.EditText(getParentActivity());
+        name.setHint(LocaleController.getString(R.string.OxWorkspaceNewHint));
+        name.setSingleLine(true);
+        wrap.addView(name, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 6, 0, 6));
+        android.widget.EditText content = new android.widget.EditText(getParentActivity());
+        content.setHint(LocaleController.getString(R.string.OxWorkspaceNewContent));
+        content.setMinLines(5);
+        content.setGravity(android.view.Gravity.TOP | android.view.Gravity.START);
+        content.setTypeface(android.graphics.Typeface.MONOSPACE);
+        wrap.addView(content, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 6, 0, 6));
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxWorkspaceNew))
+                .setView(wrap)
+                .setPositiveButton(LocaleController.getString(R.string.OxWorkspaceSave), (d, w) -> {
+                    String rel = name.getText().toString().trim();
+                    if (rel.isEmpty() || rel.startsWith("/") || rel.contains("..")) {
+                        android.widget.Toast.makeText(getParentActivity(), LocaleController.getString(R.string.OxWorkspaceInvalidName), android.widget.Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    try {
+                        File target = OxAgentStore.resolveWorkspace(selectedAgent.id, rel);
+                        File parent = target.getParentFile();
+                        if (parent != null) parent.mkdirs();
+                        try (java.io.FileOutputStream out = new java.io.FileOutputStream(target)) {
+                            out.write(content.getText().toString().getBytes(StandardCharsets.UTF_8));
+                        }
+                        rebuild();
+                    } catch (Throwable t) {
+                        android.widget.Toast.makeText(getParentActivity(), "error: " + t.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                 .show();
     }
 

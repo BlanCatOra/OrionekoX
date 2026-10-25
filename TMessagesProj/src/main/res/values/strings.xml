@@ -11906,4 +11906,11 @@
     <string name="OxWorkspaceInfo">Files written by the agent tools live here. Tap to preview, long-press to delete.</string>
     <string name="OxWorkspaceFiles">Files</string>
     <string name="OxWorkspaceEmpty">The agent workspace is empty.</string>
+    <string name="OxWorkspaceNew">New text file</string>
+    <string name="OxWorkspaceNewHint">File name, e.g. notes/todo.md</string>
+    <string name="OxWorkspaceNewContent">Initial content (optional)</string>
+    <string name="OxWorkspaceEdit">Edit</string>
+    <string name="OxWorkspaceSave">Save</string>
+    <string name="OxWorkspaceCopyPath">Copy path</string>
+    <string name="OxWorkspaceInvalidName">Enter a relative path inside the workspace (no &quot;..&quot; or leading slash).</string>
 </resources>
