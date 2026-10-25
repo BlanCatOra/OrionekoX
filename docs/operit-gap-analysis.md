@@ -19,7 +19,7 @@ not feature-count parity.
 | Android permissions | accessibility/Shizuku/root | permission centre + onboarding request flows; **no automation tools yet** | gap |
 | UI automation | accessibility/ADB/root, PhoneAgent | accessibility bridge + `ui_dump` / `ui_tap` / `ui_swipe` / `ui_screenshot` / `ui_key` tools | **done v1** |
 | Container/terminal | PRoot Ubuntu, SSH/SFTP, editor | PRoot PoC, blocked by W^X; companion host pending | gap |
-| ToolPkg / Skills / marketplace | full runtime | MCP only | medium gap |
+| ToolPkg / Skills / marketplace | full runtime | MCP market + read-only SKILL.md library + per-agent skill prompt injection | partial (no code execution) |
 | Browser agent / OCR / voice | yes | none | medium gap |
 | Character cards / group chats | yes | AGENTS.md + .oxagent export + memory viewer/editor | partial |
 | Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/delete | partial (basic text editor, no syntax highlighting) |

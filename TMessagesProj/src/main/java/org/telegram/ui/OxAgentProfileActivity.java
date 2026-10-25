@@ -33,6 +33,7 @@ import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxMode;
 import org.telegram.ox.OxModelHub;
 import org.telegram.ox.OxProviderPreset;
+import org.telegram.ox.OxSkillStore;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
 import org.telegram.ui.ActionBar.AlertDialog;
@@ -85,6 +86,7 @@ public class OxAgentProfileActivity extends BaseFragment {
     private EditTextCell stopCell;
     private EditTextCell extraBodyCell;
     private TextSettingsCell reasoningRow;
+    private TextSettingsCell skillsRow;
     private TextSettingsCell toolChoiceRow;
     private TextSettingsCell parallelRow;
     private String reasoningEffort = "auto";
@@ -232,6 +234,16 @@ public class OxAgentProfileActivity extends BaseFragment {
         nameCell.editText.setTypeface(AndroidUtilities.bold());
         remarkCell = addEditCell(context, basic, LocaleController.getString(R.string.OxAgentRemark), agent.remark, false, false);
         content.addView(basic);
+
+        // skills
+        content.addView(sectionHeader(context, LocaleController.getString(R.string.OxAgentSkills)));
+        LinearLayout skillsGroup = section(context);
+        skillsRow = new TextSettingsCell(context);
+        skillsRow.setTextAndValue(LocaleController.getString(R.string.OxAgentSkills), skillsSummary(), false);
+        skillsRow.setTextValueColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        skillsRow.setOnClickListener(v -> showSkillsPicker());
+        skillsGroup.addView(skillsRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        content.addView(skillsGroup);
 
         // provider
         content.addView(sectionHeader(context, LocaleController.getString(R.string.OxAgentSectionProvider)));
@@ -705,6 +717,54 @@ public class OxAgentProfileActivity extends BaseFragment {
                 .show();
     }
 
+    private String skillsSummary() {
+        int n = agent != null && agent.skillIds != null ? agent.skillIds.length() : 0;
+        return n <= 0 ? LocaleController.getString(R.string.OxAgentSkillsNone)
+                : LocaleController.formatString("OxAgentSkillsCount", R.string.OxAgentSkillsCount, n);
+    }
+
+    private void showSkillsPicker() {
+        if (getParentActivity() == null || agent == null) return;
+        java.util.List<OxSkillStore.Skill> skills = OxSkillStore.list();
+        if (skills.isEmpty()) {
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.OxSkillsEmpty), Toast.LENGTH_LONG).show();
+            return;
+        }
+        final android.widget.CheckBox[] boxes = new android.widget.CheckBox[skills.size()];
+        LinearLayout list = new LinearLayout(getParentActivity());
+        list.setOrientation(LinearLayout.VERTICAL);
+        int pad = AndroidUtilities.dp(20);
+        list.setPadding(pad, AndroidUtilities.dp(8), pad, 0);
+        for (int i = 0; i < skills.size(); i++) {
+            OxSkillStore.Skill s = skills.get(i);
+            android.widget.CheckBox box = new android.widget.CheckBox(getParentActivity());
+            box.setText(s.name + (s.description == null || s.description.isEmpty() ? "" : " — " + s.description));
+            box.setTextSize(14);
+            box.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+            for (int j = 0; agent.skillIds != null && j < agent.skillIds.length(); j++) {
+                String id = agent.skillIds.optString(j, "");
+                if (id.equals(s.id) || id.equals(s.name)) box.setChecked(true);
+            }
+            boxes[i] = box;
+            list.addView(box, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        }
+        ScrollView scroll = new ScrollView(getParentActivity());
+        scroll.addView(list);
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxAgentSkills))
+                .setView(scroll)
+                .setPositiveButton(LocaleController.getString(R.string.OxWorkspaceSave), (d, w) -> {
+                    org.json.JSONArray ids = new org.json.JSONArray();
+                    for (int i = 0; i < boxes.length; i++) {
+                        if (boxes[i].isChecked()) ids.put(skills.get(i).id);
+                    }
+                    agent.skillIds = ids;
+                    skillsRow.setTextAndValue(LocaleController.getString(R.string.OxAgentSkills), skillsSummary(), false);
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
+    }
+
     private String advancedSummary() {
         String temp = temperatureCell == null ? String.valueOf(agent.temperature) : temperatureCell.getText().toString().trim();
         String topP = topPCell == null ? String.valueOf(agent.topP) : topPCell.getText().toString().trim();
@@ -1005,6 +1065,7 @@ public class OxAgentProfileActivity extends BaseFragment {
             }
         }
         OxAgent next = buildFromFields();
+        next.skillIds = agent != null && agent.skillIds != null ? agent.skillIds : new org.json.JSONArray();
         next.name = name;
         next.remark = remarkCell.getText().toString().trim();
         next.baseUrl = baseUrlCell.getText().toString().trim();

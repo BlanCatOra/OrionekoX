@@ -1498,7 +1498,7 @@ public class LocaleController {
     private static HashMap<String, String> orionekoForkStringsCache;
     private static String orionekoForkStringsCacheKey;
 
-    private static final int OX_ZH_PACK_VERSION = 29;
+    private static final int OX_ZH_PACK_VERSION = 30;
 
     /** Copies assets/oxlang/zh-cn.xml to files/ox_zh-cn.xml once per pack version. */
     private static File ensureBundledZhPack() {

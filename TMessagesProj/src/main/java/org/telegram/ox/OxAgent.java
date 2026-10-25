@@ -25,6 +25,8 @@ public class OxAgent {
     public String providerId = "custom"; // OxProviderPreset id, for the editor only
     /** Custom request headers: [["X-Header","value"], ...]. Applied after defaults. */
     public JSONArray headers = new JSONArray();
+    /** Operit SKILL.md ids enabled for this agent (folder names under Download/Operit/skills). */
+    public JSONArray skillIds = new JSONArray();
     public double temperature = 0.7;
     public double topP = 1.0;
     public int maxTokens = 0;       // 0 = let the provider decide
@@ -58,6 +60,8 @@ public class OxAgent {
         a.providerId = o.optString("provider_id", "custom");
         JSONArray h = o.optJSONArray("headers");
         a.headers = h == null ? new JSONArray() : h;
+        JSONArray skills = o.optJSONArray("skill_ids");
+        a.skillIds = skills == null ? new JSONArray() : skills;
         a.temperature = o.optDouble("temperature", 0.7);
         a.topP = o.optDouble("top_p", 1.0);
         a.maxTokens = o.optInt("max_tokens", 0);
@@ -93,6 +97,7 @@ public class OxAgent {
         o.put("avatar_path", avatarPath == null ? "" : avatarPath);
         o.put("provider_id", providerId == null ? "custom" : providerId);
         o.put("headers", headers == null ? new JSONArray() : headers);
+        o.put("skill_ids", skillIds == null ? new JSONArray() : skillIds);
         o.put("temperature", temperature);
         o.put("top_p", topP);
         o.put("max_tokens", maxTokens);
