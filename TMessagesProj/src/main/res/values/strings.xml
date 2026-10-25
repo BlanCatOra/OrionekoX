@@ -11898,4 +11898,5 @@
     <string name="OxToolDescUiSwipe">Swipe between screen coordinates.</string>
     <string name="OxToolDescUiKey">Press back, home, recents or another global key.</string>
     <string name="OxToolDescUiScreenshot">Capture the screen to a PNG file.</string>
+    <string name="OxToolDescUiTapText">Find visible text and click it.</string>
 </resources>

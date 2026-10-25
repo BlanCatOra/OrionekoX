@@ -241,6 +241,7 @@ public class OxToolsActivity extends BaseFragment {
             case "read_skill": id = R.string.OxToolDescReadSkill; break;
             case "ui_dump": id = R.string.OxToolDescUiDump; break;
             case "ui_tap": id = R.string.OxToolDescUiTap; break;
+            case "ui_tap_text": id = R.string.OxToolDescUiTapText; break;
             case "ui_swipe": id = R.string.OxToolDescUiSwipe; break;
             case "ui_key": id = R.string.OxToolDescUiKey; break;
             case "ui_screenshot": id = R.string.OxToolDescUiScreenshot; break;
