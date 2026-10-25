@@ -11784,7 +11784,10 @@
     <string name="OxWorkflowEvery15">每 15 分钟</string>
     <string name="OxWorkflowHourly">每小时</string>
     <string name="OxWorkflowEvery6h">每 6 小时</string>
-    <string name="OxWorkflowDaily">每天</string>
+    <string name="OxWorkflowDaily">每 24 小时</string>
+    <string name="OxWorkflowDailyAt">每天 %1$s</string>
+    <string name="OxWorkflowDailyAtOption">每天指定时间…</string>
+    <string name="OxWorkflowPickTime">选择时间</string>
     <string name="OxWorkflowEnabled">已启用</string>
     <string name="OxWorkflowPaused">已暂停</string>
     <string name="OxWorkflowRunNow">立即运行</string>

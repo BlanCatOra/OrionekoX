@@ -28,9 +28,8 @@ public class OxWorkflowScheduler {
             OxWorkflowStore.save(workflow);
             return;
         }
-        long interval = Math.max(1, workflow.intervalMinutes) * 60_000L;
         if (workflow.nextRunMs <= now) {
-            workflow.nextRunMs = now + interval;
+            workflow.nextRunMs = computeNextRun(workflow, now);
         }
         OxWorkflowStore.save(workflow);
         setAlarm(ctx, workflow.id, workflow.nextRunMs);
@@ -40,10 +39,26 @@ public class OxWorkflowScheduler {
     public static void onFinished(OxWorkflow workflow, long finishedAt) {
         if (workflow == null) return;
         workflow.lastRunMs = finishedAt;
-        workflow.nextRunMs = workflow.intervalMinutes > 0
-                ? finishedAt + workflow.intervalMinutes * 60_000L : 0;
+        workflow.nextRunMs = workflow.isScheduled() ? computeNextRun(workflow, finishedAt) : 0;
         OxWorkflowStore.save(workflow);
         schedule(workflow);
+    }
+
+    /** Next occurrence after {@code fromMs}: wall-clock minute first, else the interval. */
+    private static long computeNextRun(OxWorkflow w, long fromMs) {
+        if (w.isDaily()) {
+            java.util.Calendar c = java.util.Calendar.getInstance();
+            c.setTimeInMillis(fromMs);
+            c.set(java.util.Calendar.HOUR_OF_DAY, w.dailyMinute / 60);
+            c.set(java.util.Calendar.MINUTE, w.dailyMinute % 60);
+            c.set(java.util.Calendar.SECOND, 0);
+            c.set(java.util.Calendar.MILLISECOND, 0);
+            if (c.getTimeInMillis() <= fromMs) {
+                c.add(java.util.Calendar.DAY_OF_YEAR, 1);
+            }
+            return c.getTimeInMillis();
+        }
+        return fromMs + Math.max(1, w.intervalMinutes) * 60_000L;
     }
 
     public static void cancel(String id) {

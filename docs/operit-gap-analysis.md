@@ -23,7 +23,7 @@ not feature-count parity.
 | Browser agent / OCR / voice | yes | `ui_ocr` implemented; emulator screenshot works after reboot, OCR model is not installed in the Play Services image | partial |
 | Character cards / group chats | yes | AGENTS.md + .oxagent export + memory viewer/editor | partial |
 | Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/delete | partial (basic text editor, no syntax highlighting) |
-| Workflows / scheduled tasks | yes | **Ox workflows**: named prompt + agent + interval, AlarmManager + foreground runner, result notification, manual run, pause/delete | **done v1** |
+| Workflows / scheduled tasks | yes | **Ox workflows**: named prompt + agent + interval or daily wall-clock time, AlarmManager + foreground runner, result notification, manual run, pause/delete | **done v1** |
 | Local inference (MNN/llama.cpp) | built-in | external Ollama/LM Studio only | medium gap |
 | Cross-device Space | Operit2 | LAN API agents only | partial |
 | Backup / migration | snapshot export/restore | .oxagent per agent includes memory + skills; export/import round-trip verified | partial (workspace files not included) |
@@ -85,12 +85,12 @@ gaps that were previously listed as "gap":
 3. **Local stdio MCP runtime** — Operit's catalogue is mostly Python/Node/npx.
    Needs an installed OxLinux rootfs (or bundled runtime) plus a stdio JSON-RPC
    bridge. Remote MCP already works.
-4. **Workflows / scheduled tasks — done v1** — interval-based workflows (15 min,
-   hourly, 6 h, daily or manual) run through a foreground service, inject the prompt
-   into the agent chat, and post a result notification. Limits: intervals only
-   (no fixed wall-clock time or multi-step graph), inexact alarms while
-   `SCHEDULE_EXACT_ALARM` is not granted, and a run depends on the app not being
-   force-stopped by the user.
+4. **Workflows / scheduled tasks — done v1** — interval workflows (15 min,
+   hourly, 6 h, 24 h or manual) and daily wall-clock workflows (native time
+   picker, computed with the local calendar) run through a foreground service,
+   inject the prompt into the agent chat, and post a result notification. Limits:
+   no multi-step graph or conditions, inexact alarms while `SCHEDULE_EXACT_ALARM`
+   is not granted, and a run depends on the app not being force-stopped by the user.
 5. **Browser/OCR/voice** — WebView/accessibility automation, ML Kit OCR, and
    on-device STT/TTS.
 6. **Full Operit skill execution semantics** — Operit skills can carry scripts and
@@ -162,5 +162,17 @@ of a separate automation graph:
   invalid-save validation, dark mode, and a cold-start run with the process killed
   before the alarm (new PID, foreground service allowed, reply and notification
   delivered, next alarm armed for +15 min).
-- Limits: interval scheduling only (no wall-clock times or multi-step graphs), and
-  a user force-stop clears alarms until the app is opened again.
+- Limits: no multi-step graphs or conditions, and a user force-stop clears alarms
+  until the app is opened again.
+
+### 0.8.41 daily wall-clock time
+
+- The schedule picker now also offers `每天指定时间…` and opens Telegram's native
+  time-picker bottom sheet (`AlertsCreator.createTimePickerDialog`). The workflow
+  stores `daily_minute` (0–1439) and the scheduler computes the next local
+  occurrence with Calendar, so a workflow created at 04:26 for 09:00 arms the alarm
+  at 09:00 the same day instead of 24 hours later.
+- Actual test: created `Daily test`, picked 09:00 via the native wheel, saved; the
+  row showed `每天 09:00 · 下次 09:00`, and `dumpsys alarm` reported
+  `origWhen=2026-10-26 09:00:00.000`. Run-now delivered the Echo reply and the
+  result notification; deleting the workflow removed the alarm.
