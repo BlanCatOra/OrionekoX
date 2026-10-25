@@ -17,7 +17,7 @@ not feature-count parity.
 | Files / workspace | project workspace + editor | **private per-agent workspace** (`list_dir`/`read_file`/`write_file`), path-escape guard | good v1 |
 | MCP | yes | MCP Streamable HTTP, tools bridge, add/toggle/refresh/delete | parity for MCP |
 | Android permissions | accessibility/Shizuku/root | permission centre + onboarding request flows; **no automation tools yet** | gap |
-| UI automation | accessibility/ADB/root, PhoneAgent | none | **high-value gap** |
+| UI automation | accessibility/ADB/root, PhoneAgent | accessibility bridge + `ui_dump` / `ui_tap` / `ui_swipe` / `ui_screenshot` / `ui_key` tools | **done v1** |
 | Container/terminal | PRoot Ubuntu, SSH/SFTP, editor | PRoot PoC, blocked by W^X; companion host pending | gap |
 | ToolPkg / Skills / marketplace | full runtime | MCP only | medium gap |
 | Browser agent / OCR / voice | yes | none | medium gap |
@@ -75,9 +75,10 @@ gaps that were previously listed as "gap":
 
 ### Still missing, in priority order
 
-1. **Android UI automation** — `ui_dump`, `tap`, `swipe`, `screenshot`, `key_event`
-   behind ask-by-default policies. Permissions already exist; this is still the
-   highest-value Operit difference.
+1. **Android UI automation — done v1** — `ui_dump`, `ui_tap`, `ui_swipe`,
+   `ui_screenshot`, `ui_key` are implemented through the accessibility service and
+   ask-by-default. Next refinements: click-by-text, scroll-until-found, node
+   caching, and arbitrary key events via ADB/root.
 2. **Executable ToolPkg / JS/Wasm packages** — skills are readable now; executing
    package code needs a sandbox/runtime.
 3. **Local stdio MCP runtime** — Operit's catalogue is mostly Python/Node/npx.
@@ -102,3 +103,17 @@ gaps that were previously listed as "gap":
   across session switches.
 - MCP market: DeepWiki installed and refreshed 3 tools; the Operit catalogue's 38 local
   stdio entries are browsable/copyable but not executable without a Python/Node runtime.
+
+
+### 0.8.25 UI automation actual test
+
+- Enabled `OxAccessibilityService` on the emulator, then asked the imported Yuki
+  Waifu agent to use the new tools with a real OpenDesign model:
+  - `ui_dump` returned the active window tree (header title, typing status, input
+    placeholder, content descriptions, bounds).
+  - `ui_screenshot` saved a 436 KB PNG to
+    `files/oxauto/screen-1792947825540.png`.
+  - `ui_key` with `key=home` moved the foreground to the launcher.
+  - `ui_tap` at `540,1458` dispatched a gesture successfully.
+- All five tools are visible in `工具与权限` with ask-by-default policy and native
+  setting rows.

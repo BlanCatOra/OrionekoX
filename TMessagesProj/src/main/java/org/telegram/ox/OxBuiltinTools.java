@@ -625,6 +625,18 @@ public class OxBuiltinTools {
         });
 
         register(new OxTool() {
+            @Override public String name() { return "ui_tap_text"; }
+            @Override public String description() { return "Find a visible text or content description on screen and click it. Case-insensitive substring match. Requires the accessibility service."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"text"}); }
+            @Override public String execute(JSONObject args) {
+                String text = args.optString("text", "").trim();
+                if (text.isEmpty()) return "error: text is required";
+                return OxAccessibilityService.tapText(text);
+            }
+        });
+
+        register(new OxTool() {
             @Override public String name() { return "ui_screenshot"; }
             @Override public String description() { return "Capture the current screen to a PNG in the app's oxauto folder and return the absolute path. Requires Android 11+ and the accessibility service."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }
