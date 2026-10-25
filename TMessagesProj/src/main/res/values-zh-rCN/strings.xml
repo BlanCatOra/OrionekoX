@@ -358,4 +358,11 @@
     <string name="OxWorkspaceInfo">该智能体通过工具写入的文件都在这里。点按预览，长按删除。</string>
     <string name="OxWorkspaceFiles">文件</string>
     <string name="OxWorkspaceEmpty">这个智能体的工作区还是空的。</string>
+    <string name="OxWorkspaceNew">新建文本文件</string>
+    <string name="OxWorkspaceNewHint">文件名，例如 notes/todo.md</string>
+    <string name="OxWorkspaceNewContent">初始内容（可选）</string>
+    <string name="OxWorkspaceEdit">编辑</string>
+    <string name="OxWorkspaceSave">保存</string>
+    <string name="OxWorkspaceCopyPath">复制路径</string>
+    <string name="OxWorkspaceInvalidName">请输入工作区内的相对路径（不能包含 .. 或以 / 开头）。</string>
 </resources>
