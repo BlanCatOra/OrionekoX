@@ -199,7 +199,7 @@
     <string name="OxMcpInvalid">请填写名称与合法的 http(s) 地址。</string>
     <string name="OxMcpInvalidHeaders">请求头必须是合法的 JSON 对象。</string>
     <string name="OxObContainerEnable">启用 OxLinux 容器</string>
-    <string name="OxObContainerEnableSub">可选，为 Agent 准备一个离线 Ubuntu 环境。</string>
+    <string name="OxObContainerEnableSub">可选，为智能体准备一个离线 Ubuntu 环境。</string>
     <string name="OxAgentHeaderNameHint">请求头名称</string>
     <string name="OxAgentHeaderValueHint">值</string>
     <string name="OxAgentDefaultApiName">API 智能体</string>
@@ -300,7 +300,7 @@
     <string name="OxTerminalKeyboard">键盘</string>
     <string name="OxTerminalWorkingDir">启动目录</string>
     <string name="OxTerminalWorkingDirInfo">Shell 从共享存储启动，ls、cp 等命令可以直接看到真实文件。</string>
-    <string name="OxAgentProfileAbout">本地智能体 · 由 %1$s 模型在你的设备上驱动</string>
+    <string name="OxAgentProfileAbout">本地智能体 · 由 %1$s 在你的设备上驱动</string>
     <string name="OxMcpMarket">MCP 插件商城</string>
     <string name="OxMcpMarketInfo">浏览 Operit 的 MCP 插件目录，并一键安装公开的远程服务器。Operit 目录里大多是本地 Python/Node 插件，需要 OxLinux 运行时；因此这里可以查看并复制它们的配置，而远程条目可以直接安装。</string>
     <string name="OxMcpMarketRemote">远程 MCP · 一键安装</string>

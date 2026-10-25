@@ -6837,7 +6837,7 @@
     <string name="OxObAiNote">本项目含大量 AI Coding 代码，开发者不对 AI 代码负责。</string>
     <string name="OxObContainerComponents">勾选要安装的组件</string>
     <string name="OxObContainerEnable">启用 OxLinux 容器</string>
-    <string name="OxObContainerEnableSub">可选，为 Agent 准备一个离线 Ubuntu 环境。</string>
+    <string name="OxObContainerEnableSub">可选，为智能体准备一个离线 Ubuntu 环境。</string>
     <string name="OxObContainerEnabled">已启用 OxLinux 容器，可在第 6 步继续配置。</string>
     <string name="OxObContainerMirror">镜像源</string>
     <string name="OxObContainerNote">以上配置会立即保存，并在安装 OxLinux 宿主组件后生效。容器本身需要配套的宿主应用（Android 不允许普通应用直接执行用户态二进制）。</string>
@@ -11694,7 +11694,7 @@
     <string name="OxTerminalKeyboard">键盘</string>
     <string name="OxTerminalWorkingDir">启动目录</string>
     <string name="OxTerminalWorkingDirInfo">Shell 从共享存储启动，ls、cp 等命令可以直接看到真实文件。</string>
-    <string name="OxAgentProfileAbout">本地智能体 · 由 %1$s 模型在你的设备上驱动</string>
+    <string name="OxAgentProfileAbout">本地智能体 · 由 %1$s 在你的设备上驱动</string>
     <string name="OxMcpMarket">MCP 插件商城</string>
     <string name="OxMcpMarketInfo">浏览 Operit 的 MCP 插件目录，并一键安装公开的远程服务器。Operit 目录里大多是本地 Python/Node 插件，需要 OxLinux 运行时；因此这里可以查看并复制它们的配置，而远程条目可以直接安装。</string>
     <string name="OxMcpMarketRemote">远程 MCP · 一键安装</string>
