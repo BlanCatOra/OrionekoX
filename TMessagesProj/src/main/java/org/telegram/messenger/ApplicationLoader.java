@@ -360,6 +360,12 @@ public class ApplicationLoader extends Application {
         LauncherIconController.tryFixLauncherIconIfNeeded();
         ProxyRotationController.init();
 
+        // Re-arm workflow alarms after a process restart (prefs only, safe before postInit).
+        try {
+            org.telegram.ox.OxWorkflowScheduler.rescheduleAll(applicationContext);
+        } catch (Throwable ignore) {
+        }
+
         //if (BuildConfig.DEBUG_PRIVATE_VERSION) {
         //    Choreographer60FpsContent.getInstance().addFrameCallback(debugEverySecondChecks, 1);
         //}

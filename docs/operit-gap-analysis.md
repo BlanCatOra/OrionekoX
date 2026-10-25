@@ -23,7 +23,7 @@ not feature-count parity.
 | Browser agent / OCR / voice | yes | `ui_ocr` implemented; emulator screenshot works after reboot, OCR model is not installed in the Play Services image | partial |
 | Character cards / group chats | yes | AGENTS.md + .oxagent export + memory viewer/editor | partial |
 | Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/delete | partial (basic text editor, no syntax highlighting) |
-| Workflows / scheduled tasks | yes | none | medium gap |
+| Workflows / scheduled tasks | yes | **Ox workflows**: named prompt + agent + interval, AlarmManager + foreground runner, result notification, manual run, pause/delete | **done v1** |
 | Local inference (MNN/llama.cpp) | built-in | external Ollama/LM Studio only | medium gap |
 | Cross-device Space | Operit2 | LAN API agents only | partial |
 | Backup / migration | snapshot export/restore | .oxagent per agent includes memory + skills; export/import round-trip verified | partial (workspace files not included) |
@@ -85,8 +85,12 @@ gaps that were previously listed as "gap":
 3. **Local stdio MCP runtime** — Operit's catalogue is mostly Python/Node/npx.
    Needs an installed OxLinux rootfs (or bundled runtime) plus a stdio JSON-RPC
    bridge. Remote MCP already works.
-4. **Workflows / scheduled tasks** — background scheduler, battery budget, and
-   tool runs that survive process death.
+4. **Workflows / scheduled tasks — done v1** — interval-based workflows (15 min,
+   hourly, 6 h, daily or manual) run through a foreground service, inject the prompt
+   into the agent chat, and post a result notification. Limits: intervals only
+   (no fixed wall-clock time or multi-step graph), inexact alarms while
+   `SCHEDULE_EXACT_ALARM` is not granted, and a run depends on the app not being
+   force-stopped by the user.
 5. **Browser/OCR/voice** — WebView/accessibility automation, ML Kit OCR, and
    on-device STT/TTS.
 6. **Full Operit skill execution semantics** — Operit skills can carry scripts and
@@ -137,3 +141,26 @@ gaps that were previously listed as "gap":
   ADB/root arbitrary keys. `ui_find_text` / `ui_scroll_tap_text` now also accept
   `direction=backward` for scrolling up; the scroll E2E still needs a target that
   is not present in the just-sent message text.
+
+
+### 0.8.40 workflows actual test
+
+Operit's scheduled tasks are now covered by a first-party workflow surface instead
+of a separate automation graph:
+
+- Ox settings → 工作流: named prompt, agent picker, interval (manual / 15 min /
+  hourly / 6 h / daily), enable-pause, run now, delete.
+- Each scheduled entry arms one AlarmManager broadcast. Exact alarms are used when
+  the system grants them; otherwise the page warns that runs may start late.
+  Alarms are re-armed on BOOT_COMPLETED and on every app process start, and overdue
+  entries catch up after 30 seconds.
+- The foreground runner queues runs (one Service instance per process), injects the
+  prompt through the same local-chat path as a user message, waits for the reply to
+  be persisted, then posts the result to the `ox_workflows` notification channel.
+- Verified on the emulator: manual run, real-model run (Yuki, reply `workflow ok`),
+  pause/resume (alarm cancelled and re-armed), manual-only workflow, delete,
+  invalid-save validation, dark mode, and a cold-start run with the process killed
+  before the alarm (new PID, foreground service allowed, reply and notification
+  delivered, next alarm armed for +15 min).
+- Limits: interval scheduling only (no wall-clock times or multi-step graphs), and
+  a user force-stop clears alarms until the app is opened again.
