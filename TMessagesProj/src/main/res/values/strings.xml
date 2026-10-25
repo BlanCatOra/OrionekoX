@@ -11891,4 +11891,11 @@
     <string name="OxSkillsEmpty">No SKILL.md packages found. Export them to Download/Operit/skills (one folder per skill).</string>
     <string name="OxSkillsGrant">Grant all-files access</string>
     <string name="OxSkillsGrantInfo">Needed to read Download/Operit/skills and Download/Operit2/skills.</string>
+    <string name="OxToolDescListSkills">List Operit SKILL.md packages.</string>
+    <string name="OxToolDescReadSkill">Read one Operit SKILL.md package.</string>
+    <string name="OxToolDescUiDump">Read the accessibility tree of the active screen.</string>
+    <string name="OxToolDescUiTap">Tap a screen coordinate.</string>
+    <string name="OxToolDescUiSwipe">Swipe between screen coordinates.</string>
+    <string name="OxToolDescUiKey">Press back, home, recents or another global key.</string>
+    <string name="OxToolDescUiScreenshot">Capture the screen to a PNG file.</string>
 </resources>
