@@ -4,6 +4,8 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Environment;
+import android.provider.Settings;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -14,10 +16,14 @@ import android.widget.TextView;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
+import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxMode;
+import org.telegram.ox.OxOperitImporter;
 import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextSettingsCell;
@@ -92,6 +98,9 @@ public class OxSettingsActivity extends BaseFragment {
                 presentFragment(new OxAgentsActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         agentGroup.addView(cell(context, LocaleController.getString(R.string.OxMcp), "", true, v ->
                 presentFragment(new OxMcpActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        agentGroup.addView(cell(context, LocaleController.getString(R.string.OxImportOperit),
+                "", true, v -> startOperitImport()),
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         agentGroup.addView(cell(context, LocaleController.getString(R.string.OxToolsTitle), "", true, v ->
                 presentFragment(new OxToolsActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         content.addView(agentGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
@@ -166,4 +175,42 @@ public class OxSettingsActivity extends BaseFragment {
         } catch (Throwable ignored) {
         }
     }
+    private void startOperitImport() {
+        if (getParentActivity() == null) return;
+        if (!OxOperitImporter.storageReady()) {
+            new AlertDialog.Builder(getParentActivity())
+                    .setTitle(LocaleController.getString(R.string.OxImportStorageTitle))
+                    .setMessage(LocaleController.getString(R.string.OxImportStorageText))
+                    .setPositiveButton(LocaleController.getString(R.string.OxImportGrant), (d, w) -> {
+                        try {
+                            Intent i = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                    Uri.parse("package:" + getParentActivity().getPackageName()));
+                            getParentActivity().startActivity(i);
+                        } catch (Throwable ignored) {
+                        }
+                    })
+                    .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                    .show();
+            return;
+        }
+        android.widget.Toast.makeText(getParentActivity(), LocaleController.getString(R.string.OxImportRunning),
+                android.widget.Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            final OxOperitImporter.Result result = OxOperitImporter.importAll();
+            AndroidUtilities.runOnUIThread(() -> {
+                if (getParentActivity() == null) return;
+                OxAgentsBridge.syncAgents(true);
+                for (String id : result.importedAgentIds) {
+                    OxAgentsBridge.replayImportedHistory(id);
+                }
+                NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.dialogsNeedReload);
+                new AlertDialog.Builder(getParentActivity())
+                        .setTitle(LocaleController.getString(R.string.OxImportDone))
+                        .setMessage(result.summary())
+                        .setPositiveButton(LocaleController.getString(R.string.OK), null)
+                        .show();
+            });
+        }, "ox-operit-import").start();
+    }
+
 }
