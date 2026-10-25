@@ -251,8 +251,17 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
 
     private boolean needUpdateBackupViewColor;
 
+    private boolean staticColorInverted;
+    private final Runnable restoreStaticColor = () -> {
+        staticColorInverted = false;
+        updateColors();
+    };
+
     private void updateColors() {
-        final int color = ColorUtils.blendARGB(colorDefault, colorSelected, isSelectedAnimator.getFloatValue());
+        int color = ColorUtils.blendARGB(colorDefault, colorSelected, isSelectedAnimator.getFloatValue());
+        if (staticColorInverted) {
+            color = isSelectedAnimator.getValue() ? colorDefault : colorSelected;
+        }
         final int colorText = ColorUtils.blendARGB(colorDefault, colorSelectedText, isSelectedAnimator.getFloatValue());
 
         final PorterDuffColorFilter filter = new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN);
@@ -312,6 +321,14 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
 
         if (tabAnimation.iconStatic != -1) {
             imageView.setImageResource(tabAnimation.iconStatic);
+            if (animated && lastIsSelected != isSelected) {
+                // The pager already scales the tab; static icons only add a
+                // brief selected<->unselected colour inversion.
+                staticColorInverted = true;
+                AndroidUtilities.cancelRunOnUIThread(restoreStaticColor);
+                AndroidUtilities.runOnUIThread(restoreStaticColor, 140);
+            }
+            lastIsSelected = isSelected;
             updateColors();
             return;
         }
