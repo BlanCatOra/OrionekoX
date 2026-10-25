@@ -276,10 +276,14 @@ of a separate automation graph:
   `groupMessages` includes that log, `startGroupTurn` records the user line, and
   `finishTurn` writes group replies only to the group log instead of the agent's
   one-to-one history.
-- Verified: after the send fix, a new group message showed double checks (no red
-  mark) and Yuki replied in the group. The per-group history change is built and
-  installed (0.8.56) but its two-message context test could not be completed: the
-  emulator repeatedly lost `adb` as soon as the group chat opened, in both normal
-  and `-gpu off -no-window` modes, with only SwiftShader/Vulkan warnings and no
-  app FATAL. Treat the history change as **unverified** until a stable device or
-  emulator is available.
+- Verified after the send fix: a new group message showed double checks (no red
+  mark) and Yuki replied in the group. The per-group history was then verified with
+  a fact that was explicitly not saved to memory:
+  - "The group codeword is pineapple. Do not use tools" → Yuki answered without a
+    tool call;
+  - "What is the group codeword? Do not use tools" → it answered `pineapple` with
+    `onRound tools=0`, so the answer came from the new group log, not memory.
+- The earlier emulator crashes (normal, headless and `-gpu off` modes losing `adb`
+  when opening the chat) were a rendering/stability issue with no app FATAL; after
+  a fresh boot with system animations disabled for the test the two-message check
+  passed. Animations were restored afterwards.
