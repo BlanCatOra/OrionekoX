@@ -57,6 +57,27 @@ public class OxSettingsActivity extends BaseFragment {
                 presentFragment(new LanguageSelectActivity())), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         content.addView(modeGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
+        content.addView(header(context, LocaleController.getString(R.string.OxLocalPremium)));
+        LinearLayout premiumGroup = group(context);
+        final String enabled = LocaleController.getString(R.string.OxSettingsEnabled);
+        final String disabled = LocaleController.getString(R.string.OxSettingsDisabled);
+        TextSettingsCell premiumCell = cell(context, LocaleController.getString(R.string.OxLocalPremium),
+                OxMode.isLocalPremium() ? enabled : disabled, false, null);
+        premiumCell.setOnClickListener(v -> {
+            OxMode.setLocalPremium(!OxMode.isLocalPremium());
+            premiumCell.setTextAndValue(LocaleController.getString(R.string.OxLocalPremium),
+                    OxMode.isLocalPremium() ? enabled : disabled, false);
+        });
+        premiumGroup.addView(premiumCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        content.addView(premiumGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView premiumInfo = new TextView(context);
+        premiumInfo.setText(LocaleController.getString(R.string.OxLocalPremiumInfo));
+        premiumInfo.setTextSize(13);
+        premiumInfo.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        premiumInfo.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(8), AndroidUtilities.dp(21), AndroidUtilities.dp(10));
+        content.addView(premiumInfo, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
         content.addView(header(context, LocaleController.getString(R.string.OxSettingsSectionGuide)));
         LinearLayout guideGroup = group(context);
         guideGroup.addView(cell(context, LocaleController.getString(R.string.OxSettingsRerun), "", true, v ->

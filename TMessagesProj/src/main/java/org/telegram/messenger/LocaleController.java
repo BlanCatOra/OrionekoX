@@ -1438,6 +1438,7 @@ public class LocaleController {
         "OxSettingsModeOx",
         "OxSettingsModeTg",
         "OxSettingsRepository",
+        "OxSettingsInfo",
         "OxSettingsRerun",
         "OxSettingsSectionAbout",
         "OxSettingsSectionAgents",
@@ -1478,13 +1479,19 @@ public class LocaleController {
         "OxUseLocalMode",
         "OxVpnKeepAlive",
         "OxVpnKeepAliveInfo",
+        "OxLocalPremium",
+        "OxLocalPremiumInfo",
+        "OxTerminal",
+        "OxTerminalClear",
+        "OxTerminalHint",
+        "OxTerminalRestart",
         "VpnUpdateDownloading"
     };
 
     private static HashMap<String, String> orionekoForkStringsCache;
     private static String orionekoForkStringsCacheKey;
 
-    private static final int OX_ZH_PACK_VERSION = 11;
+    private static final int OX_ZH_PACK_VERSION = 12;
 
     /** Copies assets/oxlang/zh-cn.xml to files/ox_zh-cn.xml once per pack version. */
     private static File ensureBundledZhPack() {

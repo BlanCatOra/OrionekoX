@@ -11664,6 +11664,13 @@
     <string name="OxObSkip">Skip</string>
     <string name="OxObSkipHint">You can skip this setting for now; change it later in Ox Settings → Run onboarding again.</string>
     <string name="OxSettingsTitle">Ox Settings</string>
+    <string name="OxLocalPremium">Local Premium</string>
+    <string name="OxLocalPremiumInfo">Unlock Telegram Premium features locally, without a subscription or server call.</string>
+    <string name="OxSettingsInfo">Mode, local premium, agents and tools</string>
+    <string name="OxTerminal">Terminal</string>
+    <string name="OxTerminalRestart">Restart</string>
+    <string name="OxTerminalClear">Clear</string>
+    <string name="OxTerminalHint">Enter a command…</string>
     <string name="OxSettingsRerun">Run onboarding again</string>
     <string name="OxSettingsMode">Current mode: %1$s</string>
     <string name="OxSettingsModeOx">Ox mode (agents only)</string>

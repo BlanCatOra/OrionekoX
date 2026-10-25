@@ -576,7 +576,8 @@ public class UserConfig extends BaseController {
         if (user == null) {
             return false;
         }
-        return user.premium;
+        // OrionekoX local premium: no subscription, no server call.
+        return user.premium || org.telegram.ox.OxMode.isLocalPremium();
     }
 
     public Long getEmojiStatus() {
