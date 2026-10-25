@@ -11920,6 +11920,10 @@
     <string name="OxWorkspaceExport">Export to device</string>
     <string name="OxWorkspaceExported">Exported %1$s</string>
     <string name="OxWorkspaceExportFailed">Export failed</string>
+    <string name="OxWorkspaceRename">Rename</string>
+    <string name="OxWorkspaceRenamed">Renamed to %1$s</string>
+    <string name="OxWorkspaceRenameFailed">Rename failed</string>
+    <string name="OxWorkspaceRenameExists">A file with that name already exists</string>
     <string name="OxWorkspaceNewHint">File name, e.g. notes/todo.md</string>
     <string name="OxWorkspaceNewContent">Initial content (optional)</string>
     <string name="OxWorkspaceEdit">Edit</string>

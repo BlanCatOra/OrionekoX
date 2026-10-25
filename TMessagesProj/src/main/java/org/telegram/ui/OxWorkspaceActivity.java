@@ -170,6 +170,7 @@ public class OxWorkspaceActivity extends BaseFragment {
             final File f = files.get(index);
             CharSequence[] actions = {
                     LocaleController.getString(R.string.OxWorkspacePreview),
+                    LocaleController.getString(R.string.OxWorkspaceRename),
                     LocaleController.getString(R.string.OxWorkspaceExport),
                     LocaleController.getString(R.string.Delete)
             };
@@ -177,7 +178,8 @@ public class OxWorkspaceActivity extends BaseFragment {
                     .setTitle(relative(f))
                     .setItems(actions, (d, which) -> {
                         if (which == 0) preview(f);
-                        else if (which == 1) exportFile(f);
+                        else if (which == 1) renameFile(f);
+                        else if (which == 2) exportFile(f);
                         else confirmDelete(f);
                     })
                     .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
@@ -185,6 +187,59 @@ public class OxWorkspaceActivity extends BaseFragment {
             return true;
         }
         return false;
+    }
+
+    private void renameFile(File f) {
+        if (getParentActivity() == null || selectedAgent == null) return;
+        android.widget.EditText edit = new android.widget.EditText(getParentActivity());
+        edit.setText(relative(f));
+        edit.setSingleLine(true);
+        edit.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(12), AndroidUtilities.dp(16), AndroidUtilities.dp(12));
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxWorkspaceRename))
+                .setView(edit)
+                .setPositiveButton(LocaleController.getString(R.string.OxWorkspaceSave), (d, w) -> {
+                    String rel = edit.getText().toString().trim();
+                    if (rel.isEmpty() || rel.startsWith("/") || rel.contains("..")) {
+                        android.widget.Toast.makeText(getParentActivity(),
+                                LocaleController.getString(R.string.OxWorkspaceInvalidName),
+                                android.widget.Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    try {
+                        File target = OxAgentStore.resolveWorkspace(selectedAgent.id, rel);
+                        if (target.equals(f)) return;
+                        if (target.exists()) {
+                            android.widget.Toast.makeText(getParentActivity(),
+                                    LocaleController.getString(R.string.OxWorkspaceRenameExists),
+                                    android.widget.Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        File parent = target.getParentFile();
+                        if (parent != null) parent.mkdirs();
+                        boolean moved = f.renameTo(target);
+                        if (!moved) {
+                            try (InputStream in = new FileInputStream(f);
+                                 OutputStream out = new FileOutputStream(target)) {
+                                byte[] buf = new byte[8192];
+                                int n;
+                                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                            }
+                            f.delete();
+                        }
+                        android.widget.Toast.makeText(getParentActivity(),
+                                LocaleController.formatString("OxWorkspaceRenamed",
+                                        R.string.OxWorkspaceRenamed, target.getName()),
+                                android.widget.Toast.LENGTH_SHORT).show();
+                        rebuild();
+                    } catch (Throwable t) {
+                        android.widget.Toast.makeText(getParentActivity(),
+                                LocaleController.getString(R.string.OxWorkspaceRenameFailed) + ": " + t.getMessage(),
+                                android.widget.Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
     }
 
     private void confirmDelete(File f) {
