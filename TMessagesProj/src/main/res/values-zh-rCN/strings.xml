@@ -343,4 +343,11 @@
     <string name="OxSkillsEmpty">没有找到 SKILL.md。请把技能导出到 Download/Operit/skills（每个技能一个文件夹）。</string>
     <string name="OxSkillsGrant">授予所有文件访问权限</string>
     <string name="OxSkillsGrantInfo">用于读取 Download/Operit/skills 与 Download/Operit2/skills。</string>
+    <string name="OxToolDescListSkills">列出 Operit SKILL.md 技能包。</string>
+    <string name="OxToolDescReadSkill">读取一个 Operit SKILL.md 技能包。</string>
+    <string name="OxToolDescUiDump">读取当前屏幕的无障碍节点树。</string>
+    <string name="OxToolDescUiTap">按屏幕坐标点击。</string>
+    <string name="OxToolDescUiSwipe">按屏幕坐标滑动。</string>
+    <string name="OxToolDescUiKey">执行返回、主页、最近任务等系统导航。</string>
+    <string name="OxToolDescUiScreenshot">截屏并保存为 PNG 文件。</string>
 </resources>

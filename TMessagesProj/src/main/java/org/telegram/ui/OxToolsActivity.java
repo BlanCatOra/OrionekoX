@@ -237,6 +237,13 @@ public class OxToolsActivity extends BaseFragment {
             case "write_file": id = R.string.OxToolDescWriteFile; break;
             case "notify": id = R.string.OxToolDescNotify; break;
             case "open_url": id = R.string.OxToolDescOpenUrl; break;
+            case "list_skills": id = R.string.OxToolDescListSkills; break;
+            case "read_skill": id = R.string.OxToolDescReadSkill; break;
+            case "ui_dump": id = R.string.OxToolDescUiDump; break;
+            case "ui_tap": id = R.string.OxToolDescUiTap; break;
+            case "ui_swipe": id = R.string.OxToolDescUiSwipe; break;
+            case "ui_key": id = R.string.OxToolDescUiKey; break;
+            case "ui_screenshot": id = R.string.OxToolDescUiScreenshot; break;
             default: return tool.description();
         }
         return LocaleController.getString(id);

@@ -578,6 +578,72 @@ public class OxBuiltinTools {
             @Override public JSONObject parameters() { return schema(new String[]{"name"}); }
             @Override public String execute(JSONObject args) { return OxSkillStore.read(args.optString("name", "")); }
         });
+
+        register(new OxTool() {
+            @Override public String name() { return "ui_dump"; }
+            @Override public String description() { return "Dump the active screen's accessibility tree (text, content descriptions, bounds, clickable flags). Requires the OrionekoX accessibility service."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[0]); }
+            @Override public String execute(JSONObject args) { return OxAccessibilityService.dumpUi(); }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "ui_tap"; }
+            @Override public String description() { return "Tap a screen coordinate in pixels using the accessibility gesture API. Requires the accessibility service."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"x", "y"}); }
+            @Override public String execute(JSONObject args) {
+                int x = intArg(args, "x"), y = intArg(args, "y");
+                if (x < 0 || y < 0) return "error: x and y are required";
+                return OxAccessibilityService.tap(x, y) ? "tapped " + x + "," + y : "error: gesture dispatch failed or service disabled";
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "ui_swipe"; }
+            @Override public String description() { return "Swipe from one screen coordinate to another in pixels. Optional duration_ms (50-2000). Requires the accessibility service."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"x1", "y1", "x2", "y2"}); }
+            @Override public String execute(JSONObject args) {
+                int x1 = intArg(args, "x1"), y1 = intArg(args, "y1"), x2 = intArg(args, "x2"), y2 = intArg(args, "y2");
+                int duration = intArg(args, "duration_ms");
+                if (x1 < 0 || y1 < 0 || x2 < 0 || y2 < 0) return "error: coordinates are required";
+                return OxAccessibilityService.swipe(x1, y1, x2, y2, duration > 0 ? duration : 300)
+                        ? "swiped" : "error: gesture dispatch failed or service disabled";
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "ui_key"; }
+            @Override public String description() { return "Press a global navigation key: back, home, recents, notifications, quick_settings or power. Requires the accessibility service."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"key"}); }
+            @Override public String execute(JSONObject args) {
+                String key = args.optString("key", "");
+                return OxAccessibilityService.globalAction(key) ? "pressed " + key : "error: unknown key or service disabled";
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "ui_screenshot"; }
+            @Override public String description() { return "Capture the current screen to a PNG in the app's oxauto folder and return the absolute path. Requires Android 11+ and the accessibility service."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[0]); }
+            @Override public String execute(JSONObject args) { return OxAccessibilityService.screenshot(); }
+        });
+    }
+
+    private static int intArg(JSONObject args, String key) {
+        if (args == null) return -1;
+        Object value = args.opt(key);
+        if (value instanceof Number) return ((Number) value).intValue();
+        if (value != null) {
+            try {
+                return Integer.parseInt(value.toString().trim());
+            } catch (Throwable ignored) {
+            }
+        }
+        return -1;
     }
 
     private static String oxDialogTitle(org.telegram.messenger.MessagesController mc, org.telegram.tgnet.TLRPC.Dialog d) {
