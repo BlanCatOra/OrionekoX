@@ -1,5 +1,6 @@
 package org.telegram.ui;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -8,12 +9,10 @@ import android.os.Build;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 
 import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
@@ -28,8 +27,10 @@ import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.UItem;
+import org.telegram.ui.Components.UniversalAdapter;
+import org.telegram.ui.Components.UniversalRecyclerView;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -37,14 +38,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Human-readable permission centre: Android grants + per-agent tool policies. */
+/** Permission centre and per-agent tool policies, native settings list. */
 @SuppressLint("ViewConstructor")
 public class OxToolsActivity extends BaseFragment {
 
     private static final int PERM_REQUEST = 7501;
+    private static final int ID_AGENT = 20;
+    private static final int PERM_BASE = 100;
+    private static final int TOOL_BASE = 1000;
 
-    private LinearLayout content;
+    private UniversalRecyclerView listView;
     private OxAgent selectedAgent;
+    private final ArrayList<OxTool> toolList = new ArrayList<>();
 
     @Override
     public View createView(Context context) {
@@ -60,19 +65,17 @@ public class OxToolsActivity extends BaseFragment {
 
         FrameLayout root = new FrameLayout(context);
         root.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
-        ScrollView scroll = new ScrollView(context);
-        scroll.setFillViewport(true);
-        content = new LinearLayout(context);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(0, 0, 0, AndroidUtilities.dp(24));
-        scroll.addView(content, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(scroll, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        listView = new UniversalRecyclerView(this, this::fillItems, this::onClick, this::onLongClick);
+        listView.adapter.setApplyBackground(false);
+        listView.setSections();
+        listView.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(12));
+        listView.setClipToPadding(false);
+        root.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL));
         fragmentView = root;
 
         List<OxAgent> agents = OxAgentStore.listAgents();
         if (!agents.isEmpty()) selectedAgent = agents.get(0);
-        rebuild();
-        return fragmentView;
+        return root;
     }
 
     @Override
@@ -81,86 +84,115 @@ public class OxToolsActivity extends BaseFragment {
         rebuild();
     }
 
-    private void rebuild() {
-        if (content == null) return;
-        content.removeAllViews();
-        Context ctx = content.getContext();
+    private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
+        items.add(UItem.asHeader(LocaleController.getString(R.string.OxToolsPermissions)));
+        addPermission(items, 0, LocaleController.getString(R.string.OxObPermNormal), normalPermStatus());
+        addPermission(items, 1, LocaleController.getString(R.string.OxObPermAccessibility), accessibilityStatus());
+        addPermission(items, 2, LocaleController.getString(R.string.OxToolsAdb), adbStatus());
+        addPermission(items, 3, LocaleController.getString(R.string.OxObPermShizuku), shizukuStatus());
+        addPermission(items, 4, LocaleController.getString(R.string.OxObPermAdmin), adminStatus());
+        addPermission(items, 5, LocaleController.getString(R.string.OxObPermRoot), rootStatus());
+        items.add(UItem.asShadow(null));
 
-        content.addView(header(ctx, LocaleController.getString(R.string.OxToolsPermissions)));
-        LinearLayout permGroup = group(ctx);
-        addPermissionRow(ctx, permGroup, LocaleController.getString(R.string.OxObPermNormal), normalPermStatus(), () -> {
-            if (getParentActivity() != null && Build.VERSION.SDK_INT >= 33
-                    && getParentActivity().checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
-                getParentActivity().requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, PERM_REQUEST);
-            } else {
-                toast(LocaleController.getString(R.string.OxObPermGranted));
-            }
-        });
-        addPermissionRow(ctx, permGroup, LocaleController.getString(R.string.OxObPermAccessibility), accessibilityStatus(), () -> {
-            try {
-                if (getParentActivity() != null) getParentActivity().startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-            } catch (Throwable ignored) {
-            }
-        });
-        addPermissionRow(ctx, permGroup, LocaleController.getString(R.string.OxToolsAdb), adbStatus(), () -> {
-            try {
-                if (getParentActivity() != null) getParentActivity().startActivity(new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
-            } catch (Throwable ignored) {
-            }
-        });
-        addPermissionRow(ctx, permGroup, LocaleController.getString(R.string.OxObPermShizuku), shizukuStatus(), () -> {
-            try {
-                Intent i = getParentActivity() == null ? null : getParentActivity().getPackageManager().getLaunchIntentForPackage("moe.shizuku.privileged.api");
-                if (i != null) getParentActivity().startActivity(i);
-                else toast(LocaleController.getString(R.string.OxObPermNotInstalled));
-            } catch (Throwable ignored) {
-            }
-        });
-        addPermissionRow(ctx, permGroup, LocaleController.getString(R.string.OxObPermAdmin), adminStatus(), () -> {
-            try {
-                android.app.admin.DevicePolicyManager dpm = (android.app.admin.DevicePolicyManager)
-                        getParentActivity().getSystemService(Context.DEVICE_POLICY_SERVICE);
-                android.content.ComponentName cn = new android.content.ComponentName(
-                        getParentActivity(), org.telegram.ox.OxDeviceAdminReceiver.class);
-                if (dpm != null && !dpm.isAdminActive(cn)) {
-                    Intent i = new Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
-                    i.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, cn);
-                    getParentActivity().startActivity(i);
-                }
-            } catch (Throwable ignored) {
-            }
-        });
-        addPermissionRow(ctx, permGroup, LocaleController.getString(R.string.OxObPermRoot), rootStatus(), () ->
-                toast(LocaleController.getString(R.string.OxObPermRootHint)));
-        content.addView(permGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        items.add(UItem.asHeader(LocaleController.getString(R.string.OxToolsAgentTools)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_AGENT, 0xFF7C5CFF, 0xFF5B3FE0,
+                R.drawable.filled_bot_approve_24, LocaleController.getString(R.string.OxToolsAgent),
+                null, selectedAgent == null ? LocaleController.getString(R.string.OxToolsNoAgent) : selectedAgent.name));
+        items.add(UItem.asShadow(LocaleController.getString(R.string.OxToolsInfo)));
 
-        content.addView(header(ctx, LocaleController.getString(R.string.OxToolsAgentTools)));
-        LinearLayout toolGroup = group(ctx);
-        TextSettingsCell selector = new TextSettingsCell(ctx);
-        selector.setTextAndValue(LocaleController.getString(R.string.OxToolsAgent),
-                selectedAgent == null ? LocaleController.getString(R.string.OxToolsNoAgent) : selectedAgent.name, true);
-        selector.setOnClickListener(v -> showAgentPicker());
-        toolGroup.addView(selector, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-
-        TextView info = new TextView(ctx);
-        info.setText(LocaleController.getString(R.string.OxToolsInfo));
-        info.setTextSize(12);
-        info.setLineSpacing(AndroidUtilities.dp(3), 1f);
-        info.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        info.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(8), AndroidUtilities.dp(21), AndroidUtilities.dp(8));
-        content.addView(info, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-
+        toolList.clear();
         Map<String, OxTool> tools = new LinkedHashMap<>();
         for (OxTool t : OxBuiltinTools.ALL.values()) tools.put(t.name(), t);
         for (OxTool t : OxMcpManager.tools()) tools.put(t.name(), t);
-        if (selectedAgent != null && !tools.isEmpty()) {
-            int i = 0;
+        if (selectedAgent != null) {
             for (OxTool t : tools.values()) {
-                toolGroup.addView(toolRow(ctx, t, i < tools.size() - 1), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-                i++;
+                toolList.add(t);
+                items.add(SettingsActivity.SettingCell.Factory.of(TOOL_BASE + toolList.size() - 1, 0, 0, 0,
+                        t.name(), toolDesc(t), policyLabel(t)));
             }
         }
-        content.addView(toolGroup, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        items.add(UItem.asShadow(null));
+    }
+
+    private void addPermission(ArrayList<UItem> items, int index, String title, String[] status) {
+        items.add(SettingsActivity.SettingCell.Factory.of(PERM_BASE + index, 0, 0, 0, title, null, status[0]));
+    }
+
+    private void onClick(UItem item, View view, int position, float x, float y) {
+        if (item.id == ID_AGENT) {
+            showAgentPicker();
+        } else if (item.id >= PERM_BASE && item.id < PERM_BASE + 6) {
+            int index = item.id - PERM_BASE;
+            String[] status = index == 0 ? normalPermStatus()
+                    : index == 1 ? accessibilityStatus()
+                    : index == 2 ? adbStatus()
+                    : index == 3 ? shizukuStatus()
+                    : index == 4 ? adminStatus()
+                    : rootStatus();
+            if ("1".equals(status[1])) {
+                toast(LocaleController.getString(R.string.OxObPermGranted));
+            } else {
+                runPermissionAction(index);
+            }
+        } else if (item.id >= TOOL_BASE && item.id - TOOL_BASE < toolList.size()) {
+            cyclePolicy(toolList.get(item.id - TOOL_BASE));
+            rebuild();
+        }
+    }
+
+    private boolean onLongClick(UItem item, View view, int position, float x, float y) {
+        return false;
+    }
+
+    private void runPermissionAction(int index) {
+        if (getParentActivity() == null) return;
+        switch (index) {
+            case 0:
+                if (Build.VERSION.SDK_INT >= 33
+                        && getParentActivity().checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    getParentActivity().requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, PERM_REQUEST);
+                } else {
+                    toast(LocaleController.getString(R.string.OxObPermGranted));
+                }
+                break;
+            case 1:
+                try {
+                    getParentActivity().startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                } catch (Throwable ignored) {
+                }
+                break;
+            case 2:
+                try {
+                    getParentActivity().startActivity(new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+                } catch (Throwable ignored) {
+                }
+                break;
+            case 3:
+                try {
+                    Intent i = getParentActivity().getPackageManager().getLaunchIntentForPackage("moe.shizuku.privileged.api");
+                    if (i != null) getParentActivity().startActivity(i);
+                    else toast(LocaleController.getString(R.string.OxObPermNotInstalled));
+                } catch (Throwable ignored) {
+                }
+                break;
+            case 4:
+                try {
+                    android.app.admin.DevicePolicyManager dpm = (android.app.admin.DevicePolicyManager)
+                            getParentActivity().getSystemService(Context.DEVICE_POLICY_SERVICE);
+                    android.content.ComponentName cn = new android.content.ComponentName(
+                            getParentActivity(), org.telegram.ox.OxDeviceAdminReceiver.class);
+                    if (dpm != null && !dpm.isAdminActive(cn)) {
+                        Intent i = new Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+                        i.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, cn);
+                        getParentActivity().startActivity(i);
+                    }
+                } catch (Throwable ignored) {
+                }
+                break;
+            case 5:
+                toast(LocaleController.getString(R.string.OxObPermRootHint));
+                break;
+        }
     }
 
     private void showAgentPicker() {
@@ -181,81 +213,8 @@ public class OxToolsActivity extends BaseFragment {
                 .show();
     }
 
-    private TextView header(Context ctx, String text) {
-        TextView tv = new TextView(ctx);
-        tv.setText(text);
-        tv.setTextSize(13);
-        tv.setTypeface(AndroidUtilities.bold());
-        tv.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        tv.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(14), AndroidUtilities.dp(21), AndroidUtilities.dp(5));
-        return tv;
-    }
-
-    private LinearLayout group(Context ctx) {
-        LinearLayout l = new LinearLayout(ctx);
-        l.setOrientation(LinearLayout.VERTICAL);
-        l.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
-        return l;
-    }
-
-    private void addPermissionRow(Context ctx, LinearLayout parent, String name, String[] status, Runnable onTap) {
-        boolean granted = "1".equals(status[1]);
-        TextSettingsCell cell = new TextSettingsCell(ctx);
-        cell.setTextAndValue(name, status[0], true);
-        cell.setTextValueColor(getThemedColor(granted ? Theme.key_chats_actionBackground : Theme.key_windowBackgroundWhiteGrayText));
-        cell.setOnClickListener(v -> {
-            if (granted) toast(LocaleController.getString(R.string.OxObPermGranted));
-            else onTap.run();
-        });
-        parent.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-    }
-
-    private View toolRow(Context ctx, OxTool tool, boolean divider) {
-        LinearLayout row = new LinearLayout(ctx);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(10), AndroidUtilities.dp(21), AndroidUtilities.dp(10));
-        row.setBackground(Theme.getSelectorDrawable(false));
-
-        LinearLayout texts = new LinearLayout(ctx);
-        texts.setOrientation(LinearLayout.VERTICAL);
-        TextView title = new TextView(ctx);
-        title.setText(tool.name());
-        title.setTextSize(15);
-        title.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-        texts.addView(title);
-        TextView desc = new TextView(ctx);
-        desc.setText(toolDesc(tool));
-        desc.setTextSize(12);
-        desc.setMaxLines(2);
-        desc.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        texts.addView(desc);
-        row.addView(texts, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
-
-        TextView policy = new TextView(ctx);
-        policy.setText(policyLabel(tool));
-        policy.setTextSize(13);
-        policy.setTypeface(AndroidUtilities.bold());
-        policy.setTextColor(policyColor(tool));
-        row.addView(policy, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL));
-
-        row.setOnClickListener(v -> {
-            cyclePolicy(tool);
-            policy.setText(policyLabel(tool));
-            policy.setTextColor(policyColor(tool));
-        });
-        if (!divider) {
-            return row;
-        }
-        LinearLayout outer = new LinearLayout(ctx);
-        outer.setOrientation(LinearLayout.VERTICAL);
-        outer.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        View line = new View(ctx);
-        line.setBackgroundColor(getThemedColor(Theme.key_divider));
-        LinearLayout.LayoutParams lp = LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 1);
-        lp.leftMargin = AndroidUtilities.dp(21);
-        outer.addView(line, lp);
-        return outer;
+    private void rebuild() {
+        if (listView != null) listView.adapter.update(true);
     }
 
     private String toolDesc(OxTool tool) {
@@ -291,15 +250,6 @@ public class OxToolsActivity extends BaseFragment {
         return override.isEmpty() ? LocaleController.getString(R.string.OxToolsPolicyDefault) + " · " + label : label;
     }
 
-    private int policyColor(OxTool tool) {
-        if (selectedAgent == null) return getThemedColor(Theme.key_windowBackgroundWhiteGrayText);
-        String override = selectedAgent.toolsPolicy == null ? "" : selectedAgent.toolsPolicy.optString(tool.name(), "");
-        String p = override.isEmpty() ? tool.defaultPolicy() : override;
-        if (OxTool.POLICY_DENY.equals(p)) return getThemedColor(Theme.key_text_RedRegular);
-        if (OxTool.POLICY_ASK.equals(p)) return 0xfff39c12;
-        return getThemedColor(Theme.key_chats_actionBackground);
-    }
-
     private String policyName(String p) {
         if (OxTool.POLICY_DENY.equals(p)) return LocaleController.getString(R.string.OxToolsPolicyDeny);
         if (OxTool.POLICY_ASK.equals(p)) return LocaleController.getString(R.string.OxToolsPolicyAsk);
@@ -327,7 +277,7 @@ public class OxToolsActivity extends BaseFragment {
     private String[] normalPermStatus() {
         if (getParentActivity() == null) return new String[]{LocaleController.getString(R.string.OxObPermMissing), "0"};
         boolean ok = Build.VERSION.SDK_INT < 33
-                || getParentActivity().checkSelfPermission("android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED;
+                || getParentActivity().checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
         return new String[]{LocaleController.getString(ok ? R.string.OxObPermGranted : R.string.OxObPermMissing), ok ? "1" : "0"};
     }
 

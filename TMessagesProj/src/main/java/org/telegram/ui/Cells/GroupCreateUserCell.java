@@ -460,7 +460,8 @@ public class GroupCreateUserCell extends FrameLayout {
                     if (currentUser.bot) {
                         statusTextView.setTag(Theme.key_windowBackgroundWhiteGrayText);
                         statusTextView.setTextColor(Theme.getColor(forceDarkTheme ? Theme.key_voipgroup_lastSeenText : Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
-                        statusTextView.setText(LocaleController.getString(R.string.Bot));
+                        statusTextView.setText(LocaleController.getString(org.telegram.ox.OxAgentsBridge.isAgentDialog(currentUser.id)
+                                ? R.string.OxAgentStatusLocal : R.string.Bot));
                     } else {
                         if (currentUser.id == UserConfig.getInstance(currentAccount).getClientUserId() || currentUser.status != null && currentUser.status.expires > ConnectionsManager.getInstance(currentAccount).getCurrentTime() || MessagesController.getInstance(currentAccount).onlinePrivacy.containsKey(currentUser.id)) {
                             statusTextView.setTag(Theme.key_windowBackgroundWhiteBlueText);
