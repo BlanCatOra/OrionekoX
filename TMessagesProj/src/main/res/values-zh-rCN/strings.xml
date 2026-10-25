@@ -257,4 +257,5 @@
     <string name="OxToolDescNotify">弹出设备提示。</string>
     <string name="OxToolDescOpenUrl">用浏览器打开链接。</string>
     <string name="OxLoginTimeout">无法连接 Telegram，请检查网络或代理后重试。</string>
+    <string name="OxUseLocalMode">使用本地模式</string>
 </resources>

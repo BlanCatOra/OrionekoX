@@ -1117,10 +1117,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         if (org.telegram.ox.OxMode.isAgentOnly()) {
             return new OxAgentsActivity();
         }
-        if (LoginActivity.loadCurrentState(false, currentAccount).getInt("currentViewNum", 0) != 0) {
-            return new LoginActivity();
-        }
-        return new IntroActivity();
+        return new LoginActivity();
     }
 
     public FireworksOverlay getFireworksOverlay() {
@@ -1325,7 +1322,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                 presentFragment(new MainTabsActivity(), true, false);
                 return;
             }
-            presentFragment(new IntroActivity().setOnLogout());
+            presentFragment(new LoginActivity(), true, false);
         }
     }
 

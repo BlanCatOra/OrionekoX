@@ -2110,6 +2110,27 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
             phoneOutlineView.setText(getString(R.string.PhoneNumber));
             addView(phoneOutlineView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 58, 16, 8, 16, 8));
 
+            if (activityMode == MODE_LOGIN && UserConfig.getActivatedAccountsCount() == 0) {
+                TextView useLocal = new TextView(context);
+                useLocal.setText(LocaleController.getString(R.string.OxUseLocalMode));
+                useLocal.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+                useLocal.setTypeface(AndroidUtilities.bold());
+                useLocal.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+                useLocal.setGravity(Gravity.CENTER);
+                useLocal.setPadding(0, dp(14), 0, 0);
+                useLocal.setOnClickListener(v -> {
+                    org.telegram.ox.OxMode.setAgentOnly(true);
+                    try {
+                        org.telegram.ox.OxAgentsBridge.ensureLocalAccount();
+                    } catch (Throwable ignored) {
+                    }
+                    if (getParentActivity() instanceof LaunchActivity) {
+                        ((LaunchActivity) getParentActivity()).resetToMain();
+                    }
+                });
+                addView(useLocal, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 32, 12, 32, 0));
+            }
+
             plusTextView = new TextView(context);
             plusTextView.setText("+");
             plusTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
