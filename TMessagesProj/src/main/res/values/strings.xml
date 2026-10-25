@@ -11916,6 +11916,10 @@
     <string name="OxWorkspaceImported">Imported %1$s</string>
     <string name="OxWorkspaceImportFailed">Import failed</string>
     <string name="OxWorkspaceImportTooLarge">File is larger than 20 MB</string>
+    <string name="OxWorkspacePreview">Preview</string>
+    <string name="OxWorkspaceExport">Export to device</string>
+    <string name="OxWorkspaceExported">Exported %1$s</string>
+    <string name="OxWorkspaceExportFailed">Export failed</string>
     <string name="OxWorkspaceNewHint">File name, e.g. notes/todo.md</string>
     <string name="OxWorkspaceNewContent">Initial content (optional)</string>
     <string name="OxWorkspaceEdit">Edit</string>

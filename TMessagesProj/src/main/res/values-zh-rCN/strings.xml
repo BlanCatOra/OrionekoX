@@ -368,6 +368,10 @@
     <string name="OxWorkspaceImported">已导入 %1$s</string>
     <string name="OxWorkspaceImportFailed">导入失败</string>
     <string name="OxWorkspaceImportTooLarge">文件超过 20 MB</string>
+    <string name="OxWorkspacePreview">预览</string>
+    <string name="OxWorkspaceExport">导出到设备</string>
+    <string name="OxWorkspaceExported">已导出 %1$s</string>
+    <string name="OxWorkspaceExportFailed">导出失败</string>
     <string name="OxWorkspaceNewHint">文件名，例如 notes/todo.md</string>
     <string name="OxWorkspaceNewContent">初始内容（可选）</string>
     <string name="OxWorkspaceEdit">编辑</string>

@@ -49,10 +49,12 @@ public class OxWorkspaceActivity extends BaseFragment {
     private static final int ID_IMPORT = 3;
     private static final int FILE_BASE = 1000;
     private static final int REQ_IMPORT = 2001;
+    private static final int REQ_EXPORT = 2002;
     private static final long MAX_IMPORT_BYTES = 20L * 1024 * 1024;
 
     private UniversalRecyclerView listView;
     private OxAgent selectedAgent;
+    private File pendingExport;
     private final ArrayList<File> files = new ArrayList<>();
 
     @Override
@@ -165,19 +167,57 @@ public class OxWorkspaceActivity extends BaseFragment {
     private boolean onLongClick(UItem item, View view, int position, float x, float y) {
         int index = item.id - FILE_BASE;
         if (index >= 0 && index < files.size() && getParentActivity() != null) {
-            File f = files.get(index);
+            final File f = files.get(index);
+            CharSequence[] actions = {
+                    LocaleController.getString(R.string.OxWorkspacePreview),
+                    LocaleController.getString(R.string.OxWorkspaceExport),
+                    LocaleController.getString(R.string.Delete)
+            };
             new AlertDialog.Builder(getParentActivity())
-                    .setTitle(LocaleController.getString(R.string.Delete))
-                    .setMessage(relative(f))
-                    .setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
-                        deleteRecursive(f);
-                        rebuild();
+                    .setTitle(relative(f))
+                    .setItems(actions, (d, which) -> {
+                        if (which == 0) preview(f);
+                        else if (which == 1) exportFile(f);
+                        else confirmDelete(f);
                     })
                     .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                     .show();
             return true;
         }
         return false;
+    }
+
+    private void confirmDelete(File f) {
+        if (getParentActivity() == null) return;
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.Delete))
+                .setMessage(relative(f))
+                .setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
+                    deleteRecursive(f);
+                    rebuild();
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
+    }
+
+    private void exportFile(File f) {
+        if (getParentActivity() == null) return;
+        pendingExport = f;
+        try {
+            Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            String name = f.getName();
+            int dot = name.lastIndexOf('.');
+            String ext = dot >= 0 ? name.substring(dot + 1).toLowerCase() : "";
+            String mime = ext.isEmpty() ? null
+                    : android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
+            i.setType(mime == null ? "application/octet-stream" : mime);
+            i.putExtra(Intent.EXTRA_TITLE, name);
+            startActivityForResult(i, REQ_EXPORT);
+        } catch (Throwable t) {
+            pendingExport = null;
+            android.widget.Toast.makeText(getParentActivity(), "error: " + t.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+        }
     }
 
     private void preview(File f) {
@@ -258,7 +298,39 @@ public class OxWorkspaceActivity extends BaseFragment {
 
     @Override
     public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
-        if (requestCode != REQ_IMPORT || resultCode != Activity.RESULT_OK || data == null) return;
+        if (resultCode != Activity.RESULT_OK || data == null) {
+            pendingExport = null;
+            return;
+        }
+        if (requestCode == REQ_EXPORT) {
+            final File source = pendingExport;
+            pendingExport = null;
+            final Uri dest = data.getData();
+            final Context ctx = getParentActivity();
+            if (source == null || dest == null || ctx == null) return;
+            new Thread(() -> {
+                String msg;
+                try (InputStream in = new FileInputStream(source);
+                     OutputStream out = ctx.getContentResolver().openOutputStream(dest)) {
+                    if (out == null) throw new IOException("cannot open the destination");
+                    byte[] buf = new byte[8192];
+                    int n;
+                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    msg = LocaleController.formatString("OxWorkspaceExported",
+                            R.string.OxWorkspaceExported, source.getName());
+                } catch (Throwable t) {
+                    msg = LocaleController.getString(R.string.OxWorkspaceExportFailed) + ": " + t.getMessage();
+                }
+                final String result = msg;
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (getParentActivity() != null) {
+                        android.widget.Toast.makeText(getParentActivity(), result, android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }, "ox-workspace-export").start();
+            return;
+        }
+        if (requestCode != REQ_IMPORT) return;
         final Uri uri = data.getData();
         final OxAgent agent = selectedAgent;
         final Context ctx = getParentActivity();
