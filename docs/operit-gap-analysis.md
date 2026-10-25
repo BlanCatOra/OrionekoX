@@ -26,7 +26,7 @@ not feature-count parity.
 | Workflows / scheduled tasks | yes | none | medium gap |
 | Local inference (MNN/llama.cpp) | built-in | external Ollama/LM Studio only | medium gap |
 | Cross-device Space | Operit2 | LAN API agents only | partial |
-| Backup / migration | snapshot export/restore | .oxagent per agent now includes memory + skills | partial |
+| Backup / migration | snapshot export/restore | .oxagent per agent includes memory + skills; export/import round-trip verified | partial (workspace files not included) |
 
 ## Does the user need it?
 
