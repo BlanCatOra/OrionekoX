@@ -1,7 +1,11 @@
 package org.telegram.ui;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.provider.OpenableColumns;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -24,6 +28,10 @@ import org.telegram.ui.Components.UniversalRecyclerView;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -38,7 +46,10 @@ public class OxWorkspaceActivity extends BaseFragment {
 
     private static final int ID_AGENT = 1;
     private static final int ID_NEW = 2;
+    private static final int ID_IMPORT = 3;
     private static final int FILE_BASE = 1000;
+    private static final int REQ_IMPORT = 2001;
+    private static final long MAX_IMPORT_BYTES = 20L * 1024 * 1024;
 
     private UniversalRecyclerView listView;
     private OxAgent selectedAgent;
@@ -83,6 +94,9 @@ public class OxWorkspaceActivity extends BaseFragment {
         items.add(UItem.asShadow(LocaleController.getString(R.string.OxWorkspaceInfo)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_NEW, 0, 0, 0,
                 "＋ " + LocaleController.getString(R.string.OxWorkspaceNew)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_IMPORT, 0, 0, 0,
+                LocaleController.getString(R.string.OxWorkspaceImport),
+                LocaleController.getString(R.string.OxWorkspaceImportHint)));
 
         files.clear();
         if (selectedAgent != null) {
@@ -138,6 +152,10 @@ public class OxWorkspaceActivity extends BaseFragment {
         }
         if (item.id == ID_NEW) {
             if (selectedAgent != null) showNewFileDialog();
+            return;
+        }
+        if (item.id == ID_IMPORT) {
+            if (selectedAgent != null) pickImportFile();
             return;
         }
         int index = item.id - FILE_BASE;
@@ -224,6 +242,104 @@ public class OxWorkspaceActivity extends BaseFragment {
                 })
                 .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                 .show();
+    }
+
+    private void pickImportFile() {
+        if (getParentActivity() == null) return;
+        try {
+            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+            startActivityForResult(i, REQ_IMPORT);
+        } catch (Throwable t) {
+            android.widget.Toast.makeText(getParentActivity(), "error: " + t.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
+        if (requestCode != REQ_IMPORT || resultCode != Activity.RESULT_OK || data == null) return;
+        final Uri uri = data.getData();
+        final OxAgent agent = selectedAgent;
+        final Context ctx = getParentActivity();
+        if (uri == null || agent == null || ctx == null) return;
+        String name = "imported.bin";
+        long size = -1;
+        try (android.database.Cursor c = ctx.getContentResolver().query(uri, null, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                int ni = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                int si = c.getColumnIndex(OpenableColumns.SIZE);
+                if (ni >= 0 && !c.isNull(ni)) name = c.getString(ni);
+                if (si >= 0 && !c.isNull(si)) size = c.getLong(si);
+            }
+        } catch (Throwable ignored) {
+        }
+        final String fileName = sanitizeFileName(name);
+        if (size > MAX_IMPORT_BYTES) {
+            android.widget.Toast.makeText(ctx,
+                    LocaleController.getString(R.string.OxWorkspaceImportTooLarge),
+                    android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
+        new Thread(() -> {
+            String msg;
+            try {
+                File target = uniqueTarget(agent.id, fileName);
+                File parent = target.getParentFile();
+                if (parent != null) parent.mkdirs();
+                InputStream in = ctx.getContentResolver().openInputStream(uri);
+                if (in == null) throw new IOException("cannot open the selected file");
+                OutputStream out = new FileOutputStream(target);
+                byte[] buf = new byte[8192];
+                long total = 0;
+                int n;
+                while ((n = in.read(buf)) > 0) {
+                    total += n;
+                    if (total > MAX_IMPORT_BYTES) {
+                        in.close();
+                        out.close();
+                        target.delete();
+                        throw new IOException("file is larger than 20 MB");
+                    }
+                    out.write(buf, 0, n);
+                }
+                in.close();
+                out.close();
+                msg = LocaleController.formatString("OxWorkspaceImported",
+                        R.string.OxWorkspaceImported, target.getName());
+            } catch (Throwable t) {
+                msg = LocaleController.getString(R.string.OxWorkspaceImportFailed) + ": " + t.getMessage();
+            }
+            final String result = msg;
+            AndroidUtilities.runOnUIThread(() -> {
+                if (getParentActivity() != null) {
+                    android.widget.Toast.makeText(getParentActivity(), result, android.widget.Toast.LENGTH_SHORT).show();
+                }
+                rebuild();
+            });
+        }, "ox-workspace-import").start();
+    }
+
+    private String sanitizeFileName(String raw) {
+        String n = raw == null ? "" : raw.replace('\\', '/');
+        int slash = n.lastIndexOf('/');
+        if (slash >= 0) n = n.substring(slash + 1);
+        n = n.replace("..", "_").trim();
+        if (n.isEmpty() || ".".equals(n)) n = "imported.bin";
+        return n;
+    }
+
+    private File uniqueTarget(String agentId, String name) throws IOException {
+        File f = OxAgentStore.resolveWorkspace(agentId, name);
+        if (!f.exists()) return f;
+        int dot = name.lastIndexOf('.');
+        String base = dot > 0 ? name.substring(0, dot) : name;
+        String ext = dot > 0 ? name.substring(dot) : "";
+        for (int i = 1; i < 100; i++) {
+            File candidate = OxAgentStore.resolveWorkspace(agentId, base + " (" + i + ")" + ext);
+            if (!candidate.exists()) return candidate;
+        }
+        throw new IOException("too many files with that name");
     }
 
     private void showNewFileDialog() {
