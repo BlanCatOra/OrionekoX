@@ -129,5 +129,8 @@ gaps that were previously listed as "gap":
   native profile opened.
 - Added `ui_find_text` and `ui_scroll_tap_text` (scroll the first scrollable node
   up to 12 times, then report/click). `ui_find_text` was live-tested: it found the
-  “Yuki Waifu” header at `[137,0][943,275]` without scrolling. The scroll-tap branch
-  still needs a long-list E2E. Next refinements: node cache, ADB/root arbitrary keys.
+  “Yuki Waifu” header at `[137,0][943,275]` without scrolling. `ui_scroll_tap_text`
+  now collects all matches and only clicks one with a clickable ancestor, scrolling
+  past non-clickable text; its full long-list E2E is still pending because a test
+  `ui_key back` only dismissed the keyboard. Next refinements: node cache,
+  ADB/root arbitrary keys.
