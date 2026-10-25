@@ -358,6 +358,7 @@ public class OxAgentsActivity extends BaseFragment {
                     o.put("format", "oxagent");
                     o.put("api_key", "");
                     o.put("built_in", false);
+                    o.put("memory", OxAgentStore.loadMemory(id, 200000));
                     java.io.OutputStream os = ctx.getContentResolver().openOutputStream(uri);
                     os.write(o.toString().getBytes(StandardCharsets.UTF_8));
                     os.close();
@@ -389,6 +390,8 @@ public class OxAgentsActivity extends BaseFragment {
                         a.id = "imp" + UUID.randomUUID().toString().substring(0, 6);
                     }
                     OxAgentStore.saveAgent(a);
+                    String memory = o.optString("memory", "");
+                    if (!memory.isEmpty()) OxAgentStore.saveMemory(a.id, memory);
                     msg = LocaleController.formatString("OxAgentImported", R.string.OxAgentImported, a.name);
                 } catch (Exception e) {
                     msg = LocaleController.getString(R.string.OxAgentImportFailed);
