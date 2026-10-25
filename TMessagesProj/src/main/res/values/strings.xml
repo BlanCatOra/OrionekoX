@@ -11938,7 +11938,10 @@
     <string name="OxWorkflowEvery15">Every 15 minutes</string>
     <string name="OxWorkflowHourly">Every hour</string>
     <string name="OxWorkflowEvery6h">Every 6 hours</string>
-    <string name="OxWorkflowDaily">Every day</string>
+    <string name="OxWorkflowDaily">Every 24 hours</string>
+    <string name="OxWorkflowDailyAt">Every day at %1$s</string>
+    <string name="OxWorkflowDailyAtOption">Every day at a set time…</string>
+    <string name="OxWorkflowPickTime">Pick a time</string>
     <string name="OxWorkflowEnabled">Enabled</string>
     <string name="OxWorkflowPaused">Paused</string>
     <string name="OxWorkflowRunNow">Run now</string>

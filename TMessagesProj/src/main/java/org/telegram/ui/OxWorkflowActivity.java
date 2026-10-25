@@ -27,6 +27,7 @@ import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
@@ -122,7 +123,7 @@ public class OxWorkflowActivity extends BaseFragment {
         String agentName = agent == null ? LocaleController.getString(R.string.OxWorkflowAgentMissingShort)
                 : agent.name;
         StringBuilder sb = new StringBuilder(agentName);
-        sb.append(" · ").append(intervalLabel(w.intervalMinutes));
+        sb.append(" · ").append(scheduleLabel(w));
         if (w.enabled && w.nextRunMs > 0) {
             sb.append(" · ").append(LocaleController.formatString("OxWorkflowNext",
                     R.string.OxWorkflowNext, formatTime(w.nextRunMs)));
@@ -136,8 +137,22 @@ public class OxWorkflowActivity extends BaseFragment {
     }
 
     private String status(OxWorkflow w) {
-        if (w.intervalMinutes <= 0) return LocaleController.getString(R.string.OxWorkflowManual);
+        if (!w.isDaily() && w.intervalMinutes <= 0) {
+            return LocaleController.getString(R.string.OxWorkflowManual);
+        }
         return LocaleController.getString(w.enabled ? R.string.OxWorkflowEnabled : R.string.OxWorkflowPaused);
+    }
+
+    private String scheduleLabel(OxWorkflow w) {
+        if (w.isDaily()) {
+            return LocaleController.formatString("OxWorkflowDailyAt", R.string.OxWorkflowDailyAt,
+                    formatMinute(w.dailyMinute));
+        }
+        return intervalLabel(w.intervalMinutes);
+    }
+
+    private String formatMinute(int minuteOfDay) {
+        return String.format(Locale.getDefault(), "%02d:%02d", minuteOfDay / 60, minuteOfDay % 60);
     }
 
     private String intervalLabel(int minutes) {
@@ -193,7 +208,7 @@ public class OxWorkflowActivity extends BaseFragment {
         actions.add(() -> runNow(w));
         items.add(LocaleController.getString(R.string.Edit));
         actions.add(() -> showEditor(w));
-        if (w.intervalMinutes > 0) {
+        if (w.isDaily() || w.intervalMinutes > 0) {
             items.add(LocaleController.getString(w.enabled ? R.string.OxWorkflowPause : R.string.OxWorkflowEnable));
             actions.add(() -> {
                 w.enabled = !w.enabled;
@@ -253,6 +268,7 @@ public class OxWorkflowActivity extends BaseFragment {
             draft.prompt = existing.prompt;
             draft.enabled = existing.enabled;
             draft.intervalMinutes = existing.intervalMinutes;
+            draft.dailyMinute = existing.dailyMinute;
             draft.lastRunMs = existing.lastRunMs;
             draft.nextRunMs = existing.nextRunMs;
             draft.lastResult = existing.lastResult;
@@ -285,7 +301,7 @@ public class OxWorkflowActivity extends BaseFragment {
                 LocaleController.getString(R.string.OxWorkflowAgentLabel), agentName(draft.agentId));
         wrap.addView(agentRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         final TextView scheduleRow = pickerRow(ctx,
-                LocaleController.getString(R.string.OxWorkflowScheduleLabel), intervalLabel(draft.intervalMinutes));
+                LocaleController.getString(R.string.OxWorkflowScheduleLabel), scheduleLabel(draft));
         wrap.addView(scheduleRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         AlertDialog.Builder builder = new AlertDialog.Builder(ctx);
@@ -311,8 +327,8 @@ public class OxWorkflowActivity extends BaseFragment {
             }
             if (isNew) {
                 draft.id = "wf" + UUID.randomUUID().toString().substring(0, 6);
-                draft.enabled = draft.intervalMinutes > 0;
-            } else if (draft.intervalMinutes <= 0) {
+                draft.enabled = draft.isDaily() || draft.intervalMinutes > 0;
+            } else if (!draft.isDaily() && draft.intervalMinutes <= 0) {
                 draft.enabled = false;
             }
             draft.nextRunMs = 0;
@@ -346,15 +362,32 @@ public class OxWorkflowActivity extends BaseFragment {
             ArrayList<CharSequence> items = new ArrayList<>();
             for (int i = 0; i < INTERVALS.length; i++) {
                 String label = intervalLabel(INTERVALS[i]);
-                if (INTERVALS[i] == draft.intervalMinutes) label = "✓ " + label;
+                if (!draft.isDaily() && INTERVALS[i] == draft.intervalMinutes) label = "✓ " + label;
                 items.add(label);
             }
+            final int dailyIndex = items.size();
+            String dailyLabel = LocaleController.getString(R.string.OxWorkflowDailyAtOption);
+            if (draft.isDaily()) dailyLabel = "✓ " + dailyLabel;
+            items.add(dailyLabel);
             AlertDialog.Builder b = new AlertDialog.Builder(ctx);
             b.setTitle(LocaleController.getString(R.string.OxWorkflowScheduleLabel));
             b.setItems(items.toArray(new CharSequence[0]), (d, which) -> {
+                if (which == dailyIndex) {
+                    int initial = draft.isDaily() ? draft.dailyMinute : 9 * 60;
+                    AlertsCreator.createTimePickerDialog(ctx,
+                            LocaleController.getString(R.string.OxWorkflowPickTime),
+                            initial, 0, 1439, time -> {
+                                draft.dailyMinute = time;
+                                draft.intervalMinutes = 0;
+                                scheduleRow.setText(LocaleController.getString(R.string.OxWorkflowScheduleLabel)
+                                        + "\n" + scheduleLabel(draft));
+                            });
+                    return;
+                }
+                draft.dailyMinute = -1;
                 draft.intervalMinutes = INTERVALS[which];
                 scheduleRow.setText(LocaleController.getString(R.string.OxWorkflowScheduleLabel)
-                        + "\n" + intervalLabel(draft.intervalMinutes));
+                        + "\n" + scheduleLabel(draft));
             });
             b.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
             b.show();
