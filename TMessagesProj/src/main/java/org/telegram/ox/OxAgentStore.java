@@ -169,4 +169,77 @@ public class OxAgentStore {
             out.write(s.getBytes(StandardCharsets.UTF_8));
         }
     }
+
+    // ---------------- long-term memory + workspace ----------------
+
+    public static File memoryFile(String id) {
+        return new File(agentDir(id), "memory.txt");
+    }
+
+    public static synchronized void appendMemory(String id, String text) {
+        try {
+            if (text == null) return;
+            text = text.trim();
+            if (text.isEmpty()) return;
+            File dir = agentDir(id);
+            dir.mkdirs();
+            String line = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US).format(new java.util.Date())
+                    + "  " + text.replace('\n', ' ').trim() + "\n";
+            java.io.FileOutputStream out = new java.io.FileOutputStream(memoryFile(id), true);
+            out.write(line.getBytes(StandardCharsets.UTF_8));
+            out.close();
+        } catch (Exception e) {
+            FileLog.e(TAG, e);
+        }
+    }
+
+    public static synchronized String loadMemory(String id, int maxChars) {
+        try {
+            File f = memoryFile(id);
+            if (!f.exists()) return "";
+            String all = readFile(f);
+            if (all.length() <= maxChars) return all;
+            return all.substring(all.length() - maxChars);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    public static synchronized String searchMemory(String id, String query, int maxResults) {
+        try {
+            File f = memoryFile(id);
+            if (!f.exists()) return "";
+            String q = query == null ? "" : query.trim().toLowerCase();
+            StringBuilder sb = new StringBuilder();
+            int n = 0;
+            for (String line : readFile(f).split("\n")) {
+                if (q.isEmpty() || line.toLowerCase().contains(q)) {
+                    sb.append(line).append('\n');
+                    if (++n >= maxResults) break;
+                }
+            }
+            return sb.toString().trim();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    public static File workspaceDir(String id) {
+        File f = new File(ApplicationLoader.applicationContext.getFilesDir(), "oxworkspace/" + id);
+        if (!f.exists()) f.mkdirs();
+        return f;
+    }
+
+    public static File resolveWorkspace(String id, String path) throws IOException {
+        File base = workspaceDir(id).getCanonicalFile();
+        String p = path == null ? "" : path.trim();
+        if (p.isEmpty()) p = ".";
+        File f = new File(base, p).getCanonicalFile();
+        String bp = base.getPath();
+        if (!f.getPath().equals(bp) && !f.getPath().startsWith(bp + File.separator)) {
+            throw new IOException("path escapes the agent workspace");
+        }
+        return f;
+    }
+
 }

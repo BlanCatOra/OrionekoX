@@ -39,13 +39,11 @@ flowchart TD
     M1 --> S4[4/6 配置 Agent（可跳过）]
     M2 --> S4
     S4 --> A1{选择入口}
-    A1 -- API Key --> A2[新建 Agent 编辑器]
-    A1 -- OxLinux 容器 --> A3[container_enabled=true]
-    A1 -- 其他设备 --> A4[新建 Agent 编辑器（LAN 模板）]
+    A1 -- API Key（含局域网） --> A2[新建 Agent 编辑器]
+    A1 -- OxLinux 容器（仅 LOGIN） --> A3[container_enabled=true]
     A1 -- 跳过此步 --> S5
     A2 --> S4
     A3 --> S5
-    A4 --> S4
     S5[5/6 权限（可跳过）] --> S6[6/6 OxLinux 容器环境（可跳过）]
     S6 --> F{mode}
     F -- LOGIN --> L[完成: 进入登录或保持已登录]
@@ -63,6 +61,10 @@ flowchart TD
 4. **第 2 步必须显式同意**。未勾选时主按钮禁用（视觉置灰），避免“下一步”被误触。
 5. **步数固定 6 步**。第 4–6 步可“跳过此步”，但页面本身仍计入步数，不再出现
    “第 4 步 → 第 6 步”的计数谎言。
+6. **局域网 Agent 归入 API Key**。第 4 步只有“API Key（含 Ollama/LM Studio/vLLM/opencode 等
+   局域网设备）”和“OxLinux 容器（Bot 兼容）”两个入口；后者只在第 3 步选择
+   “登录 Telegram”时出现，Ox 模式下隐藏。
+7. **跳过提示只在第 4–6 步显示**。第 1–3 步隐藏提示但保留固定高度，主按钮不移动。
 
 ## 3. 底部操作区（位置固定）
 
@@ -83,6 +85,9 @@ flowchart TD
 - `下一步 / 登录 Telegram / 开始使用`：主按钮，始终同一位置、同一尺寸。
 - `跳过此步`：仅第 4/5/6 步可用；不可用时 `INVISIBLE` 占位，绝不改变主按钮位置。
 - `退出引导`：始终同一位置。首次运行 = 以默认 Ox 模式完成；再次运行 = 直接关闭，不改变模式。
+- 提示文案只在第 4–6 步显示：`你可以先跳过此设置；之后可在 Ox 设置 → 重新运行引导 中修改。`
+- 内容区与底部操作区是两个独立的垂直区块，操作区不再覆盖页面内容；长页面滚动，
+  最后一行可以完整滚入视野。
 - 返回：ActionBar 返回箭头 = 上一步；第 1 步隐藏。系统返回键同 ActionBar。
 
 ## 4. 模式切换与登出
@@ -142,10 +147,16 @@ flowchart TD
     L --> A
 ```
 
-- Provider 预设集中在一个类里；编辑页只读预设，不在 UI 里散落 URL。
-- API Key 默认掩码，可切换显示；页面提供“获取 Key”链接。
+- Provider 预设集中在一个类里（32 个，含 DeepSeek V4 / OpenAI GPT-5.x / Claude 5 /
+  Gemini 3.8 / OpenRouter / Kimi K3 / Qwen 3.8 / GLM 5.3 / MiniMax M3 / OpenCode Zen /
+  CommandCode / OpenDesign / 自定义 BYOK / 本地 Ollama、LM Studio、vLLM、opencode serve）。
+- Provider 选择器是半屏底部弹层，列表可滚动；每个服务商有独立品牌矢量图标。
+- 编辑页提供“从 API 获取模型列表”（GET `/models`，带 Key 与自定义头）、接口地址 /
+  Key / 模型分区标签、Key 眼睛显隐、获取 Key、测试连接。
+- 高级参数：Temperature、Top P、最大输出 tokens（0=自动）、上下文长度（0=自动；
+  用于历史消息的粗略裁剪）。
 - 自定义请求头存 `OxAgent.headers`（`[[name, value], ...]`），发送前写入 HTTP 头；
-  拒绝 CR/LF，避免头注入。
+  拒绝 CR/LF，避免头注入。选择 OpenRouter / Anthropic 时会自动补齐其必需/推荐头。
 - 新建使用草稿对象，只有“保存”才落盘；取消不产生数据。
 
 ## 7. MCP
@@ -178,3 +189,10 @@ flowchart TD
 | 8 | 无页面切换/按钮按压动效 | 不像 Telegram | `ScaleStateListAnimator`、页面视差淡入、步数淡入、勾选缩放 |
 | 9 | Ox 模式仍走 `ConnectionsManager` | 后台一直连 Telegram | 本地模式禁 `setUserId`/`sendRequest`/语言包下载，连接状态本地化 |
 | 10 | 中文本地化只覆盖 fork 字符串 | 上游界面仍为英文 | 内置完整 zh-Hans 语言包 + 中文系统自动选择 |
+| 11 | 第 4 步同时给“局域网”和“Bot 兼容其他设备” | 未登录无法用 Telegram Bot 兼容；局域网本质是 API | 局域网并入 API Key；Bot 兼容容器仅 LOGIN 模式显示 |
+| 12 | 权限/容器页最后几行被底部栏遮住 | 内容不可见、不可滚 | 内容区 + 底部栏改为垂直布局，不再覆盖 |
+| 13 | Ox 模式聊天列表仍有 Flicker 骨架 | 看起来仍在加载 Telegram 数据 | agent-only 下不插入 Flicker/LAST_EMPTY |
+| 14 | Provider 预设模型名过旧、缺 OpenCode/CommandCode/OpenDesign/BYOK | 选完即错 | 按官方当前模型更新；补齐预设与图标 |
+| 15 | 无法拉取模型列表、无高级参数 | 配置不完整 | `/models` 拉取 + Temperature/Top P/max_tokens/context_length |
+| 16 | 提示语在所有步骤显示 | 第 1–3 步误导可跳过 | 只在第 4–6 步显示 |
+| 17 | 授权为 AGPL/GPL 双轨 | 用户要求全部 GPL-2.0 | 仓库、应用、文档统一 GPL-2.0 |

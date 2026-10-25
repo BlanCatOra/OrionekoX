@@ -41,6 +41,7 @@ import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.EditTextCell;
 import org.telegram.ui.Cells.TextSettingsCell;
+import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
 
 import java.io.File;
@@ -73,12 +74,29 @@ public class OxAgentProfileActivity extends BaseFragment {
     private EditTextCell apiKeyCell;
     private EditTextCell modelCell;
     private EditTextCell mdCell;
+    private EditTextCell temperatureCell;
+    private EditTextCell topPCell;
+    private EditTextCell maxTokensCell;
+    private EditTextCell contextCell;
+    private EditTextCell presenceCell;
+    private EditTextCell frequencyCell;
+    private EditTextCell topKCell;
+    private EditTextCell seedCell;
+    private EditTextCell stopCell;
+    private EditTextCell extraBodyCell;
+    private TextSettingsCell reasoningRow;
+    private TextSettingsCell toolChoiceRow;
+    private TextSettingsCell parallelRow;
+    private String reasoningEffort = "auto";
+    private String toolChoice = "auto";
+    private boolean parallelTools = true;
     private ImageView providerIcon;
     private TextView providerName;
     private TextView providerSub;
     private LinearLayout headersList;
     private TextSettingsCell keyUrlRow;
     private TextSettingsCell modelSuggestRow;
+    private TextSettingsCell fetchModelsRow;
     private TextSettingsCell testRow;
     private ImageView keyEye;
     private boolean keyVisible;
@@ -168,6 +186,10 @@ public class OxAgentProfileActivity extends BaseFragment {
         root.addView(scroll, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         fragmentView = root;
 
+        reasoningEffort = agent.reasoningEffort == null || agent.reasoningEffort.isEmpty() ? "auto" : agent.reasoningEffort;
+        toolChoice = agent.toolChoice == null || agent.toolChoice.isEmpty() ? "auto" : agent.toolChoice;
+        parallelTools = agent.parallelToolCalls;
+
         // avatar header
         LinearLayout avatarBlock = new LinearLayout(context);
         avatarBlock.setOrientation(LinearLayout.VERTICAL);
@@ -194,7 +216,14 @@ public class OxAgentProfileActivity extends BaseFragment {
         avatarHint.setPadding(0, AndroidUtilities.dp(8), 0, 0);
         avatarBlock.addView(avatarHint);
         avatarBlock.setOnClickListener(v -> openAvatarPicker());
-        content.addView(avatarBlock, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        LinearLayout avatarCard = section(context);
+        GradientDrawable avatarBg = new GradientDrawable();
+        avatarBg.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        avatarBg.setCornerRadius(AndroidUtilities.dp(16));
+        avatarCard.setBackground(avatarBg);
+        avatarCard.setClipToOutline(true);
+        avatarCard.addView(avatarBlock, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        content.addView(avatarCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 12, 12, 0));
 
         // basic
         content.addView(sectionHeader(context, LocaleController.getString(R.string.OxAgentSectionBasic)));
@@ -268,6 +297,12 @@ public class OxAgentProfileActivity extends BaseFragment {
         modelCell = addEditCell(context, providerGroup, LocaleController.getString(R.string.OxAgentModel), agent.model, false, false);
         modelCell.editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
 
+        fetchModelsRow = new TextSettingsCell(context);
+        fetchModelsRow.setText(LocaleController.getString(R.string.OxAgentFetchModels), true);
+        fetchModelsRow.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        fetchModelsRow.setOnClickListener(v -> fetchModels());
+        providerGroup.addView(fetchModelsRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
         modelSuggestRow = new TextSettingsCell(context);
         modelSuggestRow.setTextAndValue(LocaleController.getString(R.string.OxAgentPickModel), "", true);
         modelSuggestRow.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
@@ -295,6 +330,92 @@ public class OxAgentProfileActivity extends BaseFragment {
         providerGroup.addView(testRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         content.addView(providerGroup);
 
+        LinearLayout advancedHeaderCard = section(context);
+        TextSettingsCell advancedToggle = new TextSettingsCell(context);
+        advancedToggle.setTextAndValue(LocaleController.getString(R.string.OxAgentAdvanced),
+                "Temperature " + agent.temperature + " · Top P " + agent.topP, true);
+        advancedHeaderCard.addView(advancedToggle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        content.addView(advancedHeaderCard);
+        LinearLayout advanced = section(context);
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentTemperature)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        temperatureCell = addEditCell(context, advanced, "0.0 – 2.0", String.valueOf(agent.temperature), false, true);
+        temperatureCell.editText.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentTopP)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        topPCell = addEditCell(context, advanced, "0.0 – 1.0", String.valueOf(agent.topP), false, true);
+        topPCell.editText.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentMaxTokens)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        maxTokensCell = addEditCell(context, advanced, LocaleController.getString(R.string.OxAgentAutoHint), agent.maxTokens > 0 ? String.valueOf(agent.maxTokens) : "", false, true);
+        maxTokensCell.editText.setInputType(InputType.TYPE_CLASS_NUMBER);
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentContextLength)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        contextCell = addEditCell(context, advanced, LocaleController.getString(R.string.OxAgentAutoHint), agent.contextLength > 0 ? String.valueOf(agent.contextLength) : "", false, true);
+        contextCell.editText.setInputType(InputType.TYPE_CLASS_NUMBER);
+
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentPresencePenalty)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        presenceCell = addEditCell(context, advanced, "0.0 – 2.0", agent.presencePenalty != 0 ? String.valueOf(agent.presencePenalty) : "", false, true);
+        presenceCell.editText.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentFrequencyPenalty)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        frequencyCell = addEditCell(context, advanced, "0.0 – 2.0", agent.frequencyPenalty != 0 ? String.valueOf(agent.frequencyPenalty) : "", false, true);
+        frequencyCell.editText.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentTopK)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        topKCell = addEditCell(context, advanced, LocaleController.getString(R.string.OxAgentAutoHint), agent.topK > 0 ? String.valueOf(agent.topK) : "", false, true);
+        topKCell.editText.setInputType(InputType.TYPE_CLASS_NUMBER);
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentSeed)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        seedCell = addEditCell(context, advanced, LocaleController.getString(R.string.OxAgentSeedHint), agent.seed >= 0 ? String.valueOf(agent.seed) : "", false, true);
+        seedCell.editText.setInputType(InputType.TYPE_CLASS_NUMBER);
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentStop)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        stopCell = addEditCell(context, advanced, LocaleController.getString(R.string.OxAgentStopHint), agent.stop, false, true);
+
+        reasoningRow = new TextSettingsCell(context);
+        reasoningRow.setTextAndValue(LocaleController.getString(R.string.OxAgentReasoningEffort), reasoningLabel(), true);
+        reasoningRow.setOnClickListener(v -> {
+            reasoningEffort = nextReasoning(reasoningEffort);
+            reasoningRow.setTextAndValue(LocaleController.getString(R.string.OxAgentReasoningEffort), reasoningLabel(), true);
+        });
+        advanced.addView(reasoningRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        toolChoiceRow = new TextSettingsCell(context);
+        toolChoiceRow.setTextAndValue(LocaleController.getString(R.string.OxAgentToolChoice), toolChoiceLabel(), true);
+        toolChoiceRow.setOnClickListener(v -> {
+            toolChoice = nextToolChoice(toolChoice);
+            toolChoiceRow.setTextAndValue(LocaleController.getString(R.string.OxAgentToolChoice), toolChoiceLabel(), true);
+        });
+        advanced.addView(toolChoiceRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        parallelRow = new TextSettingsCell(context);
+        parallelRow.setTextAndValue(LocaleController.getString(R.string.OxAgentParallelTools), LocaleController.getString(parallelTools ? R.string.OxAgentOn : R.string.OxAgentOff), true);
+        parallelRow.setOnClickListener(v -> {
+            parallelTools = !parallelTools;
+            parallelRow.setTextAndValue(LocaleController.getString(R.string.OxAgentParallelTools), LocaleController.getString(parallelTools ? R.string.OxAgentOn : R.string.OxAgentOff), true);
+        });
+        advanced.addView(parallelRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentExtraBody)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extraBodyCell = new EditTextCell(context, "{\"min_p\": 0.1}", true);
+        extraBodyCell.setText(agent.extraBody == null ? "" : agent.extraBody);
+        extraBodyCell.editText.setTextSize(15);
+        extraBodyCell.setDivider(false);
+        advanced.addView(extraBodyCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 100));
+        advanced.setVisibility(View.GONE);
+        content.addView(advanced);
+        final LinearLayout advancedRef = advanced;
+        advancedToggle.setOnClickListener(v -> {
+            boolean show = advancedRef.getVisibility() != View.VISIBLE;
+            if (show) {
+                advancedRef.setVisibility(View.VISIBLE);
+                advancedRef.setAlpha(0f);
+                advancedRef.setTranslationY(-AndroidUtilities.dp(4));
+                advancedRef.animate().alpha(1f).translationY(0f).setDuration(180)
+                        .setInterpolator(CubicBezierInterpolator.EASE_OUT).start();
+                advancedToggle.setTextAndValue(LocaleController.getString(R.string.OxAgentAdvanced),
+                        LocaleController.getString(R.string.OxAgentCollapse), true);
+            } else {
+                advancedRef.animate().alpha(0f).translationY(-AndroidUtilities.dp(4)).setDuration(140)
+                        .withEndAction(() -> advancedRef.setVisibility(View.GONE)).start();
+                advancedToggle.setTextAndValue(LocaleController.getString(R.string.OxAgentAdvanced),
+                        advancedSummary(), true);
+            }
+        });
+
         // headers
         content.addView(sectionHeader(context, LocaleController.getString(R.string.OxAgentHeaders)));
         LinearLayout headerGroup = section(context);
@@ -316,7 +437,7 @@ public class OxAgentProfileActivity extends BaseFragment {
         mdCell.setText(agent.agentsMd == null ? "" : agent.agentsMd);
         mdCell.setDivider(false);
         mdCell.editText.setTextSize(15);
-        mdGroup.addView(mdCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, AndroidUtilities.dp(150)));
+        mdGroup.addView(mdCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 150));
         content.addView(mdGroup);
 
         if (!isNew && !agent.builtIn) {
@@ -395,33 +516,175 @@ public class OxAgentProfileActivity extends BaseFragment {
         }
     }
 
+    private void applyProvider(OxProviderPreset p) {
+        agent.providerId = p.id;
+        if (p.baseUrl != null && !p.baseUrl.isEmpty()) {
+            baseUrlCell.setText(p.baseUrl);
+            agent.baseUrl = p.baseUrl;
+        }
+        if (p.defaultModel != null && !p.defaultModel.isEmpty()) {
+            modelCell.setText(p.defaultModel);
+            agent.model = p.defaultModel;
+        }
+        if (p.headers != null && p.headers.length > 0) {
+            JSONArray headers = agent.headers == null ? new JSONArray() : agent.headers;
+            for (String[] pair : p.headers) {
+                boolean exists = false;
+                for (int i = 0; i < headers.length(); i++) {
+                    JSONArray existing = headers.optJSONArray(i);
+                    if (existing != null && pair[0].equalsIgnoreCase(existing.optString(0, ""))) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) {
+                    headers.put(new JSONArray().put(pair[0]).put(pair[1]));
+                }
+            }
+            agent.headers = headers;
+            rebuildHeaders();
+        }
+        updateProviderInfo();
+    }
+
     private void showProviderPicker() {
         if (getParentActivity() == null) return;
-        OxProviderPreset[] list = OxProviderPreset.ALL.toArray(new OxProviderPreset[0]);
-        CharSequence[] names = new CharSequence[list.length];
-        int[] icons = new int[list.length];
-        for (int i = 0; i < list.length; i++) {
-            names[i] = list[i].name;
-            icons[i] = list[i].iconRes;
-        }
-        BottomSheet.Builder b = new BottomSheet.Builder(getParentActivity());
-        b.setItems(names, icons, (dialog, which) -> {
-            OxProviderPreset p = list[which];
-            agent.providerId = p.id;
-            if (p.baseUrl != null && !p.baseUrl.isEmpty()) {
-                baseUrlCell.setText(p.baseUrl);
-                agent.baseUrl = p.baseUrl;
+        final Context ctx = getParentActivity();
+        LinearLayout content = new LinearLayout(ctx);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setBackgroundColor(getThemedColor(Theme.key_dialogBackground));
+
+        TextView title = new TextView(ctx);
+        title.setText(LocaleController.getString(R.string.OxAgentChooseProvider));
+        title.setTextSize(17);
+        title.setTypeface(AndroidUtilities.bold());
+        title.setTextColor(getThemedColor(Theme.key_dialogTextBlack));
+        title.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(16), AndroidUtilities.dp(21), AndroidUtilities.dp(8));
+        content.addView(title, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        EditText search = new EditText(ctx);
+        search.setHint(LocaleController.getString(R.string.OxAgentSearchProviders));
+        search.setSingleLine(true);
+        search.setTextSize(15);
+        search.setTextColor(getThemedColor(Theme.key_dialogTextBlack));
+        search.setHintTextColor(getThemedColor(Theme.key_dialogTextGray3));
+        GradientDrawable searchBg = new GradientDrawable();
+        searchBg.setColor(getThemedColor(Theme.key_windowBackgroundGray));
+        searchBg.setCornerRadius(AndroidUtilities.dp(12));
+        search.setBackground(searchBg);
+        search.setPadding(AndroidUtilities.dp(14), AndroidUtilities.dp(8), AndroidUtilities.dp(14), AndroidUtilities.dp(8));
+        content.addView(search, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 21, 4, 21, 8));
+
+        ScrollView scroll = new ScrollView(ctx);
+        LinearLayout list = new LinearLayout(ctx);
+        list.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(list, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        final BottomSheet[] sheetHolder = new BottomSheet[1];
+        final Runnable[] render = new Runnable[1];
+        render[0] = () -> {
+            list.removeAllViews();
+            String q = search.getText().toString().trim().toLowerCase();
+            java.util.List<OxProviderPreset> shown = new java.util.ArrayList<>();
+            for (OxProviderPreset p : OxProviderPreset.ALL) {
+                if (q.isEmpty() || p.name.toLowerCase().contains(q)
+                        || p.id.toLowerCase().contains(q)
+                        || (p.baseUrl != null && p.baseUrl.toLowerCase().contains(q))) {
+                    shown.add(p);
+                }
             }
-            if (p.defaultModel != null && !p.defaultModel.isEmpty()) {
-                modelCell.setText(p.defaultModel);
-                agent.model = p.defaultModel;
+            for (int i = 0; i < shown.size(); i++) {
+                final OxProviderPreset p = shown.get(i);
+                LinearLayout row = new LinearLayout(ctx);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setMinimumHeight(AndroidUtilities.dp(56));
+                row.setPadding(AndroidUtilities.dp(18), AndroidUtilities.dp(9), AndroidUtilities.dp(18), AndroidUtilities.dp(9));
+                row.setBackground(Theme.getSelectorDrawable(false));
+                ImageView icon = new ImageView(ctx);
+                icon.setImageResource(p.iconRes);
+                row.addView(icon, LayoutHelper.createLinear(30, 30, Gravity.CENTER_VERTICAL));
+                LinearLayout texts = new LinearLayout(ctx);
+                texts.setOrientation(LinearLayout.VERTICAL);
+                texts.setPadding(AndroidUtilities.dp(14), 0, AndroidUtilities.dp(8), 0);
+                TextView name = new TextView(ctx);
+                name.setText(p.name);
+                name.setTextSize(16);
+                name.setTextColor(getThemedColor(Theme.key_dialogTextBlack));
+                texts.addView(name);
+                TextView sub = new TextView(ctx);
+                sub.setText(p.defaultModel == null || p.defaultModel.isEmpty() ? p.baseUrl : p.defaultModel);
+                sub.setTextSize(12);
+                sub.setTextColor(getThemedColor(Theme.key_dialogTextGray3));
+                texts.addView(sub);
+                row.addView(texts, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+                if (p.id.equals(agent.providerId)) {
+                    TextView check = new TextView(ctx);
+                    check.setText("✓");
+                    check.setTextSize(18);
+                    check.setTypeface(AndroidUtilities.bold());
+                    check.setTextColor(getThemedColor(Theme.key_chats_actionBackground));
+                    row.addView(check, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL));
+                }
+                row.setOnClickListener(v -> {
+                    applyProvider(p);
+                    if (sheetHolder[0] != null) sheetHolder[0].dismiss();
+                });
+                list.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+                if (i < shown.size() - 1) {
+                    View divider = new View(ctx);
+                    divider.setBackgroundColor(getThemedColor(Theme.key_divider));
+                    LinearLayout.LayoutParams lp = LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 1);
+                    lp.leftMargin = AndroidUtilities.dp(62);
+                    list.addView(divider, lp);
+                }
             }
-            if (p.models.length == 0) {
-                // local/custom provider: keep whatever the user typed
-            }
-            updateProviderInfo();
+        };
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(android.text.Editable s) { render[0].run(); }
         });
-        b.show();
+        render[0].run();
+
+        int heightPx = Math.max(AndroidUtilities.dp(260), (int) (AndroidUtilities.displaySize.y * 0.5f) - AndroidUtilities.dp(120));
+        content.addView(scroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, heightPx));
+        BottomSheet.Builder builder = new BottomSheet.Builder(ctx);
+        builder.setCustomView(content);
+        sheetHolder[0] = builder.show();
+    }
+
+    private void fetchModels() {
+        if (fetchModelsRow == null) return;
+        fetchModelsRow.setTextAndValue(LocaleController.getString(R.string.OxAgentFetchModels),
+                LocaleController.getString(R.string.OxAgentFetching), false);
+        OxModelHub.fetchModels(buildFromFields(), (ids, error) -> {
+            if (getParentActivity() == null || fetchModelsRow == null) return;
+            if (error != null || ids == null || ids.isEmpty()) {
+                fetchModelsRow.setTextAndValue(LocaleController.getString(R.string.OxAgentFetchModels),
+                        LocaleController.getString(R.string.OxAgentNoModels), false);
+                toast(error != null ? error : LocaleController.getString(R.string.OxAgentNoModels));
+                return;
+            }
+            fetchModelsRow.setTextAndValue(LocaleController.getString(R.string.OxAgentFetchModels),
+                    ids.size() + " models", false);
+            final CharSequence[] items = new CharSequence[ids.size()];
+            for (int i = 0; i < ids.size(); i++) items[i] = ids.get(i);
+            new AlertDialog.Builder(getParentActivity())
+                    .setItems(items, (d, which) -> {
+                        modelCell.setText(ids.get(which));
+                        agent.model = ids.get(which);
+                        updateProviderInfo();
+                    })
+                    .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                    .show();
+        });
+    }
+
+    private void toast(String s) {
+        if (getParentActivity() != null) {
+            Toast.makeText(getParentActivity(), s, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void showModelPicker() {
@@ -442,6 +705,75 @@ public class OxAgentProfileActivity extends BaseFragment {
                 .show();
     }
 
+    private String advancedSummary() {
+        String temp = temperatureCell == null ? String.valueOf(agent.temperature) : temperatureCell.getText().toString().trim();
+        String topP = topPCell == null ? String.valueOf(agent.topP) : topPCell.getText().toString().trim();
+        if (temp.isEmpty()) temp = String.valueOf(agent.temperature);
+        if (topP.isEmpty()) topP = String.valueOf(agent.topP);
+        return "Temperature " + temp + " · Top P " + topP;
+    }
+
+    private String reasoningLabel() {
+        switch (reasoningEffort) {
+            case "low": return LocaleController.getString(R.string.OxAgentReasoningLow);
+            case "medium": return LocaleController.getString(R.string.OxAgentReasoningMedium);
+            case "high": return LocaleController.getString(R.string.OxAgentReasoningHigh);
+            default: return LocaleController.getString(R.string.OxAgentReasoningAuto);
+        }
+    }
+
+    private String nextReasoning(String value) {
+        if ("auto".equals(value)) return "low";
+        if ("low".equals(value)) return "medium";
+        if ("medium".equals(value)) return "high";
+        return "auto";
+    }
+
+    private String toolChoiceLabel() {
+        switch (toolChoice) {
+            case "required": return LocaleController.getString(R.string.OxAgentToolRequired);
+            case "none": return LocaleController.getString(R.string.OxAgentToolNone);
+            default: return LocaleController.getString(R.string.OxAgentToolAuto);
+        }
+    }
+
+    private String nextToolChoice(String value) {
+        if ("auto".equals(value)) return "required";
+        if ("required".equals(value)) return "none";
+        return "auto";
+    }
+
+    private int parseSeed(EditTextCell cell) {
+        if (cell == null) return -1;
+        String s = cell.getText().toString().trim();
+        if (s.isEmpty()) return -1;
+        try {
+            return Integer.parseInt(s);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    private double parseDouble(EditTextCell cell, double fallback, double min, double max) {
+        if (cell == null) return fallback;
+        try {
+            double v = Double.parseDouble(cell.getText().toString().trim());
+            return Math.max(min, Math.min(max, v));
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private int parseInt(EditTextCell cell, int fallback, int max) {
+        if (cell == null) return fallback;
+        try {
+            long v = Long.parseLong(cell.getText().toString().trim());
+            return (int) Math.max(0, Math.min(max, v));
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
     private OxAgent buildFromFields() {
         OxAgent a = new OxAgent();
         a.id = agent.id;
@@ -459,6 +791,19 @@ public class OxAgentProfileActivity extends BaseFragment {
         a.avatarPath = agent.avatarPath;
         a.toolsPolicy = agent.toolsPolicy;
         a.headers = agent.headers;
+        a.temperature = parseDouble(temperatureCell, 0.7, 0, 2);
+        a.topP = parseDouble(topPCell, 1.0, 0, 1);
+        a.maxTokens = parseInt(maxTokensCell, 0, 10_000_000);
+        a.contextLength = parseInt(contextCell, 0, 10_000_000);
+        a.presencePenalty = parseDouble(presenceCell, 0, 0, 2);
+        a.frequencyPenalty = parseDouble(frequencyCell, 0, 0, 2);
+        a.topK = parseInt(topKCell, 0, 1000);
+        a.seed = parseSeed(seedCell);
+        a.stop = stopCell.getText().toString().trim();
+        a.reasoningEffort = reasoningEffort;
+        a.toolChoice = toolChoice;
+        a.parallelToolCalls = parallelTools;
+        a.extraBody = extraBodyCell.getText().toString().trim();
         return a;
     }
 
@@ -649,6 +994,15 @@ public class OxAgentProfileActivity extends BaseFragment {
         if (name.isEmpty()) {
             nameCell.editText.requestFocus();
             return;
+        }
+        String extra = extraBodyCell == null ? "" : extraBodyCell.getText().toString().trim();
+        if (!extra.isEmpty()) {
+            try {
+                new org.json.JSONObject(extra);
+            } catch (Exception e) {
+                toast(LocaleController.getString(R.string.OxAgentInvalidJson));
+                return;
+            }
         }
         OxAgent next = buildFromFields();
         next.name = name;
