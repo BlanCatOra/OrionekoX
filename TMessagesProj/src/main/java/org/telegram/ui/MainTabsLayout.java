@@ -118,6 +118,26 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             totalWeight = visibleChildCount;
         }
 
+        if (maxWidthPx > 0) {
+            // Main tab bar: equal cell widths so every icon and label is centred,
+            // regardless of whether the label is two or three characters long.
+            int visible = 0;
+            float widest = 0;
+            for (int a = 0, N = getChildCount(); a < N; a++) {
+                if (!isViewVisible(getChildAt(a))) continue;
+                visible++;
+                widest = Math.max(widest, tabsTextWidthWithMargin[a]);
+            }
+            if (visible > 0) {
+                final float equal = Math.min(widest, maxTotalWidthForTabs / (float) visible);
+                totalWidth = 0;
+                for (int a = 0, N = getChildCount(); a < N; a++) {
+                    if (!isViewVisible(getChildAt(a))) continue;
+                    tabsTextWidthWithMargin[a] = equal;
+                    totalWidth += equal;
+                }
+            }
+        }
         if (totalWidth > maxTotalWidthForTabs) {
             final float m = maxTotalWidthForTabs / totalWidth;
             for (int a = 0, N = getChildCount(); a < N; a++) {

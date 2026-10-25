@@ -3264,7 +3264,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             proxyDrawable = new ProxyDrawable(context);
             proxyMenuSubItem = new ActionBarMenuSubItem(context, false, true, resourceProvider);
             proxyMenuSubItem.setItemHeight(56);
-            proxyMenuSubItem.setTextAndIcon(getString(R.string.MenuProxyTitle), 0, proxyDrawable);
+            proxyMenuSubItem.setTextAndIcon(getString(R.string.OxNetworkTitle), 0, proxyDrawable);
             proxyMenuSubItem.setContentDescription(getString(R.string.ProxySettings));
 
             passcodeItem = menu.addItem(1, R.drawable.outline_header_lock_24);
@@ -13900,7 +13900,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             proxyMenuSubItem.subtextView.setTextColor(getThemedColor(Theme.key_groupcreate_sectionText));
             proxyMenuSubItem.setOnClickListener(v -> {
                 io.dismiss();
-                presentFragment(new ProxyListActivity());
+                presentFragment(new OxNetworkActivity());
             });
 
             final SharedPreferences preferences = ApplicationLoader.applicationContext

@@ -1261,6 +1261,12 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
         public void updateButton(boolean animated) {
             if (selectedResaleGift != null) {
                 final TL_stars.TL_starGiftUnique gift = selectedResaleGift;
+                if (org.telegram.ox.OxMode.isLocalPremium()) {
+                    buttonState.text = LocaleController.getString(R.string.OxUseLocalPremium);
+                    buttonState.subText = null;
+                    if (getButtonPage() == this) applyButtonState(this, animated);
+                    return;
+                }
                 final AmountUtils.Amount stars = gift.getResellAmount(AmountUtils.Currency.STARS);
                 if (gift.resale_ton_only) {
                     final AmountUtils.Amount ton = gift.getResellAmount(AmountUtils.Currency.TON);
@@ -1936,6 +1942,35 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
         if (page.selectedResaleGift != null) {
             final Page otherPage = page == namePage ? profilePage : namePage;
             otherPage.setupValues();
+
+            if (org.telegram.ox.OxMode.isLocalPremium()) {
+                // Local premium unlocks the appearance locally instead of opening the
+                // server-side resale payment flow.
+                final TL_stars.TL_starGiftUnique gift = page.selectedResaleGift;
+                if (gift.peer_color instanceof TLRPC.TL_peerColorCollectible) {
+                    TLRPC.User me = getUserConfig().getCurrentUser();
+                    if (me != null) {
+                        if (page == namePage) {
+                            me.color = gift.peer_color;
+                            me.flags2 |= 256;
+                        } else {
+                            me.profile_color = gift.peer_color;
+                            me.flags2 |= 512;
+                        }
+                        getUserConfig().saveConfig(true);
+                        getNotificationCenter().postNotificationName(
+                                org.telegram.messenger.NotificationCenter.updateInterfaces,
+                                org.telegram.messenger.MessagesController.UPDATE_MASK_NAME);
+                    }
+                    showBulletin();
+                    finishFragment();
+                    return;
+                }
+                apply();
+                finishFragment();
+                showBulletin();
+                return;
+            }
 
             loading = true;
             button.setLoading(true);
