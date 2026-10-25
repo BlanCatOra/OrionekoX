@@ -12,6 +12,13 @@ public class OxMode {
 
     private static final String PREFS = "orioneko_config";
 
+    public static final int MODE_UNSET = -1;
+    public static final int MODE_OX = 0;
+    public static final int MODE_LOGIN = 1;
+    public static final int PENDING_NONE = 0;
+    public static final int PENDING_LOGIN = 1;
+    public static final int PENDING_OX = 2;
+
     public static boolean isAgentOnly() {
         try {
             Context ctx = ApplicationLoader.applicationContext;
@@ -64,5 +71,50 @@ public class OxMode {
             prefs().edit().putBoolean("agent_only", value).apply();
         } catch (Exception ignored) {
         }
+    }
+
+    /** Mode selected on the onboarding "start mode" step. */
+    public static int getOnboardingMode() {
+        return prefs().getInt("onboarding_mode", MODE_UNSET);
+    }
+
+    public static void setOnboardingMode(int value) {
+        prefs().edit().putInt("onboarding_mode", value).apply();
+    }
+
+    public static boolean isLegalAccepted() {
+        return prefs().getBoolean("legal_accepted", false);
+    }
+
+    public static void setLegalAccepted(boolean value) {
+        prefs().edit().putBoolean("legal_accepted", value).apply();
+    }
+
+    public static boolean isContainerEnabled() {
+        return prefs().getBoolean("container_enabled", false);
+    }
+
+    public static void setContainerEnabled(boolean value) {
+        prefs().edit().putBoolean("container_enabled", value).apply();
+    }
+
+    /**
+     * A logout is asynchronous: LaunchActivity consumes this right after appDidLogout and
+     * replaces the intro screen with the requested root (LoginActivity or local MainTabs).
+     */
+    public static int getPendingMode() {
+        return prefs().getInt("pending_mode", PENDING_NONE);
+    }
+
+    public static void setPendingMode(int value) {
+        prefs().edit().putInt("pending_mode", value).apply();
+    }
+
+    public static int consumePendingMode() {
+        int v = getPendingMode();
+        if (v != PENDING_NONE) {
+            prefs().edit().putInt("pending_mode", PENDING_NONE).apply();
+        }
+        return v;
     }
 }

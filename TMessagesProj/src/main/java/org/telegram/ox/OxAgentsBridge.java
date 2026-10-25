@@ -942,9 +942,15 @@ public class OxAgentsBridge {
 
     // ---------------- exit to real login ----------------
 
-    /** Leaves agent-only mode: local-only logout (no network call) and back to the intro. */
+    /** Leaves agent-only mode: local-only logout (no network call). */
     public static void exitAgentOnly() {
         OxMode.setAgentOnly(false);
+        accountReady = false;
+        try {
+            // Restore MTProto networking before the login screen takes over.
+            ConnectionsManager.getInstance(0).checkConnection();
+        } catch (Throwable ignored) {
+        }
         try {
             MessagesController.getInstance(0).performLogout(0);
         } catch (Throwable t) {

@@ -2,16 +2,20 @@ package org.telegram.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.OvershootInterpolator;
+import android.view.ViewOutlineProvider;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -22,44 +26,99 @@ import androidx.viewpager.widget.ViewPager;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.R;
+import org.telegram.messenger.UserConfig;
+import org.telegram.ox.OxAgent;
+import org.telegram.ox.OxAgentStore;
+import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxMode;
 import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.ActionBarMenu;
+import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.BottomPagesView;
+import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.ScaleStateListAnimator;
+import org.telegram.ui.Components.Switch;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Six-step first-run guide, Operit-style but drawn with Telegram's own design language:
- * the same ViewPager + BottomPagesView dots + rounded bottom action as IntroActivity.
- * Re-runnable anytime from Ox Settings.
+ * Six-step first-run guide. Native Telegram intro language: white page, big title, dots,
+ * one fixed primary button, motion borrowed from IntroActivity (ScaleStateListAnimator,
+ * ViewPager parallax/fade, animated dashes). All layout slots are fixed so the primary
+ * button never moves between steps.
  */
 @SuppressLint("ViewConstructor")
 public class OxOnboardingActivity extends BaseFragment {
 
     private static final int PAGES = 6;
     private static final int PERM_REQUEST = 7301;
+    private static final int MENU_CLOSE = 1;
+
+    private static final int IDX_OPEN = 0, IDX_LEGAL = 1, IDX_MODE = 2, IDX_AGENT = 3, IDX_PERM = 4, IDX_CONTAINER = 5;
+
+    private static final int MODE_OX = OxMode.MODE_OX, MODE_LOGIN = OxMode.MODE_LOGIN;
 
     private ViewPager viewPager;
     private BottomPagesView bottomPages;
     private TextView stepText;
+    private TextView hintText;
     private TextView nextButton;
-    private TextView skipButton;
-    private TextView skipHint;
-
-    private boolean choseLogin;
-    private boolean finished;
+    private TextView exitButton;
+    private TextView skipStepButton;
 
     private final List<View> pages = new ArrayList<>();
-    // page 5 permission status views
-    private LinearLayout permList;
+    private boolean wasDone;
+    private boolean finished;
 
-    private static final int IDX_OPEN = 0, IDX_LEGAL = 1, IDX_LOGIN = 2, IDX_AGENT = 3, IDX_PERM = 4, IDX_CONTAINER = 5;
+    private int selectedMode = MODE_OX;
+    private boolean legalAccepted;
+    private int startPage;
+
+    // page 3
+    private TextView agentSummary;
+    private final TextView[] modeChecks = new TextView[2];
+    private final View[] modeRows = new View[2];
+    private TextView modeWarning;
+
+    // page 5
+    private LinearLayout permList;
+    private TextView permSummary;
+    private final Map<String, Boolean> lastGranted = new HashMap<>();
+
+    // page 6
+    private Switch containerSwitch;
+    private boolean updatingContainerSwitch;
+    private TextView mirrorRow;
+    private TextView versionRow;
+    private final List<TextView> componentRows = new ArrayList<>();
+    private TextView containerNote;
+
+    @Override
+    public boolean onFragmentCreate() {
+        wasDone = OxMode.isOnboardingDone();
+        legalAccepted = OxMode.isLegalAccepted();
+        if (getArguments() != null) {
+            startPage = getArguments().getInt("start_page", 0);
+        }
+        int saved = OxMode.getOnboardingMode();
+        if (OxMode.isAgentOnly()) {
+            selectedMode = MODE_OX;
+        } else if (UserConfig.getInstance(0).isClientActivated()) {
+            selectedMode = MODE_LOGIN;
+        } else {
+            selectedMode = saved == MODE_LOGIN ? MODE_LOGIN : MODE_OX;
+        }
+        return super.onFragmentCreate();
+    }
 
     @Override
     public View createView(Context context) {
@@ -72,15 +131,24 @@ public class OxOnboardingActivity extends BaseFragment {
             @Override
             public void onItemClick(int id) {
                 if (id == -1) {
-                    if (viewPager.getCurrentItem() > 0) viewPager.setCurrentItem(viewPager.getCurrentItem() - 1, true);
+                    if (viewPager.getCurrentItem() > 0) {
+                        viewPager.setCurrentItem(viewPager.getCurrentItem() - 1, true);
+                    } else {
+                        confirmExit();
+                    }
+                } else if (id == MENU_CLOSE) {
+                    confirmExit();
                 }
             }
         });
+        ActionBarMenu menu = actionBar.createMenu();
+        menu.addItemWithWidth(MENU_CLOSE, R.drawable.ic_ab_close, AndroidUtilities.dp(56));
 
         FrameLayout root = new FrameLayout(context);
         root.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
 
         viewPager = new ViewPager(context);
+        viewPager.setOffscreenPageLimit(2);
         viewPager.setAdapter(new PagerAdapter() {
             @Override public int getCount() { return PAGES; }
             @Override public boolean isViewFromObject(View view, Object object) { return view == object; }
@@ -99,305 +167,574 @@ public class OxOnboardingActivity extends BaseFragment {
             }
             @Override public void onPageSelected(int position) {
                 updateChrome(position);
+                animatePageIn(pages.get(position));
             }
             @Override public void onPageScrollStateChanged(int state) {
             }
         });
+        viewPager.setPageTransformer(false, (page, position) -> {
+            page.setAlpha(1f - Math.min(0.45f, Math.abs(position) * 0.45f));
+            page.setTranslationX(-position * AndroidUtilities.dp(26));
+            page.setTranslationY(Math.abs(position) * AndroidUtilities.dp(6));
+        });
         root.addView(viewPager, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
-        // step indicator + dots
         LinearLayout chrome = new LinearLayout(context);
         chrome.setOrientation(LinearLayout.VERTICAL);
         chrome.setGravity(Gravity.CENTER_HORIZONTAL);
-
         bottomPages = new BottomPagesView(context, viewPager, PAGES);
+        bottomPages.setColor(Theme.key_windowBackgroundWhiteGrayText, Theme.key_chats_actionBackground);
         chrome.addView(bottomPages, LayoutHelper.createLinear(66, 5, Gravity.CENTER_HORIZONTAL, 0, 0, 0, 8));
-
         stepText = new TextView(context);
         stepText.setTextSize(13);
+        stepText.setGravity(Gravity.CENTER);
         stepText.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
         chrome.addView(stepText, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL));
 
-        root.addView(chrome, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 64, 0, 0));
+        // Fixed bottom action area: hint (fixed), secondary left/right slots (fixed),
+        // primary button (fixed). Nothing uses GONE, so positions never change.
+        FrameLayout bottomBar = new FrameLayout(context);
+        bottomBar.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        View divider = new View(context);
+        divider.setBackgroundColor(getThemedColor(Theme.key_divider));
+        bottomBar.addView(divider, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 1, Gravity.TOP));
 
-        // bottom action cluster
-        LinearLayout bottom = new LinearLayout(context);
-        bottom.setOrientation(LinearLayout.VERTICAL);
-        bottom.setGravity(Gravity.CENTER_HORIZONTAL);
+        LinearLayout bottomCol = new LinearLayout(context);
+        bottomCol.setOrientation(LinearLayout.VERTICAL);
+        int nav = Math.max(AndroidUtilities.navigationBarHeight, AndroidUtilities.dp(8));
+        bottomCol.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(10), AndroidUtilities.dp(24), nav);
+
+        bottomCol.addView(chrome, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 4));
+
+        hintText = new TextView(context);
+        hintText.setTextSize(12);
+        hintText.setGravity(Gravity.CENTER);
+        hintText.setLineSpacing(AndroidUtilities.dp(2), 1f);
+        hintText.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        hintText.setText(LocaleController.getString(R.string.OxObSkipHint));
+        hintText.setMaxLines(2);
+        bottomCol.addView(hintText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, AndroidUtilities.dp(32)));
+
+        FrameLayout secondary = new FrameLayout(context);
+        exitButton = new TextView(context);
+        exitButton.setTextSize(14);
+        exitButton.setGravity(Gravity.CENTER);
+        exitButton.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        exitButton.setPadding(AndroidUtilities.dp(4), 0, AndroidUtilities.dp(12), 0);
+        exitButton.setText(LocaleController.getString(R.string.OxObExit));
+        exitButton.setOnClickListener(v -> confirmExit());
+        secondary.addView(exitButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT,
+                Gravity.LEFT | Gravity.CENTER_VERTICAL));
+
+        skipStepButton = new TextView(context);
+        skipStepButton.setTextSize(14);
+        skipStepButton.setGravity(Gravity.CENTER);
+        skipStepButton.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        skipStepButton.setTypeface(AndroidUtilities.bold());
+        skipStepButton.setPadding(AndroidUtilities.dp(12), 0, AndroidUtilities.dp(4), 0);
+        skipStepButton.setText(LocaleController.getString(R.string.OxObSkipStep));
+        skipStepButton.setOnClickListener(v -> {
+            if (viewPager.getCurrentItem() >= PAGES - 1) {
+                finishOnboarding();
+            } else {
+                viewPager.setCurrentItem(viewPager.getCurrentItem() + 1, true);
+            }
+        });
+        secondary.addView(skipStepButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT,
+                Gravity.RIGHT | Gravity.CENTER_VERTICAL));
+        bottomCol.addView(secondary, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 34));
 
         nextButton = new TextView(context);
         nextButton.setGravity(Gravity.CENTER);
         nextButton.setTypeface(AndroidUtilities.bold());
         nextButton.setTextSize(15);
         nextButton.setTextColor(0xffffffff);
-        nextButton.setBackground(Theme.createSimpleSelectorRoundRectDrawable(AndroidUtilities.dp(24),
-                getThemedColor(Theme.key_chats_actionBackground), getThemedColor(Theme.key_chats_actionPressedBackground)));
+        GradientDrawable buttonBackground = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{getThemedColor(Theme.key_featuredStickers_addButton), getThemedColor(Theme.key_featuredStickers_addButton2)});
+        buttonBackground.setCornerRadius(AndroidUtilities.dp(24));
+        nextButton.setBackground(buttonBackground);
+        ScaleStateListAnimator.apply(nextButton, .02f, 1.2f);
         nextButton.setOnClickListener(v -> onNext());
-        bottom.addView(nextButton, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 0, 0, 0, 8));
+        bottomCol.addView(nextButton, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 0, 8, 0, 0));
 
-        skipButton = new TextView(context);
-        skipButton.setGravity(Gravity.CENTER);
-        skipButton.setTextSize(14);
-        skipButton.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
-        skipButton.setOnClickListener(v -> finishOnboarding(false));
-        bottom.addView(skipButton, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 32, Gravity.CENTER_HORIZONTAL));
-
-        skipHint = new TextView(context);
-        skipHint.setGravity(Gravity.CENTER);
-        skipHint.setTextSize(12);
-        skipHint.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        bottom.addView(skipHint, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 0));
-
-        root.addView(bottom, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM, 24, 0, 24, 20));
+        bottomBar.addView(bottomCol, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM));
+        root.addView(bottomBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM));
 
         buildPages(context);
         fragmentView = root;
         updateChrome(0);
+        if (startPage > 0 && startPage < PAGES) {
+            final int target = startPage;
+            viewPager.post(() -> viewPager.setCurrentItem(target, false));
+        }
         return fragmentView;
+    }
+
+    @Override
+    public boolean onBackPressed(boolean invoked) {
+        if (viewPager != null && viewPager.getCurrentItem() > 0) {
+            viewPager.setCurrentItem(viewPager.getCurrentItem() - 1, true);
+            return false;
+        }
+        if (!wasDone) {
+            confirmExit();
+            return false;
+        }
+        return true;
     }
 
     // ---------------- pages ----------------
 
-    private View pageWrap(Context context, String title, String body, View extra) {
+    private View pageWrap(Context context, int iconRes, String title, String body, View extra) {
+        return pageWrap(context, iconRes, getThemedColor(Theme.key_chats_actionBackground), title, body, extra);
+    }
+
+    private View pageWrap(Context context, int iconRes, int iconTint, String title, String body, View extra) {
         ScrollView scroll = new ScrollView(context);
         LinearLayout col = new LinearLayout(context);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(AndroidUtilities.dp(26), AndroidUtilities.dp(116), AndroidUtilities.dp(26), AndroidUtilities.dp(200));
+        col.setPadding(AndroidUtilities.dp(26), AndroidUtilities.dp(18), AndroidUtilities.dp(26),
+                AndroidUtilities.dp(190) + Math.max(AndroidUtilities.navigationBarHeight, 0));
+
+        if (iconRes != 0) {
+            FrameLayout iconWrap = new FrameLayout(context);
+            ImageView icon = new ImageView(context);
+            icon.setImageResource(iconRes);
+            if (iconRes == R.drawable.ox_brand) {
+                icon.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                icon.setClipToOutline(true);
+                icon.setOutlineProvider(new ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(View view, android.graphics.Outline outline) {
+                        outline.setOval(0, 0, view.getWidth(), view.getHeight());
+                    }
+                });
+                iconWrap.addView(icon, LayoutHelper.createFrame(56, 56, Gravity.CENTER));
+            } else {
+                GradientDrawable circle = new GradientDrawable();
+                circle.setShape(GradientDrawable.OVAL);
+                circle.setColor(getThemedColor(Theme.key_windowBackgroundGray));
+                iconWrap.setBackground(circle);
+                icon.setColorFilter(iconTint);
+                iconWrap.addView(icon, LayoutHelper.createFrame(26, 26, Gravity.CENTER));
+            }
+            col.addView(iconWrap, LayoutHelper.createLinear(56, 56, Gravity.CENTER_HORIZONTAL));
+        }
 
         TextView t = new TextView(context);
         t.setText(title);
-        t.setTextSize(23);
+        t.setTextSize(24);
         t.setTypeface(AndroidUtilities.bold());
+        t.setGravity(Gravity.CENTER);
         t.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-        col.addView(t);
+        col.addView(t, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
+                0, iconRes != 0 ? 18 : 0, 0, 0));
 
         TextView b = new TextView(context);
         b.setText(body);
         b.setTextSize(15);
-        b.setLineSpacing(AndroidUtilities.dp(4), 1f);
+        b.setLineSpacing(AndroidUtilities.dp(5), 1f);
         b.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
         b.setPadding(0, AndroidUtilities.dp(14), 0, 0);
         col.addView(b);
 
         if (extra != null) {
-            col.addView(extra, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 22, 0, 0));
+            col.addView(extra, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 20, 0, 0));
         }
         scroll.addView(col, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         scroll.setFillViewport(true);
         return scroll;
     }
 
-    private TextView optionRow(Context context, String text, Runnable action) {
-        TextView tv = new TextView(context);
-        tv.setText(text);
-        tv.setTextSize(15);
-        tv.setTypeface(AndroidUtilities.bold());
-        tv.setGravity(Gravity.CENTER_VERTICAL);
-        tv.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-        tv.setBackground(Theme.createSimpleSelectorRoundRectDrawable(AndroidUtilities.dp(12),
-                getThemedColor(Theme.key_windowBackgroundWhite), getThemedColor(Theme.key_listSelector)));
-        tv.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(14), AndroidUtilities.dp(16), AndroidUtilities.dp(14));
-        tv.setOnClickListener(v -> action.run());
-        return tv;
+    private LinearLayout sectionList(Context context) {
+        LinearLayout list = new LinearLayout(context);
+        list.setOrientation(LinearLayout.VERTICAL);
+        return list;
+    }
+
+    private View divider(Context context) {
+        View v = new View(context);
+        v.setBackgroundColor(getThemedColor(Theme.key_divider));
+        LinearLayout.LayoutParams lp = LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 1);
+        lp.leftMargin = AndroidUtilities.dp(56);
+        v.setLayoutParams(lp);
+        return v;
     }
 
     private void buildPages(Context context) {
-        // 1. open source + AI coding
-        LinearLayout extra1 = new LinearLayout(context);
-        extra1.setOrientation(LinearLayout.VERTICAL);
-        TextView repo = optionRow(context, LocaleController.getString(R.string.OxObRepoHint), () -> {
-            try {
-                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/BlanCatOra/OrionekoX"));
-                getParentActivity().startActivity(i);
-            } catch (Throwable ignored) {
-            }
-        });
-        extra1.addView(repo);
+        // 1. open source
+        LinearLayout extra1 = sectionList(context);
+        extra1.addView(optionRow(context, R.drawable.msg_link, 0xff2AABEE,
+                        LocaleController.getString(R.string.OxObRepoTitle),
+                        LocaleController.getString(R.string.OxObRepoOpening), false, () -> {
+                            try {
+                                if (getParentActivity() != null) getParentActivity().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/BlanCatOra/OrionekoX")));
+                            } catch (Throwable ignored) {
+                            }
+                        }),
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         TextView ai = new TextView(context);
         ai.setText(LocaleController.getString(R.string.OxObAiNote));
-        ai.setTextSize(14);
+        ai.setTextSize(13);
+        ai.setLineSpacing(AndroidUtilities.dp(4), 1f);
         ai.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        extra1.addView(ai, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 16, 0, 0));
-        pages.add(pageWrap(context, LocaleController.getString(R.string.OxObOpenTitle),
+        ai.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(16), AndroidUtilities.dp(4), 0);
+        extra1.addView(ai, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        pages.add(pageWrap(context, R.drawable.ox_brand, 0xff3A3A3C, LocaleController.getString(R.string.OxObOpenTitle),
                 LocaleController.getString(R.string.OxObOpenBody), extra1));
 
         // 2. legal
-        pages.add(pageWrap(context, LocaleController.getString(R.string.OxObLegalTitle),
-                LocaleController.getString(R.string.OxObLegalBody), null));
+        LinearLayout extra2 = sectionList(context);
+        TextView legalBody = new TextView(context);
+        legalBody.setText(LocaleController.getString(R.string.OxObLegalBody));
+        legalBody.setTextSize(14);
+        legalBody.setLineSpacing(AndroidUtilities.dp(5), 1f);
+        legalBody.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        extra2.addView(legalBody, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
-        // 3. login question
-        LinearLayout extra3 = new LinearLayout(context);
-        extra3.setOrientation(LinearLayout.VERTICAL);
-        TextView go = optionRow(context, LocaleController.getString(R.string.OxObLoginGo), () -> {
-            choseLogin = true;
-            finishOnboarding(true);
+        LinearLayout consent = new LinearLayout(context);
+        consent.setOrientation(LinearLayout.HORIZONTAL);
+        consent.setGravity(Gravity.CENTER_VERTICAL);
+        consent.setPadding(0, AndroidUtilities.dp(20), 0, AndroidUtilities.dp(4));
+        consent.setBackground(Theme.getSelectorDrawable(false));
+        final TextView consentCheck = makeCheck(context);
+        consent.addView(consentCheck, LayoutHelper.createLinear(24, 24, Gravity.CENTER_VERTICAL));
+        TextView consentText = new TextView(context);
+        consentText.setText(LocaleController.getString(R.string.OxObLegalAgree));
+        consentText.setTextSize(15);
+        consentText.setPadding(AndroidUtilities.dp(12), 0, 0, 0);
+        consentText.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        consent.addView(consentText, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+        setCheck(consentCheck, legalAccepted, false);
+        consent.setOnClickListener(v -> {
+            legalAccepted = !legalAccepted;
+            OxMode.setLegalAccepted(legalAccepted);
+            setCheck(consentCheck, legalAccepted, true);
+            updateNextState();
         });
-        extra3.addView(go);
-        TextView later = optionRow(context, LocaleController.getString(R.string.OxObLoginLater), () -> finishOnboarding(false));
-        extra3.addView(later, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 10, 0, 0));
-        TextView hint = new TextView(context);
-        hint.setText(LocaleController.getString(R.string.OxObLoginHint));
-        hint.setTextSize(13);
-        hint.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        extra3.addView(hint, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0));
-        pages.add(pageWrap(context, LocaleController.getString(R.string.OxObLoginTitle), "", extra3));
+        extra2.addView(consent, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        pages.add(pageWrap(context, R.drawable.msg_info, LocaleController.getString(R.string.OxObLegalTitle), "", extra2));
 
-        // 4. configure agent
-        LinearLayout extra4 = new LinearLayout(context);
-        extra4.setOrientation(LinearLayout.VERTICAL);
-        extra4.addView(optionRow(context, LocaleController.getString(R.string.OxObAgentApi), () -> {
-            org.telegram.ox.OxAgent a = new org.telegram.ox.OxAgent();
-            a.id = java.util.UUID.randomUUID().toString().substring(0, 8);
-            a.name = "API Agent";
-            a.emoji = "🤖";
-            a.baseUrl = "https://api.deepseek.com";
-            a.model = "deepseek-chat";
-            a.agentsMd = "# API Agent\n\nYou are a helpful assistant.";
-            org.telegram.ox.OxAgentStore.saveAgent(a);
-            presentFragment(new OxAgentProfileActivity(a.id));
-        }));
-        extra4.addView(optionRow(context, LocaleController.getString(R.string.OxObAgentLinux), () ->
-                viewPager.setCurrentItem(IDX_CONTAINER, true)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 10, 0, 0));
-        extra4.addView(optionRow(context, LocaleController.getString(R.string.OxObAgentLan), () -> {
-            org.telegram.ox.OxAgent a = new org.telegram.ox.OxAgent();
-            a.id = java.util.UUID.randomUUID().toString().substring(0, 8);
-            a.name = "LAN Agent";
-            a.emoji = "🛰";
-            a.baseUrl = "http://192.168.1.2:11434/v1";
-            a.model = "qwen2.5:7b";
-            a.agentsMd = "# LAN Agent\n\nAn agent running on another device on your LAN.";
-            org.telegram.ox.OxAgentStore.saveAgent(a);
-            presentFragment(new OxAgentProfileActivity(a.id));
-        }), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 10, 0, 0));
-        TextView sub = new TextView(context);
-        sub.setText(LocaleController.getString(R.string.OxObAgentSubtitle));
-        sub.setTextSize(13);
-        sub.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        extra4.addView(sub, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0));
-        pages.add(pageWrap(context, LocaleController.getString(R.string.OxObAgentTitle), "", extra4));
+        // 3. start mode
+        LinearLayout extra3 = sectionList(context);
+        modeRows[0] = optionRow(context, R.drawable.msg_language, 0xff2AABEE,
+                LocaleController.getString(R.string.OxObModeTgTitle),
+                LocaleController.getString(R.string.OxObModeTgSub), true, () -> selectMode(MODE_LOGIN));
+        View r0 = modeRows[0];
+        View r1 = optionRow(context, R.drawable.msg_online, 0xff34C759,
+                LocaleController.getString(R.string.OxObModeOxTitle),
+                LocaleController.getString(R.string.OxObModeOxSub), true, () -> selectMode(MODE_OX));
+        modeRows[1] = r1;
+        extra3.addView(r0, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra3.addView(divider(context));
+        extra3.addView(r1, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        modeWarning = new TextView(context);
+        modeWarning.setTextSize(13);
+        modeWarning.setLineSpacing(AndroidUtilities.dp(4), 1f);
+        modeWarning.setTextColor(getThemedColor(Theme.key_text_RedRegular));
+        modeWarning.setVisibility(View.GONE);
+        extra3.addView(modeWarning, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
+                0, 14, 0, 0));
+        TextView modeHint = new TextView(context);
+        modeHint.setText(LocaleController.getString(R.string.OxObLoginHint));
+        modeHint.setTextSize(13);
+        modeHint.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        extra3.addView(modeHint, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
+                0, 12, 0, 0));
+        pages.add(pageWrap(context, R.drawable.msg_language, LocaleController.getString(R.string.OxObLoginTitle), "", extra3));
+        updateModeChecks(false);
+
+        // 4. agent setup
+        LinearLayout extra4 = sectionList(context);
+        agentSummary = new TextView(context);
+        agentSummary.setTextSize(13);
+        agentSummary.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        agentSummary.setPadding(0, 0, 0, AndroidUtilities.dp(10));
+        extra4.addView(agentSummary, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra4.addView(optionRow(context, R.drawable.msg_link, 0xff2AABEE,
+                LocaleController.getString(R.string.OxObAgentApiTitle),
+                LocaleController.getString(R.string.OxObAgentApiSub), false, () ->
+                        presentFragment(OxAgentProfileActivity.newDraft(OxAgentProfileActivity.TEMPLATE_API))),
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra4.addView(divider(context));
+        extra4.addView(optionRow(context, R.drawable.msg_download, 0xff8E44AD,
+                LocaleController.getString(R.string.OxObAgentLinuxTitle),
+                LocaleController.getString(R.string.OxObAgentLinuxSub), false, () -> {
+                    OxMode.setContainerEnabled(true);
+                    updateContainerState();
+                    updateModeChecks(true);
+                    toast(LocaleController.getString(R.string.OxObContainerEnabled));
+                }),
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra4.addView(divider(context));
+        extra4.addView(optionRow(context, R.drawable.outline_add_account, 0xffF39C12,
+                LocaleController.getString(R.string.OxObAgentLanTitle),
+                LocaleController.getString(R.string.OxObAgentLanSub), false, () ->
+                        presentFragment(OxAgentProfileActivity.newDraft(OxAgentProfileActivity.TEMPLATE_LAN))),
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        pages.add(pageWrap(context, R.drawable.input_ai_star, LocaleController.getString(R.string.OxObAgentTitle), "", extra4));
 
         // 5. permissions
-        LinearLayout extra5 = new LinearLayout(context);
-        extra5.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout extra5 = sectionList(context);
+        permSummary = new TextView(context);
+        permSummary.setTextSize(13);
+        permSummary.setTypeface(AndroidUtilities.bold());
+        permSummary.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        extra5.addView(permSummary, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
+                0, 0, 0, 6));
         TextView sub5 = new TextView(context);
         sub5.setText(LocaleController.getString(R.string.OxObPermSubtitle));
         sub5.setTextSize(13);
+        sub5.setLineSpacing(AndroidUtilities.dp(3), 1f);
         sub5.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        extra5.addView(sub5, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 10));
+        extra5.addView(sub5, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT,
+                0, 0, 0, 10));
         permList = new LinearLayout(context);
         permList.setOrientation(LinearLayout.VERTICAL);
         extra5.addView(permList);
-        pages.add(pageWrap(context, LocaleController.getString(R.string.OxObPermTitle), "", extra5));
+        pages.add(pageWrap(context, R.drawable.msg_permissions, LocaleController.getString(R.string.OxObPermTitle), "", extra5));
 
         // 6. container
-        LinearLayout extra6 = new LinearLayout(context);
-        extra6.setOrientation(LinearLayout.VERTICAL);
-        java.util.List<String> mirrorSink = new java.util.ArrayList<String>() {
-            @Override public boolean add(String v) { OxMode.setContainerMirror(v); return true; }
-        };
-        extra6.addView(configRow(context, LocaleController.getString(R.string.OxObContainerMirror), OxMode.getContainerMirror(),
-                new String[]{"official", "tuna", "ustc", "aliyun"},
-                new String[]{"Ubuntu 官方", "清华 TUNA", "中科大 USTC", "阿里云"},
-                mirrorSink, () -> { }));
-        java.util.List<String> versionSink = new java.util.ArrayList<String>() {
-            @Override public boolean add(String v) { OxMode.setContainerVersion(v); return true; }
-        };
-        extra6.addView(configRow(context, LocaleController.getString(R.string.OxObContainerVersion), OxMode.getContainerVersion(),
-                new String[]{"22.04", "24.04"}, new String[]{"Ubuntu 22.04 LTS", "Ubuntu 24.04 LTS"},
-                versionSink, () -> { }), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 10, 0, 0));
-        extra6.addView(componentsRow(context), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 10, 0, 0));
-        TextView note = new TextView(context);
-        note.setText(LocaleController.getString(R.string.OxObContainerNote));
-        note.setTextSize(12);
-        note.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        extra6.addView(note, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 14, 0, 0));
-        containerExtra = extra6;
-        pages.add(pageWrap(context, LocaleController.getString(R.string.OxObContainerTitle), "", extra6));
-    }
+        LinearLayout extra6 = sectionList(context);
+        LinearLayout enableRow = new LinearLayout(context);
+        enableRow.setOrientation(LinearLayout.HORIZONTAL);
+        enableRow.setGravity(Gravity.CENTER_VERTICAL);
+        enableRow.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(12), AndroidUtilities.dp(4), AndroidUtilities.dp(12));
+        enableRow.setBackground(Theme.getSelectorDrawable(false));
+        LinearLayout enableText = new LinearLayout(context);
+        enableText.setOrientation(LinearLayout.VERTICAL);
+        TextView enableTitle = new TextView(context);
+        enableTitle.setText(LocaleController.getString(R.string.OxObContainerEnable));
+        enableTitle.setTextSize(16);
+        enableTitle.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        enableText.addView(enableTitle);
+        TextView enableSub = new TextView(context);
+        enableSub.setText(LocaleController.getString(R.string.OxObContainerEnableSub));
+        enableSub.setTextSize(13);
+        enableSub.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        enableText.addView(enableSub);
+        enableRow.addView(enableText, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+        containerSwitch = new Switch(context);
+        containerSwitch.setChecked(OxMode.isContainerEnabled(), false);
+        containerSwitch.setOnCheckedChangeListener((view, checked) -> {
+            if (updatingContainerSwitch) return;
+            OxMode.setContainerEnabled(checked);
+            updateContainerState();
+        });
+        enableRow.addView(containerSwitch, LayoutHelper.createLinear(48, 32, Gravity.CENTER_VERTICAL));
+        enableRow.setOnClickListener(v -> containerSwitch.setChecked(!containerSwitch.isChecked(), true));
+        extra6.addView(enableRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra6.addView(divider(context));
 
-    private LinearLayout containerExtra;
-
-    private void rebuildContainerPage(Context context, LinearLayout ignored) {
-        // status label refresh only; row labels update through display closures
-        if (permList != null) {
-            // also refresh permission states when page 6 is touched
-        }
-    }
-
-    private TextView configRow(Context context, String label, String currentValue,
-                               String[] values, String[] names, java.util.List<String> valueSink, Runnable onChange) {
-        // valueSink receives the chosen value; caller persists it
-        TextView tv = new TextView(context);
-        tv.setTextSize(15);
-        tv.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-        tv.setBackground(Theme.getSelectorDrawable(false));
-        tv.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(14), AndroidUtilities.dp(4), AndroidUtilities.dp(14));
-        final String[] current = {currentValue};
-        final Runnable refresh = () -> {
-            String name = current[0];
-            for (int i = 0; i < values.length; i++) if (values[i].equals(current[0])) name = names[i];
-            tv.setText(label + " · " + name);
-        };
-        refresh.run();
-        tv.setOnClickListener(v -> {
+        mirrorRow = settingRow(context, LocaleController.getString(R.string.OxObContainerMirror), mirrorName(), () -> {
             if (getParentActivity() == null) return;
-            new org.telegram.ui.ActionBar.AlertDialog.Builder(getParentActivity())
-                    .setItems(names, (d, which) -> {
-                        current[0] = values[which];
-                        if (!valueSink.isEmpty()) {
-                            valueSink.clear();
-                            valueSink.add(values[which]);
-                        }
-                        refresh.run();
-                        onChange.run();
+            new AlertDialog.Builder(getParentActivity())
+                    .setItems(new CharSequence[]{"Ubuntu 官方", "清华 TUNA", "中科大 USTC", "阿里云"},
+                            (d, which) -> {
+                                OxMode.setContainerMirror(new String[]{"official", "tuna", "ustc", "aliyun"}[which]);
+                                mirrorRow.setText(mirrorName());
+                            })
+                    .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                    .show();
+        });
+        extra6.addView(mirrorRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra6.addView(divider(context));
+        versionRow = settingRow(context, LocaleController.getString(R.string.OxObContainerVersion), OxMode.getContainerVersion(), () -> {
+            if (getParentActivity() == null) return;
+            new AlertDialog.Builder(getParentActivity())
+                    .setItems(new CharSequence[]{"Ubuntu 22.04 LTS", "Ubuntu 24.04 LTS"}, (d, which) -> {
+                        String v = which == 0 ? "22.04" : "24.04";
+                        OxMode.setContainerVersion(v);
+                        versionRow.setText(v);
                     })
                     .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                     .show();
         });
+        extra6.addView(versionRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        extra6.addView(divider(context));
+
+        TextView compTitle = new TextView(context);
+        compTitle.setText(LocaleController.getString(R.string.OxObContainerComponents));
+        compTitle.setTextSize(13);
+        compTitle.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        compTitle.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(14), 0, AndroidUtilities.dp(4));
+        extra6.addView(compTitle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        String[][] comps = {{"nodejs", "Node.js"}, {"python3", "Python 3"}, {"git", "Git"}, {"curl", "curl"}, {"tools", "命令行工具"}};
+        for (String[] c : comps) {
+            final String key = c[0];
+            LinearLayout row = new LinearLayout(context);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(9), AndroidUtilities.dp(4), AndroidUtilities.dp(9));
+            row.setBackground(Theme.getSelectorDrawable(false));
+            TextView name = new TextView(context);
+            name.setText(c[1]);
+            name.setTextSize(15);
+            name.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+            row.addView(name, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+            TextView check = makeCheck(context);
+            row.addView(check, LayoutHelper.createLinear(22, 22, Gravity.CENTER_VERTICAL));
+            final TextView checkRef = check;
+            final Runnable refresh = () -> setCheck(checkRef, componentOn(key), false);
+            refresh.run();
+            row.setOnClickListener(v -> {
+                setComponent(key, !componentOn(key));
+                setCheck(checkRef, componentOn(key), true);
+            });
+            componentRows.add(check);
+            extra6.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        }
+
+        containerNote = new TextView(context);
+        containerNote.setTextSize(12);
+        containerNote.setLineSpacing(AndroidUtilities.dp(3), 1f);
+        containerNote.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        containerNote.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(14), AndroidUtilities.dp(4), 0);
+        containerNote.setText(LocaleController.getString(R.string.OxObContainerNote));
+        extra6.addView(containerNote, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        pages.add(pageWrap(context, R.drawable.msg_download, LocaleController.getString(R.string.OxObContainerTitle), "", extra6));
+
+        updateContainerState();
+        updateAgentSummary();
+    }
+
+    private String mirrorName() {
+        String m = OxMode.getContainerMirror();
+        switch (m) {
+            case "tuna": return "清华 TUNA";
+            case "ustc": return "中科大 USTC";
+            case "aliyun": return "阿里云";
+            default: return "Ubuntu 官方";
+        }
+    }
+
+    private TextView settingRow(Context context, String label, String value, Runnable onClick) {
+        TextView tv = new TextView(context);
+        tv.setTextSize(15);
+        tv.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        tv.setGravity(Gravity.CENTER_VERTICAL);
+        tv.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(15), AndroidUtilities.dp(4), AndroidUtilities.dp(15));
+        tv.setBackground(Theme.getSelectorDrawable(false));
+        tv.setText(label + "  ·  " + value);
+        tv.setOnClickListener(v -> onClick.run());
         return tv;
     }
 
-    private static final String[][] COMPONENTS = {
-            {"nodejs", "Node.js"},
-            {"python3", "Python 3"},
-            {"git", "Git"},
-            {"curl", "curl"},
-            {"tools", "常用命令行工具"},
-    };
+    private LinearLayout optionRow(Context context, int iconRes, int color, CharSequence title, CharSequence subtitle,
+                                   boolean withCheck, Runnable onClick) {
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(12), AndroidUtilities.dp(4), AndroidUtilities.dp(12));
+        row.setBackground(Theme.getSelectorDrawable(false));
 
-    private View componentsRow(Context context) {
-        LinearLayout col = new LinearLayout(context);
-        col.setOrientation(LinearLayout.VERTICAL);
-        TextView title = new TextView(context);
-        title.setText(LocaleController.getString(R.string.OxObContainerComponents));
-        title.setTextSize(13);
-        title.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        col.addView(title, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 6));
-        for (String[] comp : COMPONENTS) {
-            final String key = comp[0];
-            TextView row = new TextView(context);
-            row.setTextSize(15);
-            row.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(11), AndroidUtilities.dp(4), AndroidUtilities.dp(11));
-            row.setBackground(Theme.getSelectorDrawable(false));
-            final Runnable[] refresh = new Runnable[1];
-            refresh[0] = () -> {
-                String csv = OxMode.getContainerComponents();
-                boolean on = ("," + csv + ",").contains("," + key + ",");
-                row.setText((on ? "✅  " : "⬜  ") + comp[1]);
-            };
-            refresh[0].run();
-            row.setOnClickListener(v -> {
-                String csv = OxMode.getContainerComponents();
-                boolean on = ("," + csv + ",").contains("," + key + ",");
-                List<String> list = new ArrayList<>();
-                for (String p : csv.split(",")) if (!p.isEmpty() && !p.equals(key)) list.add(p);
-                if (!on) list.add(key);
-                OxMode.setContainerComponents(String.join(",", list));
-                refresh[0].run();
-            });
-            col.addView(row);
+        FrameLayout iconWrap = new FrameLayout(context);
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        circle.setColor(color);
+        iconWrap.setBackground(circle);
+        ImageView icon = new ImageView(context);
+        icon.setImageResource(iconRes);
+        icon.setColorFilter(0xffffffff);
+        iconWrap.addView(icon, LayoutHelper.createFrame(20, 20, Gravity.CENTER));
+        row.addView(iconWrap, LayoutHelper.createLinear(40, 40, Gravity.CENTER_VERTICAL));
+
+        LinearLayout text = new LinearLayout(context);
+        text.setOrientation(LinearLayout.VERTICAL);
+        text.setPadding(AndroidUtilities.dp(14), 0, AndroidUtilities.dp(8), 0);
+        TextView t = new TextView(context);
+        t.setText(title);
+        t.setTextSize(16);
+        t.setTypeface(AndroidUtilities.bold());
+        t.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        text.addView(t);
+        if (subtitle != null && subtitle.length() > 0) {
+            TextView s = new TextView(context);
+            s.setText(subtitle);
+            s.setTextSize(13);
+            s.setLineSpacing(AndroidUtilities.dp(2), 1f);
+            s.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+            s.setPadding(0, AndroidUtilities.dp(3), 0, 0);
+            text.addView(s);
         }
-        return col;
+        row.addView(text, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+
+        if (withCheck) {
+            TextView check = makeCheck(context);
+            row.addView(check, LayoutHelper.createLinear(24, 24, Gravity.CENTER_VERTICAL));
+            row.setTag(check);
+        } else {
+            TextView chevron = new TextView(context);
+            chevron.setText("›");
+            chevron.setTextSize(22);
+            chevron.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+            row.addView(chevron, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL));
+        }
+        row.setOnClickListener(v -> onClick.run());
+        return row;
+    }
+
+    private TextView makeCheck(Context context) {
+        TextView v = new TextView(context);
+        v.setGravity(Gravity.CENTER);
+        v.setTextSize(14);
+        v.setTypeface(AndroidUtilities.bold());
+        v.setTextColor(0xffffffff);
+        return v;
+    }
+
+    private void setCheck(TextView v, boolean checked, boolean animate) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.OVAL);
+        if (checked) {
+            bg.setColor(getThemedColor(Theme.key_chats_actionBackground));
+        } else {
+            bg.setColor(0x00000000);
+            bg.setStroke(AndroidUtilities.dp(1.5f), getThemedColor(Theme.key_windowBackgroundWhiteHintText));
+        }
+        v.setBackground(bg);
+        v.setText(checked ? "✓" : "");
+        if (animate) {
+            v.setScaleX(0.7f);
+            v.setScaleY(0.7f);
+            v.animate().scaleX(1f).scaleY(1f).setDuration(180)
+                    .setInterpolator(new OvershootInterpolator()).start();
+        }
+    }
+
+    private void selectMode(int mode) {
+        selectedMode = mode;
+        OxMode.setOnboardingMode(mode);
+        updateModeChecks(true);
+        updateNextState();
+        updateModeWarning();
+    }
+
+    private void updateModeChecks(boolean animate) {
+        for (int i = 0; i < modeRows.length; i++) {
+            View row = modeRows[i];
+            if (row == null || !(row.getTag() instanceof TextView)) continue;
+            int mode = i == 0 ? MODE_LOGIN : MODE_OX;
+            setCheck((TextView) row.getTag(), selectedMode == mode, animate);
+        }
+    }
+
+    private void updateModeWarning() {
+        if (modeWarning == null) return;
+        boolean loggedIn = UserConfig.getInstance(0).isClientActivated() && !OxMode.isAgentOnly();
+        boolean ox = OxMode.isAgentOnly();
+        String text = null;
+        if (loggedIn && selectedMode == MODE_OX) {
+            text = LocaleController.getString(R.string.OxObSwitchWarnOx);
+        } else if (ox && selectedMode == MODE_LOGIN) {
+            text = LocaleController.getString(R.string.OxObSwitchWarnLogin);
+        }
+        modeWarning.setVisibility(text == null ? View.GONE : View.VISIBLE);
+        if (text != null) {
+            modeWarning.setText(text);
+        }
     }
 
     // ---------------- permissions (page 5) ----------------
@@ -406,91 +743,161 @@ public class OxOnboardingActivity extends BaseFragment {
     public void onResume() {
         super.onResume();
         if (permList != null) rebuildPermissions();
+        updateAgentSummary();
+        updateContainerState();
+        updateModeWarning();
     }
 
     private void rebuildPermissions() {
         if (permList == null) return;
         Context context = permList.getContext();
         permList.removeAllViews();
-        addPermRow(context, LocaleController.getString(R.string.OxObPermNormal), normalPermStatus(), () -> {
-            if (getParentActivity() != null && Build.VERSION.SDK_INT >= 33
-                    && getParentActivity().checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
-                getParentActivity().requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, PERM_REQUEST);
-            } else {
-                toastPermissionPath();
-            }
-        });
-        addPermRow(context, LocaleController.getString(R.string.OxObPermAccessibility), accessibilityStatus(), () -> {
-            try {
-                Intent i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-                getParentActivity().startActivity(i);
-            } catch (Throwable ignored) {
-            }
-        });
-        addPermRow(context, LocaleController.getString(R.string.OxObPermAdb), adbWirelessStatus(), () -> {
-            try {
-                Intent i = new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS);
-                getParentActivity().startActivity(i);
-            } catch (Throwable ignored) {
-            }
-        });
-        addPermRow(context, LocaleController.getString(R.string.OxObPermShizuku), shizukuStatus(), () -> {
-            try {
-                Intent i = getParentActivity().getPackageManager().getLaunchIntentForPackage("moe.shizuku.privileged.api");
-                if (i != null) getParentActivity().startActivity(i);
-                else toast("Shizuku: " + LocaleController.getString(R.string.OxObPermNotInstalled));
-            } catch (Throwable ignored) {
-            }
-        });
-        addPermRow(context, LocaleController.getString(R.string.OxObPermAdmin), adminStatus(), () -> {
-            try {
-                android.app.admin.DevicePolicyManager dpm = (android.app.admin.DevicePolicyManager)
-                        getParentActivity().getSystemService(Context.DEVICE_POLICY_SERVICE);
-                android.content.ComponentName cn = new android.content.ComponentName(
-                        getParentActivity(), org.telegram.ox.OxDeviceAdminReceiver.class);
-                if (dpm != null && !dpm.isAdminActive(cn)) {
-                    Intent i = new Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
-                    i.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, cn);
-                    getParentActivity().startActivity(i);
+        int granted = 0;
+        int total = 6;
+        String[][] rows = {
+                {LocaleController.getString(R.string.OxObPermNormal), null},
+                {LocaleController.getString(R.string.OxObPermAccessibility), null},
+                {LocaleController.getString(R.string.OxObPermAdb), null},
+                {LocaleController.getString(R.string.OxObPermShizuku), null},
+                {LocaleController.getString(R.string.OxObPermAdmin), null},
+                {LocaleController.getString(R.string.OxObPermRoot), null},
+        };
+        String[][] states = {
+                normalPermStatus(), accessibilityStatus(), adbWirelessStatus(),
+                shizukuStatus(), adminStatus(), rootStatus()
+        };
+        for (int i = 0; i < rows.length; i++) {
+            final int index = i;
+            String name = rows[i][0];
+            String[] status = states[i];
+            if ("1".equals(status[1])) granted++;
+            if (i > 0) permList.addView(divider(context));
+            boolean was = Boolean.TRUE.equals(lastGranted.get(name));
+            boolean now = "1".equals(status[1]);
+            lastGranted.put(name, now);
+            View row = permRow(context, name, status, was != now, () -> {
+                switch (index) {
+                    case 0:
+                        if (getParentActivity() != null && Build.VERSION.SDK_INT >= 33
+                                && getParentActivity().checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+                            getParentActivity().requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, PERM_REQUEST);
+                        } else {
+                            toastPermissionPath();
+                        }
+                        break;
+                    case 1:
+                        try {
+                            if (getParentActivity() != null) getParentActivity().startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                        } catch (Throwable ignored) {
+                        }
+                        break;
+                    case 2:
+                        try {
+                            if (getParentActivity() != null) getParentActivity().startActivity(new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+                        } catch (Throwable ignored) {
+                        }
+                        break;
+                    case 3:
+                        try {
+                            Intent launch = getParentActivity().getPackageManager().getLaunchIntentForPackage("moe.shizuku.privileged.api");
+                            if (launch != null && getParentActivity() != null) getParentActivity().startActivity(launch);
+                            else toastPermissionPath();
+                        } catch (Throwable ignored) {
+                        }
+                        break;
+                    case 4:
+                        try {
+                            android.app.admin.DevicePolicyManager dpm = (android.app.admin.DevicePolicyManager)
+                                    getParentActivity().getSystemService(Context.DEVICE_POLICY_SERVICE);
+                            android.content.ComponentName cn = new android.content.ComponentName(
+                                    getParentActivity(), org.telegram.ox.OxDeviceAdminReceiver.class);
+                            if (dpm != null && !dpm.isAdminActive(cn)) {
+                                Intent admin = new Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+                                admin.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, cn);
+                                if (getParentActivity() != null) getParentActivity().startActivity(admin);
+                            }
+                        } catch (Throwable ignored) {
+                        }
+                        break;
+                    case 5:
+                        toast(LocaleController.getString(R.string.OxObPermRootHint));
+                        break;
                 }
-            } catch (Throwable ignored) {
-            }
-        });
-        addPermRow(context, LocaleController.getString(R.string.OxObPermRoot), rootStatus(), this::toastPermissionPath);
+            });
+            permList.addView(row);
+        }
+        permSummary.setText(LocaleController.formatString("OxObPermCount", R.string.OxObPermCount, granted, total));
+        permSummary.setTextColor(granted == total ? 0xff34C759 : getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
     }
 
-    private void addPermRow(Context context, String name, String[] status, Runnable onTap) {
-        // status = {text, granted(0/1), detected(0/1)}
+    private View permRow(Context context, String name, String[] status, boolean animate, Runnable onTap) {
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setBackground(Theme.getSelectorDrawable(false));
-        row.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(12), AndroidUtilities.dp(4), AndroidUtilities.dp(12));
+        row.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(11), AndroidUtilities.dp(4), AndroidUtilities.dp(11));
 
+        boolean granted = "1".equals(status[1]);
+        boolean detected = "1".equals(status[2]);
+        TextView statusIcon = new TextView(context);
+        statusIcon.setGravity(Gravity.CENTER);
+        statusIcon.setTextSize(13);
+        statusIcon.setTypeface(AndroidUtilities.bold());
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        if (granted) {
+            circle.setColor(0xff34C759);
+            statusIcon.setTextColor(0xffffffff);
+            statusIcon.setText("✓");
+        } else if (detected) {
+            circle.setColor(0x00000000);
+            circle.setStroke(AndroidUtilities.dp(1.5f), getThemedColor(Theme.key_windowBackgroundWhiteHintText));
+            statusIcon.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+            statusIcon.setText("·");
+        } else {
+            circle.setColor(getThemedColor(Theme.key_windowBackgroundGray));
+            statusIcon.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteHintText));
+            statusIcon.setText("–");
+        }
+        statusIcon.setBackground(circle);
+        row.addView(statusIcon, LayoutHelper.createLinear(24, 24, Gravity.CENTER_VERTICAL));
+
+        LinearLayout text = new LinearLayout(context);
+        text.setOrientation(LinearLayout.VERTICAL);
+        text.setPadding(AndroidUtilities.dp(12), 0, AndroidUtilities.dp(8), 0);
         TextView title = new TextView(context);
         title.setText(name);
         title.setTextSize(15);
         title.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
-        row.addView(title, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
-
+        text.addView(title);
         TextView st = new TextView(context);
         st.setText(status[0]);
         st.setTextSize(13);
-        st.setTypeface(AndroidUtilities.bold());
-        int color = "1".equals(status[1]) ? 0xff34c759
-                : ("1".equals(status[2]) ? getThemedColor(Theme.key_windowBackgroundWhiteGrayText) : 0xff9e9e9e);
-        st.setTextColor(color);
-        row.addView(st);
+        st.setTextColor(granted ? 0xff34C759 : getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        text.addView(st);
+        row.addView(text, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+
+        TextView chevron = new TextView(context);
+        chevron.setText("›");
+        chevron.setTextSize(20);
+        chevron.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        chevron.setVisibility(granted ? View.INVISIBLE : View.VISIBLE);
+        row.addView(chevron, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL));
 
         row.setOnClickListener(v -> {
-            if ("1".equals(status[1])) {
-                Toast toast = Toast.makeText(getParentActivity(), LocaleController.getString(R.string.OxObPermGranted), Toast.LENGTH_SHORT);
-                toast.show();
+            if (granted) {
+                Toast.makeText(getParentActivity(), LocaleController.getString(R.string.OxObPermGranted), Toast.LENGTH_SHORT).show();
             } else {
                 onTap.run();
             }
         });
-        permList.addView(row);
+        if (animate) {
+            statusIcon.setScaleX(0.6f);
+            statusIcon.setScaleY(0.6f);
+            statusIcon.animate().scaleX(1f).scaleY(1f).setDuration(220)
+                    .setInterpolator(new OvershootInterpolator()).start();
+        }
+        return row;
     }
 
     private String[] normalPermStatus() {
@@ -515,8 +922,8 @@ public class OxOnboardingActivity extends BaseFragment {
             boolean adb = Settings.Global.getInt(getParentActivity().getContentResolver(), Settings.Global.ADB_ENABLED, 0) == 1;
             String wifi = Settings.Global.getString(getParentActivity().getContentResolver(), "adb_wifi_enabled");
             boolean wireless = "1".equals(wifi);
-            if (wireless) return new String[]{"Wi-Fi ADB · " + LocaleController.getString(R.string.OxObPermGranted), "1", "1"};
-            if (adb) return new String[]{"USB ADB · " + LocaleController.getString(R.string.OxObPermGranted), "1", "1"};
+            if (wireless) return new String[]{LocaleController.getString(R.string.OxObPermAdbWifi), "1", "1"};
+            if (adb) return new String[]{LocaleController.getString(R.string.OxObPermAdbUsb), "1", "1"};
             return new String[]{LocaleController.getString(R.string.OxObPermEnableInSystem), "0", "1"};
         } catch (Throwable t) {
             return new String[]{LocaleController.getString(R.string.OxObPermNotDetected), "0", "0"};
@@ -526,7 +933,7 @@ public class OxOnboardingActivity extends BaseFragment {
     private String[] shizukuStatus() {
         try {
             getParentActivity().getPackageManager().getPackageInfo("moe.shizuku.privileged.api", 0);
-            return new String[]{LocaleController.getString(R.string.OxObPermMissing), "0", "1"};
+            return new String[]{LocaleController.getString(R.string.OxObPermInstalled), "0", "1"};
         } catch (Throwable t) {
             return new String[]{LocaleController.getString(R.string.OxObPermNotInstalled), "0", "0"};
         }
@@ -547,7 +954,7 @@ public class OxOnboardingActivity extends BaseFragment {
     private String[] rootStatus() {
         String[] paths = {"/system/bin/su", "/system/xbin/su", "/sbin/su", "/su/bin/su", "/magisk/.core/bin/su"};
         for (String p : paths) {
-            if (new File(p).exists()) return new String[]{LocaleController.getString(R.string.OxObPermGranted), "1", "1"};
+            if (new File(p).exists()) return new String[]{LocaleController.getString(R.string.OxObPermDetected), "1", "1"};
         }
         return new String[]{LocaleController.getString(R.string.OxObPermNotDetected), "0", "0"};
     }
@@ -567,47 +974,196 @@ public class OxOnboardingActivity extends BaseFragment {
         }
     }
 
+    // ---------------- container ----------------
+
+    private boolean componentOn(String key) {
+        return ("," + OxMode.getContainerComponents() + ",").contains("," + key + ",");
+    }
+
+    private void setComponent(String key, boolean on) {
+        List<String> list = new ArrayList<>();
+        for (String p : OxMode.getContainerComponents().split(",")) {
+            if (!p.isEmpty() && !p.equals(key)) list.add(p);
+        }
+        if (on) list.add(key);
+        OxMode.setContainerComponents(String.join(",", list));
+    }
+
+    private void updateContainerState() {
+        if (containerSwitch == null) return;
+        boolean on = OxMode.isContainerEnabled();
+        if (containerSwitch.isChecked() != on) {
+            updatingContainerSwitch = true;
+            containerSwitch.setChecked(on, true);
+            updatingContainerSwitch = false;
+        }
+        if (containerNote != null) {
+            containerNote.setAlpha(on ? 1f : 0.65f);
+        }
+    }
+
+    private void updateAgentSummary() {
+        if (agentSummary == null) return;
+        int total = OxAgentStore.listAgents().size();
+        int builtIn = 0;
+        for (OxAgent a : OxAgentStore.listAgents()) {
+            if (a.builtIn) builtIn++;
+        }
+        agentSummary.setText(LocaleController.formatString("OxObAgentConfigured", R.string.OxObAgentConfigured, total, builtIn));
+    }
+
     // ---------------- chrome ----------------
+
+    private void animatePageIn(View page) {
+        if (page == null) return;
+        page.setAlpha(0.55f);
+        page.setTranslationY(AndroidUtilities.dp(10));
+        page.animate().alpha(1f).translationY(0f).setDuration(220)
+                .setInterpolator(CubicBezierInterpolator.EASE_OUT).start();
+    }
 
     private void updateChrome(int position) {
         if (stepText == null) return;
         boolean last = position == PAGES - 1;
-        int left = PAGES - position;
-        stepText.setText(last
+        String text = last
                 ? LocaleController.formatString("OxObStepLast", R.string.OxObStepLast, position + 1, PAGES)
-                : LocaleController.formatString("OxObStep", R.string.OxObStep, position + 1, PAGES, left - 1));
-        nextButton.setText(LocaleController.getString(position == PAGES - 1 ? R.string.OxObStart : R.string.OxObNext));
-        skipButton.setText(position == IDX_LOGIN ? "" : LocaleController.getString(R.string.OxObSkip));
-        skipButton.setVisibility(position == IDX_LOGIN || last ? View.GONE : View.VISIBLE);
-        skipHint.setText(LocaleController.getString(R.string.OxObSkipHint));
+                : LocaleController.formatString("OxObStep", R.string.OxObStep, position + 1, PAGES, PAGES - position - 1);
+        if (!text.contentEquals(stepText.getText())) {
+            stepText.animate().cancel();
+            stepText.animate().alpha(0f).setDuration(70).withEndAction(() -> {
+                stepText.setText(text);
+                stepText.animate().alpha(1f).setDuration(130).start();
+            }).start();
+        }
+        boolean skippable = position >= IDX_AGENT;
+        skipStepButton.setVisibility(skippable ? View.VISIBLE : View.INVISIBLE);
+        hintText.setText(LocaleController.getString(R.string.OxObSkipHint));
+        if (last) {
+            nextButton.setText(LocaleController.getString(selectedMode == MODE_LOGIN ? R.string.OxObStartLogin : R.string.OxObStart));
+        } else {
+            nextButton.setText(LocaleController.getString(R.string.OxObNext));
+        }
+        updateNextState();
         if (position == IDX_PERM) rebuildPermissions();
-        if (actionBar != null) {
-            actionBar.setBackButtonImage(R.drawable.ic_ab_back);
+    }
+
+    private boolean nextEnabled() {
+        return viewPager.getCurrentItem() != IDX_LEGAL || legalAccepted;
+    }
+
+    private void updateNextState() {
+        if (nextButton == null) return;
+        boolean enabled = nextEnabled();
+        nextButton.setAlpha(enabled ? 1f : 0.45f);
+        if (viewPager != null && viewPager.getCurrentItem() == PAGES - 1) {
+            nextButton.setText(LocaleController.getString(selectedMode == MODE_LOGIN ? R.string.OxObStartLogin : R.string.OxObStart));
         }
     }
 
     private void onNext() {
+        if (!nextEnabled()) {
+            if (modeWarning != null) {
+                // shake the consent page's primary action: clear affordance, no silent failure
+                nextButton.animate().translationX(AndroidUtilities.dp(6)).setDuration(60)
+                        .withEndAction(() -> nextButton.animate().translationX(-AndroidUtilities.dp(6)).setDuration(60)
+                                .withEndAction(() -> nextButton.animate().translationX(0).setDuration(60).start()).start()).start();
+            }
+            toast(LocaleController.getString(R.string.OxObLegalRequired));
+            return;
+        }
         int cur = viewPager.getCurrentItem();
         if (cur < PAGES - 1) {
             viewPager.setCurrentItem(cur + 1, true);
         } else {
-            finishOnboarding(choseLogin);
+            finishOnboarding();
         }
     }
 
-    private void finishOnboarding(boolean goLogin) {
+    // ---------------- finish / exit ----------------
+
+    private void finishOnboarding() {
         if (finished) return;
+        int current = OxMode.isAgentOnly() ? MODE_OX : (UserConfig.getInstance(0).isClientActivated() ? MODE_LOGIN : MODE_OX);
+        if (wasDone) {
+            if (selectedMode == current) {
+                finished = true;
+                finishFragment();
+            } else {
+                confirmModeSwitch();
+            }
+            return;
+        }
         finished = true;
         OxMode.setOnboardingDone(true);
-        if (goLogin) {
+        OxMode.setOnboardingMode(selectedMode);
+        if (selectedMode == MODE_LOGIN) {
             presentFragment(new LoginActivity(), true);
         } else {
             OxMode.setAgentOnly(true);
             try {
-                org.telegram.ox.OxAgentsBridge.ensureLocalAccount();
+                OxAgentsBridge.ensureLocalAccount();
             } catch (Throwable ignored) {
             }
-            presentFragment(new DialogsActivity(null), true);
+            presentFragment(new MainTabsActivity(), true);
         }
+    }
+
+    private void confirmModeSwitch() {
+        if (getParentActivity() == null) return;
+        boolean toLogin = selectedMode == MODE_LOGIN;
+        AlertDialog.Builder b = new AlertDialog.Builder(getParentActivity());
+        b.setTitle(LocaleController.getString(R.string.OxObSwitchTitle));
+        b.setMessage(LocaleController.getString(toLogin ? R.string.OxObSwitchWarnLogin : R.string.OxObSwitchWarnOx));
+        b.setPositiveButton(LocaleController.getString(toLogin ? R.string.OxObSwitchLogin : R.string.OxObSwitchOx), (d, w) -> {
+            finished = true;
+            OxMode.setOnboardingDone(true);
+            OxMode.setOnboardingMode(selectedMode);
+            if (toLogin) {
+                OxMode.setPendingMode(OxMode.PENDING_LOGIN);
+                OxAgentsBridge.exitAgentOnly();
+            } else {
+                OxMode.setPendingMode(OxMode.PENDING_OX);
+                MessagesController.getInstance(0).performLogout(0);
+            }
+        });
+        b.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+        AlertDialog dialog = b.show();
+        View positive = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        if (positive instanceof TextView) {
+            ((TextView) positive).setTextColor(getThemedColor(Theme.key_text_RedRegular));
+        }
+    }
+
+    private void confirmExit() {
+        if (getParentActivity() == null) return;
+        if (wasDone) {
+            finishFragment();
+            return;
+        }
+        AlertDialog.Builder b = new AlertDialog.Builder(getParentActivity());
+        b.setTitle(LocaleController.getString(R.string.OxObExitTitle));
+        b.setMessage(LocaleController.getString(R.string.OxObExitText));
+        b.setPositiveButton(LocaleController.getString(R.string.OxObExitConfirm), (d, w) -> {
+            if (finished) return;
+            finished = true;
+            OxMode.setOnboardingDone(true);
+            OxMode.setOnboardingMode(MODE_OX);
+            OxMode.setAgentOnly(true);
+            try {
+                OxAgentsBridge.ensureLocalAccount();
+            } catch (Throwable ignored) {
+            }
+            presentFragment(new MainTabsActivity(), true);
+        });
+        b.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+        b.show();
+    }
+
+    /** Opens the guide at a specific step (used by Ox Settings > container). */
+    public OxOnboardingActivity setStartPage(int page) {
+        android.os.Bundle b = new android.os.Bundle();
+        b.putInt("start_page", page);
+        arguments = b;
+        return this;
     }
 }

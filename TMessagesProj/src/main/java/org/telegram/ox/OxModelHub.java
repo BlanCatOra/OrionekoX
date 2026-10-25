@@ -95,6 +95,7 @@ public class OxModelHub {
                     conn.setRequestProperty("Authorization", "Bearer " + agent.apiKey);
                 }
                 conn.setRequestProperty("Accept", "text/event-stream");
+                applyHeaders(conn, agent);
                 conn.setConnectTimeout(30_000);
                 conn.setReadTimeout(120_000);
                 conn.setDoOutput(true);
@@ -216,5 +217,74 @@ public class OxModelHub {
         } catch (Exception e) {
             return "";
         }
+    }
+
+    /** Applies user-defined headers last, so they can override Authorization if needed. */
+    private static void applyHeaders(HttpURLConnection conn, OxAgent agent) {
+        if (agent == null || agent.headers == null) return;
+        for (int i = 0; i < agent.headers.length(); i++) {
+            JSONArray pair = agent.headers.optJSONArray(i);
+            if (pair == null || pair.length() < 2) continue;
+            String name = pair.optString(0, "").trim();
+            String value = pair.optString(1, "");
+            if (name.isEmpty() || name.contains("\r") || name.contains("\n")
+                    || value.contains("\r") || value.contains("\n")) {
+                continue;
+            }
+            try {
+                conn.setRequestProperty(name, value);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    public interface TestCallback {
+        void onResult(boolean ok, String message);
+    }
+
+    /** One tiny non-streaming round-trip used by the editor's "Test connection" row. */
+    public static void test(final OxAgent agent, final TestCallback cb) {
+        if (agent == null || agent.baseUrl == null || agent.baseUrl.trim().isEmpty()) {
+            MAIN.post(() -> cb.onResult(false, "Base URL is empty"));
+            return;
+        }
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            try {
+                JSONObject body = new JSONObject();
+                body.put("model", agent.model == null ? "" : agent.model);
+                body.put("max_tokens", 8);
+                body.put("stream", false);
+                JSONArray messages = new JSONArray();
+                messages.put(new JSONObject().put("role", "user").put("content", "Reply with OK."));
+                body.put("messages", messages);
+
+                String url = agent.baseUrl.replaceAll("/+$", "") + "/chat/completions";
+                conn = (HttpURLConnection) new URL(url).openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                if (agent.apiKey != null && !agent.apiKey.trim().isEmpty()) {
+                    conn.setRequestProperty("Authorization", "Bearer " + agent.apiKey);
+                }
+                conn.setRequestProperty("Accept", "application/json");
+                applyHeaders(conn, agent);
+                conn.setConnectTimeout(20_000);
+                conn.setReadTimeout(30_000);
+                conn.setDoOutput(true);
+                conn.getOutputStream().write(body.toString().getBytes(StandardCharsets.UTF_8));
+
+                int code = conn.getResponseCode();
+                String resp = code == 200 ? readAll(conn.getInputStream()) : readAll(conn.getErrorStream());
+                String detail = resp.length() > 180 ? resp.substring(0, 180) : resp;
+                boolean ok = code == 200;
+                String message = "HTTP " + code + (detail.isEmpty() ? "" : " · " + detail);
+                MAIN.post(() -> cb.onResult(ok, message));
+            } catch (Exception e) {
+                String message = e.getClass().getSimpleName() + ": " + e.getMessage();
+                MAIN.post(() -> cb.onResult(false, message));
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }, "ox-model-test").start();
     }
 }

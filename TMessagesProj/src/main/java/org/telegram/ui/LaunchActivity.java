@@ -1268,6 +1268,30 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         switchingAccount = false;
     }
 
+    /**
+     * Replaces the whole main stack with a single root fragment. Used when the active mode
+     * changes (local Ox mode <-> Telegram login), so stale onboarding/settings pages can never
+     * stay underneath the new home.
+     */
+    private void resetToFragment(BaseFragment fragment) {
+        AndroidUtilities.runOnUIThread(() -> {
+            if (isFinishing() || actionBarLayout == null) {
+                return;
+            }
+            actionBarLayout.removeAllFragments();
+            actionBarLayout.addFragmentToStack(fragment, INavigationLayout.FORCE_ATTACH_VIEW_AS_FIRST);
+            actionBarLayout.rebuildFragments(INavigationLayout.REBUILD_FLAG_REBUILD_LAST);
+        });
+    }
+
+    public void resetToMain() {
+        resetToFragment(new MainTabsActivity());
+    }
+
+    public void resetToLogin() {
+        resetToFragment(new LoginActivity());
+    }
+
     private void switchToAvailableAccountOrLogout() {
         int account = -1;
         for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
@@ -1288,6 +1312,18 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             if (AndroidUtilities.isTablet()) {
                 layersActionBarLayout.rebuildLogout();
                 rightActionBarLayout.rebuildLogout();
+            }
+            int pending = org.telegram.ox.OxMode.consumePendingMode();
+            if (pending == org.telegram.ox.OxMode.PENDING_LOGIN) {
+                presentFragment(new LoginActivity(), true, false);
+                return;
+            }
+            if (pending == org.telegram.ox.OxMode.PENDING_OX) {
+                org.telegram.ox.OxMode.setAgentOnly(true);
+                ConnectionsManager.getInstance(0).setAppPaused(true, false);
+                org.telegram.ox.OxAgentsBridge.ensureLocalAccount();
+                presentFragment(new MainTabsActivity(), true, false);
+                return;
             }
             presentFragment(new IntroActivity().setOnLogout());
         }
