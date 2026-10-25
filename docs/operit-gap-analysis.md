@@ -89,3 +89,16 @@ gaps that were previously listed as "gap":
    on-device STT/TTS.
 6. **Full Operit skill execution semantics** — Operit skills can carry scripts and
    per-skill permissions; ours are documentation-only for now.
+
+
+### 0.8.22 actual test notes
+
+- Real model chat works end-to-end with the imported OpenDesign key: Yuki Waifu called
+  `remember` + `recall` and answered from memory in the native ChatActivity.
+- Container rootfs installs and reports `state=ready`, but proot cannot exec the guest
+  loader on targetSdk 36 (W^X/SELinux). A targetSdk-28 companion host or Shizuku/root is
+  required; this is the same platform wall documented for the 0.8.0 PoC.
+- TTY browser tabs, long-press agent assignment and the `TTY 2 · QA2` annotation persist
+  across session switches.
+- MCP market: DeepWiki installed and refreshed 3 tools; the Operit catalogue's 38 local
+  stdio entries are browsable/copyable but not executable without a Python/Node runtime.
