@@ -2814,7 +2814,9 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 if (wasCountryHintIndex != index) {
                     String hint = phoneFormatMap.get(code).get(index);
                     int ss = phoneField.getSelectionStart(), se = phoneField.getSelectionEnd();
-                    phoneField.setHintText(hint != null ? hint.replace('X', '0') : null);
+                    // A zero-filled country pattern looks like a real number, so deleting the last
+                    // digit appears to leave "zeros" behind. Use underscores as an obvious placeholder.
+                    phoneField.setHintText(hint != null ? hint.replaceAll("[0-9Xx]", "_") : null);
                     phoneField.setSelection(
                         Math.max(0, Math.min(phoneField.length(), ss)),
                         Math.max(0, Math.min(phoneField.length(), se))
