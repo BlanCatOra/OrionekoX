@@ -76,11 +76,12 @@ gaps that were previously listed as "gap":
 
 ### Still missing, in priority order
 
-1. **Android UI automation — done v1** — `ui_dump`, `ui_tap`, `ui_swipe`,
-   `ui_screenshot`, `ui_key`, `ui_tap_text`, `ui_find_text`, `ui_scroll_tap_text`
-   (forward/backward) are implemented through the accessibility service and
-   ask-by-default. Long-list scroll+click is verified end-to-end; the remaining
-   refinements are node caching and arbitrary key events via ADB/root.
+1. **Android UI automation — done v1** — `ui_dump`, `ui_tap`, `ui_long_press`,
+   `ui_swipe`, `ui_screenshot`, `ui_key`, `ui_tap_text`, `ui_long_press_text`,
+   `ui_find_text`, `ui_scroll_tap_text` (forward/backward) are implemented through
+   the accessibility service and ask-by-default. Long-list scroll+click and both
+   long-press variants are verified end-to-end; the remaining refinements are node
+   caching and arbitrary key events via ADB/root.
 2. **Executable ToolPkg / JS/Wasm packages** — skills are readable now; executing
    package code needs a sandbox/runtime.
 3. **Local stdio MCP runtime** — Operit's catalogue is mostly Python/Node/npx.
@@ -233,3 +234,18 @@ of a separate automation graph:
 - `OxA11y` step diagnostics (root package, collected nodes, sample labels,
   scrollable bounds, scroll result) stay in the code for future debugging.
 - Test workflows and temporary tool-policy overrides were removed afterwards.
+
+### 0.8.49–0.8.50 long press
+
+- Added `ui_long_press(x, y, duration_ms)` and `ui_long_press_text(text,
+  duration_ms)`, both gesture-based and ask-by-default. The text variant tries
+  `ACTION_LONG_CLICK` on a clickable ancestor and falls back to a coordinate
+  long-press at the label center.
+- Verified with a workflow running in the background: `ui_long_press(500,835)`
+  put the Echo row into Telegram multi-select, and
+  `ui_long_press_text("Echo Assistant")` in the agent list opened the
+  pin/edit/memory/export menu.
+- Known limitation: chat-list `DialogCell` rows are custom-drawn and expose no
+  readable text, so text-based long-press cannot target them; use `ui_dump` plus
+  `ui_long_press` coordinates there. Text long-press works on settings and agent
+  list rows.
