@@ -196,7 +196,7 @@ public class OxAgentsActivity extends BaseFragment {
         nameRow.addView(name, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
         if (agent.builtIn) {
             TextView badge = new TextView(context);
-            badge.setText("BOT");
+            badge.setText(LocaleController.getString(R.string.OxAgentBadgeLocal));
             badge.setTextSize(9);
             badge.setTypeface(AndroidUtilities.bold());
             badge.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));

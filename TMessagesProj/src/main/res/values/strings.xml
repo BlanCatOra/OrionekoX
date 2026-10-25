@@ -11901,4 +11901,5 @@
     <string name="OxToolDescUiTapText">Find visible text and click it.</string>
     <string name="OxToolDescUiFindText">Find text, scrolling if needed.</string>
     <string name="OxToolDescUiScrollTapText">Scroll until text is found, then click it.</string>
+    <string name="OxAgentBadgeLocal">LOCAL</string>
 </resources>
