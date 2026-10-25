@@ -117,3 +117,13 @@ gaps that were previously listed as "gap":
   - `ui_tap` at `540,1458` dispatched a gesture successfully.
 - All five tools are visible in `工具与权限` with ask-by-default policy and native
   setting rows.
+
+
+### 0.8.26 click-by-text
+
+- Added `ui_tap_text`: case-insensitive exact pass then contains pass, only matches
+  whose ancestor chain has a clickable node; returns the clicked label and bounds.
+- Added an `activeRoot()` fallback via `getWindows()` when
+  `getRootInActiveWindow()` is null during dialog/IME transitions.
+- Actual test: the agent clicked the chat header “🤖 Yuki Waifu” by text and the
+  native profile opened. Next refinements: scroll-until-found, node caching.
