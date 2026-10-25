@@ -2,10 +2,13 @@ package org.telegram.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.Environment;
 import android.text.InputType;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,20 +35,50 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 
 /**
- * A small local terminal. Runs /system/bin/sh as the app user (no root, no Telegram
- * connection). The shell is persistent, so cd/export survive between commands.
- * Layout follows Telegram's settings surfaces: themed colors and typography.
+ * Local terminal with several independent shells ("TTY" sessions). Each shell is
+ * persistent, starts in shared storage so ordinary commands such as ls work, and
+ * keeps its own scrollback when the user switches sessions.
  */
 @SuppressLint("ViewConstructor")
 public class OxTerminalActivity extends BaseFragment {
 
+    private static final int SESSION_COUNT = 3;
+    public static final String PREFS = "ox_terminal";
+    public static final String PREF_SCHEME = "scheme";
+    public static final String PREF_FONT_SIZE = "font_size";
+
+    private final Session[] sessions = new Session[SESSION_COUNT];
+    private int currentSession;
+    private int sessionGeneration;
+
     private TextView outputView;
     private ScrollView scrollView;
     private EditText inputField;
-    private Process shell;
-    private BufferedWriter shellIn;
-    private volatile boolean running;
-    private final StringBuilder pending = new StringBuilder();
+    private TextView statusView;
+    private TextView sessionButton;
+    private LinearLayout inputRow;
+    private TextView promptView;
+    private TextView sendView;
+
+    private int schemeBg = 0xFF0E1116;
+    private int schemeFg = 0xFFD7E0EA;
+    private int schemeAccent = 0xFF2E9E5B;
+
+    private final SharedPreferences.OnSharedPreferenceChangeListener appearanceListener =
+            (prefs, key) -> {
+                if (PREF_SCHEME.equals(key) || PREF_FONT_SIZE.equals(key)) {
+                    AndroidUtilities.runOnUIThread(this::applyAppearance);
+                }
+            };
+
+    private static class Session {
+        Process shell;
+        BufferedWriter shellIn;
+        final StringBuilder buffer = new StringBuilder();
+        boolean running;
+        int generation;
+        boolean started;
+    }
 
     public OxTerminalActivity() {
         super();
@@ -57,18 +90,36 @@ public class OxTerminalActivity extends BaseFragment {
 
     @Override
     public boolean onFragmentCreate() {
-        startShell();
+        prefs().registerOnSharedPreferenceChangeListener(appearanceListener);
+        startSession(currentSession, true);
         return super.onFragmentCreate();
     }
 
     @Override
     public void onFragmentDestroy() {
-        stopShell();
+        prefs().unregisterOnSharedPreferenceChangeListener(appearanceListener);
+        for (int i = 0; i < SESSION_COUNT; i++) {
+            stopSession(i);
+        }
         super.onFragmentDestroy();
+    }
+
+    private SharedPreferences prefs() {
+        return ApplicationLoader.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        applyAppearance();
     }
 
     @Override
     public View createView(Context context) {
+        if (getParentActivity() != null) {
+            getParentActivity().getWindow().setSoftInputMode(
+                    android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        }
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(false);
         actionBar.setTitle(LocaleController.getString(R.string.OxTerminal));
@@ -81,85 +132,83 @@ public class OxTerminalActivity extends BaseFragment {
 
         FrameLayout root = new FrameLayout(context);
         root.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
+        final boolean presented = getArguments() != null && getArguments().getBoolean("presented", false);
+        final int baseTopPadding = presented ? 0 : AndroidUtilities.statusBarHeight + AndroidUtilities.dp(56);
+        final int closedBottomPadding = presented ? AndroidUtilities.dp(8)
+                : AndroidUtilities.dp(DialogsActivity.MAIN_TABS_HEIGHT_WITH_MARGINS + 8);
 
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(AndroidUtilities.dp(12), AndroidUtilities.statusBarHeight + AndroidUtilities.dp(56),
-                AndroidUtilities.dp(12), AndroidUtilities.dp(DialogsActivity.MAIN_TABS_HEIGHT_WITH_MARGINS + 8));
+        content.setPadding(AndroidUtilities.dp(12), baseTopPadding, AndroidUtilities.dp(12), closedBottomPadding);
         root.addView(content, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            int ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime()).bottom;
+            int bottom = ime > 0 ? ime + AndroidUtilities.dp(6) : closedBottomPadding;
+            content.setPadding(AndroidUtilities.dp(12), baseTopPadding, AndroidUtilities.dp(12), bottom);
+            return insets;
+        });
+        androidx.core.view.ViewCompat.requestApplyInsets(root);
 
         LinearLayout toolbar = new LinearLayout(context);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView status = new TextView(context);
-        status.setText("app shell · /system/bin/sh");
-        status.setTextSize(12);
-        status.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
-        toolbar.addView(status, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+        statusView = new TextView(context);
+        statusView.setText("sh · " + workDir().getAbsolutePath());
+        statusView.setTextSize(11);
+        statusView.setSingleLine(true);
+        statusView.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
+        statusView.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        toolbar.addView(statusView, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
 
-        TextView clear = new TextView(context);
-        clear.setText(LocaleController.getString(R.string.OxTerminalClear));
-        clear.setTextSize(13);
-        clear.setTypeface(AndroidUtilities.bold());
-        clear.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
-        clear.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(6), AndroidUtilities.dp(10), AndroidUtilities.dp(6));
-        clear.setOnClickListener(v -> {
-            pending.setLength(0);
-            if (outputView != null) outputView.setText("");
-        });
+        sessionButton = toolbarButton(context, "TTY 1", v -> switchSession((currentSession + 1) % SESSION_COUNT));
+        toolbar.addView(sessionButton);
+        android.widget.ImageView keyboard = new android.widget.ImageView(context);
+        keyboard.setImageResource(R.drawable.ox_keyboard_24);
+        keyboard.setColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        keyboard.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(6), AndroidUtilities.dp(8), AndroidUtilities.dp(6));
+        keyboard.setContentDescription(LocaleController.getString(R.string.OxTerminalKeyboard));
+        keyboard.setOnClickListener(v -> toggleKeyboard());
+        toolbar.addView(keyboard, LayoutHelper.createLinear(40, 34));
+        TextView clear = toolbarButton(context, LocaleController.getString(R.string.OxTerminalClear), v -> clearCurrentSession());
         toolbar.addView(clear);
-
-        TextView restart = new TextView(context);
-        restart.setText(LocaleController.getString(R.string.OxTerminalRestart));
-        restart.setTextSize(13);
-        restart.setTypeface(AndroidUtilities.bold());
-        restart.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
-        restart.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(6), AndroidUtilities.dp(10), AndroidUtilities.dp(6));
-        restart.setOnClickListener(v -> {
-            stopShell();
-            startShell();
-        });
+        TextView restart = toolbarButton(context, LocaleController.getString(R.string.OxTerminalRestart), v -> restartCurrentSession());
         toolbar.addView(restart);
         content.addView(toolbar, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         scrollView = new ScrollView(context);
         scrollView.setFillViewport(true);
-        GradientDrawable panel = new GradientDrawable();
-        panel.setColor(0xFF0E1116);
-        panel.setCornerRadius(AndroidUtilities.dp(12));
-        scrollView.setBackground(panel);
 
         outputView = new TextView(context);
-        outputView.setTextSize(12);
         outputView.setTypeface(Typeface.MONOSPACE);
-        outputView.setTextColor(0xFFD7E0EA);
         outputView.setTextIsSelectable(true);
         outputView.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10), AndroidUtilities.dp(12), AndroidUtilities.dp(10));
-        outputView.setText("Ox Terminal\n" + "----------------\n");
         scrollView.addView(outputView, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        scrollView.setOnTouchListener((v, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_DOWN && inputField != null && isImeVisible()) {
+                AndroidUtilities.hideKeyboard(inputField);
+                inputField.clearFocus();
+            }
+            return false;
+        });
         content.addView(scrollView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 0, 1f, 0, 6, 0, 6));
 
-        LinearLayout inputRow = new LinearLayout(context);
+        inputRow = new LinearLayout(context);
         inputRow.setOrientation(LinearLayout.HORIZONTAL);
         inputRow.setGravity(Gravity.CENTER_VERTICAL);
-        inputRow.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
 
-        TextView prompt = new TextView(context);
-        prompt.setText("❯");
-        prompt.setTextSize(18);
-        prompt.setTextColor(0xFF2E9E5B);
-        prompt.setPadding(AndroidUtilities.dp(10), 0, AndroidUtilities.dp(6), 0);
-        inputRow.addView(prompt);
+        promptView = new TextView(context);
+        promptView.setText("❯");
+        promptView.setTextSize(18);
+        promptView.setPadding(AndroidUtilities.dp(10), 0, AndroidUtilities.dp(6), 0);
+        inputRow.addView(promptView);
 
         inputField = new EditText(context);
         inputField.setHint(LocaleController.getString(R.string.OxTerminalHint));
-        inputField.setHintTextColor(getThemedColor(Theme.key_windowBackgroundWhiteHintText));
-        inputField.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
         inputField.setTextSize(14);
         inputField.setTypeface(Typeface.MONOSPACE);
         inputField.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        inputField.setImeOptions(EditorInfo.IME_ACTION_SEND);
+        inputField.setImeOptions(EditorInfo.IME_ACTION_SEND | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
         inputField.setSingleLine(true);
         inputField.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEND) {
@@ -170,22 +219,133 @@ public class OxTerminalActivity extends BaseFragment {
         });
         inputRow.addView(inputField, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
 
-        TextView send = new TextView(context);
-        send.setText("➤");
-        send.setTextSize(20);
-        send.setTextColor(0xFF2AABEE);
-        send.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(8), AndroidUtilities.dp(12), AndroidUtilities.dp(8));
-        send.setOnClickListener(v -> sendCommand());
-        inputRow.addView(send);
+        sendView = new TextView(context);
+        sendView.setText("➤");
+        sendView.setTextSize(20);
+        sendView.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(8), AndroidUtilities.dp(12), AndroidUtilities.dp(8));
+        sendView.setOnClickListener(v -> sendCommand());
+        inputRow.addView(sendView);
+
+        android.widget.ImageView keyboardInline = new android.widget.ImageView(context);
+        keyboardInline.setImageResource(R.drawable.ox_keyboard_24);
+        keyboardInline.setColorFilter(schemeAccent);
+        keyboardInline.setPadding(AndroidUtilities.dp(9), AndroidUtilities.dp(9), AndroidUtilities.dp(9), AndroidUtilities.dp(9));
+        keyboardInline.setContentDescription(LocaleController.getString(R.string.OxTerminalKeyboard));
+        keyboardInline.setOnClickListener(v -> toggleKeyboard());
+        inputRow.addView(keyboardInline, LayoutHelper.createLinear(42, 42, Gravity.CENTER_VERTICAL));
 
         content.addView(inputRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         fragmentView = root;
+        applyAppearance();
+        refreshOutputFromSession();
         return root;
     }
 
-    private void append(final String text) {
+    private TextView toolbarButton(Context context, String text, View.OnClickListener listener) {
+        TextView button = new TextView(context);
+        button.setText(text);
+        button.setTextSize(12);
+        button.setTypeface(AndroidUtilities.bold());
+        button.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        button.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(6), AndroidUtilities.dp(8), AndroidUtilities.dp(6));
+        button.setOnClickListener(listener);
+        return button;
+    }
+
+    private void applyAppearance() {
+        SharedPreferences prefs = ApplicationLoader.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        int scheme = prefs.getInt(PREF_SCHEME, 0);
+        int fontSize = prefs.getInt(PREF_FONT_SIZE, 14);
+        switch (scheme) {
+            case 1: schemeBg = 0xFF000000; schemeFg = 0xFFF2F2F2; schemeAccent = 0xFF4CD964; break;
+            case 2: schemeBg = 0xFF120D00; schemeFg = 0xFFFFB000; schemeAccent = 0xFFFFC94D; break;
+            case 3: schemeBg = 0xFFF7F4EE; schemeFg = 0xFF1F2328; schemeAccent = 0xFF1A73E8; break;
+            case 4: schemeBg = 0xFF2C001E; schemeFg = 0xFFF2EAF0; schemeAccent = 0xFFE95420; break;
+            default: schemeBg = 0xFF0E1116; schemeFg = 0xFFD7E0EA; schemeAccent = 0xFF2E9E5B; break;
+        }
+        if (scrollView != null) {
+            GradientDrawable panel = new GradientDrawable();
+            panel.setColor(schemeBg);
+            panel.setCornerRadius(AndroidUtilities.dp(12));
+            scrollView.setBackground(panel);
+        }
+        if (outputView != null) {
+            outputView.setTextColor(schemeFg);
+            outputView.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
+        }
+        if (inputRow != null) {
+            inputRow.setBackgroundColor(schemeBg);
+        }
+        if (inputField != null) {
+            inputField.setTextColor(schemeFg);
+            inputField.setHintTextColor((schemeFg & 0x00FFFFFF) | 0x66000000);
+            inputField.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
+        }
+        if (promptView != null) {
+            promptView.setTextColor(schemeAccent);
+        }
+        if (sendView != null) {
+            sendView.setTextColor(schemeAccent);
+        }
+    }
+
+    private boolean isImeVisible() {
+        try {
+            androidx.core.view.WindowInsetsCompat insets =
+                    androidx.core.view.ViewCompat.getRootWindowInsets(fragmentView);
+            return insets != null && insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime());
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private void toggleKeyboard() {
+        if (inputField == null) return;
+        if (inputField.hasFocus() || isImeVisible()) {
+            AndroidUtilities.hideKeyboard(inputField);
+            inputField.clearFocus();
+        } else {
+            inputField.requestFocus();
+            AndroidUtilities.showKeyboard(inputField);
+        }
+    }
+
+    private File workDir() {
+        try {
+            File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            if (downloads != null && downloads.isDirectory() && downloads.listFiles() != null) {
+                return downloads;
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            File external = ApplicationLoader.applicationContext.getExternalFilesDir(null);
+            if (external != null) {
+                external.mkdirs();
+                return external;
+            }
+        } catch (Throwable ignored) {
+        }
+        File files = ApplicationLoader.applicationContext.getFilesDir();
+        files.mkdirs();
+        return files;
+    }
+
+    private void appendToSession(int index, String text) {
+        Session session = sessions[index];
+        if (session == null) return;
+        synchronized (session.buffer) {
+            session.buffer.append(text);
+        }
+        if (index == currentSession) {
+            appendToView(text);
+        }
+    }
+
+    private void appendToView(String text) {
         if (outputView == null) return;
         AndroidUtilities.runOnUIThread(() -> {
+            if (outputView == null) return;
             outputView.append(text);
             if (scrollView != null) {
                 scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
@@ -199,73 +359,156 @@ public class OxTerminalActivity extends BaseFragment {
         if (cmd.isEmpty()) return;
         inputField.setText("");
         if ("clear".equals(cmd)) {
-            pending.setLength(0);
-            if (outputView != null) outputView.setText("");
+            clearCurrentSession();
             return;
         }
-        append("❯ " + cmd + "\n");
-        if (!running || shellIn == null) {
-            append("shell 未运行，请点击重启。\n");
+        if ("help".equals(cmd)) {
+            appendToSession(currentSession, LocaleController.getString(R.string.OxTerminalHelp) + "\n");
+            return;
+        }
+        Session session = sessions[currentSession];
+        if (session == null || !session.running || session.shellIn == null) {
+            startSession(currentSession, false);
+            session = sessions[currentSession];
+        }
+        appendToSession(currentSession, "❯ " + cmd + "\n");
+        if (session == null || !session.running || session.shellIn == null) {
+            appendToSession(currentSession, "shell 未运行，请点击重启。\n");
             return;
         }
         try {
-            shellIn.write(cmd);
-            shellIn.write("\n");
-            shellIn.flush();
+            session.shellIn.write(cmd);
+            session.shellIn.write("\n");
+            session.shellIn.flush();
         } catch (Throwable t) {
-            append("写入失败: " + t.getMessage() + "\n");
+            appendToSession(currentSession, "写入失败: " + t.getMessage() + "\n");
         }
     }
 
-    private void startShell() {
-        if (running) return;
-        running = true;
+    private void startSession(int index, boolean clearBuffer) {
+        Session session = sessions[index];
+        if (session == null) {
+            session = new Session();
+            sessions[index] = session;
+        }
+        stopSession(index);
+        synchronized (session.buffer) {
+            if (clearBuffer || session.buffer.length() == 0) {
+                session.buffer.setLength(0);
+            }
+        }
+        final int generation = ++sessionGeneration;
+        session.generation = generation;
+        session.started = true;
         try {
-            File work = new File(ApplicationLoader.applicationContext.getFilesDir(), "oxterm");
-            work.mkdirs();
+            File work = workDir();
             ProcessBuilder pb = new ProcessBuilder("/system/bin/sh");
             pb.redirectErrorStream(true);
             pb.directory(work);
-            shell = pb.start();
-            shellIn = new BufferedWriter(new OutputStreamWriter(shell.getOutputStream()));
-            final BufferedReader reader = new BufferedReader(new InputStreamReader(shell.getInputStream()));
-            Thread t = new Thread(() -> {
-                try {
+            pb.environment().put("PATH", "/system/bin:/system/xbin:/vendor/bin");
+            pb.environment().put("HOME", work.getAbsolutePath());
+            pb.environment().put("PWD", work.getAbsolutePath());
+            pb.environment().put("TERM", "xterm-256color");
+            Process process = pb.start();
+            session.shell = process;
+            session.shellIn = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+            session.running = true;
+            final Session readSession = session;
+            Thread readerThread = new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
-                        append(line + "\n");
+                        if (readSession.generation != generation) return;
+                        appendToSession(index, line + "\n");
                     }
                 } catch (Throwable ignored) {
                 }
-                if (running) {
-                    append("[shell 已退出]\n");
+                if (readSession.generation == generation) {
+                    readSession.running = false;
+                    appendToSession(index, "[shell 已退出]\n");
                 }
-            }, "ox-terminal-reader");
-            t.setDaemon(true);
-            t.start();
-            append("工作目录: " + work.getAbsolutePath() + "\n");
+            }, "ox-terminal-" + index);
+            readerThread.setDaemon(true);
+            readerThread.start();
+            if (clearBuffer) {
+                appendToSession(index, "Ox Terminal · TTY " + (index + 1) + "\n");
+                appendToSession(index, "工作目录: " + work.getAbsolutePath() + "\n");
+                appendToSession(index, "输入 help 查看常用命令，⌨ 可收起键盘。\n\n");
+            }
             try {
-                shellIn.write("id\n");
-                shellIn.flush();
+                session.shellIn.write("pwd\n");
+                session.shellIn.flush();
             } catch (Throwable ignored) {
             }
+            if (index == currentSession) {
+                AndroidUtilities.runOnUIThread(this::refreshOutputFromSession);
+            }
         } catch (Throwable t) {
-            running = false;
-            append("无法启动 shell: " + t.getMessage() + "\n");
+            session.running = false;
+            appendToSession(index, "无法启动 shell: " + t.getMessage() + "\n");
         }
     }
 
-    private void stopShell() {
-        running = false;
+    private void stopSession(int index) {
+        Session session = sessions[index];
+        if (session == null) return;
+        session.generation = -1;
+        session.running = false;
         try {
-            if (shellIn != null) shellIn.close();
+            if (session.shellIn != null) session.shellIn.close();
         } catch (Throwable ignored) {
         }
         try {
-            if (shell != null) shell.destroy();
+            if (session.shell != null) session.shell.destroy();
         } catch (Throwable ignored) {
         }
-        shell = null;
-        shellIn = null;
+        session.shell = null;
+        session.shellIn = null;
+    }
+
+    private void clearCurrentSession() {
+        Session session = sessions[currentSession];
+        if (session != null) {
+            synchronized (session.buffer) {
+                session.buffer.setLength(0);
+            }
+        }
+        if (outputView != null) outputView.setText("");
+        if (sessionButton != null) {
+            sessionButton.setText("TTY " + (currentSession + 1));
+        }
+    }
+
+    private void restartCurrentSession() {
+        if (outputView != null) outputView.setText("");
+        startSession(currentSession, true);
+    }
+
+    private void switchSession(int index) {
+        if (index == currentSession) return;
+        currentSession = index;
+        if (outputView != null) outputView.setText("");
+        if (inputField != null) inputField.setText("");
+        if (sessionButton != null) sessionButton.setText("TTY " + (index + 1));
+        Session session = sessions[index];
+        if (session == null || !session.started) {
+            startSession(index, true);
+        } else {
+            if (!session.running) startSession(index, false);
+            refreshOutputFromSession();
+        }
+    }
+
+    private void refreshOutputFromSession() {
+        Session session = sessions[currentSession];
+        if (session == null || outputView == null) return;
+        String text;
+        synchronized (session.buffer) {
+            text = session.buffer.toString();
+        }
+        outputView.setText(text);
+        if (scrollView != null) {
+            scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
+        }
     }
 }

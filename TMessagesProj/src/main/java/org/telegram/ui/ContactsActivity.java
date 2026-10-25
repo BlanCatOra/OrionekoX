@@ -193,6 +193,7 @@ public class ContactsActivity extends BaseFragment implements FactorAnimator.Tar
 
     private final static int search_button = 0;
     private final static int sort_button = 1;
+    private final static int agent_button = 2;
 
     private final static int delete = 100;
 
@@ -337,6 +338,8 @@ public class ContactsActivity extends BaseFragment implements FactorAnimator.Tar
                     sortByName = SharedConfig.sortContactsByName;
                     listViewAdapter.setSortType(sortByName ? 1 : 2, false);
                     sortItem.setIcon(sortByName ? R.drawable.msg_contacts_time : R.drawable.msg_contacts_name);
+                } else if (id == agent_button) {
+                    presentFragment(new OxAgentsActivity());
                 } else if (id == search_button) {
                     listView.smoothScrollToPosition(0);
 //                    animatorSearchFieldVisible.setValue(true, true);
@@ -406,6 +409,10 @@ public class ContactsActivity extends BaseFragment implements FactorAnimator.Tar
         if (!createSecretChat && !returnAsResult) {
             sortItem = menu.addItem(sort_button, sortByName ? R.drawable.msg_contacts_time : R.drawable.msg_contacts_name);
             sortItem.setContentDescription(getString(R.string.AccDescrContactSorting));
+            if (hasMainTabs) {
+                ActionBarMenuItem agentsItem = menu.addItem(agent_button, R.drawable.filled_bot_approve_24);
+                agentsItem.setContentDescription(LocaleController.getString(R.string.OxAgents));
+            }
         }
 
         listView = new RecyclerListView(context);

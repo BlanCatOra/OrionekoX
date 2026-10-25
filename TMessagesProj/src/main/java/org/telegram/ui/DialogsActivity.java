@@ -3513,11 +3513,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             } else {
                 statusDrawable = new AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable(null, dp(26));
                 statusDrawable.center = true;
-                logoDrawable = context.getResources().getDrawable(R.drawable.telegram_logo_2).mutate();
-                logoDrawable.setBounds(0, dp(2), logoDrawable.getIntrinsicWidth(), dp(2) + logoDrawable.getIntrinsicHeight());
-                logoDrawable.setColorFilter(getThemedColor(Theme.key_telegram_color_dialogsLogo), PorterDuff.Mode.MULTIPLY);
                 SpannableStringBuilder ssb = new SpannableStringBuilder("OrionekoX");
-                ssb.setSpan(new ImageSpan(logoDrawable), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                ssb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 actionBar.setTitle(ssb, statusDrawable);
                 updateStatus(UserConfig.getInstance(currentAccount).getCurrentUser(), false);
             }
@@ -13860,14 +13857,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 presentFragment(new ChatActivity(args));
             });
         }
-        // OrionekoX: local agents entry in the drawer
-        io.add(R.drawable.filled_bot_approve_24, getString(R.string.OxAgents), () -> {
-            presentFragment(new OxAgentsActivity());
-        });
-        // OrionekoX: remote MCP servers (Operit/Operit2 plugin ecosystem transport)
-        io.add(R.drawable.filled_bot_approve_24, getString(R.string.OxMcp), () -> {
-            presentFragment(new OxMcpActivity());
-        });
+        // Agents now live on the Contacts tab; MCP servers live in Ox Settings.
         if (oxAgentOnly) {
             io.add(R.drawable.outline_add_account, getString(R.string.OxLoginTelegram), () -> confirmExitAgentOnly());
         }

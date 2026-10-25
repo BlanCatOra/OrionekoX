@@ -271,7 +271,7 @@ public class OxAgentProfileActivity extends BaseFragment {
         providerGroup.addView(providerRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         providerGroup.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentEndpointLabel)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        baseUrlCell = addEditCell(context, providerGroup, "Base URL", agent.baseUrl, false, true);
+        baseUrlCell = addEditCell(context, providerGroup, LocaleController.getString(R.string.OxAgentEndpointLabel), agent.baseUrl, false, true);
         baseUrlCell.editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         baseUrlCell.editText.setTextSize(15);
 
@@ -333,7 +333,7 @@ public class OxAgentProfileActivity extends BaseFragment {
         LinearLayout advancedHeaderCard = section(context);
         TextSettingsCell advancedToggle = new TextSettingsCell(context);
         advancedToggle.setTextAndValue(LocaleController.getString(R.string.OxAgentAdvanced),
-                "Temperature " + agent.temperature + " · Top P " + agent.topP, true);
+                LocaleController.getString(R.string.OxAgentTemperature) + " " + agent.temperature + " · Top P " + agent.topP, true);
         advancedHeaderCard.addView(advancedToggle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         content.addView(advancedHeaderCard);
         LinearLayout advanced = section(context);
@@ -710,7 +710,7 @@ public class OxAgentProfileActivity extends BaseFragment {
         String topP = topPCell == null ? String.valueOf(agent.topP) : topPCell.getText().toString().trim();
         if (temp.isEmpty()) temp = String.valueOf(agent.temperature);
         if (topP.isEmpty()) topP = String.valueOf(agent.topP);
-        return "Temperature " + temp + " · Top P " + topP;
+        return LocaleController.getString(R.string.OxAgentTemperature) + " " + temp + " · Top P " + topP;
     }
 
     private String reasoningLabel() {

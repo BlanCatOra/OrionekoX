@@ -405,9 +405,20 @@ public class ConnectionsManager extends BaseController {
             object.freeResources();
             return;
         }
+        // Group creation that includes synthetic agents is handled locally (or split into
+        // a real server group plus local agent membership).
+        if (object instanceof TLRPC.TL_messages_createChat
+                && org.telegram.ox.OxAgentsBridge.handleCreateChat((TLRPC.TL_messages_createChat) object, onComplete)) {
+            return;
+        }
         // Agent peers are local-only even inside a logged-in account: history, read marks,
         // typing and deletes for them are handled from the local database.
         if (org.telegram.ox.OxAgentsBridge.isAgentRequest(object)) {
+            // Adding an agent to a normal group is handled locally; everything else
+            // that targets a synthetic peer never goes to the network.
+            if (org.telegram.ox.OxAgentsBridge.handleAgentRequest(object, onComplete)) {
+                return;
+            }
             object.freeResources();
             return;
         }

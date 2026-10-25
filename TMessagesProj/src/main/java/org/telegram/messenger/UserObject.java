@@ -67,6 +67,9 @@ public class UserObject {
                 return LocaleController.getString(R.string.BotTypeNonBinary);
             }
         }
+        if (org.telegram.ox.OxAgentsBridge.isAgentDialog(user.id)) {
+            return LocaleController.getString(R.string.OxAgentStatusLocal);
+        }
         return LocaleController.getString(R.string.Bot);
     }
 
