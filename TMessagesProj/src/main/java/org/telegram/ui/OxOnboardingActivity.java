@@ -1207,6 +1207,8 @@ public class OxOnboardingActivity extends BaseFragment {
         OxMode.setOnboardingDone(true);
         OxMode.setOnboardingMode(selectedMode);
         if (selectedMode == MODE_LOGIN) {
+            // The native client was started offline until a mode was chosen.
+            org.telegram.tgnet.ConnectionsManager.resumeAfterOnboarding(0);
             presentFragment(new LoginActivity(), true);
         } else {
             OxMode.setAgentOnly(true);
