@@ -129,6 +129,8 @@ public class ConnectionsManager extends BaseController {
     private int connectionState;
     private AtomicInteger lastRequestToken = new AtomicInteger(1);
     private int appResumeCount;
+    // Native client was started offline (Ox mode, or first launch before a mode was chosen).
+    private boolean oxOfflineMode;
 
     private static AsyncTask currentTask;
 
@@ -637,7 +639,7 @@ public class ConnectionsManager extends BaseController {
     public int getConnectionState() {
         // Local mode has no server to connect to. Report a stable "connected" state so the UI
         // does not show Connecting/Waiting banners or retry loops; RPCs are dropped below.
-        if (org.telegram.ox.OxMode.isAgentOnly()) {
+        if (oxOfflineMode || org.telegram.ox.OxMode.isAgentOnly()) {
             return ConnectionStateConnected;
         }
         if (connectionState == ConnectionStateConnected && isUpdating) {
@@ -647,14 +649,14 @@ public class ConnectionsManager extends BaseController {
     }
 
     public void setUserId(long id) {
-        if (org.telegram.ox.OxMode.isAgentOnly()) {
+        if (oxOfflineMode || org.telegram.ox.OxMode.isAgentOnly()) {
             return;
         }
         native_setUserId(currentAccount, id);
     }
 
     public void checkConnection() {
-        if (org.telegram.ox.OxMode.isAgentOnly()) {
+        if (oxOfflineMode || org.telegram.ox.OxMode.isAgentOnly()) {
             return;
         }
         byte selectedStrategy = getIpStrategy();
@@ -665,8 +667,22 @@ public class ConnectionsManager extends BaseController {
         native_setNetworkAvailable(currentAccount, ApplicationLoader.isNetworkOnline(), ApplicationLoader.getCurrentNetworkType(), ApplicationLoader.isConnectionSlow());
     }
 
-    public void setPushConnectionEnabled(boolean value) {
+    /**
+     * The native client starts offline until the user picks a mode on first launch.
+     * When onboarding chooses "sign in", turn the normal network path back on.
+     */
+    public static void resumeAfterOnboarding(int account) {
+        ConnectionsManager cm = getInstance(account);
         if (org.telegram.ox.OxMode.isAgentOnly()) {
+            return;
+        }
+        cm.oxOfflineMode = false;
+        cm.checkConnection();
+        cm.setAppPaused(false, false);
+    }
+
+    public void setPushConnectionEnabled(boolean value) {
+        if (oxOfflineMode || org.telegram.ox.OxMode.isAgentOnly()) {
             return;
         }
         native_setPushConnectionEnabled(currentAccount, value);
@@ -720,7 +736,13 @@ public class ConnectionsManager extends BaseController {
             packageId = "";
         }
 
-        final boolean oxLocal = org.telegram.ox.OxMode.isAgentOnly();
+        // Do not touch Telegram before the user has picked a mode on first launch: no
+        // account has been authorized, and the onboarding is local. A user upgrading
+        // while already logged in keeps the network.
+        final boolean preOnboarding = !org.telegram.ox.OxMode.isOnboardingDone()
+                && !UserConfig.getInstance(currentAccount).isClientActivated();
+        final boolean oxLocal = org.telegram.ox.OxMode.isAgentOnly() || preOnboarding;
+        oxOfflineMode = oxLocal;
         native_init(currentAccount, version, layer, apiId, deviceModel, systemVersion, appVersion, langCode, systemLangCode, configPath, logPath, regId, cFingerprint, installer, packageId, timezoneOffset,
                 oxLocal ? 0 : userId, userPremium, !oxLocal && enablePushConnection,
                 !oxLocal && ApplicationLoader.isNetworkOnline(),
@@ -809,7 +831,7 @@ public class ConnectionsManager extends BaseController {
     }
 
     public void setAppPaused(boolean value, final boolean byScreenState) {
-        if (org.telegram.ox.OxMode.isAgentOnly()) {
+        if (oxOfflineMode || org.telegram.ox.OxMode.isAgentOnly()) {
             value = true;
         }
         if (!byScreenState) {

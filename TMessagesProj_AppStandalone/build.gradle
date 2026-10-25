@@ -72,6 +72,11 @@ android {
 
     buildTypes {
         debug {
+            // A second, side-by-side test app: io.github.blancatora.orionekox.debug
+            // Debug builds are unminified and keep full logs, which makes them the
+            // right target for testing Ox mode and login mode independently.
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
             debuggable true
             jniDebuggable true
             signingConfig signingConfigs.debug

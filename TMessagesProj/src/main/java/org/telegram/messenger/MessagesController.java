@@ -12466,6 +12466,15 @@ public class MessagesController extends BaseController implements NotificationCe
         if (loadingDialogs.get(folderId) || resetingDialogs) {
             return;
         }
+        if (!fromCache && org.telegram.ox.OxMode.isAgentOnly()) {
+            // Agent-only mode has no server dialog list. Treat the server side as already
+            // exhausted instead of setting loadingDialogs and waiting for a dropped RPC,
+            // which used to leave the flag stuck forever and blocked all later cache loads.
+            dialogsEndReached.put(folderId, true);
+            serverDialogsEndReached.put(folderId, true);
+            getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
+            return;
+        }
         loadingDialogs.put(folderId, true);
         getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
         if (BuildVars.LOGS_ENABLED) {

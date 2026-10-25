@@ -124,6 +124,19 @@ public class OxAgentsBridge {
     /** Idempotent: activates the offline local account and mirrors every agent as a contact. */
     public static void ensureLocalAccount() {
         synchronized (SYNC_LOCK) {
+            if (OxMode.isAgentOnly()) {
+                // Entering Ox mode at runtime (onboarding / "Use Ox mode" link) happens in a
+                // process that may have already connected for a real account. Re-pause the
+                // native client, otherwise tgnet keeps probing Telegram DCs while the user is
+                // supposed to be fully local.
+                try {
+                    org.telegram.tgnet.ConnectionsManager.getInstance(0).setAppPaused(true, false);
+                    // clear a stale "Connecting..." action-bar title left over from login mode
+                    NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.didUpdateConnectionState);
+                } catch (Throwable t) {
+                    logErr("pauseNetwork for Ox mode failed", t);
+                }
+            }
             if (accountReady) {
                 syncAgents(false);
                 return;
@@ -200,8 +213,15 @@ public class OxAgentsBridge {
                 liveIds.append(a.tgId);
             }
             pruneOrphanAgentDialogs(liveIds.toString());
-            AndroidUtilities.runOnUIThread(() ->
-                    NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.dialogsNeedReload));
+            AndroidUtilities.runOnUIThread(() -> {
+                NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.dialogsNeedReload);
+                // The first cache pass can run before greetIfEmpty() has stored the last
+                // message, and a dialog row with last_mid=0 is skipped by the loader. Re-read
+                // the local dialog list once the greetings (or refreshDialogRow) have landed.
+                org.telegram.messenger.MessagesController.getInstance(0).loadDialogs(0, 0, 100, true);
+                AndroidUtilities.runOnUIThread(() ->
+                        org.telegram.messenger.MessagesController.getInstance(0).loadDialogs(0, 0, 100, true), 1200);
+            });
         } catch (Throwable t) {
             logErr("syncAgents failed", t);
         }

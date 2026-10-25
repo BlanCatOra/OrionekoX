@@ -7073,13 +7073,14 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             tosAccepted = true;
         }
         final NotificationManager notificationManager = (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
-        if (tosAccepted && folderId == 0 && communityId == 0 && checkPermission && !onlySelect && Build.VERSION.SDK_INT >= 23) {
+        if (tosAccepted && folderId == 0 && communityId == 0 && checkPermission && !onlySelect && Build.VERSION.SDK_INT >= 23
+                && !org.telegram.ox.OxMode.isAgentOnly()) {
             Activity activity = getParentActivity();
             if (activity != null) {
                 checkPermission = false;
                 boolean hasNotContactsPermission = activity.checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED;
                 boolean hasNotStoragePermission = (Build.VERSION.SDK_INT <= 28 || BuildVars.NO_SCOPED_STORAGE) && activity.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED;
-                boolean hasNotNotificationsPermission = Build.VERSION.SDK_INT >= 33 && activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED;
+                boolean hasNotNotificationsPermission = Build.VERSION.SDK_INT >= 33 && !org.telegram.ox.OxMode.isAgentOnly() && activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED;
                 AndroidUtilities.runOnUIThread(() -> {
                     if (getParentActivity() == null) {
                         return;
@@ -10415,7 +10416,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             return;
         }
         ArrayList<String> permissons = new ArrayList<>();
-        if (folderId == 0 && communityId == 0 && Build.VERSION.SDK_INT >= 33 && NotificationPermissionDialog.shouldAsk(activity)) {
+        if (folderId == 0 && communityId == 0 && Build.VERSION.SDK_INT >= 33 && !org.telegram.ox.OxMode.isAgentOnly() && NotificationPermissionDialog.shouldAsk(activity)) {
             if (alert) {
                 showDialog(new NotificationPermissionDialog(activity, !PermissionRequest.canAskPermission(Manifest.permission.POST_NOTIFICATIONS), granted2 -> {
                     if (!granted2) return;
