@@ -77,9 +77,10 @@ gaps that were previously listed as "gap":
 ### Still missing, in priority order
 
 1. **Android UI automation — done v1** — `ui_dump`, `ui_tap`, `ui_swipe`,
-   `ui_screenshot`, `ui_key` are implemented through the accessibility service and
-   ask-by-default. Next refinements: click-by-text, scroll-until-found, node
-   caching, and arbitrary key events via ADB/root.
+   `ui_screenshot`, `ui_key`, `ui_tap_text`, `ui_find_text`, `ui_scroll_tap_text`
+   (forward/backward) are implemented through the accessibility service and
+   ask-by-default. Long-list scroll+click is verified end-to-end; the remaining
+   refinements are node caching and arbitrary key events via ADB/root.
 2. **Executable ToolPkg / JS/Wasm packages** — skills are readable now; executing
    package code needs a sandbox/runtime.
 3. **Local stdio MCP runtime** — Operit's catalogue is mostly Python/Node/npx.
@@ -214,3 +215,21 @@ of a separate automation graph:
   Sakura agents were deleted by row position; the imported copies are now the live
   agents, Yuki's memory/skills/workspace were restored from the `.oxagent` export,
   but their recent chat history was lost.
+
+### 0.8.45–0.8.48 long-list scroll+click E2E
+
+- The pending `ui_scroll_tap_text` end-to-end test now passes with a real model:
+  starting on the Ox settings tools list, the agent scrolled twice and reported
+  `tapped "ui_ocr" ... (coordinate)`.
+- Three fixes were required:
+  1. the loop no longer scrolls after the final allowed search (targets appearing
+     on the last screen were missed);
+  2. the node traversal cap was raised from 400 to 2000 and a framework
+     `findAccessibilityNodeInfosByText` index pass was added, because long
+     Telegram lists were truncated before the target row;
+  3. Telegram list rows have no clickable ancestor (RecyclerListView handles the
+     tap), so a visible-bounds coordinate tap is used as a fallback after the
+     clickable-ancestor `ACTION_CLICK` path.
+- `OxA11y` step diagnostics (root package, collected nodes, sample labels,
+  scrollable bounds, scroll result) stay in the code for future debugging.
+- Test workflows and temporary tool-policy overrides were removed afterwards.

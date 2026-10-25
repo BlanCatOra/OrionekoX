@@ -205,7 +205,7 @@ public class OxAccessibilityService extends AccessibilityService {
     }
 
     private static void collect(AccessibilityNodeInfo node, java.util.ArrayList<AccessibilityNodeInfo> out, int depth) {
-        if (node == null || depth > 24 || out.size() > 400) return;
+        if (node == null || depth > 24 || out.size() > 2000) return;
         out.add(node);
         for (int i = 0; i < node.getChildCount(); i++) {
             AccessibilityNodeInfo child = node.getChild(i);
@@ -237,7 +237,32 @@ public class OxAccessibilityService extends AccessibilityService {
                     }
                     java.util.ArrayList<AccessibilityNodeInfo> nodes = new java.util.ArrayList<>();
                     collect(root, nodes, 0);
+                    StringBuilder sample = new StringBuilder();
+                    int sampled = 0;
+                    for (AccessibilityNodeInfo n : nodes) {
+                        CharSequence t = n.getText();
+                        if (t != null && t.length() > 0 && sampled < 8
+                                && (t.toString().startsWith("ui_") || t.toString().startsWith("get_"))) {
+                            sample.append(t).append(',');
+                            sampled++;
+                        }
+                    }
+                    android.util.Log.i("OxA11y", "step=" + stepFinal + " rootPkg=" + root.getPackageName()
+                            + " rootCls=" + root.getClassName() + " nodes=" + nodes.size()
+                            + " sample=" + sample);
                     java.util.ArrayList<AccessibilityNodeInfo> matches = new java.util.ArrayList<>();
+                    // The framework index is not limited by our traversal cap, which
+                    // matters for long settings lists where the row sits deep in the tree.
+                    try {
+                        java.util.List<AccessibilityNodeInfo> byText =
+                                root.findAccessibilityNodeInfosByText(query.trim());
+                        if (byText != null) {
+                            for (AccessibilityNodeInfo n : byText) {
+                                if (n != null && !matches.contains(n)) matches.add(n);
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                    }
                     for (int pass = 0; pass < 2; pass++) {
                         for (AccessibilityNodeInfo node : nodes) {
                             CharSequence text = node.getText();
@@ -268,6 +293,15 @@ public class OxAccessibilityService extends AccessibilityService {
                                 out[0] = "clicked \"" + label + "\" after " + stepFinal + " scroll(s) bounds=[" + r.left + "," + r.top + "][" + r.right + "," + r.bottom + "]";
                                 return;
                             }
+                            // Telegram lists handle taps on the RecyclerView, so rows often
+                            // expose no clickable ancestor; fall back to tapping the center.
+                            int cx = (r.left + r.right) / 2;
+                            int cy = (r.top + r.bottom) / 2;
+                            if (cx > 0 && cy > 0 && cy < AndroidUtilities.displaySize.y
+                                    && r.top >= 0 && r.bottom <= AndroidUtilities.displaySize.y && tap(cx, cy)) {
+                                out[0] = "tapped \"" + label + "\" after " + stepFinal + " scroll(s) bounds=[" + r.left + "," + r.top + "][" + r.right + "," + r.bottom + "] (coordinate)";
+                                return;
+                            }
                         }
                     }
                     AccessibilityNodeInfo scrollable = findScrollable(root, 0);
@@ -275,9 +309,20 @@ public class OxAccessibilityService extends AccessibilityService {
                         out[0] = "not found and no scrollable container: " + query;
                         return;
                     }
-                    scrollable.performAction(backward
+                    Rect sb = new Rect();
+                    scrollable.getBoundsInScreen(sb);
+                    android.util.Log.i("OxA11y", "scrollable=" + scrollable.getClassName()
+                            + " bounds=" + sb);
+                    // The next iteration searches this new position; scrolling after
+                    // the last allowed step would move the target into view unsearched.
+                    if (stepFinal >= limit) {
+                        out[0] = "not found after " + limit + " scroll(s): " + query;
+                        return;
+                    }
+                    boolean scrolled = scrollable.performAction(backward
                             ? AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
                             : AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
+                    android.util.Log.i("OxA11y", "scrollAction=" + scrolled);
                     out[0] = null;
                 } catch (Throwable t) {
                     out[0] = "error: " + t.getMessage();
