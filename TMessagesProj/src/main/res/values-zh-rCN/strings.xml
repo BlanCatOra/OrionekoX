@@ -371,4 +371,7 @@
     <string name="OxMemoryClear">清空记忆</string>
     <string name="OxMemoryClearConfirm">删除这个智能体的所有记忆？</string>
     <string name="OxMemorySaved">记忆已保存</string>
+    <string name="OxAgentSkills">技能</string>
+    <string name="OxAgentSkillsNone">未启用技能</string>
+    <string name="OxAgentSkillsCount">已启用 %1$d 个</string>
 </resources>

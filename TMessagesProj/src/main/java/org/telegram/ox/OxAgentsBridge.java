@@ -1577,9 +1577,32 @@ public class OxAgentsBridge {
         if (!memory.isEmpty()) {
             system.append("\n\n# 长期记忆\n").append(memory);
         }
+        appendSkills(system, agent);
         messages.put(new JSONObject().put("role", "system").put("content", system.toString()));
         messages.put(new JSONObject().put("role", "user").put("content", userText));
         return messages;
+    }
+
+    /** Injects the text of the Operit SKILL.md packages the user enabled for this agent. */
+    private static void appendSkills(StringBuilder system, OxAgent agent) {
+        if (agent == null || agent.skillIds == null || agent.skillIds.length() == 0) return;
+        int budget = 8000;
+        for (int i = 0; i < agent.skillIds.length() && budget > 0; i++) {
+            String id = agent.skillIds.optString(i, "");
+            if (id.isEmpty()) continue;
+            for (OxSkillStore.Skill skill : OxSkillStore.list()) {
+                if (!id.equals(skill.id) && !id.equals(skill.name)) continue;
+                String content = OxSkillStore.read(skill.name);
+                if (content == null || content.isEmpty() || content.startsWith("error:")) continue;
+                if (content.length() > Math.min(4000, budget)) {
+                    content = content.substring(0, Math.min(4000, budget));
+                }
+                if (system.length() > 0) system.append("\n\n");
+                system.append("# 技能：").append(skill.name).append('\n').append(content);
+                budget -= content.length();
+                break;
+            }
+        }
     }
 
     private static JSONArray baseMessages(OxAgent agent, String agentId) throws Exception {
@@ -1591,6 +1614,7 @@ public class OxAgentsBridge {
             if (system.length() > 0) system.append("\n\n");
             system.append("# 长期记忆（用户允许你记住的事实）\n").append(memory);
         }
+        appendSkills(system, agent);
         if (system.length() > 0) {
             messages.put(new JSONObject().put("role", "system").put("content", system.toString()));
         }
