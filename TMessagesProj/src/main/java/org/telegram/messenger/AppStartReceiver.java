@@ -30,6 +30,12 @@ public class AppStartReceiver extends BroadcastReceiver {
                 } catch (Throwable e) {
                     FileLog.e(e);
                 }
+                // Alarms do not survive a reboot; re-arm scheduled agent workflows.
+                try {
+                    org.telegram.ox.OxWorkflowScheduler.rescheduleAll(context.getApplicationContext());
+                } catch (Throwable e) {
+                    FileLog.e(e);
+                }
             });
         }
     }

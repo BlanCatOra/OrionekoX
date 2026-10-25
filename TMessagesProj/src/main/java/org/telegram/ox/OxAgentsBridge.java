@@ -844,6 +844,12 @@ public class OxAgentsBridge {
         return true;
     }
 
+    /** Injects a user turn into an agent dialog without going through the send UI (workflows). */
+    public static void sendUserPrompt(long dialogId, String text) {
+        if (dialogId == 0 || text == null || text.trim().isEmpty()) return;
+        handleOutgoingText(dialogId, text.trim(), null);
+    }
+
     /**
      * Makes a synthetic agent recognizable to the stock ChatActivity in a real account:
      * its dialog is not part of the server dialog list, so ChatActivity would wait for
