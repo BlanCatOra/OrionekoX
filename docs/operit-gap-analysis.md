@@ -133,4 +133,6 @@ gaps that were previously listed as "gap":
   now collects all matches and only clicks one with a clickable ancestor, scrolling
   past non-clickable text; its full long-list E2E is still pending because a test
   `ui_key back` only dismissed the keyboard. Next refinements: node cache,
-  ADB/root arbitrary keys.
+  ADB/root arbitrary keys. `ui_find_text` / `ui_scroll_tap_text` now also accept
+  `direction=backward` for scrolling up; the scroll E2E still needs a target that
+  is not present in the just-sent message text.
