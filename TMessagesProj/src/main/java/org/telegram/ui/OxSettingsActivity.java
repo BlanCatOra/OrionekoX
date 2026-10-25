@@ -47,6 +47,7 @@ public class OxSettingsActivity extends BaseFragment {
     private static final int ID_TERMINAL_OPEN = 111;
     private static final int ID_REPOSITORY = 112;
     private static final int ID_SKILLS = 113;
+    private static final int ID_WORKSPACE = 114;
 
     private UniversalRecyclerView listView;
 
@@ -105,6 +106,8 @@ public class OxSettingsActivity extends BaseFragment {
                 R.drawable.settings_privacy, LocaleController.getString(R.string.OxToolsTitle)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_SKILLS, 0xFF55CA47, 0xFF27B434,
                 R.drawable.settings_folders, LocaleController.getString(R.string.OxSkillsTitle)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_WORKSPACE, 0xFF1CA5ED, 0xFF1488E1,
+                R.drawable.ox_file_24, LocaleController.getString(R.string.OxWorkspace)));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader("OxLinux"));
@@ -160,6 +163,9 @@ public class OxSettingsActivity extends BaseFragment {
                 break;
             case ID_SKILLS:
                 presentFragment(new OxSkillsActivity());
+                break;
+            case ID_WORKSPACE:
+                presentFragment(new OxWorkspaceActivity());
                 break;
             case ID_CONTAINER:
                 presentFragment(new OxOnboardingActivity().setStartPage(5));

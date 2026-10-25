@@ -11748,4 +11748,8 @@
     <string name="OxToolDescUiFindText">查找文字，必要时滚动。</string>
     <string name="OxToolDescUiScrollTapText">滚动找到文字并点击。</string>
     <string name="OxAgentBadgeLocal">本地</string>
+    <string name="OxWorkspace">工作区</string>
+    <string name="OxWorkspaceInfo">该智能体通过工具写入的文件都在这里。点按预览，长按删除。</string>
+    <string name="OxWorkspaceFiles">文件</string>
+    <string name="OxWorkspaceEmpty">这个智能体的工作区还是空的。</string>
 </resources>
