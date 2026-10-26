@@ -35,6 +35,8 @@ public class OxAgentArchive {
     public static final class ReadResult {
         public JSONObject agent;
         public final LinkedHashMap<String, byte[]> workspace = new LinkedHashMap<>();
+        public String avatarName;
+        public byte[] avatar;
     }
 
     /**
@@ -51,7 +53,20 @@ public class OxAgentArchive {
         List<File> files = new ArrayList<>();
         File base = OxAgentStore.workspaceDir(agent.id);
         collect(base, base, files);
-        if (files.isEmpty()) {
+
+        File avatar = null;
+        String avatarEntry = null;
+        if (agent.avatarPath != null && !agent.avatarPath.isEmpty()) {
+            File f = new File(agent.avatarPath);
+            if (f.isFile() && f.length() > 0 && f.length() <= MAX_FILE_BYTES) {
+                avatar = f;
+                avatarEntry = "avatar" + extension(f.getName());
+                o.put("avatar_name", avatarEntry);
+                o.put("avatar_path", "");
+            }
+        }
+
+        if (files.isEmpty() && avatar == null) {
             os.write(o.toString().getBytes(StandardCharsets.UTF_8));
             return 0;
         }
@@ -61,8 +76,15 @@ public class OxAgentArchive {
         zos.write(o.toString().getBytes(StandardCharsets.UTF_8));
         zos.closeEntry();
 
-        int included = 0;
         long total = 0;
+        if (avatar != null && avatarEntry != null) {
+            zos.putNextEntry(new ZipEntry(avatarEntry));
+            copy(avatar, zos);
+            zos.closeEntry();
+            total += avatar.length();
+        }
+
+        int included = 0;
         for (File f : files) {
             if (included >= MAX_FILES || total >= MAX_TOTAL_BYTES) break;
             String rel = relative(base, f);
@@ -102,6 +124,9 @@ public class OxAgentArchive {
                     if (rel == null) continue;
                     if (r.workspace.size() >= MAX_FILES) throw new IOException("too many files");
                     r.workspace.put(rel, body);
+                } else if (name.startsWith("avatar.") && !name.contains("/")) {
+                    r.avatarName = name;
+                    r.avatar = body;
                 }
             }
             zis.close();
@@ -129,6 +154,31 @@ public class OxAgentArchive {
                 FileLog.e(TAG + " restore failed " + e.getKey(), t);
             }
         }
+    }
+
+    /** Writes the archived avatar into the new agent directory; null when absent. */
+    public static File restoreAvatar(String agentId, ReadResult r) {
+        if (r == null || r.avatar == null || r.avatarName == null) return null;
+        try {
+            File dir = OxAgentStore.memoryFile(agentId).getParentFile();
+            if (dir == null) return null;
+            dir.mkdirs();
+            File target = new File(dir, "avatar" + extension(r.avatarName));
+            java.io.FileOutputStream out = new java.io.FileOutputStream(target);
+            out.write(r.avatar);
+            out.close();
+            return target;
+        } catch (Throwable t) {
+            FileLog.e(TAG + " avatar restore failed", t);
+            return null;
+        }
+    }
+
+    private static String extension(String name) {
+        int dot = name == null ? -1 : name.lastIndexOf('.');
+        if (dot < 0 || dot == name.length() - 1) return ".img";
+        String ext = name.substring(dot + 1).toLowerCase();
+        return ext.matches("[a-z0-9]{1,5}") ? "." + ext : ".img";
     }
 
     private static boolean isZip(byte[] data) {

@@ -417,10 +417,18 @@ public class OxAgentsActivity extends BaseFragment {
                     if (a.id == null || a.id.isEmpty() || OxAgentStore.loadAgent(a.id) != null) {
                         a.id = "imp" + UUID.randomUUID().toString().substring(0, 6);
                     }
+                    if (a.avatarPath != null && !a.avatarPath.isEmpty() && !new File(a.avatarPath).isFile()) {
+                        a.avatarPath = "";
+                    }
                     OxAgentStore.saveAgent(a);
                     String memory = o.optString("memory", "");
                     if (!memory.isEmpty()) OxAgentStore.saveMemory(a.id, memory);
                     OxAgentArchive.restoreWorkspace(a.id, res);
+                    File avatar = OxAgentArchive.restoreAvatar(a.id, res);
+                    if (avatar != null) {
+                        a.avatarPath = avatar.getAbsolutePath();
+                        OxAgentStore.saveAgent(a);
+                    }
                     msg = res.workspace.isEmpty()
                             ? LocaleController.formatString("OxAgentImported", R.string.OxAgentImported, a.name)
                             : LocaleController.formatString("OxAgentImportedFiles",
