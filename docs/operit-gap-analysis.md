@@ -394,3 +394,12 @@ of a separate automation graph:
 - Note: reinstalling or force-stopping the app can unbind the accessibility service
   (the secure setting becomes null); re-enabling it restores automation. Temporary
   Auto policies and the test workflow were reverted afterwards.
+
+### 0.8.71 terminal bottom inset
+
+- Fixed the terminal input row being covered by the floating main tab bar: bottom
+  padding now includes the navigation-bar inset in both the tab and standalone
+  presentations, while the IME path still uses only the keyboard inset. The
+  monospace welcome line no longer uses a keyboard glyph that rendered as tofu.
+- Verified on 0.8.71: the terminal `EditText` sits at `[98,2010][821,2127]`, fully
+  above the tab bar at `y=2255`, and the input/send/keyboard controls are reachable.

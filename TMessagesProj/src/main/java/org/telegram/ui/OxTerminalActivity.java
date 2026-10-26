@@ -138,8 +138,9 @@ public class OxTerminalActivity extends BaseFragment {
         root.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
         final boolean presented = getArguments() != null && getArguments().getBoolean("presented", false);
         final int baseTopPadding = presented ? 0 : AndroidUtilities.statusBarHeight + AndroidUtilities.dp(56);
-        final int closedBottomPadding = presented ? AndroidUtilities.dp(8)
-                : AndroidUtilities.dp(DialogsActivity.MAIN_TABS_HEIGHT_WITH_MARGINS + 8);
+        final int closedBottomPadding = (presented ? AndroidUtilities.dp(8)
+                : AndroidUtilities.dp(DialogsActivity.MAIN_TABS_HEIGHT_WITH_MARGINS + 8))
+                + AndroidUtilities.navigationBarHeight;
 
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -147,7 +148,10 @@ public class OxTerminalActivity extends BaseFragment {
         root.addView(content, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             int ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime()).bottom;
-            int bottom = ime > 0 ? ime + AndroidUtilities.dp(6) : closedBottomPadding;
+            int nav = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom;
+            int bottom = ime > 0 ? ime + AndroidUtilities.dp(6)
+                    : (presented ? AndroidUtilities.dp(8)
+                    : AndroidUtilities.dp(DialogsActivity.MAIN_TABS_HEIGHT_WITH_MARGINS + 8)) + nav;
             content.setPadding(AndroidUtilities.dp(12), baseTopPadding, AndroidUtilities.dp(12), bottom);
             return insets;
         });
@@ -455,7 +459,7 @@ public class OxTerminalActivity extends BaseFragment {
             if (clearBuffer) {
                 appendToSession(index, "Ox Terminal · TTY " + (index + 1) + "\n");
                 appendToSession(index, "工作目录: " + work.getAbsolutePath() + "\n");
-                appendToSession(index, "输入 help 查看常用命令，⌨ 可收起键盘。\n\n");
+                appendToSession(index, "输入 help 查看常用命令，点按键盘图标可收起键盘。\n\n");
             }
             try {
                 session.shellIn.write("pwd\n");
