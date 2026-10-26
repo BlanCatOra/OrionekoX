@@ -649,3 +649,17 @@ of a separate automation graph:
   users again (duplicate row, count +1). Verified: adding Echo gives exactly
   “3 位成员, 3 人在线” and one Echo row, with no add-chat-user request. Restored the
   test group to Yuki-only afterwards. Details: `docs/qa-group-0.8.102.md`.
+
+### 0.8.103 local-group remove member
+
+- Removing an agent from a local group used to send `messages.deleteChatUser`.
+  `MessagesController.deleteParticipantFromChat` now early-returns into
+  `OxAgentsBridge.removeLocalGroupMember` for non-self agent members: the agent id is
+  removed from `OxGroupStore`, the full is rebuilt/persisted, and `chatInfoDidLoad`
+  refreshes an open profile. Self-leave keeps the normal Telegram path.
+- `ProfileActivity` now calls `updateProfileData(true)` after `updateListAnimated`
+  for local groups; the latter recalculates `onlineCount` first, so the subtitle
+  immediately shows “2 位成员, 2 人在线” instead of the old online count.
+- Verified by adding Echo, long-pressing its row, choosing 从群组中移除, and observing
+  the immediate 2/2 header with only BlanCat + Yuki. Details:
+  `docs/qa-group-0.8.103.md`.

@@ -15927,6 +15927,9 @@ public class MessagesController extends BaseController implements NotificationCe
         if (user == null && chat == null) {
             return;
         }
+        if (org.telegram.ox.OxAgentsBridge.removeLocalGroupMember(chatId, user)) {
+            return;
+        }
         TLRPC.InputPeer inputPeer;
         if (user != null) {
             inputPeer = getInputPeer(user);
