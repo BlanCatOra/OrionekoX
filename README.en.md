@@ -38,7 +38,7 @@ while provider keys, memory, workspaces, MCP and skills stay on the device.
 | Local agents | Synthetic contacts and dialogs that never touch Telegram servers; avatar, bio, provider/model, system prompt, tools, skills and memory |
 | Providers | OpenAI-compatible, Gemini/Claude-compatible endpoints, LAN Ollama/LM Studio/vLLM, presets, model fetch and connectivity test |
 | Local groups | Groups containing only local agents; add/remove members, member counts, native group profile and in-group replies all handled locally |
-| MCP | Streamable HTTP MCP catalogue, tool bridge, per-tool permissions; stdio and JSON import compatibility in progress |
+| MCP | Streamable HTTP MCP catalogue, tool bridge, per-tool permissions; `mcpServers` JSON import (HTTP/streamable), stdio pending |
 | Skills | Read-only `SKILL.md` library injected into an agent's prompt |
 | Workspace | Private per-agent directory with read/write, rename, move, copy and SAF import/export |
 | Terminal | Multiple TTY tabs, color schemes/font sizes, shared-storage notes; OxLinux/PRoot is still blocked by W^X |

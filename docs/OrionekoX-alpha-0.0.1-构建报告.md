@@ -2255,6 +2255,20 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `e5c69cf1d3bd…`）；debug `dist/OrionekoX-0.8.104-debug-arm64-x64.apk`（sha256
 `6b0a86c68e54…`）。
 
+## 5.104 alpha 0.8.105 —— MCP mcpServers JSON 导入（2026-10-26 18:55–19:10）
+
+- 按 Kelivo/RikkaHub/Claude Desktop 通用的 `mcpServers` 结构，在 Ox 设置 → MCP 服务
+  增加“从 JSON 导入”：支持 `url`/`baseUrl`、`headers`、`disabled`/`isActive`，
+  按 URL 去重；stdio 计入“暂不支持”，SSE 跳过（运行时仅 Streamable HTTP）。
+- 新字符串已加中英文资源，中文包 66；实测入口、原生导入对话框与多行输入框正常。
+- 受模拟器限制：`adb shell input text` 会吞掉双引号，无法端到端粘贴合法 JSON；
+  导入计数未在设备上观察，已在 QA 文档如实标注，下一轮补固定 fixture。
+- 记录见 `OrionekoX/docs/qa-0.8.105.md`。
+
+**产物**：`dist/OrionekoX-0.8.105-alpha-arm64-x64.apk`（versionCode 1209，sha256
+`1c8c656c65f2…`）；debug `dist/OrionekoX-0.8.105-debug-arm64-x64.apk`（sha256
+`991d7c35394c…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

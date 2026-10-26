@@ -11847,4 +11847,8 @@
     <string name="OxWorkflowNext">下次 %1$s</string>
     <string name="OxWorkflowLast">上次：%1$s</string>
     <string name="OxWorkflowInexactHint">系统未授予精确闹钟权限，定时运行可能稍有延迟；工作流仍会执行。</string>
+    <string name="OxMcpImport">从 JSON 导入</string>
+    <string name="OxMcpImportHint">粘贴 mcpServers JSON（Kelivo / RikkaHub / Claude Desktop）</string>
+    <string name="OxMcpImportDone">已导入 %1$d 个服务器，跳过 %2$d 个</string>
+    <string name="OxMcpImportStdio">%1$d 个 stdio 服务器暂不支持</string>
 </resources>

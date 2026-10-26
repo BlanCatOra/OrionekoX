@@ -673,3 +673,12 @@ of a separate automation graph:
   settings bottom padding, Chinese file-type wording and export filenames.
 - Still open: group image vision, copy/rename greeting, OxLinux onboarding layout,
   MCP JSON / skills / theme import. Details: `docs/qa-0.8.104.md`.
+
+### 0.8.105 MCP mcpServers JSON import
+
+- Added a native “从 JSON 导入” row in MCP services. It accepts the shared
+  `mcpServers` object used by Kelivo, RikkaHub and Claude Desktop: HTTP/streamable
+  URLs, headers, disabled/isActive, URL-based deduplication. stdio is reported as
+  unsupported; SSE is skipped because the runtime is Streamable HTTP only.
+- UI verified; end-to-end paste could not be automated because `adb input text`
+  strips quotes. A deterministic fixture test is the next step.
