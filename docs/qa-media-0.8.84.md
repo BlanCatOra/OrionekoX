@@ -50,3 +50,11 @@ does not say “0 KB / 2.7 KB” until the next app start.
   `inbox/<timestamp>_ox_photo.png`, and Yuki lists/replies.
 - Remaining polish: force a cell/media-state refresh after `persistAndShow` so the
   download-arrow icon resolves immediately instead of on next app start.
+
+### 0.8.87 — final live-state fix
+
+- `persistAndShow` now sets `MessageObject.attachPathExists = true` and
+  `mediaExists = true` when the message's `attachPath` exists on disk.
+- Verified with a fresh `ox_photo.png` send at 11:32: the bubble immediately shows
+  the orange document icon and “2.7 KB PNG”, with no X, no “0 KB”, and no download
+  arrow — no app restart needed. Agent delivery still works.
