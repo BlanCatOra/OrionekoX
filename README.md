@@ -18,7 +18,7 @@ OrionekoX 是基于 [Telegram Android 13.0.3](https://github.com/DrKLO/Telegram)
 > 本项目是社区 fork，与 Telegram 官方无隶属关系；修改部分由 AI 编码代理完成。
 > 上游版权与 GPL-2.0 许可保持不变，详见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
 
-![聊天列表](docs/screenshots/chats.jpg)
+![Ox 设置](docs/screenshots/ox-settings.jpg)
 
 ## 为什么做它
 
@@ -43,6 +43,8 @@ OrionekoX 反过来复用 Telegram 成熟的会话基础设施，让智能体以
 | UI 自动化 | 无障碍桥接的 `ui_dump` / `ui_tap` / `ui_swipe` / `ui_screenshot` / `ui_key` / `ui_ocr` |
 | 中文体验 | 自维护 `zh-cn` 语言包，持续清理机翻、乱码与不一致文案 |
 
+![本地智能体聊天](docs/screenshots/agent.jpg)
+
 ![群资料页](docs/screenshots/group.jpg)
 
 ## 兼容路线
@@ -61,9 +63,10 @@ OrionekoX 反过来复用 Telegram 成熟的会话基础设施，让智能体以
 
 ## 构建
 
-需要 JDK 17、Android SDK 36、NDK 27 与 CMake 3.22：
+需要 JDK 17、Android SDK 36、NDK 27 与 CMake 3.22。先取子模块：
 
 ```bash
+git submodule update --init --recursive
 export JAVA_HOME=/path/to/jdk17
 export ANDROID_HOME=/path/to/android-sdk
 ./gradlew :TMessagesProj_AppStandalone:assembleAfatStandalone

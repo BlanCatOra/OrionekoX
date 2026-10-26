@@ -11,6 +11,7 @@ fork，包名 `io.github.blancatora.orionekox`。新增代码集中在
 ## 构建与安装
 
 ```bash
+git submodule update --init --recursive
 export JAVA_HOME=/path/to/jdk17
 export ANDROID_HOME=/path/to/android-sdk
 ./gradlew :TMessagesProj_AppStandalone:assembleAfatStandalone
