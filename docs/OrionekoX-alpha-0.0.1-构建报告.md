@@ -2400,6 +2400,19 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `150b9e934495…`）；debug `dist/OrionekoX-0.8.114-debug-arm64-x64.apk`（sha256
 `71579abbcbe7…`）。
 
+## 5.114 alpha 0.8.115 —— SillyTavern PNG 角色卡导入（2026-10-26 21:12–21:20）
+
+- 角色卡导入扩展 PNG：遍历 PNG chunk，读取 `tEXt` 中的 `chara`/`ccv3`，Base64 解码后
+  复用 JSON 映射；普通 JSON 卡片保持兼容。
+- 实测生成的 `png-card.png`（内嵌 “PNG Card” 卡片）：导入后 Agent 人设字段正确，
+  并继承 OpenDesign/deepseek-v4.1-flash 与非空 Key。
+- 限制：仅未压缩 `tEXt`，`zTXt`/`iTXt` 未处理；PNG 图片本身未用作头像。记录见
+  `docs/qa-0.8.115.md`。
+
+**产物**：`dist/OrionekoX-0.8.115-alpha-arm64-x64.apk`（versionCode 1309，sha256
+`ae6ed77bd1bf…`）；debug `dist/OrionekoX-0.8.115-debug-arm64-x64.apk`（sha256
+`e8dedd2ae5f0…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
