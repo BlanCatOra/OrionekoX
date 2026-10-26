@@ -931,6 +931,8 @@ public class ChatActivity extends BaseFragment implements
     public boolean forceDisallowApplyWallpeper;
     public boolean forceDisallowRedrawThemeDescriptions;
     private boolean waitingForGetDifference;
+    private boolean agentLoadRetryScheduled;
+    private boolean agentLoadRetryDone;
     private int initialMessagesSize;
     private boolean loadInfo;
     private boolean historyPreloaded;
@@ -3119,6 +3121,18 @@ public class ChatActivity extends BaseFragment implements
                 getMessagesController().loadUserInfo(currentUser, true, classGuid, startLoadFromMessageId);
             }
             loadInfo = userInfo == null;
+        }
+
+        // Local agent chats have no server history. A saved scroll position from a
+        // previous session can send the loader down LOAD_AROUND_MESSAGE with a stale
+        // id and leave the list empty, so always start them from the newest message.
+        if (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialog_id)) {
+            startLoadFromMessageId = 0;
+            startLoadFromMessageOffset = 0;
+            MessagesController.getNotificationsSettings(currentAccount).edit()
+                    .remove("diditem" + NotificationsController.getSharedPrefKey(dialog_id, getTopicId()))
+                    .remove("diditemo" + NotificationsController.getSharedPrefKey(dialog_id, getTopicId()))
+                    .apply();
         }
 
         if (forceHistoryEmpty) {
@@ -20656,6 +20670,17 @@ public class ChatActivity extends BaseFragment implements
             postponedScrollToLastMessageQueryIndex = 0;
         }
         ArrayList<MessageObject> messArr = (ArrayList<MessageObject>) args[2];
+        if (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialog_id)) {
+            android.util.Log.i("OxBridge", "messagesDidLoad did=" + dialog_id
+                    + " loadIndex=" + queryLoadIndex + " inWaiting=" + (index != -1)
+                    + " size=" + (messArr == null ? -1 : messArr.size())
+                    + " waiting=" + waitingForLoad.size() + " agentRetry=" + agentLoadRetryScheduled);
+            if (messArr != null && !messArr.isEmpty()) {
+                AndroidUtilities.runOnUIThread(this::updateBottomOverlay);
+            } else if (mode == 0 && !agentLoadRetryDone) {
+                AndroidUtilities.runOnUIThread(this::retryAgentHistoryIfEmpty, 350);
+            }
+        }
 
         boolean universalNotify = false;
         HashMap<Integer, MessageObject> oldMessages = null;
@@ -27788,6 +27813,18 @@ public class ChatActivity extends BaseFragment implements
         if (bottomOverlayChatText == null || chatMode == MODE_SCHEDULED || getContext() == null) {
             return;
         }
+        // Agent chats always use the normal composer; the stock "Delete this chat"
+        // overlay is meant for empty/inaccessible chats and otherwise covers the
+        // input while the local history loads.
+        if (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialog_id)) {
+            if (bottomChannelButtonsLayout != null) {
+                bottomChannelButtonsLayout.setVisibility(View.INVISIBLE);
+            }
+            if (chatActivityEnterView != null) {
+                chatActivityEnterView.setVisibility(View.VISIBLE);
+            }
+            return;
+        }
         bottomOverlayChatWaitsReply = false;
         bottomOverlayLinks = false;
 
@@ -29877,11 +29914,29 @@ public class ChatActivity extends BaseFragment implements
 
     Bulletin.Delegate bulletinDelegate;
 
+    /** The first cache pass for a synthetic agent dialog can come back empty (the
+     *  local dialog row was just rewritten). One bounded retry restores the history
+     *  without waiting for an app restart. */
+    private void retryAgentHistoryIfEmpty() {
+        if (agentLoadRetryDone || paused || isFinishing() || !messages.isEmpty()) return;
+        agentLoadRetryDone = true;
+        android.util.Log.i("OxBridge", "agent chat empty, retry did=" + dialog_id
+                + " waiting=" + waitingForLoad.size() + " firstLoading=" + firstLoading);
+        agentLoadRetryScheduled = true;
+        waitingForLoad.add(lastLoadIndex);
+        getMessagesController().loadMessages(dialog_id, 0, false, 30, 0, 0, true,
+                0, classGuid, 2, 0, 0, 0, 0, lastLoadIndex++, false);
+    }
+
     @Override
     public void onResume() {
         super.onResume();
         if (getChatListView() != null) {
             org.telegram.ox.OxChatTheme.applyToChat(this, dialog_id, getChatListView());
+        }
+        if (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialog_id) && !agentLoadRetryScheduled) {
+            agentLoadRetryScheduled = true;
+            AndroidUtilities.runOnUIThread(this::retryAgentHistoryIfEmpty, 600);
         }
         checkShowBlur(false);
         activityResumeTime = System.currentTimeMillis();

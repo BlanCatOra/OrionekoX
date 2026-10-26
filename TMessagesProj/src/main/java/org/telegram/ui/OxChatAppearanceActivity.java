@@ -200,8 +200,8 @@ public class OxChatAppearanceActivity extends BaseFragment {
             if (index >= 0 && index < presets.size()) {
                 try {
                     OxChatTheme.applyPreset(presets.get(index));
-                    toast(LocaleController.formatString("OxChatImported",
-                            R.string.OxChatImported, presets.get(index)));
+                    toast(LocaleController.formatString("OxChatPresetApplied",
+                            R.string.OxChatPresetApplied, presets.get(index)));
                     rebuild();
                 } catch (Throwable t) {
                     toast(LocaleController.formatString("OxChatImportFailed",

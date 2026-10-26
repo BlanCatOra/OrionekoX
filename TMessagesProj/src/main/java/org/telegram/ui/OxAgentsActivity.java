@@ -501,6 +501,11 @@ public class OxAgentsActivity extends BaseFragment {
                     a.name = name;
                     a.emoji = "🤖";
                     a.agentsMd = md.toString();
+                    a.firstMes = card.optString("first_mes", "").trim();
+                    String desc = card.optString("description", "").trim();
+                    if (!desc.isEmpty()) {
+                        a.remark = desc.length() > 40 ? desc.substring(0, 40) : desc;
+                    }
                     a.builtIn = false;
                     a.tgId = 0;
                     if (donor != null) {
@@ -585,6 +590,10 @@ public class OxAgentsActivity extends BaseFragment {
                             ? LocaleController.formatString("OxAgentImported", R.string.OxAgentImported, a.name)
                             : LocaleController.formatString("OxAgentImportedFiles",
                                     R.string.OxAgentImportedFiles, a.name, res.workspace.size());
+                    if ((a.apiKey == null || a.apiKey.trim().isEmpty())
+                            && a.baseUrl != null && !a.baseUrl.trim().isEmpty()) {
+                        msg = msg + "\n" + LocaleController.getString(R.string.OxAgentImportNoKey);
+                    }
                 } catch (Exception e) {
                     msg = LocaleController.getString(R.string.OxAgentImportFailed);
                 }

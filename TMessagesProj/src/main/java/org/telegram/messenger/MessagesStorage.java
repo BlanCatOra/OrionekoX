@@ -18289,9 +18289,11 @@ public class MessagesStorage extends BaseController {
             }
 
             if (!usersToLoad.isEmpty()) {
-                cursor = getDatabase().queryFinalized(String.format(Locale.US, "SELECT data, status, name FROM users WHERE uid IN(%s)", TextUtils.join(",", usersToLoad)));
+                cursor = getDatabase().queryFinalized(String.format(Locale.US, "SELECT data, status, name, uid FROM users WHERE uid IN(%s)", TextUtils.join(",", usersToLoad)));
                 while (cursor.next()) {
                     String name = cursor.stringValue(2);
+                    long searchUid = cursor.longValue(3);
+                    String lowerName = name.toLowerCase();
                     String tName = LocaleController.getInstance().getTranslitString(name);
                     if (name.equals(tName)) {
                         tName = null;
@@ -18303,9 +18305,14 @@ public class MessagesStorage extends BaseController {
                     }
                     int found = 0;
                     for (String q : search) {
-                        if (name.startsWith(q) || name.contains(" " + q) || tName != null && (tName.startsWith(q) || tName.contains(" " + q))) {
+                        // Synthetic agents often have Latin letters glued to CJK
+                        // ("酒吧炒饭C2"); stock search only matches word starts, so
+                        // also allow a plain substring for local agents.
+                        if (lowerName.startsWith(q) || lowerName.contains(" " + q)
+                                || tName != null && (tName.startsWith(q) || tName.contains(" " + q))
+                                || org.telegram.ox.OxAgentsBridge.isAgentDialog(searchUid) && lowerName.contains(q)) {
                             found = 1;
-                        } else if (username != null && username.startsWith(q)) {
+                        } else if (username != null && username.toLowerCase().startsWith(q)) {
                             found = 2;
                         }
                         if (found != 0) {

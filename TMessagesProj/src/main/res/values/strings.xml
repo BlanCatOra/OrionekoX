@@ -11601,6 +11601,7 @@
     <string name="OxImportAgent">Import .oxagent</string>
     <string name="OxExportAgent">Export .oxagent</string>
     <string name="OxAgentImported">Imported agent %1$s</string>
+    <string name="OxAgentImportNoKey">No API key is included in .oxagent exports. Re-enter it in the agent editor before chatting.</string>
     <string name="OxDuplicateAgent">Duplicate</string>
     <string name="OxAgentDuplicated">Duplicated %1$s</string>
     <string name="OxAgentCopySuffix">copy</string>
@@ -12003,6 +12004,9 @@
     <string name="OxSkillsImport">Import SKILL.md / zip</string>
     <string name="OxSkillsImportInfo">Import skills exported by Kelivo, RikkaHub or Operit into the private skill folder</string>
     <string name="OxSkillsImported">Imported %1$d skill(s)</string>
+    <string name="OxSkillDeleteMsg">Delete this imported skill?</string>
+    <string name="OxSkillDeleted">Deleted skill: %1$s</string>
+    <string name="OxSkillDeleteReadOnly">This skill lives in Download and is read-only</string>
     <string name="OxSkillsImportFailed">Import failed: %1$s</string>
     <string name="OxAppearance">Appearance</string>
     <string name="OxAppearanceEntryInfo">Accent color and Kelivo / RikkaHub theme import</string>
@@ -12045,6 +12049,7 @@
     <string name="OxChatPresets">Presets</string>
     <string name="OxChatNoPresets">No presets yet</string>
     <string name="OxChatPresetHint">Tap to apply · long-press to delete</string>
+    <string name="OxChatPresetApplied">Applied preset: %1$s</string>
     <string name="OxChatResetNative">Reset to Telegram native</string>
     <string name="OxChatResetDone">Reset to Telegram native appearance</string>
     <string name="OxChatApplyHint">Applies when you reopen an agent chat.</string>

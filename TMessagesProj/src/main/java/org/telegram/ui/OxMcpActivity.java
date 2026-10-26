@@ -85,7 +85,6 @@ public class OxMcpActivity extends BaseFragment {
         if (servers.isEmpty()) {
             items.add(UItem.asShadow(LocaleController.getString(R.string.OxMcpEmptyTitle) + "\n" + LocaleController.getString(R.string.OxMcpEmpty)));
         } else {
-            items.add(UItem.asHeader(LocaleController.getString(R.string.OxMcp)));
             for (int i = 0; i < servers.size(); i++) {
                 OxMcpManager.McpServer s = servers.get(i);
                 String value;

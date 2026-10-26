@@ -158,6 +158,24 @@ public class OxSkillsActivity extends BaseFragment {
     }
 
     private boolean onLongClick(UItem item, View view, int position, float x, float y) {
-        return false;
+        List<OxSkillStore.Skill> skills = OxSkillStore.list();
+        int index = item.id - SKILL_BASE;
+        if (index < 0 || index >= skills.size() || getParentActivity() == null) return false;
+        final OxSkillStore.Skill s = skills.get(index);
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(s.name)
+                .setMessage(LocaleController.getString(R.string.OxSkillDeleteMsg))
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
+                    if (OxSkillStore.delete(s)) {
+                        toast(LocaleController.formatString("OxSkillDeleted",
+                                R.string.OxSkillDeleted, s.name));
+                        if (listView != null) listView.adapter.update(true);
+                    } else {
+                        toast(LocaleController.getString(R.string.OxSkillDeleteReadOnly));
+                    }
+                })
+                .show();
+        return true;
     }
 }
