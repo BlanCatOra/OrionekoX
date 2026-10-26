@@ -2195,6 +2195,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.uploadStoryEnd);
             sortedUsers = new ArrayList<>();
             updateOnlineCount(true);
+            if (org.telegram.ox.OxGroupStore.isLocalGroup(chatId)) {
+                org.telegram.ox.OxAgentsBridge.ensureLocalGroupFull(chatId);
+            }
             if (chatInfo == null) {
                 chatInfo = getMessagesController().getChatFull(chatId);
             }

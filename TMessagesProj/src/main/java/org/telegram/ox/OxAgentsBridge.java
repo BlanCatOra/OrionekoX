@@ -323,6 +323,7 @@ public class OxAgentsBridge {
             for (TLRPC.User u : users) MessagesController.getInstance(0).putUser(u, false);
             MessagesController.getInstance(0).putChat(chat, false);
             MessagesController.getInstance(0).putChatFull(full);
+            MessagesStorage.getInstance(0).updateChatInfo(full, false);
         } catch (Throwable t) {
             logErr("createLocalGroup persist failed", t);
         }
@@ -360,6 +361,52 @@ public class OxAgentsBridge {
         result.updates = updates;
         log("createLocalGroup id=" + chatId + " agents=" + agents.size());
         return result;
+    }
+
+    /** Re-adds locally stored agents after every full-chat load from Telegram. */
+    public static void ensureLocalGroupFull(long chatId) {
+        if (!OxGroupStore.isLocalGroup(chatId)) return;
+        try {
+            MessagesController mc = MessagesController.getInstance(0);
+            // Always rebuild: an older persisted full may predate the self-user fix.
+            TLRPC.TL_chatParticipants participants = new TLRPC.TL_chatParticipants();
+            participants.chat_id = chatId;
+            participants.version = 1;
+            long selfId = UserConfig.getInstance(0).getClientUserId();
+            TLRPC.TL_chatParticipantCreator selfPart = new TLRPC.TL_chatParticipantCreator();
+            selfPart.user_id = selfId;
+            participants.participants.add(selfPart);
+            ArrayList<TLRPC.User> users = new ArrayList<>();
+            TLRPC.User self = UserConfig.getInstance(0).getCurrentUser();
+            if (self == null) self = mc.getUser(selfId);
+            if (self != null) {
+                users.add(self);
+                mc.putUser(self, false);
+            }
+            for (OxAgent a : OxGroupStore.agents(chatId)) {
+                TLRPC.TL_chatParticipant p = new TLRPC.TL_chatParticipant();
+                p.user_id = a.tgId;
+                p.inviter_id = SELF_ID;
+                p.date = (int) (System.currentTimeMillis() / 1000);
+                participants.participants.add(p);
+                TLRPC.User u = buildAgentUser(a);
+                users.add(u);
+                mc.putUser(u, false);
+            }
+            TLRPC.TL_chatFull full = new TLRPC.TL_chatFull();
+            full.id = chatId;
+            full.about = "";
+            full.participants = participants;
+            full.participants_count = participants.participants.size();
+            full.notify_settings = new TLRPC.TL_peerNotifySettings();
+            full.can_view_participants = true;
+            MessagesStorage.getInstance(0).putUsersAndChats(users, new ArrayList<>(), true, true);
+            mc.putChatFull(full);
+            MessagesStorage.getInstance(0).updateChatInfo(full, false);
+            log("ensureLocalGroupFull chat=" + chatId + " participants=" + participants.participants.size());
+        } catch (Throwable t) {
+            logErr("ensureLocalGroupFull failed chat=" + chatId, t);
+        }
     }
 
     /** Re-adds locally stored agents after every full-chat load from Telegram. */
