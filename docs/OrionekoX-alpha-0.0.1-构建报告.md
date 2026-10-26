@@ -2269,6 +2269,22 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `1c8c656c65f2…`）；debug `dist/OrionekoX-0.8.105-debug-arm64-x64.apk`（sha256
 `991d7c35394c…`）。
 
+## 5.105 alpha 0.8.106 —— SKILL.md / zip 技能导入（2026-10-26 19:00–19:12）
+
+- 技能库新增“导入 SKILL.md / zip”：系统文档选择器、应用私有
+  `files/oxskills/<id>/SKILL.md`、无需 MANAGE_EXTERNAL_STORAGE；普通 Markdown 单文件
+  导入，zip 扫描最多 200 项/50 个 SKILL.md；2MB/512KB 上限，不使用归档路径落盘。
+- `OxSkillStore.list()` 先扫描私有技能目录，再扫 Operit/Operit2 Downloads；导入后
+  `UniversalAdapter.update(true)` 刷新列表。
+- 实测推送 `orioneko-test-skill.md`（中文 frontmatter）→ 技能库导入 → 列表出现
+  “测试导入技能” → 原生预览显示 frontmatter/正文；示例技能仍在。zip 路径未实测；
+  按 Agent 启用/注入未重跑。
+- 记录见 `OrionekoX/docs/qa-0.8.106.md`。
+
+**产物**：`dist/OrionekoX-0.8.106-alpha-arm64-x64.apk`（versionCode 1219，sha256
+`ca292e81d9c4…`）；debug `dist/OrionekoX-0.8.106-debug-arm64-x64.apk`（sha256
+`209af54cc9c3…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
