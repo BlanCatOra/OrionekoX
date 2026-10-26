@@ -11855,4 +11855,16 @@
     <string name="OxSkillsImportInfo">导入 Kelivo、RikkaHub 或 Operit 导出的技能到应用私有技能目录</string>
     <string name="OxSkillsImported">已导入 %1$d 个技能</string>
     <string name="OxSkillsImportFailed">导入失败：%1$s</string>
+    <string name="OxAppearance">外观</string>
+    <string name="OxAppearanceEntryInfo">强调色与 Kelivo / RikkaHub 主题导入</string>
+    <string name="OxAppearanceCurrent">当前主题色</string>
+    <string name="OxAppearanceDefault">Telegram 默认强调色</string>
+    <string name="OxAppearanceImport">导入主题 JSON</string>
+    <string name="OxAppearanceImportInfo">支持 Kelivo / RikkaHub 的 primaryColorArgb 主题</string>
+    <string name="OxAppearanceIntro">强调色只作用于 Ox 自有界面（终端、外观入口等），不修改 Telegram 原生主题。</string>
+    <string name="OxAppearancePresets">预设</string>
+    <string name="OxAppearanceReset">恢复 Telegram 默认强调色</string>
+    <string name="OxAppearanceImported">已应用主题：%1$s</string>
+    <string name="OxAppearanceImportFailed">导入失败：%1$s</string>
+    <string name="OxAppearanceResetDone">已恢复 Telegram 默认强调色</string>
 </resources>

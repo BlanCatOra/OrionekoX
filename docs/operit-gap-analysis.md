@@ -692,3 +692,14 @@ of a separate automation graph:
 - `OxSkillStore` scans the private folder first, then the existing Operit/Operit2
   Download folders. Verified a Chinese-frontmatter skill: import, list refresh, native
   preview. Zip import and per-agent enable/injection were not re-tested.
+
+### 0.8.107 theme JSON import and Ox accent
+
+- New Ox 外观 page imports Kelivo/RikkaHub theme JSON (`primaryColorArgb`,
+  optional secondary/tertiary/name; numbers or hex strings), offers six presets and a
+  reset-to-Telegram-default action.
+- The accent is scoped to Ox-owned surfaces (default terminal prompt/send tint and the
+  appearance entry icon); Telegram's native theme is not modified. Verified import
+  (`Kelivo 紫 · #6750A4`) and reset on device.
+- Not yet: recoloring Telegram bubbles/buttons, contrast validation, backup of the
+  custom accent.
