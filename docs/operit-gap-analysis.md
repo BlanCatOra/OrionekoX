@@ -613,3 +613,10 @@ of a separate automation graph:
   `selfId=6527689286, selfUser=true, selfResolved=true, participants=2` for the test
   group, so the blank creator row is not missing ChatFull/user data; it is a
   ProfileActivity member-cell/sortedUsers rendering detail. Not fixed here.
+
+### 0.8.100 local-group creator row fixed
+
+- The blank creator row came from `putUser(self, false)` leaving a pre-existing
+  `TL_userEmpty` placeholder in the user cache. Forcing `putUser(self, true)` makes
+  the member cell resolve the real user; the profile now shows
+  “BlanCat · 在线 · 创建者” and “Yuki Waifu · 本地智能体”, with “2 位成员, 2 人在线”.

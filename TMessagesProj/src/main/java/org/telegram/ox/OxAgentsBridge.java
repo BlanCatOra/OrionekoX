@@ -381,7 +381,8 @@ public class OxAgentsBridge {
             if (self == null) self = mc.getUser(selfId);
             if (self != null) {
                 users.add(self);
-                mc.putUser(self, false);
+                // false would keep a pre-existing TL_userEmpty placeholder in the cache
+                mc.putUser(self, true);
             }
             for (OxAgent a : OxGroupStore.agents(chatId)) {
                 TLRPC.TL_chatParticipant p = new TLRPC.TL_chatParticipant();
