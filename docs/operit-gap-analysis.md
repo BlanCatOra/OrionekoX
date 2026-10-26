@@ -620,3 +620,11 @@ of a separate automation graph:
   `TL_userEmpty` placeholder in the user cache. Forcing `putUser(self, true)` makes
   the member cell resolve the real user; the profile now shows
   “BlanCat · 在线 · 创建者” and “Yuki Waifu · 本地智能体”, with “2 位成员, 2 人在线”.
+
+### 0.8.100 group management QA
+
+- Verified the creator/member rows, “2 位成员, 2 人在线”, actions and 添加成员. The
+  add-member picker shows the link-invite row and all agents, with Yuki's switch
+  checked+disabled because she is already a participant. Message long-press shows
+  回复/复制/转发/置顶/举报/删除. No membership or message changes; details in
+  `docs/qa-group-0.8.100.md`.
