@@ -771,3 +771,10 @@ of a separate automation graph:
   base64-decodes the embedded SillyTavern JSON and reuses the JSON mapping/provider
   inheritance. Verified with a generated PNG card; `zTXt`/`iTXt` and PNG-as-avatar are
   not handled yet.
+
+### 0.8.115 Markdown runtime verification
+
+- Verified assistant-side Markdown via a SillyTavern card named `**Bold** Card`: the
+  generated welcome bubble shows bold “Bold” with the asterisks removed, exercising
+  `injectAgentReply` → `applyMarkdown`. Titles are not Markdown and still show the
+  literal name.

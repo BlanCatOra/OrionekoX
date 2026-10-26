@@ -2413,6 +2413,16 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `ae6ed77bd1bf…`）；debug `dist/OrionekoX-0.8.115-debug-arm64-x64.apk`（sha256
 `e8dedd2ae5f0…`）。
 
+## 5.115 alpha 0.8.115 —— Markdown 运行期确定性验证（2026-10-26 21:22–21:25）
+
+- 模型不主动输出 Markdown、输入层又会吞掉用户输入的 `**`，此前无法验证。
+- 改用合法路径：导入名为 `**Bold** Card` 的 SillyTavern 角色卡，欢迎语由 Agent 名字
+  生成并经 `injectAgentReply → applyMarkdown`。
+- 聊天标题仍显示字面 `**Bold** Card`（标题不走 Markdown）；欢迎语气泡显示
+  “你好，我是 🤖 Bold Card。直接发消息即可开始对话。”，其中 Bold 为粗体、星号已移除。
+- 说明 `applyMarkdown` 的助理消息路径运行期可用；无需改代码。记录见
+  `docs/qa-0.8.115-markdown.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
