@@ -79,8 +79,9 @@ gaps that were previously listed as "gap":
 1. **Android UI automation — done v1** — `ui_dump`, `ui_tap`, `ui_long_press`,
    `ui_swipe`, `ui_screenshot`, `ui_key`, `ui_tap_text`, `ui_long_press_text`,
    `ui_find_text`, `ui_scroll_tap_text` (forward/backward) are implemented through
-   the accessibility service and ask-by-default. Long-list scroll+click and both
-   long-press variants are verified end-to-end; the remaining refinements are node
+   the accessibility service and ask-by-default; `app_open` launches installed apps
+   by package or label. Long-list scroll+click, both long-press variants and
+   cross-app launch are verified end-to-end; the remaining refinements are node
    caching and arbitrary key events via ADB/root.
 2. **Executable ToolPkg / JS/Wasm packages** — skills are readable now; executing
    package code needs a sandbox/runtime.
@@ -356,3 +357,14 @@ of a separate automation graph:
 - Verified with an Echo duplicate carrying `ox_photo.png`: the 1740-byte zip held
   `agent.json` + `avatar.png`, and importing restored both the file and a valid
   device path. The test copies and the exported archive were deleted afterwards.
+
+### 0.8.68 app_open
+
+- Added `app_open(package | name)`: exact package match first, then exact launcher
+  label, then a contains match; launches with the MAIN/LAUNCHER intent. The manifest
+  `<queries>` block now declares that intent so launcher apps are visible without
+  requesting QUERY_ALL_PACKAGES. Permission defaults to Ask.
+- Verified with a background workflow on Yuki: `app_open(package=com.android.settings)`
+  returned `opened Settings (com.android.settings)` and `topResumedActivity` became
+  `com.android.settings/.Settings`. The test workflow and temporary Auto policy were
+  removed afterwards; no alarms or crashes.

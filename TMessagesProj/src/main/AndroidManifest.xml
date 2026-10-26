@@ -93,6 +93,10 @@
     <queries>
         <package android:name="com.google.android.apps.maps"/>
         <intent>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.LAUNCHER"/>
+        </intent>
+        <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="ton"/>
         </intent>

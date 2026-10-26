@@ -588,6 +588,52 @@ public class OxBuiltinTools {
         });
 
         register(new OxTool() {
+            @Override public String name() { return "app_open"; }
+            @Override public String description() { return "Open an installed app by exact package name or part of its launcher label. Uses the launcher intent."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"package", "name"}); }
+            @Override public String execute(JSONObject args) {
+                try {
+                    String pkg = args.optString("package", "").trim();
+                    String needle = args.optString("name", "").trim().toLowerCase();
+                    if (pkg.isEmpty() && needle.isEmpty()) return "error: package or name is required";
+                    android.content.pm.PackageManager pm = ApplicationLoader.applicationContext.getPackageManager();
+                    Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+                    java.util.List<android.content.pm.ResolveInfo> apps = pm.queryIntentActivities(main, 0);
+                    android.content.pm.ResolveInfo chosen = null;
+                    android.content.pm.ResolveInfo contains = null;
+                    for (android.content.pm.ResolveInfo ri : apps) {
+                        if (ri.activityInfo == null) continue;
+                        String p = ri.activityInfo.packageName;
+                        if (!pkg.isEmpty() && pkg.equals(p)) {
+                            chosen = ri;
+                            break;
+                        }
+                        if (needle.isEmpty()) continue;
+                        String label = ri.loadLabel(pm).toString().toLowerCase();
+                        if (label.equals(needle)) {
+                            chosen = ri;
+                            break;
+                        }
+                        if (contains == null && (label.contains(needle) || p.toLowerCase().contains(needle))) {
+                            contains = ri;
+                        }
+                    }
+                    if (chosen == null) chosen = contains;
+                    if (chosen == null) return "error: app not found";
+                    Intent launch = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+                    launch.setComponent(new android.content.ComponentName(
+                            chosen.activityInfo.packageName, chosen.activityInfo.name));
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    ApplicationLoader.applicationContext.startActivity(launch);
+                    return "opened " + chosen.loadLabel(pm) + " (" + chosen.activityInfo.packageName + ")";
+                } catch (Throwable t) {
+                    return "error: " + t.getMessage();
+                }
+            }
+        });
+
+        register(new OxTool() {
             @Override public String name() { return "ui_tap"; }
             @Override public String description() { return "Tap a screen coordinate in pixels using the accessibility gesture API. Requires the accessibility service."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }
