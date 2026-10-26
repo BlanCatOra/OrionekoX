@@ -11871,4 +11871,7 @@
     <string name="OxMcpImportPreview">将导入 %1$d 个服务器，跳过 %2$d 个</string>
     <string name="OxToolsPolicyHint">点击切换 自动/询问/禁止；长按恢复默认。</string>
     <string name="OxToolsPolicyResetDone">已恢复默认策略</string>
+    <string name="OxImportCard">导入角色卡（SillyTavern JSON）</string>
+    <string name="OxAgentCardImported">已导入角色卡：%1$s</string>
+    <string name="OxAgentCardFailed">角色卡导入失败：%1$s</string>
 </resources>

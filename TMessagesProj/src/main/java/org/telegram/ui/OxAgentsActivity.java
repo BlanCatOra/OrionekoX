@@ -43,6 +43,7 @@ public class OxAgentsActivity extends BaseFragment {
 
     private static final int REQ_EXPORT = 1001;
     private static final int REQ_IMPORT = 1002;
+    private static final int REQ_CARD = 1003;
     private static final int MENU_MCP = 1;
     private static final int MENU_SETTINGS = 2;
     private static final int MENU_LOGIN = 3;
@@ -134,6 +135,11 @@ public class OxAgentsActivity extends BaseFragment {
         imp.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
         imp.setOnClickListener(v -> importFromOxAgent());
         actions.addView(imp, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        TextSettingsCell card = new TextSettingsCell(context);
+        card.setText(LocaleController.getString(R.string.OxImportCard), false);
+        card.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        card.setOnClickListener(v -> importCharacterCard());
+        actions.addView(card, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         LinearLayout.LayoutParams lp = LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0);
         listContainer.addView(actions, lp);
     }
@@ -331,6 +337,25 @@ public class OxAgentsActivity extends BaseFragment {
         b.show();
     }
 
+    private void importCharacterCard() {
+        try {
+            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
+            i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+            startActivityForResult(i, REQ_CARD);
+        } catch (Exception e) {
+            toast("⚠ " + e);
+        }
+    }
+
+    private static void appendCardField(StringBuilder sb, String title, String value) {
+        if (value == null) return;
+        value = value.trim();
+        if (value.isEmpty()) return;
+        if (sb.length() > 0) sb.append("\n\n");
+        sb.append("# ").append(title).append("\n").append(value);
+    }
+
     private void importFromOxAgent() {
         try {
             android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
@@ -391,6 +416,80 @@ public class OxAgentsActivity extends BaseFragment {
                 final String m = msg;
                 AndroidUtilities.runOnUIThread(() -> toast(m));
             }, "ox-export").start();
+        } else if (requestCode == REQ_CARD) {
+            final android.net.Uri uri = data.getData();
+            new Thread(() -> {
+                String msg;
+                try {
+                    if (uri == null) throw new IllegalStateException("no file");
+                    java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+                    java.io.InputStream in = ctx.getContentResolver().openInputStream(uri);
+                    byte[] buf = new byte[8192];
+                    int n;
+                    while ((n = in.read(buf)) > 0 && bos.size() < 4 * 1024 * 1024) {
+                        bos.write(buf, 0, Math.min(n, 4 * 1024 * 1024 - bos.size()));
+                    }
+                    in.close();
+                    JSONObject root = new JSONObject(new String(bos.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
+                    JSONObject card = root.optJSONObject("data");
+                    if (card == null) card = root;
+                    String name = card.optString("name", "").trim();
+                    if (name.isEmpty()) throw new IllegalArgumentException("name missing");
+                    StringBuilder md = new StringBuilder();
+                    appendCardField(md, "Description", card.optString("description", ""));
+                    appendCardField(md, "Personality", card.optString("personality", ""));
+                    appendCardField(md, "Scenario", card.optString("scenario", ""));
+                    appendCardField(md, "System prompt", card.optString("system_prompt", ""));
+                    appendCardField(md, "Post-history instructions", card.optString("post_history_instructions", ""));
+                    appendCardField(md, "Example dialogue", card.optString("mes_example", ""));
+                    appendCardField(md, "First message", card.optString("first_mes", ""));
+                    OxAgent donor = null;
+                    for (OxAgent existing : OxAgentStore.listAgents()) {
+                        if (existing.baseUrl != null && !existing.baseUrl.isEmpty()
+                                && existing.apiKey != null && !existing.apiKey.isEmpty()) {
+                            donor = existing;
+                            break;
+                        }
+                    }
+                    if (donor == null) {
+                        for (OxAgent existing : OxAgentStore.listAgents()) {
+                            if (existing.baseUrl != null && !existing.baseUrl.isEmpty()) { donor = existing; break; }
+                        }
+                    }
+                    OxAgent a = new OxAgent();
+                    a.id = "card" + UUID.randomUUID().toString().substring(0, 6);
+                    a.name = name;
+                    a.emoji = "🤖";
+                    a.agentsMd = md.toString();
+                    a.builtIn = false;
+                    a.tgId = 0;
+                    if (donor != null) {
+                        a.baseUrl = donor.baseUrl;
+                        a.apiKey = donor.apiKey;
+                        a.model = donor.model;
+                        a.providerId = donor.providerId;
+                        a.temperature = donor.temperature;
+                        a.topP = donor.topP;
+                        a.maxTokens = donor.maxTokens;
+                    }
+                    for (OxAgent existing : OxAgentStore.listAgents()) {
+                        if (existing.name != null && existing.name.equals(a.name)) {
+                            a.name = a.name + " · " + LocaleController.getString(R.string.OxAgentCopySuffix);
+                            break;
+                        }
+                    }
+                    OxAgentStore.saveAgent(a);
+                    msg = LocaleController.formatString("OxAgentCardImported", R.string.OxAgentCardImported, a.name);
+                } catch (Throwable t) {
+                    msg = LocaleController.formatString("OxAgentCardFailed", R.string.OxAgentCardFailed, t.getMessage());
+                }
+                final String m = msg;
+                AndroidUtilities.runOnUIThread(() -> {
+                    toast(m);
+                    OxAgentsBridge.syncAgents(false);
+                    rebuild();
+                });
+            }, "ox-card-import").start();
         } else if (requestCode == REQ_IMPORT) {
             final android.net.Uri uri = data.getData();
             new Thread(() -> {

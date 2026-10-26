@@ -755,3 +755,12 @@ of a separate automation graph:
 - Markdown runtime remains unverified: the Telegram input layer strips `**` before send
   and the test model does not emit markers. Assistant-side entity conversion is
   code-reviewed only.
+
+### 0.8.114 SillyTavern JSON character card import
+
+- Agent list gained “导入角色卡（SillyTavern JSON）”: maps description/personality/
+  scenario/system prompt/post-history/examples/first message into the persona, creates
+  a fresh agent id/tg_id, and adds “· 副本” on name collisions.
+- Provider inheritance prefers an agent with both URL and key; verified a card inheriting
+  OpenDesign/deepseek-v4.1-flash with a non-empty key. PNG cards and native first-message
+  greetings are not handled yet.

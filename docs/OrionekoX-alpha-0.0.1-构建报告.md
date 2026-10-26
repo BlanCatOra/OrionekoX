@@ -2385,6 +2385,21 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `50a55e0ef61c…`）；debug `dist/OrionekoX-0.8.113-debug-arm64-x64.apk`（sha256
 `bab445258e90…`）。
 
+## 5.113 alpha 0.8.114 —— SillyTavern JSON 角色卡导入（2026-10-26 21:00–21:10）
+
+- Agent 列表新增“导入角色卡（SillyTavern JSON）”：解析 `data` 包装或旧版扁平对象，
+  把 description/personality/scenario/system_prompt/post_history_instructions/
+  mes_example/first_mes 映射进 persona；新 id/tg_id，同名加“副本”。
+- Provider 继承优先选择 URL 与 Key 都存在的 Agent，否则退回任意有 URL 的 Agent。
+  实测第二张卡继承 `opendesign / deepseek-v4.1-flash /
+  https://amr-link.open-design.ai/v1`，key 非空。
+- 仅支持 JSON；PNG 角色卡未解析；`first_mes` 作为 persona 的“First message”段落，
+  原生欢迎语仍为通用文案。测试卡片 Agent 保留。记录见 `docs/qa-0.8.114.md`。
+
+**产物**：`dist/OrionekoX-0.8.114-alpha-arm64-x64.apk`（versionCode 1299，sha256
+`150b9e934495…`）；debug `dist/OrionekoX-0.8.114-debug-arm64-x64.apk`（sha256
+`71579abbcbe7…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
