@@ -489,3 +489,13 @@ of a separate automation graph:
   reverted.
 - Backlog: 49 strings still contain legacy `{\fn...}` font markup and mostly
   machine-translated gift/boost text; plan a dedicated pass with placeholder checks.
+
+### 0.8.82 legacy font-markup strings removed
+
+- Rewrote all 49 remaining strings that carried `{\fn...}` legacy font markup and
+  mostly machine-translated gift/boost text (collectibles, gift offers, craft
+  chances, boost service messages, birthday multi-title, business hours, 2FA SMS
+  warnings, scheduled-post date patterns, Star rating/reactions, profile hints).
+- Date patterns now use Chinese `M月d日 HH:mm` / `yyyy年M月d日 HH:mm`; the garbled
+  “瓳” in the sticker-choosing state is gone. Pack 60; the pack contains zero
+  `{\fn` occurrences and still parses 11,842 strings.
