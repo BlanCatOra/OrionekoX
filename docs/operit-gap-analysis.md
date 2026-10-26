@@ -555,3 +555,9 @@ of a separate automation graph:
 - MCP catalogue shows the two remote entries plus Operit local-STDIO plugins; local
   entries open a native detail dialog with repo/copy-config actions. Nothing was
   installed or removed. Details: `docs/qa-ox-0.8.87.md`.
+
+### 0.8.88 giveaway date formats
+
+- An “identical to English” scan left only brand names plus three giveaway date
+  patterns. Localized them to `yyyy年M月d日` / `M月d日` / `yyyy年M月d日` so cards no
+  longer render “26 10月 2026”. Pack 61.
