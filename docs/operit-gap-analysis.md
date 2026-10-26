@@ -511,3 +511,13 @@ of a separate automation graph:
   bubble thumbnail still shows X / “0 KB / 2.7 KB”, so local document injection
   needs an attachment-cache or local photo-size fix; delivery itself works.
 - Details: `docs/qa-media-0.8.82.md`.
+
+### 0.8.83–0.8.84 local media bubble diagnosis
+
+- Tried `document.localPath` (0.8.83) and local-only ids
+  (`id/dc_id = Integer.MIN_VALUE`, 0.8.84) for injected media. Freshly sent bubbles
+  still show X / “0 KB / 2.7 KB”, but after an app restart the same messages render
+  as normal “ox_photo.png, 2.7 KB PNG” document cards. So the remaining defect is a
+  stale upload/download-progress flag on the intercepted message, not file lookup.
+- Delivery remains correct (new file in `inbox/`, agent replies). Next fix: clear the
+  progress/send state after `persistAndShow`. Details in `docs/qa-media-0.8.84.md`.
