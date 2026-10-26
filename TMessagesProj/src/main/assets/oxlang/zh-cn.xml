@@ -11660,9 +11660,9 @@
     <string name="formatterDay24H">HH:mm</string>
     <string name="formatterDayWithSeconds12H">h:mm:ss a</string>
     <string name="formatterDayWithSeconds24H">HH:mm:ss</string>
-    <string name="formatterGiveawayCard">dd MMM yyyy</string>
-    <string name="formatterGiveawayMonthDay">MMMM dd</string>
-    <string name="formatterGiveawayMonthDayYear">MMMM dd, yyyy</string>
+    <string name="formatterGiveawayCard">yyyy年M月d日</string>
+    <string name="formatterGiveawayMonthDay">M月d日</string>
+    <string name="formatterGiveawayMonthDayYear">yyyy年M月d日</string>
     <string name="formatterMonth">M月d日</string>
     <string name="formatterMonthOnly">MMMM</string>
     <string name="formatterMonthYear">yyyy年M月</string>
