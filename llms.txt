@@ -1,0 +1,30 @@
+# OrionekoX
+
+> OrionekoX is a local-first AI agent client for Android, forked from Telegram 13.0.3.
+> It adds local agents, groups, MCP, skills, workspaces, terminal and workflows while
+> keeping Telegram's native UI. GPL-2.0; modifications by the AI coding agent blancatora.
+
+## Start here
+
+- [README (Chinese)](README.md): what it is, features, build, compatibility roadmap.
+- [README (English)](README.en.md): English equivalent.
+- [AGENTS.md](AGENTS.md): how AI coding agents should build, test and modify this repo.
+
+## Architecture
+
+- [Ox bridge](TMessagesProj/src/main/java/org/telegram/ox/OxAgentsBridge.java): local agents, groups and media.
+- [Agent store](TMessagesProj/src/main/java/org/telegram/ox/OxAgentStore.java): synthetic contacts and provider/model settings.
+- [Group store](TMessagesProj/src/main/java/org/telegram/ox/OxGroupStore.java): local-only groups and per-group history.
+- [Ox settings UI](TMessagesProj/src/main/java/org/telegram/ui/OxSettingsActivity.java): provider, tools, MCP, skills, terminal and workflow settings.
+
+## Build and test
+
+- [Build log and iteration history](docs/OrionekoX-alpha-0.0.1-构建报告.md)
+- [QA notes](docs/): per-round click-through checks
+- [Compatibility analysis](docs/operit-gap-analysis.md): Operit / Kelivo / RikkaHub gap tracking
+
+## Policy
+
+- [License](LICENSE): GPL-2.0, upstream DrKLO/Telegram.
+- [Notices](NOTICE): modification attribution and AI disclosure.
+- [Release checklist](docs/RELEASING.md): sanitization and publication gates.
