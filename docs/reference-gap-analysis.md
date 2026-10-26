@@ -70,6 +70,13 @@
 
 - 已有 `.oxagent` 导出/导入（记忆、技能、头像、工作区），下一步补角色卡、ToolPkg
   与工作区目录的兼容；ToolPkg 属于可执行扩展，必须带权限提示与沙箱边界。
+- **MCP 导入**：`MCPImportDialog` 提供 ZIP、GitHub、config（合并 `mcpServers` 配置）、
+  表单四种模式；支持 stdio 命令/参数/环境与远程 HTTP。
+- **主题/美化**：ToolPkg manifest 可声明 `themes`，视觉定义为 `theme-v1` JSON
+  （颜色、背景、字体、输入样式、气泡、九宫格切片等），由 Rust 侧校验资源、图片、
+  SVG、字体后复制到外观资源池；Studio 可导出带模板的 `.toolpkg`。这不是简单换色，
+  而是插件化外观包，OrionekoX 先做“主题 JSON 导入 + 原生外观映射”，不直接执行
+  插件脚本。
 
 ### 统一导入原则
 
