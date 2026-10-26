@@ -531,3 +531,10 @@ of a separate automation graph:
   The X and “0 KB / size” text are gone; a fresh bubble still shows the download
   arrow until an app restart, when it becomes a normal document icon. Agent delivery
   and `list_dir` continue to work.
+
+### 0.8.87 live media state
+
+- After constructing the `MessageObject` in `persistAndShow`, the bridge now sets
+  `attachPathExists`/`mediaExists` when `attachPath` exists. A freshly sent
+  `ox_photo.png` renders as a document card immediately (no X, 0 KB text or
+  download arrow), so local media bubbles no longer need an app restart.

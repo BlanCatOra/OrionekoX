@@ -1878,6 +1878,13 @@ public class OxAgentsBridge {
                 if (out) {
                     obj.wasJustSent = true;
                 }
+                if (msg.attachPath != null && !msg.attachPath.isEmpty()
+                        && new File(msg.attachPath).exists()) {
+                    // The file is already on disk; without these the freshly built
+                    // cell can still render a download button until the chat reloads.
+                    obj.attachPathExists = true;
+                    obj.mediaExists = true;
+                }
                 if (msg.media != null && !(msg.media instanceof TLRPC.TL_messageMediaEmpty)) {
                     log("persistAndShow media type=" + obj.type + " mediaClass=" + msg.media.getClass().getSimpleName()
                             + " photoNonNull=" + (msg.media.photo != null)
