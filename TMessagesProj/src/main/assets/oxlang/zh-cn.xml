@@ -11868,4 +11868,5 @@
     <string name="OxAppearanceImportFailed">导入失败：%1$s</string>
     <string name="OxAppearanceResetDone">已恢复 Telegram 默认强调色</string>
     <string name="OxMcpImportFile">从文件</string>
+    <string name="OxMcpImportPreview">将导入 %1$d 个服务器，跳过 %2$d 个</string>
 </resources>

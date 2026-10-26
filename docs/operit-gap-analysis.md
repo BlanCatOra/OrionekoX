@@ -739,3 +739,10 @@ of a separate automation graph:
   refreshed the list. The test server was removed afterwards.
 - The zip skills path was verified end-to-end: a zip containing `ZipSkill/SKILL.md`
   imported into `files/oxskills/ZipSkill/SKILL.md` and appeared in the list.
+
+### 0.8.112 MCP import preview and idempotency
+
+- MCP JSON import now builds a plan first and shows a native preview (import/skip counts,
+  first names/URLs, stdio note). Writes happen only after confirmation; cancel leaves
+  the store untouched. Re-importing the same file produced no duplicate (URL-based).
+- Verified with one HTTP server (headers) and one stdio entry; test server removed.
