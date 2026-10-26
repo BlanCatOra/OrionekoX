@@ -737,6 +737,60 @@ public class OxAgentsBridge {
     private static final Object GREET_LOCK = new Object();
     private static final java.util.HashSet<Long> GREETED = new java.util.HashSet<>();
 
+    /**
+     * Rewrites the stored welcome bubble after a rename. Without this a copy keeps
+     * “你好，我是 <旧名> · 副本” forever, contradicting the new profile name.
+     */
+    public static void onAgentRenamed(final OxAgent a, final String oldName) {
+        if (a == null || a.tgId == 0 || oldName == null || oldName.equals(a.name)) return;
+        final String greeting = "你好，我是 " + a.emoji + " " + a.name + "。直接发消息即可开始对话。";
+        MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
+            ArrayList<TLRPC.Message> changed = new ArrayList<>();
+            try {
+                org.telegram.SQLite.SQLiteCursor cur = MessagesStorage.getInstance(0).getDatabase()
+                        .queryFinalized("SELECT data FROM messages_v2 WHERE uid = " + a.tgId
+                                + " ORDER BY mid DESC LIMIT 200");
+                try {
+                    while (cur.next()) {
+                        org.telegram.tgnet.NativeByteBuffer data = cur.byteBufferValue(0);
+                        if (data == null) continue;
+                        try {
+                            TLRPC.Message m = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
+                            if (m != null && m.message != null && m.message.startsWith("你好，我是 ")) {
+                                m.message = greeting;
+                                changed.add(m);
+                            }
+                        } catch (Throwable ignored) {
+                        } finally {
+                            data.reuse();
+                        }
+                    }
+                } finally {
+                    cur.dispose();
+                }
+                if (!changed.isEmpty()) {
+                    MessagesStorage.getInstance(0).putMessages(changed, false, true, false, 0, 0, 0);
+                    log("onAgentRenamed updated greetings did=" + a.tgId + " count=" + changed.size());
+                    AndroidUtilities.runOnUIThread(() -> {
+                        ArrayList<MessageObject> objs = new ArrayList<>();
+                        for (TLRPC.Message m : changed) {
+                            try {
+                                objs.add(new MessageObject(0, m, true, false));
+                            } catch (Throwable ignored) {
+                            }
+                        }
+                        if (!objs.isEmpty()) {
+                            NotificationCenter.getInstance(0).postNotificationName(
+                                    NotificationCenter.replaceMessagesObjects, a.tgId, objs);
+                        }
+                    });
+                }
+            } catch (Throwable t) {
+                logErr("onAgentRenamed failed did=" + a.tgId, t);
+            }
+        });
+    }
+
     private static void greetIfEmpty(OxAgent a) {
         MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
             synchronized (GREET_LOCK) {

@@ -722,3 +722,12 @@ of a separate automation graph:
   server path.
 - Verified in a 3-member group: thumbnail, no red mark, and the agent accurately
   described “GROUP VISION 42” on a dark blue/yellow-border test image.
+
+### 0.8.110 rename updates the welcome bubble
+
+- After a copy/rename, the stored welcome message kept the old name. Saving an agent
+  now records the previous name; the bridge reads the last 200 `messages_v2` rows,
+  rewrites assistant messages starting with “你好，我是 ” to the current emoji/name,
+  writes them back and posts `replaceMessagesObjects`.
+- Verified by renaming a copy to `RenamedCopy`; the chat shows the new greeting and the
+  log reports `onAgentRenamed updated greetings ... count=1`.

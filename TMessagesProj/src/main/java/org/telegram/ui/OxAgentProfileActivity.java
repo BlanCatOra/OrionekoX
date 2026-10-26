@@ -1066,6 +1066,7 @@ public class OxAgentProfileActivity extends BaseFragment {
         }
         OxAgent next = buildFromFields();
         next.skillIds = agent != null && agent.skillIds != null ? agent.skillIds : new org.json.JSONArray();
+        final String oldName = agent == null ? null : agent.name;
         next.name = name;
         next.remark = remarkCell.getText().toString().trim();
         next.baseUrl = baseUrlCell.getText().toString().trim();
@@ -1093,6 +1094,7 @@ public class OxAgentProfileActivity extends BaseFragment {
         OxAgentStore.saveAgent(next);
         agent = next;
         OxAgentsBridge.syncAgents(false);
+        OxAgentsBridge.onAgentRenamed(next, oldName);
         if (getParentActivity() != null && OxMode.isAgentOnly()) {
             NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces,
                     org.telegram.messenger.MessagesController.UPDATE_MASK_NAME
