@@ -352,7 +352,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         listView = new UniversalRecyclerView(this, this::fillItems, this::onClick, this::onLongClick);
         listView.adapter.setApplyBackground(false);
         listView.setSections();
-        listView.setPadding(0, AndroidUtilities.statusBarHeight + dp(12), 0, AndroidUtilities.navigationBarHeight + additionNavigationBarHeight);
+        listView.setPadding(0, AndroidUtilities.statusBarHeight + dp(12), 0, AndroidUtilities.navigationBarHeight + additionNavigationBarHeight + dp(64));
         listView.setClipToPadding(false);
         listView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -928,7 +928,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         final Insets systemInsets = AndroidUtilities.getDefaultWindowInsets(insets, false);
         navigationBarHeight = systemInsets.bottom;
         final int statusBarHeight = systemInsets.top;
-        listView.setPadding(0, statusBarHeight + dp(12), 0, navigationBarHeight + additionNavigationBarHeight);
+        listView.setPadding(0, statusBarHeight + dp(12), 0, navigationBarHeight + additionNavigationBarHeight + dp(64));
         return WindowInsetsCompat.CONSUMED;
     }
 

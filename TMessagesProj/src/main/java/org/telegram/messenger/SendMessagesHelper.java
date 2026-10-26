@@ -10841,6 +10841,11 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
             org.telegram.ox.OxAgentsBridge.handleOutgoingMedia(dialogId, media);
             return;
         }
+        if (dialogId < 0 && org.telegram.ox.OxGroupStore.isLocalGroup(dialogId)
+                && editingMessageObject == null && storyItem == null) {
+            org.telegram.ox.OxAgentsBridge.handleOutgoingGroupMedia(dialogId, media);
+            return;
+        }
         if (media.isEmpty()) {
             return;
         }

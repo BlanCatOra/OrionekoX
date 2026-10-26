@@ -207,6 +207,9 @@ public class OxAgentsBridge {
     public static boolean handleCreateChat(TLRPC.TL_messages_createChat req,
                                            org.telegram.tgnet.RequestDelegate onComplete) {
         try {
+            // A freshly copied agent can still have tg_id=0 when the picker is used
+            // immediately; assign identities/contacts before resolving the request.
+            syncAgents(false);
             ArrayList<TLRPC.InputUser> real = new ArrayList<>();
             ArrayList<OxAgent> agents = new ArrayList<>();
             for (TLRPC.InputUser iu : req.users) {
@@ -214,6 +217,7 @@ public class OxAgentsBridge {
                 if (a != null) agents.add(a);
                 else real.add(iu);
             }
+            log("handleCreateChat users=" + req.users.size() + " agents=" + agents.size() + " real=" + real.size());
             if (agents.isEmpty()) return false;
 
             if (!real.isEmpty()) {
@@ -1393,6 +1397,83 @@ public class OxAgentsBridge {
         startMediaTurn(agent, dialogId, text, firstImagePath, text);
     }
 
+    /**
+     * Local groups have no server counterpart. Persist photos/documents with a chat
+     * peer and trigger the group turn, instead of letting SendMessagesHelper fail
+     * with a red mark.
+     */
+    public static void handleOutgoingGroupMedia(long dialogId, java.util.List<SendMessagesHelper.SendingMediaInfo> infos) {
+        if (dialogId >= 0 || infos == null || !OxGroupStore.isLocalGroup(dialogId)) return;
+        StringBuilder prompt = new StringBuilder();
+        for (SendMessagesHelper.SendingMediaInfo info : infos) {
+            String path = info.path;
+            if (path == null || path.isEmpty()) continue;
+            String name = new File(path).getName();
+            String lower = name.toLowerCase();
+            String caption = info.caption == null ? "" : info.caption;
+            try {
+                TLRPC.TL_message msg = new TLRPC.TL_message();
+                msg.flags = 256 | 512;
+                msg.id = nextLocalMessageId();
+                msg.local_id = msg.id;
+                msg.out = true;
+                msg.date = (int) (System.currentTimeMillis() / 1000);
+                msg.message = caption;
+                msg.peer_id = new TLRPC.TL_peerChat();
+                msg.peer_id.chat_id = -dialogId;
+                msg.from_id = new TLRPC.TL_peerUser();
+                msg.from_id.user_id = SELF_ID;
+                msg.dialog_id = dialogId;
+                msg.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
+                if (info.isVideo || lower.endsWith(".mp4") || lower.endsWith(".mkv")
+                        || lower.endsWith(".mov") || lower.endsWith(".webm") || lower.endsWith(".3gp")) {
+                    long[] meta = videoMeta(path);
+                    TLRPC.TL_document doc = buildLocalDocument(path, name,
+                            lower.endsWith(".webm") ? "video/webm" : "video/mp4",
+                            true, false, (int) meta[0], (int) meta[1], meta[2] / 1000.0);
+                    msg.media = new TLRPC.TL_messageMediaDocument();
+                    msg.media.flags |= 1;
+                    msg.media.document = doc;
+                    prompt.append("用户发送了视频：").append(name);
+                } else if (lower.endsWith(".gif")) {
+                    TLRPC.TL_document doc = buildLocalDocument(path, name, "image/gif", false, true, 0, 0, 0);
+                    msg.media = new TLRPC.TL_messageMediaDocument();
+                    msg.media.flags |= 1;
+                    msg.media.document = doc;
+                    prompt.append("用户发送了一张动图（GIF）：").append(name);
+                } else if (lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png")
+                        || lower.endsWith(".webp") || lower.endsWith(".heic")) {
+                    TLRPC.TL_photo photo = SendMessagesHelper.getInstance(0).generatePhotoSizes(path, null);
+                    if (photo == null) {
+                        log("group photo unreadable " + path);
+                        continue;
+                    }
+                    msg.media = new TLRPC.TL_messageMediaPhoto();
+                    msg.media.flags |= 1;
+                    msg.media.photo = photo;
+                    prompt.append("用户发送了一张图片：").append(name);
+                } else {
+                    String mime = "application/octet-stream";
+                    if (lower.endsWith(".pdf")) mime = "application/pdf";
+                    else if (lower.endsWith(".txt")) mime = "text/plain";
+                    TLRPC.TL_document doc = buildLocalDocument(path, name, mime, false, false, 0, 0, 0);
+                    msg.media = new TLRPC.TL_messageMediaDocument();
+                    msg.media.flags |= 1;
+                    msg.media.document = doc;
+                    prompt.append("用户发送了文件：").append(name);
+                }
+                if (!caption.trim().isEmpty()) prompt.append("\n附带说明：").append(caption.trim());
+                persistAndShow(dialogId, msg);
+                prompt.append("\n");
+            } catch (Throwable t) {
+                logErr("handleOutgoingGroupMedia item failed", t);
+            }
+        }
+        if (prompt.length() > 0) {
+            onGroupMessage(dialogId, prompt.toString().trim(), null);
+        }
+    }
+
     private static String archiveMedia(OxAgent agent, String path, int index) {
         if (agent == null) return null;
         try {
@@ -1713,6 +1794,17 @@ public class OxAgentsBridge {
             }
             String lower = text.toLowerCase();
             if (chosen == null) {
+                // Telegram inserts the synthetic @username (agent_<id>), not the
+                // display name; resolve it before falling back to name matching.
+                for (OxAgent a : agents) {
+                    String uname = "agent_" + (Math.abs(a.tgId) % 100000);
+                    if (lower.contains("@" + uname)) {
+                        chosen = a;
+                        break;
+                    }
+                }
+            }
+            if (chosen == null) {
                 for (OxAgent a : agents) {
                     String name = a.name == null ? "" : a.name.toLowerCase();
                     if (!name.isEmpty() && (lower.contains("@" + name) || lower.contains(name))) {
@@ -1994,9 +2086,7 @@ public class OxAgentsBridge {
         } catch (Throwable t) {
             logErr("putMessages failed did=" + dialogId, t);
         }
-        if (dialogId >= 0) {
-            refreshDialogRow(dialogId);
-        }
+        refreshDialogRow(dialogId);
         AndroidUtilities.runOnUIThread(() -> {
             try {
                 MessageObject obj = new MessageObject(0, msg, true, false);
@@ -2076,9 +2166,23 @@ public class OxAgentsBridge {
     private static void refreshDialogRow(long dialogId) {
         MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
             try {
+                long mid = 0;
+                int date = 0;
+                org.telegram.SQLite.SQLiteCursor cur = MessagesStorage.getInstance(0).getDatabase()
+                        .queryFinalized("SELECT mid, date FROM messages_v2 WHERE uid = " + dialogId
+                                + " ORDER BY date DESC, mid DESC LIMIT 1");
+                if (cur.next()) {
+                    mid = cur.longValue(0);
+                    date = (int) cur.longValue(1);
+                }
+                cur.dispose();
+                if (mid == 0) {
+                    return;
+                }
                 MessagesStorage.getInstance(0).getDatabase().executeFast(
                         "INSERT OR REPLACE INTO dialogs(did, date, unread_count, last_mid, inbox_max, outbox_max, last_mid_i, unread_count_i, pts, date_i, pinned, flags, folder_id, data, unread_reactions, last_mid_group, ttl_period, unread_poll_votes) "
-                                + "SELECT uid, MAX(date), 0, mid, 0, 0, 0, 0, 0, 0, 0, 0, 0, x'', 0, 0, 0, 0 FROM messages_v2 WHERE uid = " + dialogId).stepThis().dispose();
+                                + "VALUES(" + dialogId + ", " + date + ", 0, " + mid
+                                + ", 0, 0, 0, 0, 0, 0, 0, 0, 0, x'', 0, 0, 0, 0)").stepThis().dispose();
             } catch (Throwable t) {
                 logErr("refreshDialogRow failed did=" + dialogId, t);
             }
@@ -2098,6 +2202,7 @@ public class OxAgentsBridge {
             msg.out = false;
             msg.date = (int) (System.currentTimeMillis() / 1000);
             msg.message = text;
+            applyMarkdown(msg);
             setPeerAndSender(msg, dialogId, senderTgId);
             msg.unread = false;
             msg.media = new TLRPC.TL_messageMediaEmpty();
@@ -2122,6 +2227,66 @@ public class OxAgentsBridge {
         TLRPC.TL_peerUser peer = new TLRPC.TL_peerUser();
         peer.user_id = dialogId;
         return peer;
+    }
+
+    /**
+     * Strips the small Markdown subset models actually emit and attaches native
+     * Telegram entities, so **bold**, `code` and ## headings render instead of
+     * showing literal markers.
+     */
+    private static void applyMarkdown(TLRPC.TL_message msg) {
+        if (msg == null || msg.message == null || msg.message.isEmpty()) return;
+        String src = msg.message;
+        ArrayList<TLRPC.MessageEntity> entities = new ArrayList<>();
+        StringBuilder out = new StringBuilder(src.length());
+        int i = 0;
+        while (i < src.length()) {
+            if (src.startsWith("**", i)) {
+                int end = src.indexOf("**", i + 2);
+                if (end > i + 2) {
+                    int start = out.length();
+                    out.append(src, i + 2, end);
+                    TLRPC.TL_messageEntityBold bold = new TLRPC.TL_messageEntityBold();
+                    bold.offset = start;
+                    bold.length = out.length() - start;
+                    entities.add(bold);
+                    i = end + 2;
+                    continue;
+                }
+            }
+            if (src.charAt(i) == '`' && (i == 0 || src.charAt(i - 1) != '`')) {
+                int end = src.indexOf('`', i + 1);
+                if (end > i + 1) {
+                    int start = out.length();
+                    out.append(src, i + 1, end);
+                    TLRPC.TL_messageEntityCode code = new TLRPC.TL_messageEntityCode();
+                    code.offset = start;
+                    code.length = out.length() - start;
+                    entities.add(code);
+                    i = end + 1;
+                    continue;
+                }
+            }
+            if ((i == 0 || src.charAt(i - 1) == '\n') && src.startsWith("## ", i)) {
+                int end = src.indexOf('\n', i);
+                if (end < 0) end = src.length();
+                int start = out.length();
+                out.append(src, i + 3, end);
+                TLRPC.TL_messageEntityBold bold = new TLRPC.TL_messageEntityBold();
+                bold.offset = start;
+                bold.length = out.length() - start;
+                entities.add(bold);
+                i = end;
+                continue;
+            }
+            out.append(src.charAt(i));
+            i++;
+        }
+        if (!entities.isEmpty()) {
+            msg.message = out.toString();
+            msg.entities = entities;
+            msg.flags |= 128;
+        }
     }
 
     private static void setPeerAndSender(TLRPC.TL_message msg, long dialogId, long senderTgId) {
@@ -2188,6 +2353,7 @@ public class OxAgentsBridge {
         }
         if (s.msg != null) {
             s.msg.message = finalText;
+            applyMarkdown(s.msg);
             ArrayList<TLRPC.Message> arr = new ArrayList<>();
             arr.add(s.msg);
             MessagesStorage.getInstance(0).putMessages(arr, false, true, false, 0, 0, 0);

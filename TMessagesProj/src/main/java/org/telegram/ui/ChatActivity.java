@@ -8510,7 +8510,7 @@ public class ChatActivity extends BaseFragment implements
         bottomChannelButtonsLayout.getContainer().addView(bottomOverlayStartButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 38, Gravity.CENTER, 3, 3, 3, 3));
         bottomChannelButtonsLayout.makeViewWrapContent(bottomOverlayStartButton);
 
-        if (currentUser != null && currentUser.bot && currentUser.id != UserObject.VERIFY && !UserObject.isDeleted(currentUser) && !UserObject.isReplyUser(currentUser) && !isInScheduleMode() && chatMode != MODE_PINNED && chatMode != MODE_SAVED && !isReport()) {
+        if (currentUser != null && currentUser.bot && !org.telegram.ox.OxAgentsBridge.isAgentDialog(currentUser.id) && currentUser.id != UserObject.VERIFY && !UserObject.isDeleted(currentUser) && !UserObject.isReplyUser(currentUser) && !isInScheduleMode() && chatMode != MODE_PINNED && chatMode != MODE_SAVED && !isReport()) {
             bottomOverlayStartButton.setVisibility(View.VISIBLE);
             bottomChannelButtonsLayout.setVisibility(View.VISIBLE);
         }
@@ -27987,7 +27987,7 @@ public class ChatActivity extends BaseFragment implements
                     bottomOverlayChatText.setText(LocaleController.getString(R.string.ChannelUnmuteNoCaps), true);
                 }
                 showBottomOverlayProgress(false, true);
-            } else if (botUser != null && currentUser.bot && !UserObject.isDeleted(currentUser)) {
+            } else if (botUser != null && currentUser.bot && !org.telegram.ox.OxAgentsBridge.isAgentDialog(currentUser.id) && !UserObject.isDeleted(currentUser)) {
                 if (bottomOverlayStartButton != null) {
                     bottomOverlayStartButton.setVisibility(View.VISIBLE);
                 }
