@@ -479,7 +479,7 @@
     <string name="ActionUserInvitedToGroup">un1请你来参加这个小组</string>
     <string name="ActionUserScored">un1 获得 %1$s 分</string>
     <string name="ActionUserScoredInGame">un1 在«un2»中获得 %1$s 分</string>
-    <string name="ActionUserWithinOtherRadius">un1瞷%1$s从un2</string>
+    <string name="ActionUserWithinOtherRadius">un1 现在距离 un2 %1$s 以内</string>
     <string name="ActionUserWithinRadius">un1 离你 %1$s之内</string>
     <string name="ActionUserWithinYouRadius">现在您距离 un1 约%1$s之内</string>
     <string name="ActionVolumeChanged">un1已更改un2数量到%1$d%%</string>
@@ -3123,7 +3123,7 @@
     <string name="DateOfBirthAddToProfile">添加到我的配置文件</string>
     <string name="DateOfBirthHideYear">隐藏年份</string>
     <string name="DateYear">年份</string>
-    <string name="DayAgo">ぱ玡</string>
+    <string name="DayAgo">1 天前</string>
     <string name="DaysAgo_one">%d两天前</string>
     <string name="DaysAgo_other">%d# 几天前 # # 几天前 # # 几天前 # # 几天前 # # 几天前 #</string>
     <string name="DaysBold_one">**%1$d** 天</string>
@@ -5105,8 +5105,8 @@
     <string name="Grams_zero">%1$s语法</string>
     <string name="Gray">灰色</string>
     <string name="Green">绿色</string>
-    <string name="GreetingHow">%s为所有空聊天添加此消息**或妓**</string>
-    <string name="GreetingHowSticker">%s设置所有空聊天的标签**或妓**</string>
+    <string name="GreetingHow">%s 为所有空聊天添加了上述消息，**怎么做？**</string>
+    <string name="GreetingHowSticker">%s 为所有空聊天设置了上述贴纸，**怎么做？**</string>
     <string name="GroupAddMembers">添加成员</string>
     <string name="GroupAdmins">组管理员</string>
     <string name="GroupAppearanceUpdated">组外观已更新</string>
@@ -5308,7 +5308,7 @@
     <string name="Hours_other">%1$d 小时</string>
     <string name="HowDoesItWork">怎么会这样?</string>
     <string name="Hybrid">混合</string>
-    <string name="IUnderstand">и笵</string>
+    <string name="IUnderstand">我明白了</string>
     <string name="IVInteractionsChartTitle">即时预览互动</string>
     <string name="IfInactiveFor">非活动</string>
     <string name="ImagesTab2">图片</string>
@@ -6630,7 +6630,7 @@
     <string name="NotificationsUnmutedHintChats_other">未调试的通知%d聊天</string>
     <string name="NotifyAboutReactionsFrom">通知来自</string>
     <string name="NotifyAboutReactionsFromContacts">我的联系人</string>
-    <string name="NotifyAboutReactionsFromEveryone">產</string>
+    <string name="NotifyAboutReactionsFromEveryone">所有人</string>
     <string name="NotifyFromContacts">从我的联系人</string>
     <string name="NotifyFromEveryone">从每个人</string>
     <string name="NotifyFromNobody">关</string>
@@ -7644,8 +7644,8 @@
     <string name="PremiumMessageTextLocked">**%1$s**仅限其发文Premium用户.</string>
     <string name="PremiumMore">更多( E)</string>
     <string name="PremiumNeeded">Premium需要吗?</string>
-    <string name="PremiumNeededForBoosting">仅限**Telegram Premium**订阅者可以促进频道。您想要订阅到**Telegram Premium?**</string>
-    <string name="PremiumNeededForBoostingGroup">仅限**Telegram Premium**订阅者可以促进组。您想要订阅吗 ?**Telegram Premium?**</string>
+    <string name="PremiumNeededForBoosting">只有 **Telegram Premium** 订阅者才能为频道助力。要订阅 **Telegram Premium** 吗？</string>
+    <string name="PremiumNeededForBoostingGroup">只有 **Telegram Premium** 订阅者才能为群组助力。要订阅 **Telegram Premium** 吗？</string>
     <string name="PremiumOr">或减减</string>
     <string name="PremiumOrStarsPrice">或减减%s</string>
     <string name="PremiumPreviewAIEditor">AI工具</string>
@@ -7852,8 +7852,10 @@
     <string name="PrivacyLastSeenPremiumInfo">若您订阅Premium,你会看到其他用户最后一次见到和阅读时间,即使你隐藏了自己的时间(除非他们特别限制它).</string>
     <string name="PrivacyLastSeenPremiumInfoForPremium">因为你是个Telegram Premium订阅者,您将会看到所有与您共享的用户的最后一次观看和阅读时间 — 即使您正在隐藏您的时间。</string>
     <string name="PrivacyMessages">消息</string>
-    <string name="PrivacyMessagesContactsAndPremium">我的联系人和Premium用户</string>
-    <string name="PrivacyMessagesInfo">您可以只将消息限制在联系人和Premium用户.\n\n**或Telegram Premium?**</string>
+    <string name="PrivacyMessagesContactsAndPremium">我的联系人和 Premium 用户</string>
+    <string name="PrivacyMessagesInfo">你可以将接收消息范围限制为仅联系人和 Premium 用户。
+
+**什么是 Telegram Premium？**</string>
     <string name="PrivacyMessagesTitle">谁能给我发消息?</string>
     <string name="PrivacyMiniapps">小型 Apps 和 Bots 软件</string>
     <string name="PrivacyMiniappsText">全部烟雾</string>
@@ -8143,11 +8145,11 @@
     <string name="PushReactVideoSecret">%2$s给您的自毁视频</string>
     <string name="PushReactWalletTonConnectRequest">%2$s转到您的 TON 连接请求</string>
     <string name="PushReactWallpaper">%2$s切换到新背景</string>
-    <string name="QRCodeLinkGroupCall">產钮帝Telegram可以扫描此代码以加入您的组合呼叫。</string>
-    <string name="QRCodeLinkHelpChannel">產钮帝Telegram可以扫描此代码加入您的频道。</string>
-    <string name="QRCodeLinkHelpChannelDirect">產钮帝Telegram可以扫描此代码以写入您的频道。</string>
-    <string name="QRCodeLinkHelpFolder">產钮帝Telegram可以扫描此代码以添加此文件夹并加入此邀请链接中包含的聊天内容。</string>
-    <string name="QRCodeLinkHelpGroup">產钮帝Telegram可以扫描此代码加入您的组合。</string>
+    <string name="QRCodeLinkGroupCall">任何 Telegram 用户都可以扫描此二维码加入你的群组通话。</string>
+    <string name="QRCodeLinkHelpChannel">任何 Telegram 用户都可以扫描此二维码加入你的频道。</string>
+    <string name="QRCodeLinkHelpChannelDirect">任何 Telegram 用户都可以扫描此二维码向你的频道发送消息。</string>
+    <string name="QRCodeLinkHelpFolder">任何 Telegram 用户都可以扫描此二维码添加此文件夹，并加入邀请链接中的聊天。</string>
+    <string name="QRCodeLinkHelpGroup">任何 Telegram 用户都可以扫描此二维码加入你的群组。</string>
     <string name="QRCodeLinkHelpProxy">你的朋友可以通过扫描这个代码或者应用中的相机来添加这个代号.</string>
     <string name="QRCodePermissionNoCameraWithHint">**Telegram**需要相机访问才能扫描QR密码点按设置 ->权限,并转**摄像头**继续</string>
     <string name="QrCode">二维码</string>
@@ -8533,7 +8535,7 @@
     <string name="RestorePasswordResetPassword">新闻社</string>
     <string name="RestorePasswordResetPasswordOk">您的二步验证密码被重置。</string>
     <string name="RestorePasswordResetPasswordText">您确定要重置您的二步验证密码吗 ?</string>
-    <string name="RestorePremiumHintMessage">Telegram Premium最近已经过期了来试试看</string>
+    <string name="RestorePremiumHintMessage">你的 Telegram Premium 已过期。点按此处续订。</string>
     <string name="RestorePremiumHintTitle">获取Premium带回最多**%1$d%%**关</string>
     <string name="Restrict">限制</string>
     <string name="RestrictSavingContent">限制保存内容</string>
@@ -9954,7 +9956,7 @@
     <string name="StoryPrivacyContactsExclude_other">联系人( --%d)</string>
     <string name="StoryPrivacyContacts_one">%d联系人</string>
     <string name="StoryPrivacyContacts_other">%d联系人</string>
-    <string name="StoryPrivacyEveryone">產</string>
+    <string name="StoryPrivacyEveryone">所有人</string>
     <string name="StoryPrivacyEveryoneExclude_one">所有人（-%d）</string>
     <string name="StoryPrivacyEveryoneExclude_other">所有人（-%d）</string>
     <string name="StoryPrivacyHint">设定可以查看您的故事</string>
@@ -9963,7 +9965,7 @@
     <string name="StoryPrivacyOptionCloseFriendsDetail">编辑列表</string>
     <string name="StoryPrivacyOptionContacts">联系人</string>
     <string name="StoryPrivacyOptionContactsDetail">将人排除在外</string>
-    <string name="StoryPrivacyOptionEveryone">產</string>
+    <string name="StoryPrivacyOptionEveryone">所有人</string>
     <string name="StoryPrivacyOptionExcludePeople_one">除外%d个人</string>
     <string name="StoryPrivacyOptionExcludePeople_other">除外%d人间</string>
     <string name="StoryPrivacyOptionExcludePerson">除外%s</string>
@@ -10336,7 +10338,7 @@
     <string name="ThemeResetToDefaultsTitle">重置设置</string>
     <string name="ThemeSetUrl">设置公开链接</string>
     <string name="ThemeSetUrlHelp">您可以使用 a-z, 0-9 和下划线。\n最短长度为 5 个字符。</string>
-    <string name="ThisIsYou">硂琌</string>
+    <string name="ThisIsYou">这是你</string>
     <string name="ThisMedia">这个媒体</string>
     <string name="ThisPhoto">这张照片</string>
     <string name="TimeLimitHelp">你可以让链接在一段时间后失效.</string>

@@ -454,3 +454,15 @@ of a separate automation graph:
 - Normalized 13 “画廊” to “相册”, 11 “私人聊天” to “私聊”, and “组” to “群组”,
   including the save-to-gallery hints that previously mixed clauses and a stray
   backslash. Pack 56; verified on the privacy screen and in the runtime pack.
+
+### 0.8.79 private-use glyph cleanup
+
+- Scanned the whole Chinese pack for private-use characters (U+E000–F8FF) and
+  replacement glyphs: 16 strings rendered as boxes or gibberish, including the
+  Messages privacy explanation, “What is Telegram Premium?”, all five QR-invite
+  help lines, “I understand”, story audience “Everyone”, greeting empty-chat text,
+  reaction notifications, the Premium-expired hint, “this is you”, the location
+  distance action and `DayAgo`.
+- Rewrote each from the English source with natural spacing/punctuation and also
+  fixed the Premium-boosting sentences. Pack 57; the private-use count is now zero
+  and the Messages privacy screen was verified on device.
