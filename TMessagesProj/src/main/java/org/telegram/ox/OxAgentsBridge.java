@@ -964,7 +964,24 @@ public class OxAgentsBridge {
                 boolean animated = hasAttribute(doc, TLRPC.TL_documentAttributeAnimated.class);
                 boolean sticker = hasAttribute(doc, TLRPC.TL_documentAttributeSticker.class);
                 boolean music = audio instanceof TLRPC.TL_documentAttributeAudio && !voice;
-                injectDocument(dialogId, doc, p.path, caption);
+                // The picker path is temporary and is deleted after sending. Archive
+                // first and point the message at the durable copy, otherwise the bubble
+                // renders a download button forever even though the bytes are present.
+                String durablePath = p.path;
+                String archivedRel = null;
+                if (!sticker && p.path != null && agent != null && new File(p.path).exists()) {
+                    archivedRel = archiveIntoWorkspace(agent, p.path, name);
+                    if (archivedRel != null) {
+                        durablePath = new File(OxAgentStore.workspaceDir(agent.id), archivedRel).getAbsolutePath();
+                    }
+                }
+                if (durablePath != null && new File(durablePath).exists()) {
+                    doc.id = Integer.MIN_VALUE;
+                    doc.dc_id = Integer.MIN_VALUE;
+                    doc.file_reference = new byte[0];
+                    doc.localPath = durablePath;
+                }
+                injectDocument(dialogId, doc, durablePath, caption);
                 String kind = video ? "视频" : voice ? "语音消息" : music ? "音乐"
                         : animated ? "动图（GIF）" : sticker ? "贴纸" : "文件";
                 StringBuilder prompt = new StringBuilder("用户发送了").append(kind);
@@ -976,9 +993,8 @@ public class OxAgentsBridge {
                 if (sticker) {
                     TLRPC.DocumentAttribute sa = findAttribute(doc, TLRPC.TL_documentAttributeSticker.class);
                     if (sa != null && sa.alt != null) prompt.append("\n贴纸表情：").append(sa.alt);
-                } else if (p.path != null) {
-                    String rel = archiveIntoWorkspace(agent, p.path, name);
-                    if (rel != null) prompt.append("\n文件已存入工作区：").append(rel).append("（可用 read_file / list_dir 工具读取）");
+                } else if (archivedRel != null) {
+                    prompt.append("\n文件已存入工作区：").append(archivedRel).append("（可用 read_file / list_dir 工具读取）");
                 }
                 startMediaTurn(agent, dialogId, prompt.toString(), null, prompt.toString());
                 return true;

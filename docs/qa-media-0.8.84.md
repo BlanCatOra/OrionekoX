@@ -33,3 +33,20 @@ does not say “0 KB / 2.7 KB” until the next app start.
 - The 11:01, 11:08 and 11:13 photo bubbles and Yuki's replies are local test
   artifacts in the Yuki Waifu chat. No real contact was messaged.
 - No FATAL/ANR was produced by OrionekoX in this pass.
+
+## Follow-up 0.8.85 / 0.8.86
+
+- Root cause of the remaining state: documents sent through the “文件” picker go
+  through `handleOutgoingSpecial`, which injected the picker's original document
+  (no local markers) and a temporary `p.path` that is deleted after sending.
+- 0.8.85 marked that document with `id/dc_id = Integer.MIN_VALUE` and
+  `localPath = p.path`; the X and “0 KB / size” text disappeared, but the bubble
+  still showed a download-arrow icon because the temp path no longer existed.
+- 0.8.86 archives the file into the agent workspace `inbox/` first and points both
+  `attachPath` and `localPath` at that durable absolute path. Freshly sent bubbles
+  show a document card with “2.7 KB PNG” and no X/0 KB; the icon still renders as a
+  download arrow until the app is restarted, after which it becomes the normal
+  document icon. Delivery is unchanged: each send creates another
+  `inbox/<timestamp>_ox_photo.png`, and Yuki lists/replies.
+- Remaining polish: force a cell/media-state refresh after `persistAndShow` so the
+  download-arrow icon resolves immediately instead of on next app start.
