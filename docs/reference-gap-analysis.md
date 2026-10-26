@@ -54,8 +54,17 @@
 - **SillyTavern 角色卡**：JSON/PNG 角色卡导入，可映射到本地 Agent 的名称、头像、
   人设与首条消息。
 - **Provider 配置**：支持 QR 导入/导出；具体编码尚未核对，先做 JSON 配置导入。
-- **备份**：README 未描述通用聊天备份格式，需读源码后再定；不推测。
-- **MCP/Skills**：与 Kelivo 类似，优先复用 `mcpServers` 与 `SKILL.md` 两条通路。
+- **备份**：`BackupManager.kt` 生成 zip，含 `settings.json`、可选数据库快照
+  （`database/…` + WAL）与附件目录；支持本地/WebDAV/S3，恢复时对 zip 条目做路径
+  越界校验与重复条目拒绝。
+- **MCP**：`McpConfig.kt` 只有 SSE 与 streamable HTTP 两种 transport，带 OAuth 2.1
+  状态；没有 stdio。MCP 工具可标记 `needsApproval`。
+- **主题**：`CustomTheme.kt` 的 JSON 为 `{id,name,primaryColorArgb,secondaryColorArgb?,
+  tertiaryColorArgb?}`; 用 Material 3 TONAL_SPOT 生成亮/暗色板，字段与 Kelivo 互通。
+- **SillyTavern**：`AssistantImporter.kt` 支持 JSON 与 PNG 角色卡，映射到 Assistant
+  的名称、人设、首条消息与头像。
+- **Skills**：`SkillFrontmatterParser`/`SkillManager` 读取 `SKILL.md`，内置技能目录
+  `app/src/main/assets/builtin_skills/`。
 
 ### Operit
 
