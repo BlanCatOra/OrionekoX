@@ -567,3 +567,9 @@ of a separate automation graph:
 - Removed leftover “( E)” from `EditProfileName`, unified “您的信息” to “你的信息”, and
   rewrote the birthday visibility hints (“生日变动>” → “可以看到你的生日。**更改 >**”
   and “在**设置**中选择谁可以看到你的生日。”). Pack 62; verified on the profile sheet.
+
+### 0.8.90 logout copy
+
+- Corrected the account page’s misuse of “注销” for logging out: logout now reads
+  “退出登录会使所有加密聊天失效。”, support reads “联系客服 / 退出登录通常并不能解决
+  问题。”, and session termination uses “终止…会话” instead of “注销”. Pack 63.
