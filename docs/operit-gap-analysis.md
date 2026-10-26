@@ -764,3 +764,10 @@ of a separate automation graph:
 - Provider inheritance prefers an agent with both URL and key; verified a card inheriting
   OpenDesign/deepseek-v4.1-flash with a non-empty key. PNG cards and native first-message
   greetings are not handled yet.
+
+### 0.8.115 SillyTavern PNG character cards
+
+- The card importer now reads uncompressed PNG `tEXt` chunks named `chara`/`ccv3`,
+  base64-decodes the embedded SillyTavern JSON and reuses the JSON mapping/provider
+  inheritance. Verified with a generated PNG card; `zTXt`/`iTXt` and PNG-as-avatar are
+  not handled yet.

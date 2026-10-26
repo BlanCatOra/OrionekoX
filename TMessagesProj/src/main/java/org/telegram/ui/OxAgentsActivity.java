@@ -348,6 +348,46 @@ public class OxAgentsActivity extends BaseFragment {
         }
     }
 
+    /**
+     * SillyTavern PNG cards store the JSON in a tEXt chunk named "chara" (base64).
+     * Returns the decoded JSON, or the original bytes as UTF-8 for plain JSON cards.
+     */
+    private static String extractCardJson(byte[] data) {
+        if (data == null) return "";
+        if (data.length > 8
+                && (data[0] & 0xff) == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G') {
+            int off = 8;
+            while (off + 8 <= data.length) {
+                long len = ((long) (data[off] & 0xff) << 24) | ((data[off + 1] & 0xff) << 16)
+                        | ((data[off + 2] & 0xff) << 8) | (data[off + 3] & 0xff);
+                off += 4;
+                String type = new String(data, off, 4, java.nio.charset.StandardCharsets.ISO_8859_1);
+                off += 4;
+                if (len < 0 || off + len + 4 > data.length) break;
+                if ("tEXt".equals(type)) {
+                    int nul = -1;
+                    for (int i = off; i < off + len; i++) {
+                        if (data[i] == 0) { nul = i; break; }
+                    }
+                    if (nul > off) {
+                        String key = new String(data, off, nul - off, java.nio.charset.StandardCharsets.ISO_8859_1);
+                        if ("chara".equalsIgnoreCase(key) || "ccv3".equalsIgnoreCase(key)) {
+                            try {
+                                String b64 = new String(data, nul + 1, (int) (off + len - nul - 1),
+                                        java.nio.charset.StandardCharsets.ISO_8859_1);
+                                byte[] decoded = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                                return new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
+                            } catch (Throwable ignored) {
+                            }
+                        }
+                    }
+                }
+                off += (int) len + 4;
+            }
+        }
+        return new String(data, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
     private static void appendCardField(StringBuilder sb, String title, String value) {
         if (value == null) return;
         value = value.trim();
@@ -430,7 +470,7 @@ public class OxAgentsActivity extends BaseFragment {
                         bos.write(buf, 0, Math.min(n, 4 * 1024 * 1024 - bos.size()));
                     }
                     in.close();
-                    JSONObject root = new JSONObject(new String(bos.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
+                    JSONObject root = new JSONObject(extractCardJson(bos.toByteArray()));
                     JSONObject card = root.optJSONObject("data");
                     if (card == null) card = root;
                     String name = card.optString("name", "").trim();
