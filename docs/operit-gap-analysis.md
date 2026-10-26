@@ -712,3 +712,13 @@ of a separate automation graph:
   to “开始使用 OrionekoX” when the client is already activated.
 - Verified the step-6 title/cards are centered and full-width, and the button text is
   correct. Container runtime itself remains blocked by W^X.
+
+### 0.8.109 local group image vision
+
+- Group media now passes the first image path into the group turn and builds a
+  vision content array, using the same OpenAI-compatible `image_url` payload as
+  single-agent photos. File-picker sends go through `prepareSendingDocuments`, also
+  routed locally, so a JPEG is persisted as a local photo instead of failing on the
+  server path.
+- Verified in a 3-member group: thumbnail, no red mark, and the agent accurately
+  described “GROUP VISION 42” on a dark blue/yellow-border test image.

@@ -10113,6 +10113,19 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         if (paths == null && originalPaths == null && uris == null || paths != null && originalPaths != null && paths.size() != originalPaths.size()) {
             return;
         }
+        if (dialogId < 0 && org.telegram.ox.OxGroupStore.isLocalGroup(dialogId)
+                && editingMessageObject == null && storyItem == null
+                && paths != null && !paths.isEmpty()) {
+            ArrayList<SendingMediaInfo> infos = new ArrayList<>(paths.size());
+            for (int i = 0; i < paths.size(); i++) {
+                SendingMediaInfo info = new SendingMediaInfo();
+                info.path = paths.get(i);
+                info.caption = i == 0 ? caption : null;
+                infos.add(info);
+            }
+            org.telegram.ox.OxAgentsBridge.handleOutgoingGroupMedia(dialogId, infos);
+            return;
+        }
         Utilities.globalQueue.postRunnable(() -> {
             int error = 0;
             long[] groupId = new long[1];

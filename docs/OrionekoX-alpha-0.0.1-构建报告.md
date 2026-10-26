@@ -2315,6 +2315,21 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `d97bc5b0c44a…`）；debug `dist/OrionekoX-0.8.108-debug-arm64-x64.apk`（sha256
 `5b86c98f6575…`）。
 
+## 5.108 alpha 0.8.109 —— 本地群图片视觉（2026-10-26 19:50–20:06）
+
+- `handleOutgoingGroupMedia` 保留首张图片路径并传入群回合；`groupMessages` 对带图
+  用户消息使用 `visionContent`（OpenAI-compatible image_url），与单聊照片一致。
+- `prepareSendingDocuments` 对本地群补分流：从“文件”入口选 JPEG 也走本地照片 +
+  视觉，而不是落服务器管线产生红叹号。
+- 实测 3 人群发送“GROUP VISION 42”测试图：照片气泡有缩略图、双勾、无红叹号；
+  Yuki 准确描述“深蓝底、黄色矩形边框、白色小字 GROUP VISION 42”。
+- 限制：多图只取首张入视觉；既有失败文档气泡仍是历史红标。记录见
+  `OrionekoX/docs/qa-0.8.109.md`。
+
+**产物**：`dist/OrionekoX-0.8.109-alpha-arm64-x64.apk`（versionCode 1249，sha256
+`ce3677908450…`）；debug `dist/OrionekoX-0.8.109-debug-arm64-x64.apk`（sha256
+`596da3cb2840…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
