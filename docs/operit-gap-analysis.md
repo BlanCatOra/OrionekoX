@@ -588,3 +588,10 @@ of a separate automation graph:
   mistranslated to “分享”. 0.8.92 hides BotShare/ShareContact/BotPrivacy/Report and
   block/restart for agent ids; the menu now only has 自动删除 / 添加到主屏幕.
   0.8.93 corrects `ShareContact` to “分享联系人” for real contacts too. Pack 64.
+
+### 0.8.94 agent profile actions
+
+- With `shareAction` false for agents, the profile action row is now only 消息 / 静音.
+  The “添加到群组或频道” row and its “manage a group or channel” hint are also
+  suppressed for agent ids, since they describe a management bot rather than a local
+  conversational agent. Real bots/contacts keep the row.
