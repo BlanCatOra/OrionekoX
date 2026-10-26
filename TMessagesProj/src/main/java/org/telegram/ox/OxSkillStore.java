@@ -1,6 +1,11 @@
 package org.telegram.ox;
 
+import android.content.Context;
+import android.net.Uri;
 import android.os.Environment;
+import android.provider.OpenableColumns;
+
+import org.telegram.messenger.ApplicationLoader;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -12,6 +17,9 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * Read-only view of Operit's SKILL.md packages (Download/Operit/skills and
@@ -35,6 +43,7 @@ public class OxSkillStore {
         loadedAt = now;
         ArrayList<Skill> out = new ArrayList<>();
         try {
+            scan(new File(ApplicationLoader.applicationContext.getFilesDir(), "oxskills"), out, 0);
             File download = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             scan(new File(download, "Operit/skills"), out, 0);
             scan(new File(download, "Operit2/skills"), out, 0);
@@ -42,6 +51,98 @@ public class OxSkillStore {
         }
         cached = out;
         return out;
+    }
+
+    /** Imports SKILL.md (or a zip containing one/few) into the app-private skill dir. */
+    public static synchronized int importFromUri(Context ctx, Uri uri) throws Exception {
+        if (ctx == null || uri == null) throw new IllegalArgumentException("missing uri");
+        byte[] data = readAll(ctx.getContentResolver().openInputStream(uri), 2 * 1024 * 1024);
+        if (data.length == 0) throw new IllegalArgumentException("empty file");
+        String display = queryDisplayName(ctx, uri);
+        int imported = 0;
+        if (isZip(data)) {
+            ZipInputStream zis = new ZipInputStream(new java.io.ByteArrayInputStream(data));
+            ZipEntry e;
+            int entries = 0;
+            while ((e = zis.getNextEntry()) != null && entries++ < 200) {
+                if (e.isDirectory()) continue;
+                String n = e.getName();
+                if (!n.toLowerCase(Locale.ROOT).endsWith("skill.md")) continue;
+                byte[] body = readAll(zis, 512 * 1024);
+                if (body.length == 0) continue;
+                int slash = n.lastIndexOf('/');
+                String parent = slash > 0 ? n.substring(0, slash) : "";
+                while (parent.endsWith("/")) parent = parent.substring(0, parent.length() - 1);
+                String id = sanitizeSkillId(parent.isEmpty() ? stripMd(display) : parent);
+                writeSkill(id, body);
+                imported++;
+                if (imported >= 50) break;
+            }
+            zis.close();
+        } else {
+            String id = sanitizeSkillId(stripMd(display));
+            writeSkill(id, data);
+            imported = 1;
+        }
+        if (imported == 0) throw new IllegalArgumentException("no SKILL.md found");
+        loadedAt = 0;
+        return imported;
+    }
+
+    private static void writeSkill(String id, byte[] body) throws Exception {
+        File base = new File(ApplicationLoader.applicationContext.getFilesDir(), "oxskills");
+        File dir = new File(base, id);
+        int suffix = 1;
+        while (dir.exists()) dir = new File(base, id + "_" + suffix++);
+        if (!dir.mkdirs()) throw new java.io.IOException("cannot create skill dir");
+        java.io.FileOutputStream out = new java.io.FileOutputStream(new File(dir, "SKILL.md"));
+        out.write(body);
+        out.close();
+    }
+
+    private static String sanitizeSkillId(String raw) {
+        String id = raw == null ? "" : raw.trim().replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (id.isEmpty()) id = "skill_" + System.currentTimeMillis();
+        return id.length() > 48 ? id.substring(0, 48) : id;
+    }
+
+    private static String stripMd(String name) {
+        if (name == null || name.isEmpty()) return "";
+        String n = name;
+        int dot = n.toLowerCase(Locale.ROOT).lastIndexOf(".md");
+        if (dot > 0) n = n.substring(0, dot);
+        return n;
+    }
+
+    private static boolean isZip(byte[] data) {
+        return data.length > 4 && data[0] == 'P' && data[1] == 'K';
+    }
+
+    private static String queryDisplayName(Context ctx, Uri uri) {
+        try (android.database.Cursor c = ctx.getContentResolver().query(uri, null, null, null, null)) {
+            if (c != null) {
+                int idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (idx >= 0 && c.moveToFirst()) {
+                    String n = c.getString(idx);
+                    if (n != null && !n.isEmpty()) return n;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        String last = uri.getLastPathSegment();
+        return last == null ? "skill" : last;
+    }
+
+    private static byte[] readAll(java.io.InputStream in, int max) throws Exception {
+        if (in == null) return new byte[0];
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = in.read(buf)) > 0 && bos.size() < max) {
+            bos.write(buf, 0, Math.min(n, max - bos.size()));
+        }
+        if (!(in instanceof ZipInputStream)) in.close();
+        return bos.toByteArray();
     }
 
     private static void scan(File dir, List<Skill> out, int depth) {

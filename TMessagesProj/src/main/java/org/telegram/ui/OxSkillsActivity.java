@@ -35,6 +35,8 @@ public class OxSkillsActivity extends BaseFragment {
 
     private static final int SKILL_BASE = 5000;
     private static final int ID_GRANT = 1;
+    private static final int ID_IMPORT = 2;
+    private static final int REQ_IMPORT = 311;
     private UniversalRecyclerView listView;
 
     @Override
@@ -62,8 +64,11 @@ public class OxSkillsActivity extends BaseFragment {
 
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         boolean granted = Build.VERSION.SDK_INT < 30 || Environment.isExternalStorageManager();
+        items.add(UItem.asHeader(LocaleController.getString(R.string.OxSkillsTitle)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_IMPORT, 0xFF34C759, 0xFF2AA84A,
+                R.drawable.msg_download, LocaleController.getString(R.string.OxSkillsImport),
+                LocaleController.getString(R.string.OxSkillsImportInfo)));
         if (!granted) {
-            items.add(UItem.asHeader(LocaleController.getString(R.string.OxSkillsTitle)));
             items.add(SettingsActivity.SettingCell.Factory.of(ID_GRANT, 0xFFE8A33D, 0xFFD98A1F,
                     R.drawable.settings_policy, LocaleController.getString(R.string.OxSkillsGrant),
                     LocaleController.getString(R.string.OxSkillsGrantInfo)));
@@ -71,7 +76,6 @@ public class OxSkillsActivity extends BaseFragment {
             return;
         }
         List<OxSkillStore.Skill> skills = OxSkillStore.list();
-        items.add(UItem.asHeader(LocaleController.getString(R.string.OxSkillsTitle)));
         if (skills.isEmpty()) {
             items.add(UItem.asShadow(LocaleController.getString(R.string.OxSkillsEmpty)));
             return;
@@ -87,6 +91,17 @@ public class OxSkillsActivity extends BaseFragment {
     }
 
     private void onClick(UItem item, View view, int position, float x, float y) {
+        if (item.id == ID_IMPORT && getParentActivity() != null) {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            try {
+                startActivityForResult(intent, REQ_IMPORT);
+            } catch (Throwable t) {
+                toast(LocaleController.formatString("OxSkillsImportFailed", R.string.OxSkillsImportFailed, t.getMessage()));
+            }
+            return;
+        }
         if (item.id == ID_GRANT && getParentActivity() != null) {
             try {
                 getParentActivity().startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
@@ -112,6 +127,34 @@ public class OxSkillsActivity extends BaseFragment {
                 .setView(scroll)
                 .setPositiveButton(LocaleController.getString(R.string.OK), null)
                 .show();
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
+        if (requestCode != REQ_IMPORT || resultCode != android.app.Activity.RESULT_OK || data == null) return;
+        final android.net.Uri uri = data.getData();
+        final android.content.Context ctx = getParentActivity();
+        if (uri == null || ctx == null) return;
+        new Thread(() -> {
+            String msg;
+            try {
+                int count = OxSkillStore.importFromUri(ctx, uri);
+                msg = LocaleController.formatString("OxSkillsImported", R.string.OxSkillsImported, count);
+            } catch (Throwable t) {
+                msg = LocaleController.formatString("OxSkillsImportFailed", R.string.OxSkillsImportFailed, t.getMessage());
+            }
+            final String m = msg;
+            AndroidUtilities.runOnUIThread(() -> {
+                toast(m);
+                if (listView != null) listView.adapter.update(true);
+            });
+        }, "ox-skill-import").start();
+    }
+
+    private void toast(String s) {
+        if (getParentActivity() != null) {
+            android.widget.Toast.makeText(getParentActivity(), s, android.widget.Toast.LENGTH_SHORT).show();
+        }
     }
 
     private boolean onLongClick(UItem item, View view, int position, float x, float y) {

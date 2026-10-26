@@ -682,3 +682,13 @@ of a separate automation graph:
   unsupported; SSE is skipped because the runtime is Streamable HTTP only.
 - UI verified; end-to-end paste could not be automated because `adb input text`
   strips quotes. A deterministic fixture test is the next step.
+
+### 0.8.106 SKILL.md / zip import
+
+- Skills activity now imports `SKILL.md` or a zip of skill folders through the system
+  document picker into app-private `files/oxskills/<id>/SKILL.md`; no broad storage
+  permission needed. Zip entries are capped (200 entries, 50 skills) and archive paths
+  are never used as filesystem paths.
+- `OxSkillStore` scans the private folder first, then the existing Operit/Operit2
+  Download folders. Verified a Chinese-frontmatter skill: import, list refresh, native
+  preview. Zip import and per-agent enable/injection were not re-tested.

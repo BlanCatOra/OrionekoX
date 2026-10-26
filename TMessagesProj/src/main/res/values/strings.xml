@@ -12000,4 +12000,8 @@
     <string name="OxMcpImportHint">Paste mcpServers JSON (Kelivo / RikkaHub / Claude Desktop)</string>
     <string name="OxMcpImportDone">Imported %1$d server(s), skipped %2$d</string>
     <string name="OxMcpImportStdio">%1$d stdio server(s) are not supported yet</string>
+    <string name="OxSkillsImport">Import SKILL.md / zip</string>
+    <string name="OxSkillsImportInfo">Import skills exported by Kelivo, RikkaHub or Operit into the private skill folder</string>
+    <string name="OxSkillsImported">Imported %1$d skill(s)</string>
+    <string name="OxSkillsImportFailed">Import failed: %1$s</string>
 </resources>

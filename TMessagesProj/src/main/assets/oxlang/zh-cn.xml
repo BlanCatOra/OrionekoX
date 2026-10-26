@@ -11851,4 +11851,8 @@
     <string name="OxMcpImportHint">粘贴 mcpServers JSON（Kelivo / RikkaHub / Claude Desktop）</string>
     <string name="OxMcpImportDone">已导入 %1$d 个服务器，跳过 %2$d 个</string>
     <string name="OxMcpImportStdio">%1$d 个 stdio 服务器暂不支持</string>
+    <string name="OxSkillsImport">导入 SKILL.md / zip</string>
+    <string name="OxSkillsImportInfo">导入 Kelivo、RikkaHub 或 Operit 导出的技能到应用私有技能目录</string>
+    <string name="OxSkillsImported">已导入 %1$d 个技能</string>
+    <string name="OxSkillsImportFailed">导入失败：%1$s</string>
 </resources>
