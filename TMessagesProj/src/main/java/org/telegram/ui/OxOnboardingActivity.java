@@ -179,8 +179,10 @@ public class OxOnboardingActivity extends BaseFragment {
         });
         viewPager.setPageTransformer(false, (page, position) -> {
             page.setAlpha(1f - Math.min(0.45f, Math.abs(position) * 0.45f));
-            page.setTranslationX(-position * AndroidUtilities.dp(26));
-            page.setTranslationY(Math.abs(position) * AndroidUtilities.dp(6));
+            // No horizontal translation: it shifts the whole page and leaves the
+            // previous step visible on the left (seen when opening at step 6).
+            page.setTranslationX(0f);
+            page.setTranslationY(0f);
         });
         // Fixed progress header: six segments + the exact step counter. It sits above
         // the pager so the page content is never covered by chrome.
@@ -292,9 +294,38 @@ public class OxOnboardingActivity extends BaseFragment {
         updateChrome(0);
         if (startPage > 0 && startPage < PAGES) {
             final int target = startPage;
-            viewPager.post(() -> viewPager.setCurrentItem(target, false));
+            // setCurrentItem() before the pager has a width leaves it between pages
+            // (step 5 peeking on the left while step 6 starts off-centre). Wait for
+            // layout, then settle twice so the transformer cannot leave an offset.
+            viewPager.post(() -> {
+                if (viewPager.getWidth() <= 0) {
+                    viewPager.post(() -> settleStartPage(target));
+                } else {
+                    settleStartPage(target);
+                }
+            });
+            AndroidUtilities.runOnUIThread(() -> settleStartPage(target), 120);
         }
         return fragmentView;
+    }
+
+    private void settleStartPage(int target) {
+        if (viewPager == null || target < 0 || target >= PAGES) return;
+        int width = viewPager.getWidth();
+        if (viewPager.getCurrentItem() != target) {
+            viewPager.setCurrentItem(target, false);
+        }
+        if (width > 0) {
+            // Some first-layout paths leave ViewPager between pages even after
+            // setCurrentItem(..., false); align the scroll position explicitly.
+            viewPager.scrollTo(target * width, 0);
+        }
+        for (int i = 0; i < viewPager.getChildCount(); i++) {
+            viewPager.getChildAt(i).setTranslationX(0f);
+        }
+        viewPager.requestLayout();
+        updateChrome(target);
+
     }
 
     @Override
@@ -1149,12 +1180,19 @@ public class OxOnboardingActivity extends BaseFragment {
         hintText.setVisibility(skippable ? View.VISIBLE : View.INVISIBLE);
         hintText.setText(LocaleController.getString(R.string.OxObSkipHint));
         if (last) {
-            nextButton.setText(LocaleController.getString(selectedMode == MODE_LOGIN ? R.string.OxObStartLogin : R.string.OxObStart));
+            nextButton.setText(LocaleController.getString(startButtonRes()));
         } else {
             nextButton.setText(LocaleController.getString(R.string.OxObNext));
         }
         updateNextState();
         if (position == IDX_PERM) rebuildPermissions();
+    }
+
+    private int startButtonRes() {
+        if (UserConfig.getInstance(0).isClientActivated()) {
+            return R.string.OxObStart;
+        }
+        return selectedMode == MODE_LOGIN ? R.string.OxObStartLogin : R.string.OxObStart;
     }
 
     private boolean nextEnabled() {
@@ -1166,7 +1204,7 @@ public class OxOnboardingActivity extends BaseFragment {
         boolean enabled = nextEnabled();
         nextButton.setAlpha(enabled ? 1f : 0.45f);
         if (viewPager != null && viewPager.getCurrentItem() == PAGES - 1) {
-            nextButton.setText(LocaleController.getString(selectedMode == MODE_LOGIN ? R.string.OxObStartLogin : R.string.OxObStart));
+            nextButton.setText(LocaleController.getString(startButtonRes()));
         }
     }
 
