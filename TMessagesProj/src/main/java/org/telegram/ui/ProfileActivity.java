@@ -10780,7 +10780,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     }
                 }
 
-                if (user != null && isBot && !user.bot_nochats) {
+                if (user != null && isBot && !user.bot_nochats && !org.telegram.ox.OxAgentsBridge.isAgentDialog(userId)) {
                     addToGroupButtonRow = rowCount++;
                     addToGroupInfoRow = rowCount++;
                 } else if (botStarsBalanceRow >= 0) {
