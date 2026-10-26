@@ -2301,6 +2301,20 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `167e8f7566a6…`）；debug `dist/OrionekoX-0.8.107-debug-arm64-x64.apk`（sha256
 `6ba0937521be…`）。
 
+## 5.107 alpha 0.8.108 —— OxLinux 引导页布局修复（2026-10-26 19:22–19:45）
+
+- C 报告中的“第 6 步整体右移、左侧露出第 5 步、标题裁切、已登录仍显示登录 Telegram”
+  复现成功：ViewPager 每页被额外平移 345px（`translationX=345`），滚动本身正确。
+- 修复：页面变换去掉横向 translation（只保留 alpha），start page 对齐时清空子页
+  translation 并强制 `scrollTo(target * width, 0)`；登录后最后一步主按钮改为“开始
+  使用 OrionekoX”，未登录登录模式仍显示“登录 Telegram”。
+- 实测第 6 步标题完整居中、卡片全宽、无第 5 步残影；按钮文案正确；无 FATAL/ANR。
+- 记录见 `OrionekoX/docs/qa-0.8.108.md`。
+
+**产物**：`dist/OrionekoX-0.8.108-alpha-arm64-x64.apk`（versionCode 1239，sha256
+`d97bc5b0c44a…`）；debug `dist/OrionekoX-0.8.108-debug-arm64-x64.apk`（sha256
+`5b86c98f6575…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

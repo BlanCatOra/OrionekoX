@@ -703,3 +703,12 @@ of a separate automation graph:
   (`Kelivo 紫 · #6750A4`) and reset on device.
 - Not yet: recoloring Telegram bubbles/buttons, contrast validation, backup of the
   custom accent.
+
+### 0.8.108 OxLinux onboarding layout
+
+- Opening the guide at step 6 left step 5 peeking on the left because the ViewPager
+  page transformer added a 345px horizontal translation to every page. Removed the
+  translation, force scroll alignment after layout, and changed the last-step action
+  to “开始使用 OrionekoX” when the client is already activated.
+- Verified the step-6 title/cards are centered and full-width, and the button text is
+  correct. Container runtime itself remains blocked by W^X.
