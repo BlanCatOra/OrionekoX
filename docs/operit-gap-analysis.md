@@ -580,3 +580,11 @@ of a separate automation graph:
   `onBlockContactClicked(true)` for a synthetic user. `ProfileActionsView` now has a
   `hideStop` flag set by `ProfileActivity.setActionsMode` when the bot id belongs to
   a local agent, so the action row shows only 消息 / 静音 / 共享. Real bots keep Stop.
+
+### 0.8.92–0.8.93 agent profile menu
+
+- Local agent profiles showed a duplicate “分享”, plus “报告” and “删除并屏蔽”, because
+  the bot branch adds BotShare and ShareContact and the Chinese `ShareContact` was
+  mistranslated to “分享”. 0.8.92 hides BotShare/ShareContact/BotPrivacy/Report and
+  block/restart for agent ids; the menu now only has 自动删除 / 添加到主屏幕.
+  0.8.93 corrects `ShareContact` to “分享联系人” for real contacts too. Pack 64.
