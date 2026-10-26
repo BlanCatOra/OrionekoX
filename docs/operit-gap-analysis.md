@@ -521,3 +521,13 @@ of a separate automation graph:
   stale upload/download-progress flag on the intercepted message, not file lookup.
 - Delivery remains correct (new file in `inbox/`, agent replies). Next fix: clear the
   progress/send state after `persistAndShow`. Details in `docs/qa-media-0.8.84.md`.
+
+### 0.8.85–0.8.86 durable local media paths
+
+- Found that picker documents were injected via `handleOutgoingSpecial` with the
+  original document and a temporary picker path, which is deleted after sending.
+- 0.8.85/0.8.86 mark the document as local and archive it to the agent workspace
+  `inbox/` first, using that durable absolute path for `attachPath`/`localPath`.
+  The X and “0 KB / size” text are gone; a fresh bubble still shows the download
+  arrow until an app restart, when it becomes a normal document icon. Agent delivery
+  and `list_dir` continue to work.
