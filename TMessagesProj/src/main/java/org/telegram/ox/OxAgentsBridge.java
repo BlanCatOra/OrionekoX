@@ -403,7 +403,10 @@ public class OxAgentsBridge {
             MessagesStorage.getInstance(0).putUsersAndChats(users, new ArrayList<>(), true, true);
             mc.putChatFull(full);
             MessagesStorage.getInstance(0).updateChatInfo(full, false);
-            log("ensureLocalGroupFull chat=" + chatId + " participants=" + participants.participants.size());
+            log("ensureLocalGroupFull chat=" + chatId + " selfId=" + selfId
+                    + " selfUser=" + (self != null)
+                    + " selfResolved=" + (mc.getUser(selfId) != null)
+                    + " participants=" + participants.participants.size());
         } catch (Throwable t) {
             logErr("ensureLocalGroupFull failed chat=" + chatId, t);
         }

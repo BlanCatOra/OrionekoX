@@ -606,3 +606,10 @@ of a separate automation graph:
 - Verified 添加成员, the 2-member list and the Yuki Waifu row appear. Residual: the
   creator’s own row is still blank (only the 创建者 badge); needs a targeted look at
   ProfileActivity’s self-participant resolution.
+
+### 0.8.99 local-group creator row diagnosis
+
+- Logging inside `ensureLocalGroupFull` confirms
+  `selfId=6527689286, selfUser=true, selfResolved=true, participants=2` for the test
+  group, so the blank creator row is not missing ChatFull/user data; it is a
+  ProfileActivity member-cell/sortedUsers rendering detail. Not fixed here.
