@@ -514,7 +514,7 @@
     <string name="AddAnOptionInfo">您还可以再添加 %1$s。</string>
     <string name="AddAnOptionInfoMax">您添加的选项已达最大数量。</string>
     <string name="AddAnotherAccount">添加其他帐号</string>
-    <string name="AddAnotherAccountInfo">登录其他 ChatAir 帐号并在它们之间轻松切换。</string>
+    <string name="AddAnotherAccountInfo">登录其他 OrionekoX 帐号并在它们之间轻松切换。</string>
     <string name="AddAsAdmin">添加为管理员</string>
     <string name="AddBannedErrorAdmin">抱歉，您无法封禁这位用户。因为该用户是此群组的管理员，并且您也无权撤销其管理员权限。</string>
     <string name="AddBirthday">添加生日</string>
@@ -536,7 +536,7 @@
     <string name="AddContactQr">通过二维码</string>
     <string name="AddContactShareNumber">共享我的电话号码</string>
     <string name="AddContactShareNumberInfo">关掉它,防止%s从看到你的电话号码。</string>
-    <string name="AddContactSync">同步联系人到电话</string>
+    <string name="AddContactSync">同步联系人到手机</string>
     <string name="AddContactTitle">添加联系人</string>
     <string name="AddEffectMessageHint">添加动画效果</string>
     <string name="AddEmailSubtitle">请输入您的有效电子邮件地址来保护您的账户。</string>
@@ -692,8 +692,8 @@
     <string name="AllowPostSuggestions">允许直接消息</string>
     <string name="AllowPostSuggestionsHint2">允许用户向您的频道发送消息,每条消息可选收费.</string>
     <string name="AllowReadCall">请授予 Telegram 电话权限以便我们自动读取验证码。</string>
-    <string name="AllowReadCallAndLog">请允许 ChatAir 接听电话与读取通话记录，以便我们自动为您输入验证码。</string>
-    <string name="AllowReadCallLog">请允许 ChatAir 读取通话记录，以便为您自动填写验证码。</string>
+    <string name="AllowReadCallAndLog">请允许 OrionekoX 接听电话与读取通话记录，以便我们自动为您输入验证码。</string>
+    <string name="AllowReadCallLog">请允许 OrionekoX 读取通话记录，以便为您自动填写验证码。</string>
     <string name="AlmostDone">都快结束了</string>
     <string name="AlsoTerminateChatbot">终止%s</string>
     <string name="AlternativeOptions">其它选项</string>
@@ -1063,15 +1063,15 @@
     <string name="August">8月</string>
     <string name="AuthAnotherClient">扫描二维码</string>
     <string name="AuthAnotherClientDownloadClientUrl">https://getdesktop.telegram.org/</string>
-    <string name="AuthAnotherClientInfo1">从 *desktop.ChatAir.org* 下载 ChatAir 到您的计算机上。</string>
-    <string name="AuthAnotherClientInfo2">运行 ChatAir Desktop 以获取二维码。</string>
+    <string name="AuthAnotherClientInfo1">在电脑上安装 Telegram Desktop 并登录同一帐号。</string>
+    <string name="AuthAnotherClientInfo2">在 Telegram Desktop 中打开 **设置 > 设备 > 扫描二维码**。</string>
     <string name="AuthAnotherClientInfo3">扫描二维码以连接你的账号。</string>
-    <string name="AuthAnotherClientInfo4">链接 *Telegram桌面 * 或 *Telegram网页*QR.</string>
-    <string name="AuthAnotherClientInfo5">转到 *getdesktop.telegram.org * 或 *web.telegram.org * 获得一个二维码</string>
+    <string name="AuthAnotherClientInfo4">在 **Telegram Desktop** 或 **Telegram Web** 中打开二维码。</string>
+    <string name="AuthAnotherClientInfo5">前往 **getdesktop.telegram.org** 或 **web.telegram.org** 获取二维码。</string>
     <string name="AuthAnotherClientNotFound">找不到验证码。</string>
     <string name="AuthAnotherClientOk">验证成功</string>
     <string name="AuthAnotherClientScan">扫描二维码</string>
-    <string name="AuthAnotherClientUrl">此二维码可登录到您的 ChatAir 帐号。\n\n要确认Telegram登录，请转到 **设置**>**设备**>**扫一扫**。</string>
+    <string name="AuthAnotherClientUrl">此二维码可登录您的 OrionekoX 帐号。\n\n要确认登录，请转到 **设置** > **设备** > **扫描二维码**。</string>
     <string name="AuthAnotherWebClientUrl">https://web.telegram.org/</string>
     <string name="AuthorHiddenDescription">这些消息的发送者在转发时会限制其名称的链接.</string>
     <string name="AutoDelete1Day">1 天</string>
@@ -1264,12 +1264,12 @@
     <string name="BlockUserAlert">您想屏蔽 %1$s 的所有消息和通话吗？</string>
     <string name="BlockUserChatsTitle">对话</string>
     <string name="BlockUserContactsTitle">联系人</string>
-    <string name="BlockUserMessage">您要屏蔽 %1$s 在 ChatAir 上给您发送的消息与拨打的电话吗？</string>
+    <string name="BlockUserMessage">您要屏蔽 %1$s 在 OrionekoX 上给您发送的消息与拨打的电话吗？</string>
     <string name="BlockUserMultiTitle">屏蔽用户</string>
     <string name="BlockUserReplyAlert">您是否想要封锁来自**%1$s**?</string>
     <string name="BlockUserTitle">屏蔽 %1$s</string>
     <string name="BlockUsers">屏蔽用户</string>
-    <string name="BlockUsersMessage">您要屏蔽 %1$s 在 ChatAir 上给您发送的消息与拨打的电话吗？</string>
+    <string name="BlockUsersMessage">您要屏蔽 %1$s 在 OrionekoX 上给您发送的消息与拨打的电话吗？</string>
     <string name="BlockedEmpty">无</string>
     <string name="BlockedUsers">已拉黑用户</string>
     <string name="BlockedUsersCount_one">%1$d 位已被屏蔽的用户</string>
@@ -2761,7 +2761,7 @@
     <string name="ClearSelectedCache">清除选中的</string>
     <string name="ClearStorageHintMessage">清空您的手机存储空间</string>
     <string name="ClearStorageHintTitle">空闲到**%s**</string>
-    <string name="ClearTelegramCache">清除 ChatAir 缓存</string>
+    <string name="ClearTelegramCache">清除 OrionekoX 缓存</string>
     <string name="ClearingCache">清除缓存...</string>
     <string name="ClearingCacheDescription">请打开此窗口Telegram正在清理您的缓存。</string>
     <string name="Clicks_one">%d点击</string>
@@ -3006,7 +3006,7 @@
     <string name="ContactJobTitle">职位</string>
     <string name="ContactJoined">联系人已加入 Telegram</string>
     <string name="ContactNotRegistered">%1$s 没有在使用 Telegram，是否邀请他加入？</string>
-    <string name="ContactNotRegisteredTitle">邀请好友使用 ChatAir</string>
+    <string name="ContactNotRegisteredTitle">邀请好友使用 OrionekoX</string>
     <string name="ContactNote">说明</string>
     <string name="ContactShortcutMessage">消息 %1$s</string>
     <string name="ContactShortcutVideoCall">视频通话 %1$s</string>
@@ -3080,7 +3080,7 @@
     <string name="CreateNewInviteLink">创建新邀请链接</string>
     <string name="CreateNewLink">创建新链接</string>
     <string name="CreateNewTheme">创建新主题</string>
-    <string name="CreateNewThemeAlert">您可以通过更改应用中的颜色来创建自己的主题。\n\n您可以随时切换回默认的 ChatAir 主题。</string>
+    <string name="CreateNewThemeAlert">您可以通过更改应用中的颜色来创建自己的主题。\n\n您可以随时切换回默认的 OrionekoX 主题。</string>
     <string name="CreateNewThemeHelp">点按调色板图标来查看每个屏幕上元素的列表并修改它们。</string>
     <string name="CreateNewThemeMenu">创建新主题</string>
     <string name="CreatePasscode">创建密码</string>
@@ -3606,7 +3606,7 @@
     <string name="EmojiSearchBackToSearch">继续搜索</string>
     <string name="EmojiStatusExpireHint">状态到期%s</string>
     <string name="EmojiSuggestions">Emoji 推荐</string>
-    <string name="EmojiSuggestionsInfo">**ChatAir** 让你可以通过成千上万的关键字找到 emoji，但总是会缺失一些。如果您想建议新的 emoji 替换，您可以访问：</string>
+    <string name="EmojiSuggestionsInfo">**OrionekoX** 让你可以通过成千上万的关键字找到 emoji，但总是会缺失一些。如果您想建议新的 emoji 替换，您可以访问：</string>
     <string name="EmojiSuggestionsUrl">https://translations.telegram.org/%1$s/emoji</string>
     <string name="EmpryUsersPlaceholder">添加用户</string>
     <string name="Enable">启用</string>
@@ -5520,7 +5520,7 @@
     <string name="LanguageNameInEnglish">Chinese (Simplified)</string>
     <string name="LanguageSame">您已经在使用此语言包了（**%1$s**）。您可以随时在“设置”中更改语言。</string>
     <string name="LanguageTitle">更换语言？</string>
-    <string name="LanguageUnknownCustomAlert">很遗憾，此自定义语言包（**%1$s**）不包含 ChatAir Android 版所需的数据。</string>
+    <string name="LanguageUnknownCustomAlert">很遗憾，此自定义语言包（**%1$s**）不包含 OrionekoX Android 版所需的数据。</string>
     <string name="LanguageUnknownTitle">数据不足</string>
     <string name="LanguageUnsupportedError">没有这样的语言。</string>
     <string name="LanguagesChartTitle">语言</string>
@@ -5779,7 +5779,7 @@
     <string name="LocalDatabaseClearText2">这次行动需要几分钟时间才能完成.\n\n本地数据库大小 :**%s**</string>
     <string name="LocalDatabaseClearTextTitle">清除本地数据库</string>
     <string name="LocalDatabaseInfo">清空本地数据库将删除缓存在本地的历史聊天记录并压缩数据库以节省存储空间。但由于 Telegram 需要一些数据来维持正常工作，所以数据库大小不会完全归零。\n\n此操作需要一些时间来完成。</string>
-    <string name="LocalDatabaseSize">%s ChatAir 本地数据库</string>
+    <string name="LocalDatabaseSize">%s OrionekoX 本地数据库</string>
     <string name="LocalDocumentCache">文件</string>
     <string name="LocalLogsCache">日志</string>
     <string name="LocalMiscellaneousCache">杂项</string>
@@ -6710,7 +6710,7 @@
     <string name="Option_one">%1$d 个选项</string>
     <string name="Option_other">%1$d 个选项</string>
     <string name="Orange">橙色</string>
-    <string name="OtherLoginCode">您的登录验证码是**%1$s**。在您尝试登录 ChatAir 应用程序时输入它。 \n\n不要将此验证码透露给任何人。</string>
+    <string name="OtherLoginCode">您的登录验证码是**%1$s**。在您尝试登录 OrionekoX 应用程序时输入它。 \n\n不要将此验证码透露给任何人。</string>
     <string name="OtherSessions">活跃会话</string>
     <string name="OtherSettings">其他设置</string>
     <string name="OtherStickers">更多贴纸</string>
@@ -7133,7 +7133,7 @@
     <string name="PassportIdentityID">上传一份身份证的扫描件</string>
     <string name="PassportIdentityInternalPassport">上传一份户口本（Internal Passport）的扫描件</string>
     <string name="PassportIdentityPassport">上传一份护照的扫描件</string>
-    <string name="PassportInfo2">使用 ChatAir Passport，您可以轻松注册需要身份验证的网站和服务。\n\n您的信息、个人数据和文档受端到端加密保护。包括 ChatAir 在内所有人，都无法在未经您许可的情况下访问它们。\n\n您可以访问我们的*常见问题*了解更多信息。</string>
+    <string name="PassportInfo2">使用 OrionekoX Passport，您可以轻松注册需要身份验证的网站和服务。\n\n您的信息、个人数据和文档受端到端加密保护。包括 OrionekoX 在内所有人，都无法在未经您许可的情况下访问它们。\n\n您可以访问我们的*常见问题*了解更多信息。</string>
     <string name="PassportInfoTitle">Telegram 通行证是什么？</string>
     <string name="PassportInfoUrl">https://telegram.org/faq#passport</string>
     <string name="PassportLanguage_AR">阿拉伯语</string>
@@ -7368,7 +7368,7 @@
     <string name="PeriodDHM">%1$s天:%2$s小时:%3$s分钟</string>
     <string name="Permanent">常设</string>
     <string name="PermanentLinkForThisAdmin">请为此管理员链接</string>
-    <string name="PermissionBackgroundLocation">为了能够在此聊天共享您的实时位置，ChatAir 需要随时访问您的位置权限，包括应用在后台运行时。\n\n我们将会在您设定时间范围内访问您的位置权限，您随时可以终止位置共享。除了位置分享之外，我们不会把您的位置权限用于其它目的。</string>
+    <string name="PermissionBackgroundLocation">为了能够在此聊天共享您的实时位置，OrionekoX 需要随时访问您的位置权限，包括应用在后台运行时。\n\n我们将会在您设定时间范围内访问您的位置权限，您随时可以终止位置共享。除了位置分享之外，我们不会把您的位置权限用于其它目的。</string>
     <string name="PermissionDrawAboveOtherApps">Telegram 需要使用出现在其它应用上的权限以在画中画模式中播放视频。</string>
     <string name="PermissionDrawAboveOtherAppsGroupCall">重叠模式允许您使用推到说话,并看到谁在说话,即使您不在Telegram.</string>
     <string name="PermissionDrawAboveOtherAppsGroupCallTitle">语音聊天重叠</string>
@@ -7389,7 +7389,7 @@
     <string name="PermissionNoStorageAvatar">**Telegram** 需要存储权限才能上传头像。请点按 设置 → 权限，并开启 **文件和媒体** 权限。</string>
     <string name="PermissionOpenSettings">设置</string>
     <string name="PermissionStorageWithHint">**Telegram** 需要存储权限才能发送和保存照片、视频、音乐及其他媒体。请点按 设置 → 权限，并开启 **文件和媒体** 权限。</string>
-    <string name="PermissionXiaomiLockscreen">请授予 ChatAir 在锁屏界面显示的权限以确保通话正常工作。</string>
+    <string name="PermissionXiaomiLockscreen">请授予 OrionekoX 在锁屏界面显示的权限以确保通话正常工作。</string>
     <string name="PersonalChannel">个人频道</string>
     <string name="Phone">手机号码</string>
     <string name="PhoneCopied">已复制手机号码到剪贴板</string>
@@ -7872,7 +7872,7 @@
     <string name="PrivacyPaymentsPaymentShippingCleared">付款和运输信息。</string>
     <string name="PrivacyPaymentsShippingInfoCleared">船运信息清理完毕.</string>
     <string name="PrivacyPhone">手机号码</string>
-    <string name="PrivacyPhoneInfo">已将您的手机号码保存在其通讯录中的用户将可关联到你在 ChatAir 的身份。</string>
+    <string name="PrivacyPhoneInfo">已将您的手机号码保存在其通讯录中的用户将可关联到你在 OrionekoX 的身份。</string>
     <string name="PrivacyPhoneInfo2">您可以将用户或整个群组添加为覆盖上述设置的例外。</string>
     <string name="PrivacyPhoneInfo3">只有您的联系人才能通过手机号码匹配到您。</string>
     <string name="PrivacyPhoneInfo4">这个公共链接打开了与您的聊天:</string>
@@ -8747,7 +8747,7 @@
     <string name="ScheduledOrNoSoundHint">按住此按钮可定时发送或静音发送。</string>
     <string name="ScheduledTimeApprox">appx. (英语).%s</string>
     <string name="ScreenCapture">允许屏幕抓取</string>
-    <string name="ScreenCaptureAlert">这将在最近任务界面中隐藏聊天或聊天列表的内容，但您将无法在 ChatAir 上截取屏幕截图。\n\n您可能需要重新启动应用才能生效。</string>
+    <string name="ScreenCaptureAlert">这将在最近任务界面中隐藏聊天或聊天列表的内容，但您将无法在 OrionekoX 上截取屏幕截图。\n\n您可能需要重新启动应用才能生效。</string>
     <string name="ScreenCaptureHeader">任务切换器中的 App 内容</string>
     <string name="ScreenCaptureInfo">启用后，您将可以对 Telegram 进行截图，但您的聊天内容会在后台应用列表中展现，即使您启用了锁定码。\n\n您或许需要重新启动应用以使此更改生效。</string>
     <string name="ScreenCaptureShowContent">显示内容</string>
@@ -9010,7 +9010,7 @@
     <string name="SendingVideoStatus">正在发送视频……</string>
     <string name="SensitiveContentSettingsToast">您可以更新敏感媒体的可见度**聊天设置>显示 18+ 内容**</string>
     <string name="SentAppCode">我们已向您其它设备上的 **Telegram** 应用发送了一条验证码消息。</string>
-    <string name="SentAppCodeTitle">查看您的 ChatAir 消息</string>
+    <string name="SentAppCodeTitle">查看您的 OrionekoX 消息</string>
     <string name="SentAppCodeWithPhone">我们把密码发给了**Telegram**应用程序%1$s在你的其他设备上。</string>
     <string name="SentCallCode">我们正在呼叫您的手机（**%1$s**）。\n\n请不要接听，Telegram 将会自动处理接下来的事情。</string>
     <string name="SentCallOnly">我们正在呼叫您的手机（**%1$s**）以播放验证码。</string>
@@ -10186,7 +10186,7 @@
     <string name="SyncContacts">同步联系人</string>
     <string name="SyncContactsAdded">此设备上的联系人信息已被添加到您的帐号。</string>
     <string name="SyncContactsDelete">删除已同步的联系人</string>
-    <string name="SyncContactsDeleteText">这将清空 ChatAir 服务器上的所有通讯录资料。\n\n如果 **同步通讯录** 选项是开启的，这些通讯录资料会被重新同步。</string>
+    <string name="SyncContactsDeleteText">这将清空 OrionekoX 服务器上的所有通讯录资料。\n\n如果 **同步通讯录** 选项是开启的，这些通讯录资料会被重新同步。</string>
     <string name="SyncContactsDeleteTitle">清空通讯录</string>
     <string name="SyncContactsInfoOff">开启以将此设备上的联系人信息即时同步到您的帐号。</string>
     <string name="SyncContactsInfoOn">此设备上的联系人信息将被添加到您的帐号。</string>
@@ -10235,7 +10235,7 @@
     <string name="TelegramBusinessSubtitle">订阅**Telegram Premium**解锁这些额外的商业功能.</string>
     <string name="TelegramBusinessSubtitle2">将您的账户打开一个带有这些附加功能的商业页面.</string>
     <string name="TelegramBusinessSubtitleTemp">把你的账户变成**商业页面**与这些附加的特征.\n获得的惠益Telegram业务是**临时列入**与Telegram Premium.</string>
-    <string name="TelegramCacheSize">%s ChatAir 缓存</string>
+    <string name="TelegramCacheSize">%s OrionekoX 缓存</string>
     <string name="TelegramContacts_one">%1$d 位 Telegram 用户有此联系人信息</string>
     <string name="TelegramContacts_other">%1$d 位 Telegram 用户有此联系人信息</string>
     <string name="TelegramFAQ">Telegram 常见问题</string>
@@ -10248,7 +10248,7 @@
     <string name="TelegramPassportCreatePasswordInfo">请创建一个密码来保护端到端加密的个人信息。\n\n每次您在新的设备登录 Telegram 时也将需要输入这个密码。</string>
     <string name="TelegramPassportDelete">删除 Telegram 通行证</string>
     <string name="TelegramPassportDeleteAlert">您确定要删除 Telegram 通行证吗？</string>
-    <string name="TelegramPassportDeleteTitle">删除 ChatAir passport</string>
+    <string name="TelegramPassportDeleteTitle">删除 OrionekoX Passport</string>
     <string name="TelegramPremium">Telegram Premium</string>
     <string name="TelegramPremiumShort">Premium</string>
     <string name="TelegramPremiumSubscribedSubtitle">感谢您的签名**Telegram Premium**.\n这是现在解锁的。</string>
@@ -10837,7 +10837,7 @@
     <string name="VideoCall">视频通话</string>
     <string name="VideoCallAlert">您确定要给 %1$s 进行视频通话吗？</string>
     <string name="VideoCallAlertTitle">视频通话</string>
-    <string name="VideoCallViaTelegram">ChatAir 视频通话</string>
+    <string name="VideoCallViaTelegram">OrionekoX 视频通话</string>
     <string name="VideoChooseCover">选择封面</string>
     <string name="VideoConversionAction">影片一旦改版并优化后将公布</string>
     <string name="VideoConversionDone">视频出版.</string>
@@ -11142,8 +11142,8 @@
     <string name="VoipInCallBranding">Telegram 通话</string>
     <string name="VoipInCallBrandingWithName">有人正在呼叫 %s</string>
     <string name="VoipInConferenceCallBranding">Telegram组调用</string>
-    <string name="VoipInVideoCallBranding">ChatAir 视频通话</string>
-    <string name="VoipInVideoCallBrandingWithName">拨打 ChatAir 视频电话给%s</string>
+    <string name="VoipInVideoCallBranding">OrionekoX 视频通话</string>
+    <string name="VoipInVideoCallBrandingWithName">拨打 OrionekoX 视频电话给%s</string>
     <string name="VoipLiveStream">正在运行中</string>
     <string name="VoipMessage">消息</string>
     <string name="VoipMute">麦克风</string>
@@ -11178,7 +11178,7 @@
     <string name="VoipOutputDevices">输出设备</string>
     <string name="VoipPeerIncompatible">**%1$s** 的应用使用了不兼容的协议。在您能够呼叫他们之前，他们必须先更新他们的应用。</string>
     <string name="VoipPeerOutdated">**%1$s** 的应用不支持通话。在您能够呼叫他们之前，他们必须先更新他们的应用。</string>
-    <string name="VoipPeerVideoOutdated">抱歉，**%1$s** 使用的是不支持视频通话的旧版 ChatAir。</string>
+    <string name="VoipPeerVideoOutdated">抱歉，**%1$s** 使用的是不支持视频通话的旧版 OrionekoX。</string>
     <string name="VoipPeerVideoOutdatedMakeVoice">拨打语音电话</string>
     <string name="VoipPhoneScreen">电话铃声</string>
     <string name="VoipQuickReplies">来电拒接消息模板</string>
