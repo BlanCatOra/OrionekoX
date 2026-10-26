@@ -41,6 +41,7 @@ OrionekoX 反过来复用 Telegram 成熟的会话基础设施，让智能体以
 | 工作流 | 间隔或每日定时运行 Agent，前台服务执行、结果通知、运行记录 |
 | 媒体 | 本地文档/图片注入、持久化到 Agent 收件箱、原生气泡渲染 |
 | UI 自动化 | 无障碍桥接的 `ui_dump` / `ui_tap` / `ui_swipe` / `ui_screenshot` / `ui_key` / `ui_ocr` |
+| 外观 | 导入 Kelivo/RikkaHub 主题 JSON（`primaryColorArgb`），预设强调色，作用于 Ox 终端/入口 |
 | 中文体验 | 自维护 `zh-cn` 语言包，持续清理机翻、乱码与不一致文案 |
 
 ![本地智能体聊天](docs/screenshots/agent.jpg)

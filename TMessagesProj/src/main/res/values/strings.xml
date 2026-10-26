@@ -12004,4 +12004,16 @@
     <string name="OxSkillsImportInfo">Import skills exported by Kelivo, RikkaHub or Operit into the private skill folder</string>
     <string name="OxSkillsImported">Imported %1$d skill(s)</string>
     <string name="OxSkillsImportFailed">Import failed: %1$s</string>
+    <string name="OxAppearance">Appearance</string>
+    <string name="OxAppearanceEntryInfo">Accent color and Kelivo / RikkaHub theme import</string>
+    <string name="OxAppearanceCurrent">Current accent</string>
+    <string name="OxAppearanceDefault">Telegram default accent</string>
+    <string name="OxAppearanceImport">Import theme JSON</string>
+    <string name="OxAppearanceImportInfo">Kelivo / RikkaHub primaryColorArgb themes</string>
+    <string name="OxAppearanceIntro">The accent only drives Ox-owned surfaces such as the terminal and appearance entry; Telegram native themes are left untouched.</string>
+    <string name="OxAppearancePresets">Presets</string>
+    <string name="OxAppearanceReset">Restore Telegram default accent</string>
+    <string name="OxAppearanceImported">Applied theme: %1$s</string>
+    <string name="OxAppearanceImportFailed">Import failed: %1$s</string>
+    <string name="OxAppearanceResetDone">Restored the Telegram default accent</string>
 </resources>

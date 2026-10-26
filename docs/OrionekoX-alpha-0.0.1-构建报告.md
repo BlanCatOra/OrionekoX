@@ -2285,6 +2285,22 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `ca292e81d9c4…`）；debug `dist/OrionekoX-0.8.106-debug-arm64-x64.apk`（sha256
 `209af54cc9c3…`）。
 
+## 5.106 alpha 0.8.107 —— Kelivo/RikkaHub 主题 JSON 导入与 Ox 外观（2026-10-26 19:12–19:20）
+
+- Ox 设置新增“外观”页：当前强调色、从 JSON 导入（Kelivo/RikkaHub
+  `primaryColorArgb`）、6 个预设、恢复 Telegram 默认；全部复用
+  UniversalRecyclerView/SettingCell/原生 ActionBar。
+- `OxTheme` 解析数字或 `#RRGGBB`/`#AARRGGBB`，保存 primary/secondary/tertiary 与名称；
+  强调色只作用于 Ox 自有界面（默认终端配色的 prompt/send/keyboard、外观入口图标），
+  不修改 Telegram 原生主题。
+- 实测导入 `Kelivo 紫` 显示 `#6750A4`，重置恢复“Telegram 默认强调色”；中文包 68。
+- 局限：不重绘 Telegram 气泡/按钮；当前终端为非默认配色，未在该配色上覆盖自定义色。
+- 记录见 `OrionekoX/docs/qa-0.8.107.md`。
+
+**产物**：`dist/OrionekoX-0.8.107-alpha-arm64-x64.apk`（versionCode 1229，sha256
+`167e8f7566a6…`）；debug `dist/OrionekoX-0.8.107-debug-arm64-x64.apk`（sha256
+`6ba0937521be…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

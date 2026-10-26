@@ -49,6 +49,7 @@ public class OxSettingsActivity extends BaseFragment {
     private static final int ID_SKILLS = 113;
     private static final int ID_WORKSPACE = 114;
     private static final int ID_WORKFLOWS = 115;
+    private static final int ID_APPEARANCE = 116;
 
     private UniversalRecyclerView listView;
 
@@ -99,6 +100,13 @@ public class OxSettingsActivity extends BaseFragment {
         items.add(SettingsActivity.SettingCell.Factory.of(ID_AGENTS, 0xFF7C5CFF, 0xFF5B3FE0,
                 R.drawable.filled_bot_approve_24, LocaleController.getString(R.string.OxAgents),
                 LocaleController.getString(R.string.OxAgentSettingsEntryInfo)));
+        int oxAccent = org.telegram.ox.OxTheme.hasCustom()
+                ? org.telegram.ox.OxTheme.accent() : 0xFF9C6ADE;
+        int oxAccentDark = org.telegram.ox.OxTheme.hasCustom()
+                ? org.telegram.ox.OxTheme.accentDark() : 0xFF7B4FD1;
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_APPEARANCE, oxAccent, oxAccentDark,
+                R.drawable.msg_theme, LocaleController.getString(R.string.OxAppearance),
+                LocaleController.getString(R.string.OxAppearanceEntryInfo)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_MCP, 0xFF1CA5ED, 0xFF1488E1,
                 R.drawable.msg_link, LocaleController.getString(R.string.OxMcp)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_IMPORT, 0xFF55CA47, 0xFF27B434,
@@ -155,6 +163,9 @@ public class OxSettingsActivity extends BaseFragment {
                 break;
             case ID_AGENTS:
                 presentFragment(new OxAgentsActivity());
+                break;
+            case ID_APPEARANCE:
+                presentFragment(new OxAppearanceActivity());
                 break;
             case ID_MCP:
                 presentFragment(new OxMcpActivity());

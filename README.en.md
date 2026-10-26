@@ -45,6 +45,7 @@ while provider keys, memory, workspaces, MCP and skills stay on the device.
 | Workflows | Interval or daily scheduled agent runs through a foreground service, with result notifications and run history |
 | Media | Local document/photo injection, durable agent inbox, native message bubbles |
 | UI automation | Accessibility bridge: `ui_dump` / `ui_tap` / `ui_swipe` / `ui_screenshot` / `ui_key` / `ui_ocr` |
+| Appearance | Import Kelivo/RikkaHub theme JSON (`primaryColorArgb`), presets, applied to Ox terminal/entry |
 | Chinese UX | Maintained `zh-cn` pack with ongoing machine-translation and wording cleanup |
 
 ![Local agent chat](docs/screenshots/agent.jpg)

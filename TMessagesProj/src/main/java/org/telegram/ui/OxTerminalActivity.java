@@ -287,7 +287,12 @@ public class OxTerminalActivity extends BaseFragment {
             case 2: schemeBg = 0xFF120D00; schemeFg = 0xFFFFB000; schemeAccent = 0xFFFFC94D; break;
             case 3: schemeBg = 0xFFF7F4EE; schemeFg = 0xFF1F2328; schemeAccent = 0xFF1A73E8; break;
             case 4: schemeBg = 0xFF2C001E; schemeFg = 0xFFF2EAF0; schemeAccent = 0xFFE95420; break;
-            default: schemeBg = 0xFF0E1116; schemeFg = 0xFFD7E0EA; schemeAccent = 0xFF2E9E5B; break;
+            default:
+                schemeBg = 0xFF0E1116;
+                schemeFg = 0xFFD7E0EA;
+                schemeAccent = org.telegram.ox.OxTheme.hasCustom()
+                        ? org.telegram.ox.OxTheme.accent() : 0xFF2E9E5B;
+                break;
         }
         if (scrollView != null) {
             GradientDrawable panel = new GradientDrawable();
