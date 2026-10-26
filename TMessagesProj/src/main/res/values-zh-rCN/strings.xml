@@ -379,6 +379,9 @@
     <string name="OxWorkspaceRenamed">已重命名为 %1$s</string>
     <string name="OxWorkspaceRenameFailed">重命名失败</string>
     <string name="OxWorkspaceRenameExists">同名文件已存在</string>
+    <string name="OxWorkspaceDuplicate">复制一份</string>
+    <string name="OxWorkspaceDuplicated">已复制为 %1$s</string>
+    <string name="OxWorkspaceDuplicateFailed">复制失败</string>
     <string name="OxWorkspaceNewHint">文件名，例如 notes/todo.md</string>
     <string name="OxWorkspaceNewContent">初始内容（可选）</string>
     <string name="OxWorkspaceEdit">编辑</string>

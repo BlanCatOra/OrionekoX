@@ -171,6 +171,7 @@ public class OxWorkspaceActivity extends BaseFragment {
             CharSequence[] actions = {
                     LocaleController.getString(R.string.OxWorkspacePreview),
                     LocaleController.getString(R.string.OxWorkspaceRename),
+                    LocaleController.getString(R.string.OxWorkspaceDuplicate),
                     LocaleController.getString(R.string.OxWorkspaceExport),
                     LocaleController.getString(R.string.Delete)
             };
@@ -179,7 +180,8 @@ public class OxWorkspaceActivity extends BaseFragment {
                     .setItems(actions, (d, which) -> {
                         if (which == 0) preview(f);
                         else if (which == 1) renameFile(f);
-                        else if (which == 2) exportFile(f);
+                        else if (which == 2) duplicateFile(f);
+                        else if (which == 3) exportFile(f);
                         else confirmDelete(f);
                     })
                     .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
@@ -187,6 +189,45 @@ public class OxWorkspaceActivity extends BaseFragment {
             return true;
         }
         return false;
+    }
+
+    private void duplicateFile(File f) {
+        if (getParentActivity() == null || selectedAgent == null) return;
+        final String agentId = selectedAgent.id;
+        final Context ctx = getParentActivity();
+        String rel = relative(f);
+        int slash = rel.lastIndexOf('/');
+        String dir = slash >= 0 ? rel.substring(0, slash + 1) : "";
+        String name = f.getName();
+        int dot = name.lastIndexOf('.');
+        String base = dot > 0 ? name.substring(0, dot) : name;
+        String ext = dot > 0 ? name.substring(dot) : "";
+        final String copyRel = dir + base + " (copy)" + ext;
+        new Thread(() -> {
+            String msg;
+            try {
+                File target = uniqueTarget(agentId, copyRel);
+                File parent = target.getParentFile();
+                if (parent != null) parent.mkdirs();
+                try (InputStream in = new FileInputStream(f);
+                     OutputStream out = new FileOutputStream(target)) {
+                    byte[] buf = new byte[8192];
+                    int n;
+                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                }
+                msg = LocaleController.formatString("OxWorkspaceDuplicated",
+                        R.string.OxWorkspaceDuplicated, target.getName());
+            } catch (Throwable t) {
+                msg = LocaleController.getString(R.string.OxWorkspaceDuplicateFailed) + ": " + t.getMessage();
+            }
+            final String result = msg;
+            AndroidUtilities.runOnUIThread(() -> {
+                if (getParentActivity() != null) {
+                    android.widget.Toast.makeText(getParentActivity(), result, android.widget.Toast.LENGTH_SHORT).show();
+                }
+                rebuild();
+            });
+        }, "ox-workspace-duplicate").start();
     }
 
     private void renameFile(File f) {

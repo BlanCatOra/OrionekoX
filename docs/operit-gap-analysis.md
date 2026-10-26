@@ -22,7 +22,7 @@ not feature-count parity.
 | ToolPkg / Skills / marketplace | full runtime | MCP market + read-only SKILL.md library + per-agent skill prompt injection | partial (no code execution) |
 | Browser agent / OCR / voice | yes | `ui_ocr` implemented; emulator screenshot works after reboot, OCR model is not installed in the Play Services image | partial |
 | Character cards / group chats | yes | AGENTS.md + .oxagent export + memory editor + duplicate agent with copied persona/provider/tools/skills/memory (0.8.63); local groups with agents persist outgoing text locally and keep a per-group conversation log (0.8.55–56) | partial |
-| Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/rename/move/delete/import/export (SAF, 20 MB import cap) | partial (basic text editor, no syntax highlighting) |
+| Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/rename/move/duplicate/delete/import/export (SAF, 20 MB import cap) | partial (basic text editor, no syntax highlighting) |
 | Workflows / scheduled tasks | yes | **Ox workflows**: named prompt + agent + interval or daily wall-clock time, AlarmManager + foreground runner, result notification, manual run, pause/delete | **done v1** |
 | Local inference (MNN/llama.cpp) | built-in | external Ollama/LM Studio only | medium gap |
 | Cross-device Space | Operit2 | LAN API agents only | partial |
@@ -328,3 +328,11 @@ of a separate automation graph:
 - Verified with Echo Assistant: the copy appeared as `Echo Assistant · 副本`, its
   `agent.json` carried the copied persona and a new `tg_id`, and deleting it removed
   the copy directory and restored the single original row.
+
+### 0.8.64 workspace duplicate file
+
+- The workspace long-press menu now offers preview, rename, duplicate, export and
+  delete. Duplicate writes `<name> (copy)<ext>` in the same folder, adds ` (n)` on
+  collision, copies on a background thread and refreshes the list.
+- Verified with Yuki's `hello.md`: `hello (copy).md` appeared with the same content,
+  and deleting it restored the folder to `hello.md` + `notes/`. No crashes.
