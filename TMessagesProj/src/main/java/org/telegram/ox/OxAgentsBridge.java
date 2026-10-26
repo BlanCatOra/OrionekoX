@@ -1405,6 +1405,7 @@ public class OxAgentsBridge {
     public static void handleOutgoingGroupMedia(long dialogId, java.util.List<SendMessagesHelper.SendingMediaInfo> infos) {
         if (dialogId >= 0 || infos == null || !OxGroupStore.isLocalGroup(dialogId)) return;
         StringBuilder prompt = new StringBuilder();
+        String firstImagePath = null;
         for (SendMessagesHelper.SendingMediaInfo info : infos) {
             String path = info.path;
             if (path == null || path.isEmpty()) continue;
@@ -1451,6 +1452,7 @@ public class OxAgentsBridge {
                     msg.media = new TLRPC.TL_messageMediaPhoto();
                     msg.media.flags |= 1;
                     msg.media.photo = photo;
+                    if (firstImagePath == null) firstImagePath = path;
                     prompt.append("用户发送了一张图片：").append(name);
                 } else {
                     String mime = "application/octet-stream";
@@ -1470,7 +1472,7 @@ public class OxAgentsBridge {
             }
         }
         if (prompt.length() > 0) {
-            onGroupMessage(dialogId, prompt.toString().trim(), null);
+            onGroupMessage(dialogId, prompt.toString().trim(), null, firstImagePath);
         }
     }
 
@@ -1781,6 +1783,10 @@ public class OxAgentsBridge {
 
     /** Triggered for an outgoing message in a group that has local Ox agents. */
     public static void onGroupMessage(long dialogId, String text, MessageObject replyTo) {
+        onGroupMessage(dialogId, text, replyTo, null);
+    }
+
+    public static void onGroupMessage(long dialogId, String text, MessageObject replyTo, String imagePath) {
         try {
             if (dialogId >= 0 || text == null || text.trim().isEmpty()) return;
             List<OxAgent> agents = OxGroupStore.agents(dialogId);
@@ -1814,13 +1820,17 @@ public class OxAgentsBridge {
                 }
             }
             if (chosen == null) chosen = agents.get(0);
-            startGroupTurn(chosen, dialogId, text.trim());
+            startGroupTurn(chosen, dialogId, text.trim(), imagePath);
         } catch (Throwable t) {
             logErr("onGroupMessage failed", t);
         }
     }
 
     private static void startGroupTurn(OxAgent agent, long dialogId, String userText) {
+        startGroupTurn(agent, dialogId, userText, null);
+    }
+
+    private static void startGroupTurn(OxAgent agent, long dialogId, String userText, String imagePath) {
         Stream s = new Stream();
         s.dialogId = dialogId;
         s.senderTgId = agent.tgId;
@@ -1828,7 +1838,7 @@ public class OxAgentsBridge {
         s.agent = agent;
         s.userText = userText;
         try {
-            s.messages = groupMessages(agent, dialogId, userText);
+            s.messages = groupMessages(agent, dialogId, userText, imagePath);
         } catch (Exception e) {
             injectAgentReply(dialogId, agent.tgId, "⚠ " + e.getMessage());
             return;
@@ -1840,6 +1850,10 @@ public class OxAgentsBridge {
     }
 
     private static JSONArray groupMessages(OxAgent agent, long dialogId, String userText) throws Exception {
+        return groupMessages(agent, dialogId, userText, null);
+    }
+
+    private static JSONArray groupMessages(OxAgent agent, long dialogId, String userText, String imagePath) throws Exception {
         JSONArray messages = new JSONArray();
         StringBuilder system = new StringBuilder();
         if (agent.agentsMd != null) system.append(agent.agentsMd.trim());
@@ -1859,7 +1873,13 @@ public class OxAgentsBridge {
             if (e.content == null || e.content.trim().isEmpty()) continue;
             messages.put(new JSONObject().put("role", e.role).put("content", e.content));
         }
-        messages.put(new JSONObject().put("role", "user").put("content", userText));
+        JSONObject user = new JSONObject().put("role", "user");
+        if (imagePath != null && new File(imagePath).isFile()) {
+            user.put("content", visionContent(userText, imagePath));
+        } else {
+            user.put("content", userText);
+        }
+        messages.put(user);
         return messages;
     }
 
