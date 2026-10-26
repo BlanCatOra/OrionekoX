@@ -21,7 +21,7 @@ not feature-count parity.
 | Container/terminal | PRoot Ubuntu, SSH/SFTP, editor | PRoot PoC, blocked by W^X; companion host pending | gap |
 | ToolPkg / Skills / marketplace | full runtime | MCP market + read-only SKILL.md library + per-agent skill prompt injection | partial (no code execution) |
 | Browser agent / OCR / voice | yes | `ui_ocr` implemented; emulator screenshot works after reboot, OCR model is not installed in the Play Services image | partial |
-| Character cards / group chats | yes | AGENTS.md + .oxagent export + memory editor; local groups with agents now persist outgoing text locally and keep a per-group conversation log for model context (0.8.55–56) | partial |
+| Character cards / group chats | yes | AGENTS.md + .oxagent export + memory editor + duplicate agent with copied persona/provider/tools/skills/memory (0.8.63); local groups with agents persist outgoing text locally and keep a per-group conversation log (0.8.55–56) | partial |
 | Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/rename/move/delete/import/export (SAF, 20 MB import cap) | partial (basic text editor, no syntax highlighting) |
 | Workflows / scheduled tasks | yes | **Ox workflows**: named prompt + agent + interval or daily wall-clock time, AlarmManager + foreground runner, result notification, manual run, pause/delete | **done v1** |
 | Local inference (MNN/llama.cpp) | built-in | external Ollama/LM Studio only | medium gap |
@@ -318,3 +318,13 @@ of a separate automation graph:
 - Verified by renaming Yuki's `hello.md` to `hello2.md` and back to `hello.md`;
   the content stayed `# Hello from Yuki` and the workspace ended in its original
   state. No crashes and no chat/contact data touched.
+
+### 0.8.63 duplicate agent
+
+- The agent long-press menu now offers duplicate: the copy gets a new id, the name
+  `<name> · copy`/`副本`, the original persona, provider/sampling settings, tool
+  policy, skills and long-term memory, with `built_in=false` and a fresh synthetic
+  Telegram id. Avatars are not shared to avoid cross-agent file deletion.
+- Verified with Echo Assistant: the copy appeared as `Echo Assistant · 副本`, its
+  `agent.json` carried the copied persona and a new `tg_id`, and deleting it removed
+  the copy directory and restored the single original row.

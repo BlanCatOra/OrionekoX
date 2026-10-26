@@ -53,6 +53,9 @@
     <string name="OxImportAgent">导入 .oxagent</string>
     <string name="OxExportAgent">导出 .oxagent</string>
     <string name="OxAgentImported">已导入智能体 %1$s</string>
+    <string name="OxDuplicateAgent">复制</string>
+    <string name="OxAgentDuplicated">已复制 %1$s</string>
+    <string name="OxAgentCopySuffix">副本</string>
     <string name="OxAgentImportedFiles">已导入智能体 %1$s（含 %2$d 个工作区文件）</string>
     <string name="OxAgentImportFailed">导入失败：不是有效的 .oxagent 文件</string>
     <string name="OxAgentExported">已导出 %1$s（不包含 API 密钥）</string>
