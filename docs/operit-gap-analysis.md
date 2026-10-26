@@ -413,3 +413,13 @@ of a separate automation graph:
 - Localized the birthday date format from the English `MMM dd, yyyy` pattern to
   `yyyy年M月d日` and switched the age templates to “%2$s（%1$d 岁）”. Verified on the
   “我的” page: “出生日期: 2008年7月14日（18 岁）”. Pack 52.
+
+### 0.8.74–0.8.75 agent-chat actions and zh branding
+
+- Hid “Block user” for synthetic agent dialogs in the chat-list multi-select menu:
+  `updateCounters` now treats `OxAgentsBridge.isAgentDialog` like self/verify, so the
+  action no longer appears where it cannot work. Verified on Yuki's dialog.
+- Removed the last 30 “ChatAir” brand leftovers from the Chinese pack (account,
+  permissions, cache, calls, Passport, notifications), rewrote the QR-login copy into
+  natural Chinese targeting Telegram Desktop/Web, and changed “同步联系人到电话” to
+  “同步联系人到手机”. Pack 53; runtime pack has zero “ChatAir”.

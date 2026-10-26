@@ -9870,7 +9870,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 communitiesCount++;
             }
 
-            if (!DialogObject.isUserDialog(selectedDialog) || selectedDialog == selfUserId || selectedDialog == UserObject.VERIFY) {
+            if (!DialogObject.isUserDialog(selectedDialog) || selectedDialog == selfUserId || selectedDialog == UserObject.VERIFY || org.telegram.ox.OxAgentsBridge.isAgentDialog(selectedDialog)) {
                 cantBlockCount++;
             } else {
                 TLRPC.User user = getMessagesController().getUser(selectedDialog);
