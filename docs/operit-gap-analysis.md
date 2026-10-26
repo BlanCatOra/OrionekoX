@@ -26,7 +26,7 @@ not feature-count parity.
 | Workflows / scheduled tasks | yes | **Ox workflows**: named prompt + agent + interval or daily wall-clock time, AlarmManager + foreground runner, result notification, manual run, duplicate (paused copy), pause/delete | **done v1** |
 | Local inference (MNN/llama.cpp) | built-in | external Ollama/LM Studio only | medium gap |
 | Cross-device Space | Operit2 | LAN API agents only | partial |
-| Backup / migration | snapshot export/restore | .oxagent per agent: plain JSON when there is no workspace, zip with agent.json + workspace files otherwise; export/import round-trip verified for memory, skills and nested workspace files | parity for single agents |
+| Backup / migration | snapshot export/restore | .oxagent per agent: plain JSON when there is no workspace/avatar, zip with agent.json + avatar + workspace files otherwise; round-trip verified for memory, skills, avatar and nested workspace files | parity for single agents |
 
 ## Does the user need it?
 
@@ -346,3 +346,13 @@ of a separate automation graph:
 - Verified with a manual `Copy test` workflow: `Copy test · 副本` appeared with both
   entries disabled; deleting both restored `ox_workflows` to an empty list and left
   no workflow alarm.
+
+### 0.8.67 avatar in .oxagent
+
+- Export now includes a valid custom avatar as `avatar.<ext>` and blanks the
+  absolute `avatar_path` in `agent.json`; import writes the avatar into the new
+  agent directory and points `avatar_path` at it. Stale paths in old JSON exports
+  are cleared when the file no longer exists.
+- Verified with an Echo duplicate carrying `ox_photo.png`: the 1740-byte zip held
+  `agent.json` + `avatar.png`, and importing restored both the file and a valid
+  device path. The test copies and the exported archive were deleted afterwards.
