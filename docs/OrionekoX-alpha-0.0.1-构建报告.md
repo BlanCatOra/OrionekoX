@@ -2226,6 +2226,35 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
   模式；RikkaHub 已确认 SillyTavern 角色卡、Provider QR、MCP/Skills、Material 3
   Expressive。具体导入实现待三份测试报告后按优先级落地。
 
+## 5.103 alpha 0.8.104 —— 三份酒吧炒饭报告后的 P1 修复（2026-10-26 18:25–18:50）
+
+- 三份独立测试报告已归档：A `bar-rice-test-A.md`（会话空白、群丢成员、导入身份、
+  文件式图片）、B `bar-rice-test-B.md`（群 @ 抢答、群图片红叹号、会话空白）、
+  C `bar-rice-test-C.md`（新建 Agent 入群丢失、群分发 agents=1、会话空白/开始Bot、
+  OxLinux 引导布局）。
+- 0.8.104 修复并验证：
+  - `MessagesController.createChat` 构建 `req.users` 前先 `syncAgents(false)`，刚复制
+    的 Agent 不再因用户缓存缺失被静默跳过；新建群 `handleCreateChat users=2 agents=2
+    real=0`、`createLocalGroup id=1800000005 agents=2`、3 位成员。
+  - `onGroupMessage` 先解析 `@agent_<id>` 再匹配显示名；`@agent_17`/`@agent_19`
+    分别由正确的 Agent 回复。
+  - `SendMessagesHelper` 把本地群媒体交给 `handleOutgoingGroupMedia`，以 `peerChat`
+    持久化照片/文档并触发群回复；实测 `mediaClass=TL_messageMediaPhoto`、无红叹号。
+  - `refreshDialogRow` 改为按 `date DESC, mid DESC LIMIT 1` 取最新消息；修复会话
+    重开空白；`ChatActivity` 对本地 Agent 隐藏“开始Bot”按钮。
+  - `.oxagent` 导入清空 `tg_id`、生成新 id、同名加“副本”并 `syncAgents`；导出文件名
+    保留中文。
+  - 设置页底部增加 64dp padding，代理与 VPN/版本脚注不再被底部 Tab 遮挡。
+  - 中文包 65：文件类型“%s 文件”、翻译说明改写。
+  - 已加入 Markdown `**bold**`/`code`/`##` 到原生 entities 的转换（模型未配合输出
+    标记，运行期渲染仍需固定样例复测）。
+- 仍需后续：群内图片视觉、复制后欢迎语旧名、OxLinux 引导布局、MCP/技能/主题导入。
+- 记录见 `OrionekoX/docs/qa-0.8.104.md`。
+
+**产物**：`dist/OrionekoX-0.8.104-alpha-arm64-x64.apk`（versionCode 1199，sha256
+`e5c69cf1d3bd…`）；debug `dist/OrionekoX-0.8.104-debug-arm64-x64.apk`（sha256
+`6b0a86c68e54…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

@@ -115,7 +115,7 @@
     <string name="AccDescrCollapsed">折叠</string>
     <string name="AccDescrContactSorting">更改排序方式</string>
     <string name="AccDescrCustomEmoji">自定义emoji</string>
-    <string name="AccDescrDocumentType">%s档案</string>
+    <string name="AccDescrDocumentType">%s 文件</string>
     <string name="AccDescrDownloadProgress">已下载 %1$s / %2$s</string>
     <string name="AccDescrDualCameraOff">双摄像头,关闭</string>
     <string name="AccDescrDualCameraOn">双相机, 打开</string>
@@ -10514,7 +10514,7 @@
     <string name="TranslateEntireChat">翻译完整聊天</string>
     <string name="TranslateMessage">翻译</string>
     <string name="TranslateMessages">翻译消息</string>
-    <string name="TranslateMessagesInfo1">翻译按钮将出现在您对一条短信进行一次性监听时。</string>
+    <string name="TranslateMessagesInfo1">翻译按钮会在您点按某条消息时出现。</string>
     <string name="TranslateTo">翻译到</string>
     <string name="TranslateToButton">翻译为%s</string>
     <string name="TranslateToButtonOther">翻译为%s</string>

@@ -663,3 +663,13 @@ of a separate automation graph:
 - Verified by adding Echo, long-pressing its row, choosing 从群组中移除, and observing
   the immediate 2/2 header with only BlanCat + Yuki. Details:
   `docs/qa-group-0.8.103.md`.
+
+### 0.8.104 bar-rice P1 fixes
+
+- Three independent bar-rice reports (A/B/C) are in `docs/bar-rice-test-*.md`.
+  0.8.104 fixes: fresh-agent group creation (sync users before `createChat`), local
+  group `@agent_<id>` routing, local group photo/document persistence, reopen history
+  (`last_mid` query), StartBot hidden for agent dialogs, `.oxagent` import identity,
+  settings bottom padding, Chinese file-type wording and export filenames.
+- Still open: group image vision, copy/rename greeting, OxLinux onboarding layout,
+  MCP JSON / skills / theme import. Details: `docs/qa-0.8.104.md`.

@@ -414,8 +414,21 @@ public class OxAgentsActivity extends BaseFragment {
                     OxAgent a = OxAgent.fromJson(o);
                     a.name = name;
                     a.builtIn = false;
+                    // Imported copies must get their own synthetic user/dialog; keeping
+                    // the archived tg_id collides with the original agent.
+                    a.tgId = 0;
                     if (a.id == null || a.id.isEmpty() || OxAgentStore.loadAgent(a.id) != null) {
                         a.id = "imp" + UUID.randomUUID().toString().substring(0, 6);
+                    }
+                    boolean nameTaken = false;
+                    for (OxAgent existing : OxAgentStore.listAgents()) {
+                        if (!existing.id.equals(a.id) && existing.name != null && existing.name.equals(a.name)) {
+                            nameTaken = true;
+                            break;
+                        }
+                    }
+                    if (nameTaken) {
+                        a.name = a.name + " · " + LocaleController.getString(R.string.OxAgentCopySuffix);
                     }
                     if (a.avatarPath != null && !a.avatarPath.isEmpty() && !new File(a.avatarPath).isFile()) {
                         a.avatarPath = "";
@@ -439,6 +452,7 @@ public class OxAgentsActivity extends BaseFragment {
                 final String m = msg;
                 AndroidUtilities.runOnUIThread(() -> {
                     toast(m);
+                    OxAgentsBridge.syncAgents(false);
                     rebuild();
                 });
             }, "ox-import").start();
@@ -446,7 +460,9 @@ public class OxAgentsActivity extends BaseFragment {
     }
 
     private static String sanitizeFileName(String s) {
-        return s == null ? "agent" : s.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+        if (s == null) return "agent";
+        String cleaned = s.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_").trim();
+        return cleaned.isEmpty() ? "agent" : cleaned;
     }
 
     private void toast(String s) {

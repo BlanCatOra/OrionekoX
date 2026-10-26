@@ -15068,6 +15068,9 @@ public class MessagesController extends BaseController implements NotificationCe
 
     public int createChat(String title, ArrayList<Long> selectedContacts, String about, int type, boolean forImport, Location location, String locationAddress, int ttlPeriod, BaseFragment fragment) {
         if (type == ChatObject.CHAT_TYPE_CHAT && !forImport) {
+            // A freshly duplicated agent may not be in the users cache yet; without
+            // this the loop below silently drops it from the create-chat request.
+            org.telegram.ox.OxAgentsBridge.syncAgents(false);
             TLRPC.TL_messages_createChat req = new TLRPC.TL_messages_createChat();
             req.title = title;
             if (ttlPeriod >= 0) {
