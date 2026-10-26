@@ -211,7 +211,7 @@
     <string name="AccDescrRateTranscriptionUp">调高</string>
     <string name="AccDescrReactedWith">%1$s反应%2$s</string>
     <string name="AccDescrReactionMentionDown">转到下一个未读反应</string>
-    <string name="AccDescrReceivedDate">于 %s 收到</string>
+    <string name="AccDescrReceivedDate">%s 收到</string>
     <string name="AccDescrRemoveRoundVideo">删除视频消息</string>
     <string name="AccDescrRepeatList">重复，播放列表</string>
     <string name="AccDescrRepeatOff">重复，关</string>
@@ -219,7 +219,7 @@
     <string name="AccDescrReplying">正在回复</string>
     <string name="AccDescrRotate">旋转</string>
     <string name="AccDescrRoundVideo">视频消息</string>
-    <string name="AccDescrScheduledDate">%s的约定</string>
+    <string name="AccDescrScheduledDate">定时于 %s</string>
     <string name="AccDescrSearchByUser">按用户排序</string>
     <string name="AccDescrSearchNext">下一个搜索结果</string>
     <string name="AccDescrSearchPrev">历史搜索结果</string>
@@ -232,7 +232,7 @@
     <string name="AccDescrSendFiles_other">发送 %1$d 个文件</string>
     <string name="AccDescrSendPhotos_one">发送 %1$d 张照片</string>
     <string name="AccDescrSendPhotos_other">发送 %1$d 张照片</string>
-    <string name="AccDescrSentDate">于 %s 发送</string>
+    <string name="AccDescrSentDate">%s 发送</string>
     <string name="AccDescrShareInChats_one">分享到 %1$d 个聊天</string>
     <string name="AccDescrShareInChats_other">分享到 %1$d 个聊天</string>
     <string name="AccDescrShowAccounts">显示帐号</string>
@@ -7941,9 +7941,9 @@
     <string name="ProfileBirthdayChange">变动</string>
     <string name="ProfileBirthdayToday">今天过生日</string>
     <string name="ProfileBirthdayTodayValue">🎂 %1$s</string>
-    <string name="ProfileBirthdayTodayValueYear_other">🎂 %2$s (%1$d岁)</string>
+    <string name="ProfileBirthdayTodayValueYear_other">🎂 %2$s（%1$d 岁）</string>
     <string name="ProfileBirthdayValue">%1$s</string>
-    <string name="ProfileBirthdayValueYear_other">%2$s (%1$d岁)</string>
+    <string name="ProfileBirthdayValueYear_other">%2$s（%1$d 岁）</string>
     <string name="ProfileBotAddPreview">添加预览</string>
     <string name="ProfileBotAffiliateProgram">附属程序</string>
     <string name="ProfileBotAffiliateProgramInfo">共享链接到%1$s和你的朋友一起挣钱%2$s他们在那里的花费。</string>
@@ -10366,7 +10366,7 @@
     <string name="TitleSetupProxy">设置代理></string>
     <string name="TitleSetupVpn">设置 VPN ></string>
     <string name="TodayAt">于</string>
-    <string name="TodayAtFormatted">时间:%1$s</string>
+    <string name="TodayAtFormatted">%1$s</string>
     <string name="TodayAtFormattedWithToday">今天 %1$s</string>
     <string name="Todo">待办清单</string>
     <string name="TodoAddTaskInfoMax">您添加了最大任务数。</string>
@@ -11650,7 +11650,7 @@
     <string name="formatterBannedUntil24H">yyyy年M月d日 HH:mm</string>
     <string name="formatterBannedUntilThisYear12H">M月d日 ah:mm</string>
     <string name="formatterBannedUntilThisYear24H">M月d日 HH:mm</string>
-    <string name="formatterBoostExpired">MMM dd, yyyy</string>
+    <string name="formatterBoostExpired">yyyy年M月d日</string>
     <string name="formatterDay12H">h:mm a</string>
     <string name="formatterDay24H">HH:mm</string>
     <string name="formatterDayWithSeconds12H">h:mm:ss a</string>
