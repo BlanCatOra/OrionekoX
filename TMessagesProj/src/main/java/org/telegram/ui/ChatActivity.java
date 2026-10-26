@@ -29880,6 +29880,9 @@ public class ChatActivity extends BaseFragment implements
     @Override
     public void onResume() {
         super.onResume();
+        if (getChatListView() != null) {
+            org.telegram.ox.OxChatTheme.applyToChat(this, dialog_id, getChatListView());
+        }
         checkShowBlur(false);
         activityResumeTime = System.currentTimeMillis();
         if (openImport && getSendMessagesHelper().getImportingHistory(dialog_id) != null) {
@@ -30092,6 +30095,7 @@ public class ChatActivity extends BaseFragment implements
     @Override
     public void onPause() {
         super.onPause();
+        org.telegram.ox.OxChatTheme.restoreChat(getChatListView());
         scrolling = false;
         if (scrimPopupWindow != null) {
             scrimPopupWindow.setPauseNotifications(false);

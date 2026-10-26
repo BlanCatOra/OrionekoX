@@ -66,6 +66,13 @@ public class MessageDrawable extends Drawable {
 
     public Integer overrideColor = null;
     public boolean shadow = true;
+
+    public void setOverrideRoundRadius(int radius) {
+        if (overrideRoundRadius == radius) return;
+        overrideRoundRadius = radius;
+        forceInvalidatePath = true;
+        invalidateSelf();
+    }
     private int[] currentShadowDrawableRadius = new int[]{-1, -1, -1, -1};
     private Bitmap[] shadowDrawableBitmap = new Bitmap[4];
     private Drawable[] shadowDrawable = new Drawable[4];

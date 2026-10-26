@@ -1,5 +1,19 @@
 # Releasing and publishing OrionekoX
 
+## 0. Versioning
+
+Use `major.minor.patch` and do not only bump the last digit:
+
+- **patch** (`x.y.Z`): bug fixes, QA passes, copy/docs only.
+- **minor** (`x.Y.0`): a larger feature iteration or compatibility layer (new UI
+  mode, import format, theme system, group/media behavior). Reset patch to 0.
+- **major** (`X.0.0`): a milestone/architecture release that changes the product’s
+  shape or compatibility baseline. Reset minor/patch to 0.
+- `versionCode = APP_VERSION_CODE * 10 + 9` as required by the build.
+
+If a round ships a feature, bump minor even if the previous round was a patch. If it
+completes a milestone, bump major. Record the reason in the build report/memory.
+
 This checklist applies to public pushes, GitHub releases and any text that becomes
 publicly visible. The repository is GPL-2.0; keep upstream notices intact.
 

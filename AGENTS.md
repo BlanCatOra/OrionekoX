@@ -52,6 +52,11 @@ adb install -r TMessagesProj_AppStandalone/build/outputs/apk/afat/standalone/app
   `docs/OrionekoX-alpha-0.0.1-构建报告.md`。
 - 构建失败必须记录真实错误并修复，不能把失败写成成功。
 
+## 版本号
+
+`major.minor.patch`：patch 只用于小修/QA/文档；较大功能迭代进位 minor 并清零 patch；
+里程碑或架构级完成进位 major。不要只改最后一位。`versionCode = APP_VERSION_CODE * 10 + 9`。
+
 ## 提交与公开内容
 
 - commit 作者固定为 `blancatora <blancatora@agent.qq.com>`。
