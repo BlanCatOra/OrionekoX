@@ -363,6 +363,30 @@ public class OxAgentsBridge {
         return result;
     }
 
+    /** Removes an agent from a local group without a server request. */
+    public static boolean removeLocalGroupMember(long chatId, TLRPC.User user) {
+        if (user == null || user.id == UserConfig.getInstance(0).getClientUserId()
+                || !OxGroupStore.isLocalGroup(chatId)) {
+            return false;
+        }
+        OxAgent a = agentByTgId(user.id);
+        if (a == null) return false;
+        try {
+            OxGroupStore.removeAgent(chatId, a.id);
+            ensureLocalGroupFull(chatId);
+            TLRPC.ChatFull full = MessagesController.getInstance(0).getChatFull(chatId);
+            if (full != null) {
+                NotificationCenter.getInstance(0).postNotificationName(
+                        NotificationCenter.chatInfoDidLoad, full, 0, false, false);
+            }
+            log("removeLocalGroupMember chat=" + chatId + " user=" + user.id
+                    + " count=" + (full == null ? -1 : full.participants_count));
+        } catch (Throwable t) {
+            logErr("removeLocalGroupMember failed chat=" + chatId, t);
+        }
+        return true;
+    }
+
     /** Adds agents to a local group without a server request. */
     public static boolean addLocalGroupMembers(TLRPC.Chat chat, ArrayList<TLRPC.User> users,
                                                androidx.core.util.Consumer<TLRPC.User> onAddUser,

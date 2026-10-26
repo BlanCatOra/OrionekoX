@@ -9187,6 +9187,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     avatarsViewPager.setChatInfo(chatInfo);
                 }
                 updateListAnimated(true);
+                if (org.telegram.ox.OxGroupStore.isLocalGroup(chatId)) {
+                    updateProfileData(true);
+                }
                 TLRPC.Chat newChat = getMessagesController().getChat(chatId);
                 if (newChat != null) {
                     currentChat = newChat;
