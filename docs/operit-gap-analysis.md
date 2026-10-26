@@ -433,3 +433,14 @@ of a separate automation graph:
 - Environment note: entering text in the chat-list search field makes qemu disappear
   on this headless SwiftShader AVD (reproduced twice, no app FATAL/ANR). Row-coordinate
   navigation is the reliable path for QA here.
+
+### 0.8.76–0.8.77 service-message and price copy
+
+- Rewrote 37 machine-translated group service messages (Stars gifts, giveaways,
+  community joins, invite-link edits, voice-chat actions, forward permissions,
+  ownership transfer, reactions, birthday suggestion) with natural Chinese and
+  preserved `un1`/`un2`/`%d Stars` placeholders.
+- Fixed 18 strings whose parentheses were broken or that contained leaked English
+  like “( E)”: live-stream/voice-chat endings, votes, privacy counters, price
+  breakdowns, and the Mini Apps catalogue description. The AI style editor now
+  uses the “海盗” example instead of “Pilate/海象”. Packs 54–55.
