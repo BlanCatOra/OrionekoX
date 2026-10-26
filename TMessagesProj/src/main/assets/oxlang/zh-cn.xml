@@ -885,7 +885,7 @@
     <string name="AreYouSureSendChatToBotMessage">您确定要发送**%1$s**改为:**%2$s**?</string>
     <string name="AreYouSureSendChatToBotTitle">发送%1$s改为:%2$s?</string>
     <string name="AreYouSureSessionTitle">结束会话</string>
-    <string name="AreYouSureSessions">您确定要注销所有其它设备上的会话吗？</string>
+    <string name="AreYouSureSessions">你确定要终止其他设备上的所有会话吗？</string>
     <string name="AreYouSureSessionsTitle">终止活动会话</string>
     <string name="AreYouSureShareMyContactInfo">您确定要分享您的手机号码？</string>
     <string name="AreYouSureShareMyContactInfoBot">机器人将会获取您的手机号码。这可能对机器人与其它服务的集成有用。</string>
@@ -3011,8 +3011,8 @@
     <string name="ContactShortcutMessage">消息 %1$s</string>
     <string name="ContactShortcutVideoCall">视频通话 %1$s</string>
     <string name="ContactShortcutVoiceCall">语音通话 %1$s</string>
-    <string name="ContactSupport">联系志愿者客服</string>
-    <string name="ContactSupportInfo">如果有问题，请告诉我们；注销无助于解决问题。</string>
+    <string name="ContactSupport">联系客服</string>
+    <string name="ContactSupportInfo">遇到问题请告诉我们；退出登录通常并不能解决问题。</string>
     <string name="ContactUrl">URL</string>
     <string name="Contacts">联系人</string>
     <string name="ContactsAndFee">已支付</string>
@@ -5806,7 +5806,7 @@
     <string name="LocationUpdatedJustNow">刚刚更新</string>
     <string name="LocationsShowAll">全部显示</string>
     <string name="LogOut">登出</string>
-    <string name="LogOutInfo">注销将会销毁所有的加密聊天记录。</string>
+    <string name="LogOutInfo">退出登录会使所有加密聊天失效。</string>
     <string name="LogOutTitle">退出当前帐号</string>
     <string name="LoginAccessibilityCountryCode">国家代码</string>
     <string name="LoginAttempts">未完成的登录尝试</string>
@@ -10277,7 +10277,7 @@
     <string name="TelegramTones">Telegram音调</string>
     <string name="TelegramVersion">Telegram Android 客户端 %1$s</string>
     <string name="Terminate">结束</string>
-    <string name="TerminateAllSessions">注销所有其它设备上的会话</string>
+    <string name="TerminateAllSessions">终止其他设备上的所有会话</string>
     <string name="TerminateAllWebSessions">取消所有网站的授权</string>
     <string name="TerminateOldSessionHeader">自动终止旧会话</string>
     <string name="TerminateSession">终止会话</string>
