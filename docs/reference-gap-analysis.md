@@ -40,8 +40,14 @@
   `{id, name, primaryColorArgb, secondaryColorArgb?, tertiaryColorArgb?}`，并显式兼容
   RikkaHub 的同名字段；气泡另有 `ChatBubbleStyleOverrides`（背景/边框/文字 ARGB、
   圆角、边框宽度/透明度、磨砂 sigma/透明度）。
-- **备份**：仓库有本地快照、WebDAV、S3 与 Cherry Studio/Chatbox 导入器；具体归档
-  schema 仍需逐文件核对，暂不对外承诺字段级兼容。
+- **备份**：`BackupScope` 的类别为 chats / files / assistants / providers / mcp /
+  environmentVariables / skills / worldBooks / memories / quickPhrases /
+  instructions / workspaces / searchServices / speechServices / settings；
+  `RestoreMode` 支持 overwrite（保留未选内容）与 merge（增量去重）。归档是数据库
+  加 assets（`upload`、`images`、`avatars`、`fonts`、`sessions`、`skills`、
+  `workspaces`）的打包，具体表结构仍需逐文件核对，暂不对外承诺字段级兼容。
+- **Cherry Studio / Chatbox 导入**：分别由 `cherry_importer.dart` /
+  `chatbox_importer.dart` 解析，字段映射较长；先做只读预览，再决定是否复用其映射表。
 
 ### RikkaHub
 
