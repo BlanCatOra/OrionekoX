@@ -2205,6 +2205,27 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `f74e42248c96…`）；debug `dist/OrionekoX-0.8.103-debug-arm64-x64.apk`（sha256
 `aa9987a9e28b…`）。
 
+## 5.102 alpha 0.8.103 —— 公开仓库发布与三参考调研（2026-10-26 13:55–14:20）
+
+- 创建公开仓库 <https://github.com/BlanCatOra/OrionekoX>，默认分支 `main`，
+  保留 125 个提交的迭代历史。公开镜像在独立副本中完成脱敏：移除
+  `release.keystore` 与全部 `google-services.json`，把签名密码替换为
+  `CHANGE_ME`，将早期 `OrionekoX Builder` 提交身份统一改写为
+  `blancatora <blancatora@agent.qq.com>`；上游提交作者保持不变。
+- 按 DSH 规范补齐 `README.md`/`README.en.md`（顶部 AI 声明、真实截图、功能表、
+  构建说明）、`AGENTS.md`、`llms.txt`、`NOTICE`、`docs/RELEASING.md`，并加入
+  Kelivo/RikkaHub/Operit 兼容与美化分析 `docs/reference-gap-analysis.md`。
+- 公开 clone 构建：`TMessagesProj_AppStandalone/build.gradle` 在缺少私有 keystore
+  时回退 debug 签名、缺少 `google-services.json` 时跳过 Firebase 插件；子模块
+  说明已写入 README。本地 0.8.103 构建通过；公开镜像原生编译在 `/tmp` 16G
+  tmpfs 配额耗尽处停止（环境问题，非仓库配置）。
+- 已生成三份“酒吧炒饭”独立测试 skill（A 建档/记忆、B 群聊/媒体、C 设置/终端），
+  子代理 A 已启动；B、C 将按 A 报告完成后顺序启动。
+- Kelivo 已核对：`mcpServers` JSON（stdio/http/sse）、`SKILL.md`/zip 技能、
+  主题 JSON（`primaryColorArgb`，兼容 RikkaHub）、备份类别与 overwrite/merge
+  模式；RikkaHub 已确认 SillyTavern 角色卡、Provider QR、MCP/Skills、Material 3
+  Expressive。具体导入实现待三份测试报告后按优先级落地。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
