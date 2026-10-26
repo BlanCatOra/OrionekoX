@@ -92,12 +92,44 @@ public class OxSkillStore {
     private static void writeSkill(String id, byte[] body) throws Exception {
         File base = new File(ApplicationLoader.applicationContext.getFilesDir(), "oxskills");
         File dir = new File(base, id);
-        int suffix = 1;
-        while (dir.exists()) dir = new File(base, id + "_" + suffix++);
-        if (!dir.mkdirs()) throw new java.io.IOException("cannot create skill dir");
+        // Re-importing the same skill updates it instead of piling up
+        // `name_1`, `name_2` duplicates.
+        if (dir.isDirectory()) {
+            File old = new File(dir, "SKILL.md");
+            if (old.exists()) old.delete();
+        }
+        if (!dir.exists() && !dir.mkdirs()) throw new java.io.IOException("cannot create skill dir");
         java.io.FileOutputStream out = new java.io.FileOutputStream(new File(dir, "SKILL.md"));
         out.write(body);
         out.close();
+    }
+
+    /** Deletes a skill imported into app-private storage. Skills scanned from the
+     *  user's Download/Operit folders stay read-only. */
+    public static synchronized boolean delete(Skill skill) {
+        if (skill == null || skill.file == null) return false;
+        File base = new File(ApplicationLoader.applicationContext.getFilesDir(), "oxskills");
+        File parent = skill.file.getParentFile();
+        if (parent == null) return false;
+        try {
+            String basePath = base.getCanonicalPath() + File.separator;
+            if (!parent.getCanonicalPath().startsWith(basePath)) return false;
+            deleteTree(parent);
+            loadedAt = 0;
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private static void deleteTree(File f) {
+        if (f == null) return;
+        File[] children = f.listFiles();
+        if (children != null) {
+            for (File c : children) deleteTree(c);
+        }
+        //noinspection ResultOfMethodCallIgnored
+        f.delete();
     }
 
     private static String sanitizeSkillId(String raw) {

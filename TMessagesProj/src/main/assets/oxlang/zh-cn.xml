@@ -6753,6 +6753,7 @@
     <string name="OxAgentHeaders">自定义请求头</string>
     <string name="OxAgentImportFailed">导入失败：不是有效的 .oxagent 文件</string>
     <string name="OxAgentImported">已导入智能体 %1$s</string>
+    <string name="OxAgentImportNoKey">导出包不含 API Key；使用前请在智能体编辑器里重新填写。</string>
     <string name="OxDuplicateAgent">复制</string>
     <string name="OxAgentDuplicated">已复制 %1$s</string>
     <string name="OxAgentCopySuffix">副本</string>
@@ -10727,7 +10728,7 @@
     <string name="UserProfileHint2">也可以改变名字的颜色,并自定义给您的答复.**变动>**</string>
     <string name="UserProfileIcon">向配置文件添加图标</string>
     <string name="UserRemovedBy">被 %1$s 封禁</string>
-    <string name="UserRemovedFromChatHint">**%1$s**从**%2$s**</string>
+    <string name="UserRemovedFromChatHint">**%1$s** 已从 **%2$s** 移除</string>
     <string name="UserReplyIcon">在回复中添加图标</string>
     <string name="UserReplyIconOff">关</string>
     <string name="UserRestricted">抱歉，您不能执行此操作。</string>
@@ -11854,6 +11855,9 @@
     <string name="OxSkillsImport">导入 SKILL.md / zip</string>
     <string name="OxSkillsImportInfo">导入 Kelivo、RikkaHub 或 Operit 导出的技能到应用私有技能目录</string>
     <string name="OxSkillsImported">已导入 %1$d 个技能</string>
+    <string name="OxSkillDeleteMsg">删除这个已导入的技能？</string>
+    <string name="OxSkillDeleted">已删除技能：%1$s</string>
+    <string name="OxSkillDeleteReadOnly">该技能位于 Download，属于只读扫描目录</string>
     <string name="OxSkillsImportFailed">导入失败：%1$s</string>
     <string name="OxAppearance">外观</string>
     <string name="OxAppearanceEntryInfo">强调色与 Kelivo / RikkaHub 主题导入</string>
@@ -11896,6 +11900,7 @@
     <string name="OxChatPresets">预设</string>
     <string name="OxChatNoPresets">暂无预设</string>
     <string name="OxChatPresetHint">点击应用 · 长按删除</string>
+    <string name="OxChatPresetApplied">已应用预设：%1$s</string>
     <string name="OxChatResetNative">重置为 Telegram 原生</string>
     <string name="OxChatResetDone">已恢复 Telegram 原生外观</string>
     <string name="OxChatApplyHint">重新进入 Agent 会话后生效。</string>

@@ -67,13 +67,60 @@ research round should cite concrete threads.
   `outBubbleArgb`, `bubbleAlpha`, `cornerRadius`, `fontScale`, plus
   `primaryColorArgb`/`secondaryColorArgb` fallbacks. Operit theme-v1 needs a dedicated
   mapper.
+- Kelivo `ChatBubbleStyleOverrides` gives the next import target: `backgroundArgb(Light|
+  Dark)`, `borderArgb(Light|Dark)`, `textArgb(Light|Dark)`, `borderWidth`,
+  `borderOpacity`, `cornerRadius`, `blurSigma`, `frostedOpacity`, `solidOpacity`.
+  The 0.10.0 mapper will read these keys and pick the light/dark variant that matches
+  the active Telegram theme; unknown keys are ignored.
+
+## 0.9.0 device QA (second independent round B, 2026-10-27)
+
+- Custom mode applied correctly on device: background `#101114`, incoming `#E8F5E9`,
+  outgoing `#EFFDDE`, 86% alpha, 10 dp radius, 1.1× font.
+- Named preset save → apply → delete worked; one-click native reset restored the stock
+  Telegram wallpaper and bubbles.
+- Imported JSON with `#1B1B2F`, `#FF2D55`, `#30D158`, 219 alpha, 18 dp, 1.2× mapped
+  correctly and applied immediately.
+- Gaps seen in QA: applying a preset says “已导入外观” (wrong verb); import applies
+  immediately with no preview/rollback; background-image picker not covered; per-agent
+  persistence is still global.
+
+## Community pain points with citations
+
+These confirm the feature directions rather than relying on guesses. Checked
+2026-10-27 via the GitHub search API.
+
+- **Kelivo #979 – 整合主题设置模块**: appearance options (background, bubbles, avatars,
+  fonts) are scattered; users ask for one theme module with export/import. This matches
+  our single “Agent chat appearance” page and preset export plan.
+- **Kelivo #940 – 主题色使用问题**: theme color is hard to tune and does not match the
+  actual UI; requests independent color controls and background images.
+- **Kelivo #581 / #667 – 输入栏毛玻璃开关 / 透明度**: the frosted composer can become a
+  murky blob over text; users want a frosted/solid switch and alpha control. We will add
+  a solid/frosted style switch and a readability hint instead of forcing blur.
+- **Kelivo #548 / #1054 / #892 / #615**: separate code-font size, separate UI/chat/input
+  sizes, layout breakage at 125%+, CJK glyph distortion, and a request for separate
+  Chinese/Latin fonts. Our next pass adds independent chat/code font families and sizes,
+  plus a CJK-safe default.
+- **Kelivo #1226 – 聊天行高**: user-selectable 1.2–2.0 line height for chat text.
+- **RikkaHub #406 – dark splash flashbang**: theme-aware startup; **#350 – AMOLED pure
+  black**; **#1134 – Cyberpunk theme preset** with neon/glass/particles. AMOLED and
+  preset themes are confirmed demand, not speculation.
+- **RikkaHub #1308 – immersive mode / no forced scroll on send**: appearance work also
+  includes interaction polish, not only colors.
+- **Operit #1156 – apply current card theme to all characters**: per-agent themes plus
+  an “apply to all” action. **#1104 – snapshot import restores theme media**: theme
+  export/import must include wallpaper and font assets, not just colors. **#1314** –
+  streaming chat backup confirms the value of portable, resource-complete exports.
 
 ## Gaps / next phases
 
 1. Full Operit theme-v1 mapping (background images, 9-patch, fonts, input styles,
    bubble borders) and preview/rollback.
-2. Bubble border, frosted/blur, gradient backgrounds, separate UI/code fonts.
-3. Persist per-agent themes (not just “custom while this chat is open”) and export
-   presets.
+2. Bubble border, frosted/solid switch, gradient backgrounds, separate chat/code fonts
+  and sizes, line height, AMOLED/contrast.
+3. Persist per-agent themes, add “apply to all agents”, and export presets with their
+   wallpaper/font assets.
 4. Contrast/readability check and live preview before applying.
-5. Community research with citations, then a second parity pass and multi-round QA.
+5. Re-run multi-round QA after the 0.10.0 batch, including background-image import,
+   preset export/import round-trip, and per-agent isolation.

@@ -21,6 +21,7 @@ public class OxAgent {
     public boolean pinned;    // sticks to the top of the agents block in the chat list
     public long tgId;         // synthetic Telegram user id when running in local-account mode (0 = not yet assigned)
     public String remark;     // note line, mirrored into the synthetic user's last name
+    public String firstMes = ""; // optional card greeting; used instead of the generic hello
     public String avatarPath; // master copy of the custom avatar image (may be null)
     public String providerId = "custom"; // OxProviderPreset id, for the editor only
     /** Custom request headers: [["X-Header","value"], ...]. Applied after defaults. */
@@ -56,6 +57,7 @@ public class OxAgent {
         a.pinned = o.optBoolean("pinned", false);
         a.tgId = o.optLong("tg_id", 0);
         a.remark = o.optString("remark", "");
+        a.firstMes = o.optString("first_mes", "");
         a.avatarPath = o.optString("avatar_path", "");
         a.providerId = o.optString("provider_id", "custom");
         JSONArray h = o.optJSONArray("headers");
@@ -94,6 +96,7 @@ public class OxAgent {
         o.put("pinned", pinned);
         o.put("tg_id", tgId);
         o.put("remark", remark == null ? "" : remark);
+        o.put("first_mes", firstMes == null ? "" : firstMes);
         o.put("avatar_path", avatarPath == null ? "" : avatarPath);
         o.put("provider_id", providerId == null ? "custom" : providerId);
         o.put("headers", headers == null ? new JSONArray() : headers);

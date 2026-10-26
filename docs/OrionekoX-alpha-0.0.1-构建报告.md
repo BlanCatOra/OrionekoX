@@ -9,7 +9,7 @@
 | `OrionekoX/dist/OrionekoX-0.0.1-alpha-arm64.apk` | 38MB · arm64-v8a 单 ABI · R8 压缩 + 资源收缩 |
 | `OrionekoX/dist/OrionekoX-0.0.1-alpha-arm64.apk.sha256` | `c6c7ca2a649b6e534c450ff5bf78cf4f7d70904b6dca529237fc47d38e9f1c9c` |
 | `OrionekoX/patches/0001-*.patch`、`0002-*.patch` | 对上游的全部改动（目录化补丁，M0 纪律的第一次实践） |
-| `OrionekoX/TMessagesProj/config/orioneko.keystore` | 签名密钥（密码 `CHANGE_ME`，alias `orioneko`） |
+| `OrionekoX/TMessagesProj/config/orioneko.keystore` | 签名密钥（密码 `orioneko-alpha`，alias `orioneko`） |
 
 **APK 实测信息**（aapt/apksigner 验证）：
 
@@ -48,7 +48,7 @@ taskset -c 0-7 ./gradlew :TMessagesProj_AppStandalone:assembleAfatStandalone
 | 改动 | 文件 | 目的 |
 |---|---|---|
 | `APP_VERSION_CODE=1`、`APP_VERSION_NAME=0.0.1`、`APP_PACKAGE=sh.orioneko.messenger` | `gradle.properties` | 独立包名（可与官方 Telegram 共存）+ alpha 版本号 |
-| `RELEASE_KEY_*` → `CHANGE_ME/orioneko` | `gradle.properties` | 指向自有签名密钥 |
+| `RELEASE_KEY_*` → `orioneko-alpha/orioneko` | `gradle.properties` | 指向自有签名密钥 |
 | `storeFile` → `config/orioneko.keystore`（×2） | `TMessagesProj_AppStandalone/build.gradle` | 弃用仓库自带的公共 release.keystore |
 | 删除 `applicationIdSuffix ".web"`（×2） | 同上 | 最终包名即 `sh.orioneko.messenger`（否则带 `.web` 后缀） |
 | `afat` flavor `abiFilters` 收窄为 `arm64-v8a` | 同上 | 原生编译量 ÷4（策略同 Pelegram） |
@@ -2443,6 +2443,24 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 **产物**：`dist/OrionekoX-0.9.0-alpha-arm64-x64.apk`（versionCode 1329，sha256
 `617cff8bf2c9…`）；debug `dist/OrionekoX-0.9.0-debug-arm64-x64.apk`（sha256
 `456f0ec5315f…`）。
+
+## 5.117 alpha 0.9.1 —— 第二轮 A/B/C 回归修补（2026-10-27 03:30–04:10）
+
+- 归档第二轮 B、C 独立报告与问题汇总：B 5 PASS / 1 PARTIAL / 1 FAIL，C 外观专项 6/7 通过
+  但报告 2 项 P1；主代理对两项 P1 做受控复验，均未复现（图片是相册网格选错项；列表点击
+  用 uiautomator bounds 中心/下缘均正确），按测试/模拟器因素记录。
+- 修复 Agent 会话重开空白：忽略旧 `diditem` 滚动位置；首个 cache pass 为空时 350ms 后
+  有界重试；Agent 会话不再显示“删除此对话”底部遮罩。3 次返回重进均立即显示历史。
+- 文件入口 JPG/PNG 改走图片气泡：实测 `verify-rice.jpg` 有缩略图、双勾，模型准确读出
+  `VERIFYRICE0.9.1`。
+- 主题导入补 snake_case 别名：`in_bubble`/`out_bubble`/`corner_radius`/`font_size` 等
+  六项全部映射（实测 T991 主题）。
+- 另有：工具气泡摘要、`\n` 反转义、SillyTavern `first_mes` 开场白、技能同名覆盖/长按删除、
+  本地 Agent 子串搜索、`.oxagent` 无 Key 提示、预设 toast、MCP 重复标题、成员移除文案、
+  群内 @ 用户名提示、群内“描述上一张图”自动附带最近图片。
+- 产物：`dist/OrionekoX-0.9.1-alpha-arm64-x64.apk`（versionCode 1339，sha256
+  `e22563e1c6e3…`）；debug `dist/OrionekoX-0.9.1-debug-arm64-x64.apk`（sha256
+  `15c1cc7a73eb…`）。详见 `docs/qa-0.9.1.md`。
 
 ## 6. 与开发报告路线图的对应关系
 

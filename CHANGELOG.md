@@ -4,6 +4,26 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.9.1 — 2026-10-27
+
+- Agent chats no longer reopen blank: stale scroll positions are ignored, an empty
+  first history pass gets one bounded retry, and the stock “Delete this chat”
+  overlay is suppressed while local history loads.
+- File-picker images now become photo bubbles with thumbnails and reach vision;
+  outbound tool-call bubbles show a short summary instead of raw JSON.
+- Theme JSON import accepts snake_case keys (`in_bubble`, `out_bubble`,
+  `corner_radius`, `font_size`, …) and Kelivo-style aliases.
+- Assistant text double-escaped newlines are decoded before persistence;
+  SillyTavern `first_mes` becomes the greeting; skills overwrite on re-import and
+  can be deleted; local agents match substring searches.
+
+## 0.9.0 — 2026-10-26
+
+- New Agent chat appearance page: Telegram-native or custom mode, background
+  color/image, incoming/outgoing bubble colors, opacity, radius, message font
+  scale, named presets, JSON import and one-click native reset.
+- Second-round independent test reports A/B/C and the consolidated issue tracker.
+
 ## 0.8.103 — 2026-10-26
 
 - Local groups: removing an agent member is fully local. Long-press a member →

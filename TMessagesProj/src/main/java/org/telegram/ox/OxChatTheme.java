@@ -124,15 +124,18 @@ public class OxChatTheme {
 
     public static String importJson(String raw) throws Exception {
         JSONObject o = new JSONObject(raw);
-        int bg = color(o, "backgroundArgb", "backgroundColorArgb", "background", "background_color");
+        int bg = color(o, "backgroundArgb", "backgroundColorArgb", "background", "background_color",
+                "chat_background", "chatBackground", "backgroundColor");
         int in = color(o, "inBubbleArgb", "incomingBubbleArgb", "inBubbleColorArgb", "bubbleInArgb",
+                "in_bubble", "incoming_bubble", "incomingBubble", "inBubbleColor", "bubble_in",
                 "secondaryColorArgb", "secondary_color_argb");
         int out = color(o, "outBubbleArgb", "outgoingBubbleArgb", "outBubbleColorArgb", "bubbleOutArgb",
+                "out_bubble", "outgoing_bubble", "outgoingBubble", "outBubbleColor", "bubble_out",
                 "primaryColorArgb", "primary_color_argb");
-        int alpha = intValue(o, 255, "bubbleAlpha", "bubble_alpha", "opacity");
+        int alpha = intValue(o, 255, "bubbleAlpha", "bubble_alpha", "bubble_opacity", "bubbleOpacity", "opacity");
         if (alpha <= 1) alpha = Math.round(alpha * 255);
-        int radius = intValue(o, 16, "cornerRadius", "bubbleCornerRadius", "radius");
-        float scale = floatValue(o, 1f, "fontScale", "font_scale", "fontSizeScale");
+        int radius = intValue(o, 16, "cornerRadius", "bubbleCornerRadius", "corner_radius", "bubble_radius", "radius");
+        float scale = floatValue(o, 1f, "fontScale", "font_scale", "fontSizeScale", "font_size", "message_font_scale");
         String name = o.optString("name", "");
         if (bg == 0 && in == 0 && out == 0) throw new IllegalArgumentException("no colors");
         prefs().edit().putString("mode", MODE_CUSTOM)

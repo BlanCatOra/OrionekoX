@@ -808,7 +808,11 @@ public class OxAgentsBridge {
                 GREETED.add(a.tgId);
                 if (empty) {
                     log("greeting empty dialog " + a.tgId);
-                    injectAgentReply(a.tgId, "你好，我是 " + a.emoji + " " + a.name + "。直接发消息即可开始对话。");
+                    String greeting = a.firstMes == null ? "" : a.firstMes.trim();
+                    if (greeting.isEmpty()) {
+                        greeting = "你好，我是 " + a.emoji + " " + a.name + "。直接发消息即可开始对话。";
+                    }
+                    injectAgentReply(a.tgId, greeting);
                 }
             }
         });
@@ -1897,7 +1901,7 @@ public class OxAgentsBridge {
             injectAgentReply(dialogId, agent.tgId, "⚠ " + e.getMessage());
             return;
         }
-        OxGroupStore.appendChat(dialogId, "user", userText);
+        OxGroupStore.appendChat(dialogId, "user", userText, imagePath);
         active.put(dialogId, s);
         startTyping(dialogId, agent.tgId);
         runRound(s, 0);
@@ -1916,6 +1920,8 @@ public class OxAgentsBridge {
         if (system.length() > 0) system.append("\n\n");
         system.append("# 群聊模式\n你正在群聊「").append(title)
                 .append("」中以普通成员身份发言。只回复与当前消息相关的内容，称呼用户时保持自然；");
+        system.append("你的群内用户名是 @agent_").append(Math.abs(agent.tgId) % 100000)
+                .append("，别人 @ 这个用户名就是在叫你。");
         system.append("不要提及自己是本地合成的账号。");
         String memory = OxAgentStore.loadMemory(agent.id, 4000);
         if (!memory.isEmpty()) {
@@ -1928,13 +1934,24 @@ public class OxAgentsBridge {
             messages.put(new JSONObject().put("role", e.role).put("content", e.content));
         }
         JSONObject user = new JSONObject().put("role", "user");
-        if (imagePath != null && new File(imagePath).isFile()) {
-            user.put("content", visionContent(userText, imagePath));
+        String effectiveImage = imagePath;
+        if ((effectiveImage == null || !new File(effectiveImage).isFile()) && refersToImage(userText)) {
+            effectiveImage = OxGroupStore.lastImage(dialogId);
+        }
+        if (effectiveImage != null && new File(effectiveImage).isFile()) {
+            user.put("content", visionContent(userText, effectiveImage));
         } else {
             user.put("content", userText);
         }
         messages.put(user);
         return messages;
+    }
+
+    private static boolean refersToImage(String text) {
+        if (text == null) return false;
+        String t = text.toLowerCase();
+        return t.contains("图") || t.contains("照片") || t.contains("截图")
+                || t.contains("image") || t.contains("photo") || t.contains("picture");
     }
 
     /** Injects the text of the Operit SKILL.md packages the user enabled for this agent. */
@@ -2082,7 +2099,7 @@ public class OxAgentsBridge {
             toolResult(s, calls, i, call, "denied: tool policy is 'deny' for this agent");
             return;
         }
-        final String argsPretty = call.arguments == null || call.arguments.trim().isEmpty() ? "{}" : call.arguments;
+        final String argsPretty = formatToolArgs(call.name, call.arguments);
         Runnable run = () -> {
             injectAgentReply(s.dialogId, s.senderTgId, "🔧 " + call.name + "(" + argsPretty + ") …");
             new Thread(() -> {
@@ -2310,7 +2327,8 @@ public class OxAgentsBridge {
      */
     private static void applyMarkdown(TLRPC.TL_message msg) {
         if (msg == null || msg.message == null || msg.message.isEmpty()) return;
-        String src = msg.message;
+        String src = normalizeEscapedText(msg.message);
+        boolean changed = !src.equals(msg.message);
         ArrayList<TLRPC.MessageEntity> entities = new ArrayList<>();
         StringBuilder out = new StringBuilder(src.length());
         int i = 0;
@@ -2356,11 +2374,59 @@ public class OxAgentsBridge {
             out.append(src.charAt(i));
             i++;
         }
-        if (!entities.isEmpty()) {
+        if (!entities.isEmpty() || changed) {
             msg.message = out.toString();
-            msg.entities = entities;
-            msg.flags |= 128;
+            if (!entities.isEmpty()) {
+                msg.entities = entities;
+                msg.flags |= 128;
+            }
         }
+    }
+
+    /** Keeps the visible tool-call line short instead of dumping a whole JSON body
+     *  (write_file content, long shell commands) into the chat. */
+    private static String formatToolArgs(String name, String raw) {
+        if (raw == null || raw.trim().isEmpty()) return "{}";
+        try {
+            JSONObject o = new JSONObject(raw);
+            if ("write_file".equals(name)) {
+                String path = o.optString("path", "");
+                String content = o.optString("content", "");
+                return path + (content.isEmpty() ? "" : " · " + content.length() + " 字");
+            }
+            if (("read_file".equals(name) || "list_dir".equals(name)) && o.has("path")) {
+                return o.optString("path", "");
+            }
+            String compact = o.toString();
+            if (compact.length() > 180) compact = compact.substring(0, 180) + "…";
+            return compact;
+        } catch (Throwable t) {
+            String text = normalizeEscapedText(raw);
+            return text.length() > 180 ? text.substring(0, 180) + "…" : text;
+        }
+    }
+
+    /** Models sometimes double-escape newlines in their final JSON. Decode literal
+     *  {@code \n}/{@code \t}/{@code \r} outside `code` spans before persistence, so a
+     *  reopened history does not show backslash escapes. */
+    private static String normalizeEscapedText(String s) {
+        if (s == null || (s.indexOf("\\n") < 0 && s.indexOf("\\t") < 0 && s.indexOf("\\r") < 0)) {
+            return s;
+        }
+        StringBuilder out = new StringBuilder(s.length());
+        boolean inCode = false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '`') inCode = !inCode;
+            if (!inCode && c == '\\' && i + 1 < s.length()) {
+                char n = s.charAt(i + 1);
+                if (n == 'n') { out.append('\n'); i++; continue; }
+                if (n == 't') { out.append('\t'); i++; continue; }
+                if (n == 'r') { out.append('\r'); i++; continue; }
+            }
+            out.append(c);
+        }
+        return out.toString();
     }
 
     private static void setPeerAndSender(TLRPC.TL_message msg, long dialogId, long senderTgId) {

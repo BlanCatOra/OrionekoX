@@ -101,16 +101,32 @@ public class OxGroupStore {
     }
 
     public static synchronized void appendChat(long chatId, String role, String content) {
+        appendChat(chatId, role, content, null);
+    }
+
+    public static synchronized void appendChat(long chatId, String role, String content, String imagePath) {
         if (content == null || content.trim().isEmpty()) return;
         try {
             List<OxChatEntry> chat = loadChat(chatId);
-            chat.add(new OxChatEntry(role, content, System.currentTimeMillis()));
+            chat.add(new OxChatEntry(role, content, System.currentTimeMillis(), imagePath));
             while (chat.size() > 40) chat.remove(0);
             prefs().edit().putString("log_" + key(chatId),
                     OxChatEntry.toJsonArray(chat).toString()).apply();
         } catch (Throwable t) {
             FileLog.e("OxGroupStore.appendChat", t);
         }
+    }
+
+    /** Most recent image sent in this group, used when a later turn refers to it. */
+    public static synchronized String lastImage(long chatId) {
+        List<OxChatEntry> chat = loadChat(chatId);
+        for (int i = chat.size() - 1; i >= 0; i--) {
+            OxChatEntry e = chat.get(i);
+            if (e.imagePath != null && !e.imagePath.isEmpty() && new java.io.File(e.imagePath).isFile()) {
+                return e.imagePath;
+            }
+        }
+        return null;
     }
 
     public static synchronized void clearChat(long chatId) {
