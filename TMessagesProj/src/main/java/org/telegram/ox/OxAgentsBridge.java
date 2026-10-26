@@ -1293,13 +1293,16 @@ public class OxAgentsBridge {
                                                         boolean video, boolean animated,
                                                         int w, int h, double durationSec) {
         TLRPC.TL_document doc = new TLRPC.TL_document();
-        doc.id = 0;
+        doc.id = Integer.MIN_VALUE;
         doc.access_hash = 0;
         doc.date = (int) (System.currentTimeMillis() / 1000);
         doc.mime_type = mime;
         doc.size = new File(path).length();
-        doc.dc_id = 0;
+        doc.dc_id = Integer.MIN_VALUE;
         doc.file_reference = new byte[0];
+        // The attachment already exists on disk; without this FileLoader treats the
+        // document as a remote file and the bubble shows a failed 0 KB download.
+        doc.localPath = path;
         doc.attributes = new ArrayList<>();
         TLRPC.TL_documentAttributeFilename fn = new TLRPC.TL_documentAttributeFilename();
         fn.file_name = name;
