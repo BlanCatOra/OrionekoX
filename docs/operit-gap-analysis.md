@@ -545,3 +545,13 @@ of a separate automation graph:
   assignment dialog (QA2 checked, cancel options) and the `help` command list. The
   composer stays above the floating tab bar with the IME open. No app crash; the
   `-gpu off` AVD remained stable. Details: `docs/qa-terminal-0.8.87.md`.
+
+### 0.8.87 new-agent and MCP QA
+
+- New-agent editor exposes avatar, persona/remark, skills, model service, base URL,
+  key, model, fetch/preset model actions, test connection, advanced parameters,
+  headers and AGENTS.md; save is the top-right check and back discards. No accidental
+  agent creation (list stayed at 7).
+- MCP catalogue shows the two remote entries plus Operit local-STDIO plugins; local
+  entries open a native detail dialog with repo/copy-config actions. Nothing was
+  installed or removed. Details: `docs/qa-ox-0.8.87.md`.
