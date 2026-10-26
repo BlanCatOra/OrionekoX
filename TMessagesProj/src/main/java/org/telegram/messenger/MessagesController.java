@@ -15581,6 +15581,9 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void addUsersToChat(TLRPC.Chat currentChat, BaseFragment baseFragment, ArrayList<TLRPC.User> users, int fwdCount, Consumer<TLRPC.User> onAddUser, Consumer<TLRPC.User> onRestricted, Runnable onComplete) {
+        if (org.telegram.ox.OxAgentsBridge.addLocalGroupMembers(currentChat, users, onAddUser, onComplete)) {
+            return;
+        }
         final int count = users.size();
         final int[] processed = new int[1];
         processed[0] = 0;

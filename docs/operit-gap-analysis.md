@@ -70,7 +70,7 @@ gaps that were previously listed as "gap":
 | Terminal sessions | Operit terminal has browser-like tabs, and a terminal can be assigned to an agent | TTY 1/2/3 are direct-click tabs (no cycling); long-press a tab to assign an agent; the tab shows `TTY 2 · QA2` and the assignment persists |
 | Skills | Operit `Download/Operit/skills/<id>/SKILL.md`, list/read/execute | read-only skill library (`技能库`), scans Operit/Operit2 skill folders; agents get `list_skills` / `read_skill` tools |
 | MCP ecosystem | Operit MCP catalogue, local stdio plugins, install/refresh | catalogue + one-tap remote HTTP install (DeepWiki/Context7); local stdio entries are browsable with copyable config |
-| Agent in groups | Operit characters participate in group chats | agents can be added to a normal Telegram basic group locally; participant list, member count, group header and in-group reply bubbles work |
+| Agent in groups | Operit characters participate in group chats | agents can be added to a normal Telegram basic group locally at creation and afterwards; participant list, member count, group header and in-group reply bubbles work |
 | Local premium | paid appearance features | local premium already makes `UserConfig.isPremium()` true; resale gift appearance now applies locally with a "使用 · 本地会员已解锁" action instead of the server payment flow |
 | Branding / polish | — | chat header and Stories wordmark are OrionekoX; theme menu says 日间模式/夜间模式; bottom labels are equal-width and centred |
 
@@ -635,3 +635,17 @@ of a separate automation graph:
   YAML frontmatter shown in a dialog. Terminal settings exposes 5 color schemes and
   12/14/16/18 sp font sizes plus the shared-storage note; values were not changed.
   Details: `docs/qa-skills-terminal-0.8.100.md`.
+
+### 0.8.101–0.8.102 local-group add member
+
+- Adding an agent to an existing local group used to fall through to
+  `messages.addChatUser`. `MessagesController.addUsersToChat` now early-returns into
+  `OxAgentsBridge.addLocalGroupMembers`, which appends only missing agents to the
+  rebuilt full, updates `OxGroupStore` plus the chat member count, persists the
+  full and posts `chatInfoDidLoad`.
+- Testing 0.8.101 exposed two follow-ups fixed in 0.8.102: `chatInfoDidLoad` needs
+  `false`, not `null`, as its fourth argument (`TopicsFragment` unboxes it), and the
+  bridge must not call `onAddUser` because `ProfileActivity.onComplete` appends those
+  users again (duplicate row, count +1). Verified: adding Echo gives exactly
+  “3 位成员, 3 人在线” and one Echo row, with no add-chat-user request. Restored the
+  test group to Yuki-only afterwards. Details: `docs/qa-group-0.8.102.md`.

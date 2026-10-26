@@ -363,6 +363,49 @@ public class OxAgentsBridge {
         return result;
     }
 
+    /** Adds agents to a local group without a server request. */
+    public static boolean addLocalGroupMembers(TLRPC.Chat chat, ArrayList<TLRPC.User> users,
+                                               androidx.core.util.Consumer<TLRPC.User> onAddUser,
+                                               Runnable onComplete) {
+        if (chat == null || users == null || !OxGroupStore.isLocalGroup(chat.id)) return false;
+        try {
+            ensureLocalGroupFull(chat.id);
+            MessagesController mc = MessagesController.getInstance(0);
+            TLRPC.ChatFull full = mc.getChatFull(chat.id);
+            if (full == null || !(full.participants instanceof TLRPC.TL_chatParticipants)) return false;
+            for (TLRPC.User user : users) {
+                OxAgent a = agentByTgId(user.id);
+                if (a == null) continue;
+                boolean exists = false;
+                for (TLRPC.ChatParticipant p : full.participants.participants) {
+                    if (p.user_id == user.id) { exists = true; break; }
+                }
+                if (exists) continue;
+                TLRPC.TL_chatParticipant p = new TLRPC.TL_chatParticipant();
+                p.user_id = user.id;
+                p.inviter_id = UserConfig.getInstance(0).getClientUserId();
+                p.date = (int) (System.currentTimeMillis() / 1000);
+                full.participants.participants.add(p);
+                OxGroupStore.addAgent(chat.id, a.id);
+                mc.putUser(user, true);
+                // ProfileActivity appends every onAddUser result in onComplete; the full
+                // updated here already contains the participant, so skip that callback.
+            }
+            full.participants_count = full.participants.participants.size();
+            chat.participants_count = full.participants_count;
+            mc.putChat(chat, false);
+            mc.putChatFull(full);
+            MessagesStorage.getInstance(0).updateChatInfo(full, false);
+            MessagesStorage.getInstance(0).putUsersAndChats(new ArrayList<>(), new ArrayList<>(java.util.Collections.singletonList(chat)), true, true);
+            NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.chatInfoDidLoad, full, 0, false, false);
+            log("addLocalGroupMembers chat=" + chat.id + " count=" + full.participants_count);
+        } catch (Throwable t) {
+            logErr("addLocalGroupMembers failed", t);
+        }
+        if (onComplete != null) onComplete.run();
+        return true;
+    }
+
     /** Re-adds locally stored agents after every full-chat load from Telegram. */
     public static void ensureLocalGroupFull(long chatId) {
         if (!OxGroupStore.isLocalGroup(chatId)) return;
@@ -401,7 +444,14 @@ public class OxAgentsBridge {
             full.participants_count = participants.participants.size();
             full.notify_settings = new TLRPC.TL_peerNotifySettings();
             full.can_view_participants = true;
-            MessagesStorage.getInstance(0).putUsersAndChats(users, new ArrayList<>(), true, true);
+            TLRPC.Chat chat = mc.getChat(chatId);
+            ArrayList<TLRPC.Chat> chats = new ArrayList<>();
+            if (chat != null) {
+                chat.participants_count = participants.participants.size();
+                mc.putChat(chat, false);
+                chats.add(chat);
+            }
+            MessagesStorage.getInstance(0).putUsersAndChats(users, chats, true, true);
             mc.putChatFull(full);
             MessagesStorage.getInstance(0).updateChatInfo(full, false);
             log("ensureLocalGroupFull chat=" + chatId + " selfId=" + selfId
