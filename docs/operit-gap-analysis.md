@@ -561,3 +561,9 @@ of a separate automation graph:
 - An “identical to English” scan left only brand names plus three giveaway date
   patterns. Localized them to `yyyy年M月d日` / `M月d日` / `yyyy年M月d日` so cards no
   longer render “26 10月 2026”. Pack 61.
+
+### 0.8.89 edit-profile copy
+
+- Removed leftover “( E)” from `EditProfileName`, unified “您的信息” to “你的信息”, and
+  rewrote the birthday visibility hints (“生日变动>” → “可以看到你的生日。**更改 >**”
+  and “在**设置**中选择谁可以看到你的生日。”). Pack 62; verified on the profile sheet.
