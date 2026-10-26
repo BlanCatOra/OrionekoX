@@ -11755,6 +11755,7 @@
     <string name="OxToolDescUiTapText">查找屏幕上的文字并点击。</string>
     <string name="OxToolDescUiFindText">查找文字，必要时滚动。</string>
     <string name="OxToolDescUiWaitText">等待屏幕上的文字出现。</string>
+    <string name="OxToolDescUiInputText">在焦点或第一个输入框中输入文字。</string>
     <string name="OxToolDescUiScrollTapText">滚动找到文字并点击。</string>
     <string name="OxAgentBadgeLocal">本地</string>
     <string name="OxWorkspace">工作区</string>

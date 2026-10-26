@@ -376,6 +376,104 @@ public class OxAccessibilityService extends AccessibilityService {
         return "timeout waiting for: " + query;
     }
 
+    /** Types into the focused/first editable field, optionally selected by label. */
+    public static String inputText(String target, String text) {
+        OxAccessibilityService service = instance;
+        if (service == null) return "error: accessibility service is not enabled";
+        if (text == null) return "error: text is required";
+        final String[] result = new String[1];
+        final CountDownLatch latch = new CountDownLatch(1);
+        AndroidUtilities.runOnUIThread(() -> {
+            try {
+                AccessibilityNodeInfo root = service.activeRoot();
+                if (root == null) {
+                    result[0] = "error: no active window";
+                    return;
+                }
+                AccessibilityNodeInfo field = null;
+                String matched = "";
+                String needle = target == null ? "" : target.trim().toLowerCase();
+                if (!needle.isEmpty()) {
+                    java.util.ArrayList<AccessibilityNodeInfo> nodes = new java.util.ArrayList<>();
+                    collect(root, nodes, 0);
+                    for (int pass = 0; pass < 2 && field == null; pass++) {
+                        for (AccessibilityNodeInfo node : nodes) {
+                            CharSequence t = node.getText();
+                            CharSequence d = node.getContentDescription();
+                            String label = t != null && t.length() > 0 ? t.toString()
+                                    : (d != null ? d.toString() : "");
+                            if (label.isEmpty() && android.os.Build.VERSION.SDK_INT >= 26) {
+                                CharSequence hint = node.getHintText();
+                                if (hint != null) label = hint.toString();
+                            }
+                            if (label.isEmpty()) continue;
+                            String lower = label.toLowerCase();
+                            boolean hit = pass == 0 ? lower.equals(needle) : lower.contains(needle);
+                            if (!hit) continue;
+                            AccessibilityNodeInfo editable = findEditable(node, 0);
+                            if (editable == null) editable = findEditableParent(node);
+                            if (editable != null) {
+                                field = editable;
+                                matched = label;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (field == null) field = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+                if (field == null) {
+                    java.util.ArrayList<AccessibilityNodeInfo> nodes = new java.util.ArrayList<>();
+                    collect(root, nodes, 0);
+                    for (AccessibilityNodeInfo node : nodes) {
+                        if (node.isEditable()) {
+                            field = node;
+                            break;
+                        }
+                    }
+                }
+                if (field == null) {
+                    result[0] = "error: no editable field found";
+                    return;
+                }
+                field.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
+                android.os.Bundle args = new android.os.Bundle();
+                args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
+                boolean ok = field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+                String described = matched.isEmpty() ? field.getClassName().toString() : matched;
+                result[0] = ok ? "typed into \"" + described + "\"" : "error: set text failed";
+            } catch (Throwable t) {
+                result[0] = "error: " + t.getMessage();
+            } finally {
+                latch.countDown();
+            }
+        });
+        try {
+            latch.await(8, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return result[0] == null ? "timeout" : result[0];
+    }
+
+    private static AccessibilityNodeInfo findEditable(AccessibilityNodeInfo node, int depth) {
+        if (node == null || depth > 12) return null;
+        if (node.isEditable()) return node;
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo hit = findEditable(node.getChild(i), depth + 1);
+            if (hit != null) return hit;
+        }
+        return null;
+    }
+
+    private static AccessibilityNodeInfo findEditableParent(AccessibilityNodeInfo node) {
+        AccessibilityNodeInfo parent = node;
+        for (int i = 0; i < 8 && parent != null; i++) {
+            if (parent.isEditable()) return parent;
+            parent = parent.getParent();
+        }
+        return null;
+    }
+
     public static String tapText(String query) {
         OxAccessibilityService service = instance;
         if (service == null) return "error: accessibility service is not enabled";
