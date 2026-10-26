@@ -477,3 +477,15 @@ of a separate automation graph:
 - Corrected a false alarm: `ps` reported ~100% CPU for the Gradle daemon because that
   column is a lifetime average; sampling `/proc/<pid>/stat` over 5 seconds shows 0
   ticks while idle. The temporary `org.gradle.vfs.watch=false` change was reverted.
+
+### 0.8.81 high-visibility mistranslations
+
+- Fixed 18 clearly wrong strings: “Clear for me” was “我没事” (now 为我清除), birthday
+  notifications said “今天是生日”, the Two-Step and VIEW STICKERS/EMOJI/STYLE labels
+  were untranslated, plus SIM/Fragment, anti-spam, WebView, channel-gift, TON export,
+  gift-pin-limit, profile-video and affiliate-link copy. Pack 59.
+- Also corrected the earlier Gradle-CPU conclusion: `ps` %CPU is a lifetime average,
+  `/proc/<pid>/stat` shows zero ticks at idle, and the temporary vfs-watch change was
+  reverted.
+- Backlog: 49 strings still contain legacy `{\fn...}` font markup and mostly
+  machine-translated gift/boost text; plan a dedicated pass with placeholder checks.

@@ -445,7 +445,7 @@
     <string name="ActionSuggestVideo">建议的视频</string>
     <string name="ActionSuggestVideoFromYouDescription">你建议%s用这段视频来做他们的账户</string>
     <string name="ActionSuggestVideoShort">建议的简介视频</string>
-    <string name="ActionSuggestVideoToYouDescription">%s{\fn黑体\fs22\bord1\shad0\3aHBE\4aH00\fscx67\fscy66\2cHFFFFFF\3cH808080}建议你用这段视频做你的账户</string>
+    <string name="ActionSuggestVideoToYouDescription">%s 建议你将这段视频用作帐号资料视频。</string>
     <string name="ActionTTLChanged">un1已设置自动删除消息%1$s</string>
     <string name="ActionTTLChannelChanged">此频道中的消息将在%1$s</string>
     <string name="ActionTTLChannelDisabled">此频道中的消息将不再自动删除</string>
@@ -634,7 +634,7 @@
     <string name="AffiliateProgramExistingProgramsTitle">查看已有的程序</string>
     <string name="AffiliateProgramJoinedText">现在可以复制推荐链接.</string>
     <string name="AffiliateProgramJoinedTitle">已合并的程序</string>
-    <string name="AffiliateProgramLinkCopiedText">分享此链接并赚取**%1$s**{\fn黑体\fs22\bord1\shad0\3aHBE\4aH00\fscx67\fscy66\2cHFFFFFF\3cH808080}用过它的人 {\fn黑体\fs22\bord1\shad0\3aHBE\4aH00\fscx67\fscy66\2cHFFFFFF\3cH808080}我用过它**%2$s**!</string>
+    <string name="AffiliateProgramLinkCopiedText">分享此链接，用户通过它消费时，你可获得 **%1$s**（**%2$s**）！</string>
     <string name="AffiliateProgramLinkCopiedTitle">链接到剪贴板</string>
     <string name="AffiliateProgramStart">启动关联程序</string>
     <string name="AffiliateProgramStartAlertButton">开始</string>
@@ -712,7 +712,7 @@
     <string name="AnimatedEffectPremium">订阅**Telegram Premium**以加此动画效果.</string>
     <string name="AnonymousForward">隐藏作者</string>
     <string name="AnonymousNumber">匿名号码</string>
-    <string name="AnonymousNumberNotice">这个号码没有绑在SIM卡上,是在*Fragment上获得的.</string>
+    <string name="AnonymousNumberNotice">这个号码未绑定 SIM 卡，是在 *Fragment* 上获得的。</string>
     <string name="AnonymousPoll">匿名投票</string>
     <string name="AnonymousQuizPoll">匿名测验</string>
     <string name="AnswerOptions2">选项</string>
@@ -1242,13 +1242,13 @@
     <string name="BirthdaySetupLater">你总是可以在配置设置中设定生日.</string>
     <string name="BirthdaySetupMessage">庆祝时通知联系人</string>
     <string name="BirthdaySetupTitle">再来个生日吧!</string>
-    <string name="BirthdayToday">{\fn黑体\fs22\bord1\shad0\3aHBE\4aH00\fscx67\fscy66\2cHFFFFFF\3cH808080}今天是生日 {\fn黑体\fs22\bord1\shad0\3aHBE\4aH00\fscx67\fscy66\2cHFFFFFF\3cH808080}你来干什么?</string>
+    <string name="BirthdayToday">🎂 今天是你的生日</string>
     <string name="BirthdayTodayMultipleMessage2">给他们发个礼物</string>
     <string name="BirthdayTodayMultipleTitle_other">%d联系人**生日( B)**{\fn华文仿宋\fs16\1cHD1D1D1}今天!</string>
     <string name="BirthdayTodaySingleMessage2">给他们发个礼物</string>
     <string name="BirthdayTodaySingleTitle">这是%s说明:**生日快乐**{\fn华文仿宋\fs16\1cHD1D1D1}今天!</string>
-    <string name="BirthdayTomorrow">{\fn黑体\fs22\bord1\shad0\3aHBE\4aH00\fscx67\fscy66\2cHFFFFFF\3cH808080}明天生日快乐</string>
-    <string name="BirthdayYesterday">{\fn黑体\fs22\bord1\shad0\3aHBE\4aH00\fscx67\fscy66\2cHFFFFFF\3cH808080}昨天的生日</string>
+    <string name="BirthdayTomorrow">明天是你的生日</string>
+    <string name="BirthdayYesterday">昨天是你的生日</string>
     <string name="BizBotManage">管理机器人</string>
     <string name="BizBotRemove">删除机器人\n从这个聊天</string>
     <string name="BizBotStart">开始</string>
@@ -1923,7 +1923,7 @@
     <string name="BotWebViewCloseAnyway">关了</string>
     <string name="BotWebViewDeleteBot">删除机器人</string>
     <string name="BotWebViewFileChooserTitle">选择文件</string>
-    <string name="BotWebViewNotAvailablePlaceholder">无法使用 WebView。请更新以使用 WebView bots。</string>
+    <string name="BotWebViewNotAvailablePlaceholder">WebView 不可用。请更新后再使用 WebView 机器人。</string>
     <string name="BotWebViewOpenBot">打开机器人</string>
     <string name="BotWebViewReloadPage">重新装入页面</string>
     <string name="BotWebViewReportBot">报告</string>
@@ -2358,7 +2358,7 @@
     <string name="ChannelAntiSpamFalsePositiveReported">Telegram主持人会审查你的报告,谢谢!</string>
     <string name="ChannelAntiSpamForbidden_one">仅包含**%1$d成员**可以启用 Anti-spam.</string>
     <string name="ChannelAntiSpamForbidden_other">仅包含**%1$d成员**可以启用 Anti-spam.</string>
-    <string name="ChannelAntiSpamInfo">Telegram将过滤更多的垃圾邮件, 但偶尔会影响普通消息。您可以在最近的行动中报告 False Perfics。</string>
+    <string name="ChannelAntiSpamInfo">Telegram 会过滤更多垃圾信息，但偶尔可能影响正常消息。你可以在“最近操作”中举报误判。</string>
     <string name="ChannelAntiSpamInfo2">您可以管理反垃圾邮件设置%s</string>
     <string name="ChannelAntiSpamUser">Telegram反垃圾邮件</string>
     <string name="ChannelAppearanceUpdated">频道外观已更新</string>
@@ -2721,7 +2721,7 @@
     <string name="ClearDownloadsList">清除下载列表</string>
     <string name="ClearFewChatsTitle">清空 %1$s</string>
     <string name="ClearForAll">向所有人开放</string>
-    <string name="ClearForMe">{\fn黑体\fs22\bord1\shad0\3aHBE\4aH00\fscx67\fscy66\2cHFFFFFF\3cH808080}我没事</string>
+    <string name="ClearForMe">为我清除</string>
     <string name="ClearHistory">清空历史记录</string>
     <string name="ClearHistoryCache">删除缓存</string>
     <string name="ClearHistoryForTheseDays">清除历史的这些天</string>
@@ -4258,7 +4258,7 @@
     <string name="Gift2ActionConvertedInfo_one">你将这份礼物转换为 %d 星。</string>
     <string name="Gift2ActionConvertedInfo_other">你把这个礼物转换成%d众星.</string>
     <string name="Gift2ActionCraftedTitle">手工艺品</string>
-    <string name="Gift2ActionInfoChannelNoConvert">在 Channel\'s Gifts 中显示此礼物。</string>
+    <string name="Gift2ActionInfoChannelNoConvert">在频道的礼物中显示此礼物。</string>
     <string name="Gift2ActionInfoChannel_one">在频道的礼物中显示这份礼物，或转换为 **%d** 星。</string>
     <string name="Gift2ActionInfoChannel_other">在频道中显示此礼物或将其转换为**%d**众星.</string>
     <string name="Gift2ActionInfo_one">在你的个人资料中显示这份礼物，或转换为 %d 星。</string>
@@ -4473,7 +4473,9 @@
     <string name="Gift2Converted_other">%d星星被送到你的平衡处</string>
     <string name="Gift2EditCollectionNameTitle">编辑名称</string>
     <string name="Gift2ExportTONFragmentOpen">打开碎片</string>
-    <string name="Gift2ExportTONFragmentText">您可以使用 Flagment( 第三方服务) 来转移**%s**到您的 TON 账户。之后, 您可以用 NFT 管理它。Telegram.\n\n也可以将这样的NFT移动回您的Telegram账户通过Fragment。</string>
+    <string name="Gift2ExportTONFragmentText">你可以使用 Fragment（第三方服务）将 **%s** 转到你的 TON 账户。之后，你可以在 Telegram 之外用任意 TON 钱包以 NFT 形式管理它。
+
+也可以通过 Fragment 将此类 NFT 转回你的 Telegram 账户。</string>
     <string name="Gift2ExportTONFragmentTitle">以碎块管理</string>
     <string name="Gift2ExportTONTitle">通过块链发送</string>
     <string name="Gift2ExportTONUnlocksAlertText_one">内%d一天,你可以把这个收藏到任何 TON 块链地址Telegram供销或拍卖.</string>
@@ -5042,8 +5044,8 @@
     <string name="GiftsFeature2Title">可交易</string>
     <string name="GiftsFeature3Text">在您的页面上显示礼物并设置为配置封面或状态。</string>
     <string name="GiftsFeature3Title">可携带</string>
-    <string name="GiftsPinLimit_one">{\fn黑体\fs22\bord1\shad0\3aHBE\4aH00\fscx67\fscy66\2cHFFFFFF\3cH808080}你无法比%d礼物。</string>
-    <string name="GiftsPinLimit_other">{\fn黑体\fs22\bord1\shad0\3aHBE\4aH00\fscx67\fscy66\2cHFFFFFF\3cH808080}你无法比%d礼物</string>
+    <string name="GiftsPinLimit_one">最多只能置顶 %d 个礼物。</string>
+    <string name="GiftsPinLimit_other">最多只能置顶 %d 个礼物。</string>
     <string name="GigagroupAlertLearnMore">了解更多</string>
     <string name="GigagroupAlertText">你们的队伍已经到达极限**200,000**成员。\n\n通过将组转换为**广播组**在那里只有管理员可以张贴。\n有兴趣吗?</string>
     <string name="GigagroupAlertTitle">已达到的限制</string>
@@ -5363,7 +5365,7 @@
     <string name="ImportedInfo">这个消息是从另一个应用程序导入的,我们不能保证它是真实的.</string>
     <string name="ImportedMessage">已导入</string>
     <string name="InAppNotifications">应用内通知</string>
-    <string name="InAppPopup">屏幕上的 in- App Pop</string>
+    <string name="InAppPopup">应用内弹窗提示</string>
     <string name="InAppPopupInfo">在应用程序中显示弹出通知。</string>
     <string name="InAppPreview">应用内消息预览</string>
     <string name="InAppSounds">应用内提示音</string>
@@ -5822,7 +5824,7 @@
     <string name="LoginOrSingInWithGoogle">或减减</string>
     <string name="LoginPassword">密码</string>
     <string name="LoginPasswordText">您已启用了两步验证，因此您的帐号被一个附加密码保护。</string>
-    <string name="LoginPasswordTextShort">Two-Step 验证启用。您的账户被额外的密码保护。</string>
+    <string name="LoginPasswordTextShort">已启用两步验证，你的帐号受到额外密码保护。</string>
     <string name="Long">长</string>
     <string name="LoopAnimatedStickers">循环播放动态贴纸</string>
     <string name="LoopAnimatedStickersInfo">动态贴纸将在对话中持续播放。</string>
@@ -6662,7 +6664,7 @@
     <string name="OnlyWhenScreenOff">只在屏幕关闭时</string>
     <string name="OnlyWhenScreenOn">只在屏幕打开时</string>
     <string name="Open">打开</string>
-    <string name="OpenAIStyle">VIEW STYLE (西班牙语)</string>
+    <string name="OpenAIStyle">查看样式</string>
     <string name="OpenAllTopics">所有话题</string>
     <string name="OpenBackground">查看背景图</string>
     <string name="OpenBot">打开的纸牌</string>
@@ -6671,7 +6673,7 @@
     <string name="OpenChannelArchiveStories">已归档的故事</string>
     <string name="OpenChannelDirect">联系渠道</string>
     <string name="OpenChannelPost">视频后</string>
-    <string name="OpenEmojiSet">VIEW EMOJI(英语:VEW EMOJI) (英语).</string>
+    <string name="OpenEmojiSet">查看表情包</string>
     <string name="OpenFile">打开文件</string>
     <string name="OpenFragment">打开碎片</string>
     <string name="OpenGift">打开</string>
@@ -6693,7 +6695,7 @@
     <string name="OpenLocalInstantView">即时视图</string>
     <string name="OpenMessage">查看消息</string>
     <string name="OpenProfile">打开头像</string>
-    <string name="OpenStickerSet">VIEW STICKERS (英语).</string>
+    <string name="OpenStickerSet">查看贴纸集</string>
     <string name="OpenTheme">预览主题</string>
     <string name="OpenUniqueGift">维莱特·库莱布勒</string>
     <string name="OpenUrlAlert2">您想打开 %1$s 吗？</string>
