@@ -33,6 +33,7 @@ public class OxAppearanceActivity extends BaseFragment {
     private static final int ID_PREVIEW = 1;
     private static final int ID_IMPORT = 2;
     private static final int ID_RESET = 3;
+    private static final int ID_CHAT_APPEARANCE = 4;
     private static final int PRESET_BASE = 100;
     private static final int REQ_IMPORT = 401;
 
@@ -81,6 +82,10 @@ public class OxAppearanceActivity extends BaseFragment {
                 R.drawable.msg_download, LocaleController.getString(R.string.OxAppearanceImport),
                 LocaleController.getString(R.string.OxAppearanceImportInfo)));
         items.add(UItem.asShadow(LocaleController.getString(R.string.OxAppearanceIntro)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_CHAT_APPEARANCE, accent, dark,
+                R.drawable.msg_colors, LocaleController.getString(R.string.OxChatAppearance),
+                LocaleController.getString(R.string.OxChatEntryInfo)));
+        items.add(UItem.asShadow(LocaleController.getString(R.string.OxChatApplyHint)));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.OxAppearancePresets)));
         for (int i = 0; i < PRESET_COLORS.length; i++) {
@@ -105,6 +110,10 @@ public class OxAppearanceActivity extends BaseFragment {
                 toast(LocaleController.formatString("OxAppearanceImportFailed",
                         R.string.OxAppearanceImportFailed, t.getMessage()));
             }
+            return;
+        }
+        if (item.id == ID_CHAT_APPEARANCE) {
+            presentFragment(new OxChatAppearanceActivity());
             return;
         }
         if (item.id == ID_RESET) {

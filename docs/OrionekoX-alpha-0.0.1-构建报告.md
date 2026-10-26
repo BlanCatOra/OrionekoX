@@ -2423,6 +2423,27 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 - 说明 `applyMarkdown` 的助理消息路径运行期可用；无需改代码。记录见
   `docs/qa-0.8.115-markdown.md`。
 
+## 5.116 alpha 0.9.0 —— Agent 会话外观双模式与版本规则修正（2026-10-26 22:10–23:30）
+
+- 版本规则修正：较大功能迭代进位 minor，本轮从 0.8.x 升至 **0.9.0**（versionCode
+  1329）；patch 只用于小修/QA，major 用于里程碑。规则写入 `AGENTS.md` 与
+  `docs/RELEASING.md`。
+- 新增 Ox 设置→外观→Agent 会话外观：自定义/Telegram 原生双模式；自定义背景色、
+  背景图片、收/发气泡色、透明度、圆角、消息字号；命名预设保存/应用/删除；JSON
+  导入；一键重置原生。`OxChatTheme` 仅在本地 Agent 会话打开期间覆盖 Telegram 颜色并
+  在 onPause 恢复；`MessageDrawable` 增加圆角覆盖。
+- 实测自定义：背景 #101114、收 #E8F5E9、发 #EFFDDE、86% 透明、10dp 圆角、1.1x
+  字号，Agent 会话截图确认生效；预设 DarkSea 保存成功。UI 重置后路径与 JSON 导入
+  交由第二轮 B 复测。
+- 竞品功能矩阵与差距写入 `docs/beautification-parity.md`：已覆盖背景/气泡/透明度/
+  圆角/字号/预设/颜色导入；磨砂、边框、渐变、字体家族、按 Agent 持久化等列为后续。
+- 第二轮 A 报告（0.8.115）完成：全流程与六项回归通过，无 P0/P1，P2 历史偶发空白/
+  工具气泡 JSON/发送按钮命中区/.oxagent 副本无 Key；已归档。
+
+**产物**：`dist/OrionekoX-0.9.0-alpha-arm64-x64.apk`（versionCode 1329，sha256
+`617cff8bf2c9…`）；debug `dist/OrionekoX-0.9.0-debug-arm64-x64.apk`（sha256
+`456f0ec5315f…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
