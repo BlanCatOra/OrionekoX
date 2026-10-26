@@ -11601,6 +11601,9 @@
     <string name="OxImportAgent">Import .oxagent</string>
     <string name="OxExportAgent">Export .oxagent</string>
     <string name="OxAgentImported">Imported agent %1$s</string>
+    <string name="OxDuplicateAgent">Duplicate</string>
+    <string name="OxAgentDuplicated">Duplicated %1$s</string>
+    <string name="OxAgentCopySuffix">copy</string>
     <string name="OxAgentImportedFiles">Imported agent %1$s with %2$d workspace files</string>
     <string name="OxAgentImportFailed">Import failed: not a valid .oxagent file</string>
     <string name="OxAgentExported">Exported %1$s (API key is not included)</string>

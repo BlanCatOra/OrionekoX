@@ -267,6 +267,27 @@ public class OxAgentsActivity extends BaseFragment {
         return n.isEmpty() ? "?" : n.substring(0, 1).toUpperCase();
     }
 
+    private void duplicateAgent(OxAgent agent) {
+        try {
+            JSONObject o = agent.toJson();
+            o.put("id", "dup" + UUID.randomUUID().toString().substring(0, 6));
+            o.put("name", agent.name + " · " + LocaleController.getString(R.string.OxAgentCopySuffix));
+            o.put("built_in", false);
+            o.put("tg_id", 0);
+            o.put("pinned", false);
+            o.put("avatar_path", "");
+            OxAgent copy = OxAgent.fromJson(o);
+            OxAgentStore.saveAgent(copy);
+            String memory = OxAgentStore.loadMemory(agent.id, 200000);
+            if (!memory.isEmpty()) OxAgentStore.saveMemory(copy.id, memory);
+            OxAgentsBridge.syncAgents(false);
+            toast(LocaleController.formatString("OxAgentDuplicated", R.string.OxAgentDuplicated, copy.name));
+            rebuild();
+        } catch (Throwable t) {
+            toast("⚠ " + t.getMessage());
+        }
+    }
+
     private void showAgentMenu(OxAgent agent) {
         if (getParentActivity() == null) return;
         java.util.ArrayList<CharSequence> items = new java.util.ArrayList<>();
@@ -277,6 +298,8 @@ public class OxAgentsActivity extends BaseFragment {
             OxAgentStore.saveAgent(agent);
             rebuild();
         });
+        items.add(LocaleController.getString(R.string.OxDuplicateAgent));
+        actions.add(() -> duplicateAgent(agent));
         items.add(LocaleController.getString(R.string.OxEditAgent));
         actions.add(() -> presentFragment(new OxAgentProfileActivity(agent.id)));
         items.add(LocaleController.getString(R.string.OxMemory));
