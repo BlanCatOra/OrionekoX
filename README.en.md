@@ -22,7 +22,7 @@ workflows and local-only groups.
 > by an AI coding agent. The upstream copyright and GPL-2.0 license are unchanged; see
 > [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-![Chat list](docs/screenshots/chats.jpg)
+![Ox settings](docs/screenshots/ox-settings.jpg)
 
 ## Why
 
@@ -47,6 +47,8 @@ while provider keys, memory, workspaces, MCP and skills stay on the device.
 | UI automation | Accessibility bridge: `ui_dump` / `ui_tap` / `ui_swipe` / `ui_screenshot` / `ui_key` / `ui_ocr` |
 | Chinese UX | Maintained `zh-cn` pack with ongoing machine-translation and wording cleanup |
 
+![Local agent chat](docs/screenshots/agent.jpg)
+
 ![Group profile](docs/screenshots/group.jpg)
 
 ## Compatibility roadmap
@@ -67,9 +69,10 @@ matrix will live in `docs/reference-gap-analysis.md`.
 
 ## Build
 
-Requires JDK 17, Android SDK 36, NDK 27 and CMake 3.22:
+Requires JDK 17, Android SDK 36, NDK 27 and CMake 3.22. Initialize submodules first:
 
 ```bash
+git submodule update --init --recursive
 export JAVA_HOME=/path/to/jdk17
 export ANDROID_HOME=/path/to/android-sdk
 ./gradlew :TMessagesProj_AppStandalone:assembleAfatStandalone
