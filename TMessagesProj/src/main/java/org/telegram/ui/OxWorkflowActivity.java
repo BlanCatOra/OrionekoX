@@ -206,6 +206,8 @@ public class OxWorkflowActivity extends BaseFragment {
         ArrayList<Runnable> actions = new ArrayList<>();
         items.add(LocaleController.getString(R.string.OxWorkflowRunNow));
         actions.add(() -> runNow(w));
+        items.add(LocaleController.getString(R.string.OxWorkflowDuplicate));
+        actions.add(() -> duplicateWorkflow(w));
         items.add(LocaleController.getString(R.string.OxWorkflowHistory));
         actions.add(() -> showHistory(w));
         items.add(LocaleController.getString(R.string.Edit));
@@ -231,6 +233,23 @@ public class OxWorkflowActivity extends BaseFragment {
             if (which >= 0 && which < actions.size()) actions.get(which).run();
         });
         builder.show();
+    }
+
+    private void duplicateWorkflow(OxWorkflow w) {
+        OxWorkflow copy = new OxWorkflow();
+        copy.id = "wf" + UUID.randomUUID().toString().substring(0, 6);
+        copy.name = w.name + " · " + LocaleController.getString(R.string.OxAgentCopySuffix);
+        copy.agentId = w.agentId;
+        copy.prompt = w.prompt;
+        copy.intervalMinutes = w.intervalMinutes;
+        copy.dailyMinute = w.dailyMinute;
+        // Copies start paused so a duplicate does not silently double the API usage.
+        copy.enabled = false;
+        OxWorkflowStore.save(copy);
+        OxWorkflowScheduler.schedule(copy);
+        toast(LocaleController.formatString("OxWorkflowDuplicated",
+                R.string.OxWorkflowDuplicated, copy.name));
+        rebuild();
     }
 
     private void showHistory(OxWorkflow w) {

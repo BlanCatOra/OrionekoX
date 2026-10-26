@@ -23,7 +23,7 @@ not feature-count parity.
 | Browser agent / OCR / voice | yes | `ui_ocr` implemented; emulator screenshot works after reboot, OCR model is not installed in the Play Services image | partial |
 | Character cards / group chats | yes | AGENTS.md + .oxagent export + memory editor + duplicate agent with copied persona/provider/tools/skills/memory (0.8.63); local groups with agents persist outgoing text locally and keep a per-group conversation log (0.8.55–56) | partial |
 | Workspace / file browser | full editor + preview | per-agent workspace browser with create/edit/preview/rename/move/duplicate/delete/import/export (SAF, 20 MB import cap) | partial (basic text editor, no syntax highlighting) |
-| Workflows / scheduled tasks | yes | **Ox workflows**: named prompt + agent + interval or daily wall-clock time, AlarmManager + foreground runner, result notification, manual run, pause/delete | **done v1** |
+| Workflows / scheduled tasks | yes | **Ox workflows**: named prompt + agent + interval or daily wall-clock time, AlarmManager + foreground runner, result notification, manual run, duplicate (paused copy), pause/delete | **done v1** |
 | Local inference (MNN/llama.cpp) | built-in | external Ollama/LM Studio only | medium gap |
 | Cross-device Space | Operit2 | LAN API agents only | partial |
 | Backup / migration | snapshot export/restore | .oxagent per agent: plain JSON when there is no workspace, zip with agent.json + workspace files otherwise; export/import round-trip verified for memory, skills and nested workspace files | parity for single agents |
@@ -336,3 +336,13 @@ of a separate automation graph:
   collision, copies on a background thread and refreshes the list.
 - Verified with Yuki's `hello.md`: `hello (copy).md` appeared with the same content,
   and deleting it restored the folder to `hello.md` + `notes/`. No crashes.
+
+### 0.8.65 duplicate workflow
+
+- The workflow long-press menu now offers duplicate: name, prompt, agent and interval
+  (or daily minute) are copied, the name becomes `<name> · copy`/`副本`, and the copy
+  starts paused so a duplicate cannot silently double model usage. Last result and
+  run history are not copied.
+- Verified with a manual `Copy test` workflow: `Copy test · 副本` appeared with both
+  entries disabled; deleting both restored `ox_workflows` to an empty list and left
+  no workflow alarm.
