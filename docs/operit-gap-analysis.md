@@ -403,3 +403,13 @@ of a separate automation graph:
   monospace welcome line no longer uses a keyboard glyph that rendered as tofu.
 - Verified on 0.8.71: the terminal `EditText` sits at `[98,2010][821,2127]`, fully
   above the tab bar at `y=2255`, and the input/send/keyboard controls are reachable.
+
+### 0.8.72–0.8.73 Chinese date and status copy
+
+- Fixed the doubled “于 于 9:20 AM 发送” accessibility string by dropping the extra
+  prefix from `AccDescrSentDate`/`AccDescrReceivedDate`, and replaced the machine
+  translation “%s的约定” with “定时于 %s”. `TodayAtFormatted` no longer injects
+  “时间:”, so last-seen/location lines read naturally. Pack 51.
+- Localized the birthday date format from the English `MMM dd, yyyy` pattern to
+  `yyyy年M月d日` and switched the age templates to “%2$s（%1$d 岁）”. Verified on the
+  “我的” page: “出生日期: 2008年7月14日（18 岁）”. Pack 52.
