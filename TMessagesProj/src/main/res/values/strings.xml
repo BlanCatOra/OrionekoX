@@ -11996,4 +11996,8 @@
     <string name="OxWorkflowNext">Next %1$s</string>
     <string name="OxWorkflowLast">Last: %1$s</string>
     <string name="OxWorkflowInexactHint">Exact alarms are off in system settings, so scheduled runs may start late. The workflow still runs.</string>
+    <string name="OxMcpImport">Import from JSON</string>
+    <string name="OxMcpImportHint">Paste mcpServers JSON (Kelivo / RikkaHub / Claude Desktop)</string>
+    <string name="OxMcpImportDone">Imported %1$d server(s), skipped %2$d</string>
+    <string name="OxMcpImportStdio">%1$d stdio server(s) are not supported yet</string>
 </resources>

@@ -31,6 +31,7 @@ public class OxMcpActivity extends BaseFragment {
 
     private static final int ID_MARKET = 1;
     private static final int ID_ADD = 2;
+    private static final int ID_IMPORT = 3;
     private static final int SERVER_BASE = 100;
 
     private UniversalRecyclerView listView;
@@ -103,6 +104,9 @@ public class OxMcpActivity extends BaseFragment {
 
         items.add(SettingsActivity.SettingCell.Factory.of(ID_ADD, 0, 0,
                 0, "＋ " + LocaleController.getString(R.string.OxMcpAdd)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_IMPORT, 0xFF34C759, 0xFF2AA84A,
+                R.drawable.msg_download, LocaleController.getString(R.string.OxMcpImport),
+                LocaleController.getString(R.string.OxMcpImportHint)));
         items.add(UItem.asShadow(null));
     }
 
@@ -111,6 +115,8 @@ public class OxMcpActivity extends BaseFragment {
             presentFragment(new OxMcpMarketActivity());
         } else if (item.id == ID_ADD) {
             showAddDialog();
+        } else if (item.id == ID_IMPORT) {
+            showImportDialog();
         } else if (item.id >= SERVER_BASE) {
             int index = item.id - SERVER_BASE;
             List<OxMcpManager.McpServer> servers = OxMcpManager.getServers();
@@ -164,6 +170,69 @@ public class OxMcpActivity extends BaseFragment {
                 rebuild();
             });
         }, "ox-mcp-ui-refresh").start();
+    }
+
+    private void showImportDialog() {
+        if (getParentActivity() == null) return;
+        Context ctx = getParentActivity();
+        EditText input = new EditText(ctx);
+        input.setHint(LocaleController.getString(R.string.OxMcpImportHint));
+        input.setMinLines(6);
+        input.setGravity(Gravity.TOP | Gravity.START);
+        input.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(8), AndroidUtilities.dp(12), AndroidUtilities.dp(8));
+        FrameLayout wrap = new FrameLayout(ctx);
+        wrap.setPadding(AndroidUtilities.dp(20), 0, AndroidUtilities.dp(20), 0);
+        wrap.addView(input, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        new AlertDialog.Builder(ctx)
+                .setTitle(LocaleController.getString(R.string.OxMcpImport))
+                .setView(wrap)
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .setPositiveButton(LocaleController.getString(R.string.OxMcpImport), (d, w) -> importMcpJson(input.getText().toString()))
+                .show();
+    }
+
+    private void importMcpJson(String raw) {
+        int added = 0, skipped = 0, stdio = 0;
+        try {
+            org.json.JSONObject root = new org.json.JSONObject(raw);
+            org.json.JSONObject servers = root.optJSONObject("mcpServers");
+            if (servers == null) servers = root;
+            java.util.Iterator<String> keys = servers.keys();
+            while (keys.hasNext()) {
+                String name = keys.next();
+                org.json.JSONObject c = servers.optJSONObject(name);
+                if (c == null) { skipped++; continue; }
+                String type = c.optString("type", "").toLowerCase();
+                String url = c.optString("url", c.optString("baseUrl", "")).trim();
+                if (type.equals("stdio") || (type.isEmpty() && c.has("command") && url.isEmpty())) {
+                    stdio++;
+                    continue;
+                }
+                if (type.equals("sse") || !(url.startsWith("http://") || url.startsWith("https://"))) {
+                    skipped++;
+                    continue;
+                }
+                boolean exists = false;
+                for (OxMcpManager.McpServer s : OxMcpManager.getServers()) {
+                    if (s.url != null && s.url.equals(url)) { exists = true; break; }
+                }
+                if (exists) { skipped++; continue; }
+                OxMcpManager.McpServer s = new OxMcpManager.McpServer(name, url);
+                org.json.JSONObject headers = c.optJSONObject("headers");
+                if (headers != null) s.headersJson = headers.toString();
+                s.enabled = !c.optBoolean("disabled", false) && c.optBoolean("isActive", true);
+                OxMcpManager.saveServer(s);
+                added++;
+            }
+            String msg = LocaleController.formatString("OxMcpImportDone", R.string.OxMcpImportDone, added, skipped);
+            if (stdio > 0) {
+                msg += "\n" + LocaleController.formatString("OxMcpImportStdio", R.string.OxMcpImportStdio, stdio);
+            }
+            toast(msg);
+            rebuild();
+        } catch (Throwable t) {
+            toast("⚠ " + t.getMessage());
+        }
     }
 
     private void showAddDialog() {

@@ -34,7 +34,7 @@ OrionekoX 反过来复用 Telegram 成熟的会话基础设施，让智能体以
 | 本地智能体 | 合成联系人与会话，不经过 Telegram 服务器；支持头像、简介、Provider/模型、系统提示词、工具、技能与记忆 |
 | Provider | OpenAI-compatible、Gemini/Claude 兼容端点、局域网 Ollama/LM Studio/vLLM，多预设、模型拉取与连通性测试 |
 | 本地群组 | 仅含本地智能体的群，成员添加/移除、成员数、群资料页与群内回复全部本地完成 |
-| MCP | Streamable HTTP MCP 商城、工具桥接、逐工具权限；正在补 stdio 与 JSON 导入兼容 |
+| MCP | Streamable HTTP MCP 商城、工具桥接、逐工具权限；支持 `mcpServers` JSON 导入（HTTP/streamable），stdio 待补 |
 | 技能库 | 只读浏览 `SKILL.md`，按 Agent 注入技能提示词 |
 | 工作区 | 每个 Agent 私有目录，文件读写、重命名、移动、复制、导入/导出 |
 | 终端 | 多 TTY 标签、配色与字号、共享存储说明；OxLinux/PRoot 仍受 W^X 限制 |
