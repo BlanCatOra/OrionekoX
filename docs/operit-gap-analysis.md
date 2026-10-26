@@ -423,3 +423,13 @@ of a separate automation graph:
   permissions, cache, calls, Passport, notifications), rewrote the QR-login copy into
   natural Chinese targeting Telegram Desktop/Web, and changed “同步联系人到电话” to
   “同步联系人到手机”. Pack 53; runtime pack has zero “ChatAir”.
+
+### 0.8.75 local-group regression pass
+
+- Sent a new message in the existing local group “BlanCat 和 🤖 Yuki Waifu”. It was
+  persisted locally, marked 已查看, and Yuki replied with `onRound tools=0`, recalling
+  the group codeword from the per-group history. Confirms group storage, history
+  injection and replies still work after the 0.8.72–0.8.75 copy changes.
+- Environment note: entering text in the chat-list search field makes qemu disappear
+  on this headless SwiftShader AVD (reproduced twice, no app FATAL/ANR). Row-coordinate
+  navigation is the reliable path for QA here.
