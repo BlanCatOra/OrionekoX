@@ -538,3 +538,10 @@ of a separate automation graph:
   `attachPathExists`/`mediaExists` when `attachPath` exists. A freshly sent
   `ox_photo.png` renders as a document card immediately (no X, 0 KB text or
   download arrow), so local media bubbles no longer need an app restart.
+
+### 0.8.87 terminal QA
+
+- Verified direct TTY 1/2/3 switching, `echo`/`pwd` execution, the long-press agent
+  assignment dialog (QA2 checked, cancel options) and the `help` command list. The
+  composer stays above the floating tab bar with the IME open. No app crash; the
+  `-gpu off` AVD remained stable. Details: `docs/qa-terminal-0.8.87.md`.
