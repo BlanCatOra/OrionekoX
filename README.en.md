@@ -98,7 +98,7 @@ tools/                         APK distribution helper
 patches/                       incremental patches against upstream (gitignored)
 ```
 
-Iteration history:
+See [CHANGELOG.md](CHANGELOG.md) for a version summary. Iteration history:
 [docs/OrionekoX-alpha-0.0.1-构建报告.md](docs/OrionekoX-alpha-0.0.1-构建报告.md)
 (Chinese). Per-round QA notes live in `docs/qa-*.md`.
 

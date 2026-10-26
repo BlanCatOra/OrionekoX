@@ -92,7 +92,7 @@ tools/                         构建产物分发脚本
 patches/                       对上游的增量补丁（gitignored）
 ```
 
-迭代记录见
+版本摘要见 [CHANGELOG.md](CHANGELOG.md)。迭代记录见
 [docs/OrionekoX-alpha-0.0.1-构建报告.md](docs/OrionekoX-alpha-0.0.1-构建报告.md)，
 各轮 QA 记录见 `docs/qa-*.md`。
 
