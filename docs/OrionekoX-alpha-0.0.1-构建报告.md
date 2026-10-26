@@ -2360,6 +2360,19 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `b683cbbc8ebb…`）；debug `dist/OrionekoX-0.8.111-debug-arm64-x64.apk`（sha256
 `02c832ec05c1…`）。
 
+## 5.111 alpha 0.8.112 —— MCP 导入预览与幂等复测（2026-10-26 20:40–20:47）
+
+- MCP JSON 导入先解析成计划：唯一 HTTP/streamable 服务器列出，重复 URL/skip、stdio
+  单独计数；原生 Dialog 预览“将导入 N 个、跳过 M 个”+前 8 个名称/URL，确认后才写入，
+  取消不改动。
+- 实测 `kelivo-mcp.json`：预览 1 个导入、1 个 stdio 跳过，确认后仅一条 TestImport
+  （headers 保留）；再次导入同一文件无预览、servers.json 仍只有一条。测试服务器已删除。
+- 记录见 `OrionekoX/docs/qa-0.8.112.md`。
+
+**产物**：`dist/OrionekoX-0.8.112-alpha-arm64-x64.apk`（versionCode 1279，sha256
+`bf1007887d1b…`）；debug `dist/OrionekoX-0.8.112-debug-arm64-x64.apk`（sha256
+`27ce6578064d…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

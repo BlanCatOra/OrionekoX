@@ -230,48 +230,90 @@ public class OxMcpActivity extends BaseFragment {
         }, "ox-mcp-file-import").start();
     }
 
+    private static class ImportPlan {
+        final java.util.ArrayList<OxMcpManager.McpServer> add = new java.util.ArrayList<>();
+        int skipped;
+        int stdio;
+    }
+
+    private ImportPlan planMcpJson(String raw) throws Exception {
+        ImportPlan plan = new ImportPlan();
+        java.util.HashSet<String> urls = new java.util.HashSet<>();
+        for (OxMcpManager.McpServer s : OxMcpManager.getServers()) {
+            if (s.url != null) urls.add(s.url);
+        }
+        org.json.JSONObject root = new org.json.JSONObject(raw);
+        org.json.JSONObject servers = root.optJSONObject("mcpServers");
+        if (servers == null) servers = root;
+        java.util.Iterator<String> keys = servers.keys();
+        while (keys.hasNext()) {
+            String name = keys.next();
+            org.json.JSONObject c = servers.optJSONObject(name);
+            if (c == null) { plan.skipped++; continue; }
+            String type = c.optString("type", "").toLowerCase();
+            String url = c.optString("url", c.optString("baseUrl", "")).trim();
+            if (type.equals("stdio") || (type.isEmpty() && c.has("command") && url.isEmpty())) {
+                plan.stdio++;
+                continue;
+            }
+            if (type.equals("sse") || !(url.startsWith("http://") || url.startsWith("https://"))) {
+                plan.skipped++;
+                continue;
+            }
+            if (!urls.add(url)) { plan.skipped++; continue; }
+            OxMcpManager.McpServer s = new OxMcpManager.McpServer(name, url);
+            org.json.JSONObject headers = c.optJSONObject("headers");
+            if (headers != null) s.headersJson = headers.toString();
+            s.enabled = !c.optBoolean("disabled", false) && c.optBoolean("isActive", true);
+            plan.add.add(s);
+        }
+        return plan;
+    }
+
     private void importMcpJson(String raw) {
-        int added = 0, skipped = 0, stdio = 0;
+        ImportPlan plan;
         try {
-            org.json.JSONObject root = new org.json.JSONObject(raw);
-            org.json.JSONObject servers = root.optJSONObject("mcpServers");
-            if (servers == null) servers = root;
-            java.util.Iterator<String> keys = servers.keys();
-            while (keys.hasNext()) {
-                String name = keys.next();
-                org.json.JSONObject c = servers.optJSONObject(name);
-                if (c == null) { skipped++; continue; }
-                String type = c.optString("type", "").toLowerCase();
-                String url = c.optString("url", c.optString("baseUrl", "")).trim();
-                if (type.equals("stdio") || (type.isEmpty() && c.has("command") && url.isEmpty())) {
-                    stdio++;
-                    continue;
-                }
-                if (type.equals("sse") || !(url.startsWith("http://") || url.startsWith("https://"))) {
-                    skipped++;
-                    continue;
-                }
-                boolean exists = false;
-                for (OxMcpManager.McpServer s : OxMcpManager.getServers()) {
-                    if (s.url != null && s.url.equals(url)) { exists = true; break; }
-                }
-                if (exists) { skipped++; continue; }
-                OxMcpManager.McpServer s = new OxMcpManager.McpServer(name, url);
-                org.json.JSONObject headers = c.optJSONObject("headers");
-                if (headers != null) s.headersJson = headers.toString();
-                s.enabled = !c.optBoolean("disabled", false) && c.optBoolean("isActive", true);
-                OxMcpManager.saveServer(s);
-                added++;
-            }
-            String msg = LocaleController.formatString("OxMcpImportDone", R.string.OxMcpImportDone, added, skipped);
-            if (stdio > 0) {
-                msg += "\n" + LocaleController.formatString("OxMcpImportStdio", R.string.OxMcpImportStdio, stdio);
-            }
-            toast(msg);
-            rebuild();
+            plan = planMcpJson(raw);
         } catch (Throwable t) {
             toast("⚠ " + t.getMessage());
+            return;
         }
+        String summary = LocaleController.formatString("OxMcpImportPreview",
+                R.string.OxMcpImportPreview, plan.add.size(), plan.skipped + plan.stdio);
+        if (plan.stdio > 0) {
+            summary += "\n" + LocaleController.formatString("OxMcpImportStdio",
+                    R.string.OxMcpImportStdio, plan.stdio);
+        }
+        if (plan.add.isEmpty()) {
+            toast(summary);
+            return;
+        }
+        StringBuilder detail = new StringBuilder(summary).append("\n\n");
+        for (int i = 0; i < Math.min(8, plan.add.size()); i++) {
+            OxMcpManager.McpServer s = plan.add.get(i);
+            detail.append("• ").append(s.name).append("\n").append(s.url).append("\n");
+        }
+        if (plan.add.size() > 8) detail.append("…");
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxMcpImport))
+                .setMessage(detail.toString().trim())
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .setPositiveButton(LocaleController.getString(R.string.OxMcpImport), (d, w) -> {
+                    int added = 0;
+                    for (OxMcpManager.McpServer s : plan.add) {
+                        boolean exists = false;
+                        for (OxMcpManager.McpServer old : OxMcpManager.getServers()) {
+                            if (old.url != null && old.url.equals(s.url)) { exists = true; break; }
+                        }
+                        if (exists) continue;
+                        OxMcpManager.saveServer(s);
+                        added++;
+                    }
+                    toast(LocaleController.formatString("OxMcpImportDone",
+                            R.string.OxMcpImportDone, added, plan.skipped + plan.stdio));
+                    rebuild();
+                })
+                .show();
     }
 
     private void showAddDialog() {
