@@ -2330,6 +2330,21 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `ce3677908450…`）；debug `dist/OrionekoX-0.8.109-debug-arm64-x64.apk`（sha256
 `596da3cb2840…`）。
 
+## 5.109 alpha 0.8.110 —— 改名同步欢迎语（2026-10-26 20:10–20:19）
+
+- 复制/重命名 Agent 后，旧欢迎语仍显示“Yuki Waifu · 副本”。
+- `OxAgentProfileActivity` 保存前记录旧名；`OxAgentsBridge.onAgentRenamed` 在存储队列
+  读取该 Agent 最近 200 条消息，反序列化后把以“你好，我是 ”开头的助手气泡改写为
+  新名字+emoji，`putMessages` 覆盖并通过 `replaceMessagesObjects` 刷新。
+- 实测把“Yuki Waifu · 副本”改为 `RenamedCopy`：日志
+  `onAgentRenamed updated greetings did=555000019 count=1`，会话气泡显示
+  “你好，我是 🤖 RenamedCopy”，其他消息不变；无 FATAL/ANR。
+- 记录见 `OrionekoX/docs/qa-0.8.110.md`。
+
+**产物**：`dist/OrionekoX-0.8.110-alpha-arm64-x64.apk`（versionCode 1259，sha256
+`0dccf6a2aeb8…`）；debug `dist/OrionekoX-0.8.110-debug-arm64-x64.apk`（sha256
+`95ebbe08db27…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
