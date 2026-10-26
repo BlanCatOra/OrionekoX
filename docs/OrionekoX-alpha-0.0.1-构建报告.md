@@ -2345,6 +2345,21 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `0dccf6a2aeb8…`）；debug `dist/OrionekoX-0.8.110-debug-arm64-x64.apk`（sha256
 `95ebbe08db27…`）。
 
+## 5.110 alpha 0.8.111 —— MCP 文件导入与技能 zip 端到端验证（2026-10-26 20:24–20:35）
+
+- MCP “从 JSON 导入”增加“从文件”中性按钮：系统文档选择器读取 ≤256KB UTF-8 JSON，
+  复用粘贴解析。实测 `kelivo-mcp.json`（1 个 HTTP + headers、1 个 stdio）：
+  `files/oxmcp/servers.json` 写入 TestImport 及其 headers，stdio 被跳过，列表刷新显示
+  该服务器；长按删除后恢复原状。
+- 技能库 zip 路径端到端验证：`zip-skill.zip` 内 `ZipSkill/SKILL.md` 导入后列出
+  “Zip 导入技能”，私有目录存在 `files/oxskills/ZipSkill/SKILL.md`。
+- 无 FATAL/ANR；MCP 测试服务器已删除，测试技能保留为合成产物。
+- 记录见 `OrionekoX/docs/qa-0.8.111.md`。
+
+**产物**：`dist/OrionekoX-0.8.111-alpha-arm64-x64.apk`（versionCode 1269，sha256
+`b683cbbc8ebb…`）；debug `dist/OrionekoX-0.8.111-debug-arm64-x64.apk`（sha256
+`02c832ec05c1…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

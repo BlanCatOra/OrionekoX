@@ -12016,4 +12016,5 @@
     <string name="OxAppearanceImported">Applied theme: %1$s</string>
     <string name="OxAppearanceImportFailed">Import failed: %1$s</string>
     <string name="OxAppearanceResetDone">Restored the Telegram default accent</string>
+    <string name="OxMcpImportFile">From file</string>
 </resources>

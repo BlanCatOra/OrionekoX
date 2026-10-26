@@ -2,6 +2,7 @@ package org.telegram.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.EditText;
@@ -32,6 +33,7 @@ public class OxMcpActivity extends BaseFragment {
     private static final int ID_MARKET = 1;
     private static final int ID_ADD = 2;
     private static final int ID_IMPORT = 3;
+    private static final int REQ_IMPORT_FILE = 302;
     private static final int SERVER_BASE = 100;
 
     private UniversalRecyclerView listView;
@@ -187,8 +189,45 @@ public class OxMcpActivity extends BaseFragment {
                 .setTitle(LocaleController.getString(R.string.OxMcpImport))
                 .setView(wrap)
                 .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .setNeutralButton(LocaleController.getString(R.string.OxMcpImportFile), (d, w) -> pickJsonFile())
                 .setPositiveButton(LocaleController.getString(R.string.OxMcpImport), (d, w) -> importMcpJson(input.getText().toString()))
                 .show();
+    }
+
+    private void pickJsonFile() {
+        if (getParentActivity() == null) return;
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        try {
+            startActivityForResult(intent, REQ_IMPORT_FILE);
+        } catch (Throwable t) {
+            toast("⚠ " + t.getMessage());
+        }
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
+        if (requestCode != REQ_IMPORT_FILE || resultCode != android.app.Activity.RESULT_OK || data == null) return;
+        android.net.Uri uri = data.getData();
+        android.content.Context ctx = getParentActivity();
+        if (uri == null || ctx == null) return;
+        new Thread(() -> {
+            try {
+                java.io.InputStream in = ctx.getContentResolver().openInputStream(uri);
+                java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = in.read(buf)) > 0 && bos.size() < 256 * 1024) {
+                    bos.write(buf, 0, Math.min(n, 256 * 1024 - bos.size()));
+                }
+                in.close();
+                String raw = new String(bos.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+                AndroidUtilities.runOnUIThread(() -> importMcpJson(raw));
+            } catch (Throwable t) {
+                AndroidUtilities.runOnUIThread(() -> toast("⚠ " + t.getMessage()));
+            }
+        }, "ox-mcp-file-import").start();
     }
 
     private void importMcpJson(String raw) {
