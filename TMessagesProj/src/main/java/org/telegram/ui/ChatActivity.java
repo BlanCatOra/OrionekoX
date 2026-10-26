@@ -43735,6 +43735,22 @@ public class ChatActivity extends BaseFragment implements
             return chatTheme;
         }
 
+        /** OrionekoX: override the chat wallpaper while a custom agent theme is active. */
+        public void setOxWallpaperDrawable(Drawable drawable) {
+            backgroundDrawable = drawable;
+            if (contentView != null) {
+                contentView.setBackgroundImage(drawable, false);
+                contentView.invalidate();
+            }
+        }
+
+        public void clearOxWallpaperDrawable() {
+            backgroundDrawable = null;
+            if (contentView != null) {
+                contentView.invalidate();
+            }
+        }
+
         @Override
         public Drawable getWallpaperDrawable() {
             return backgroundDrawable != null ? backgroundDrawable : Theme.getCachedWallpaperNonBlocking();

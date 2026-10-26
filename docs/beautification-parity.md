@@ -113,6 +113,25 @@ These confirm the feature directions rather than relying on guesses. Checked
   export/import must include wallpaper and font assets, not just colors. **#1314** –
   streaming chat backup confirms the value of portable, resource-complete exports.
 
+## 0.10.0 implementation
+
+- Per-agent appearance snapshots (`files/ox_chat_agents/agent_<tgId>.json`) with
+  global fallback and “apply to all agents”; entry from the agent long-press menu.
+- Background: solid / two-color gradient (3 directions) / image, independent
+  background opacity and dim layer; status and navigation bars follow the theme.
+- Bubbles: solid/frosted style, border color and 1–3 dp width, independent text
+  color, WCAG contrast check.
+- Fonts: chat family (system/serif/monospace/imported TTF), code family, size
+  0.9–1.3×; imported fonts are validated and stored in `files/oxfonts/`.
+- Import preview before applying, JSON export via SAF, and a direct link to
+  Telegram's native `ThemeActivity` in native mode.
+- `ChatActivity.ThemeDelegate.setOxWallpaperDrawable` lets the custom background
+  replace the chat wallpaper drawable instead of fighting the list background.
+- Device QA: per-agent isolation PASS (C2 light/white incoming vs R2C Card global
+  dark), border/frosted/serif PASS, native link/reset PASS. Background coverage is
+  PARTIAL on the `-gpu off` emulator (faint native pattern remains); needs a
+  real-device/GPU pass. See `docs/qa-0.10.0.md`.
+
 ## Gaps / next phases
 
 1. Full Operit theme-v1 mapping (background images, 9-patch, fonts, input styles,

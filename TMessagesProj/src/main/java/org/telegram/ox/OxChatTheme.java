@@ -3,9 +3,12 @@ package org.telegram.ox;
 import android.content.SharedPreferences;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.view.View;
 
 import org.json.JSONObject;
@@ -23,91 +26,141 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Custom appearance for local-agent conversations. Native mode leaves Telegram's
- * theme/bubbles untouched; custom mode overrides background, bubble colors, bubble
- * opacity/radius and message font scale only while an agent chat is open.
+ * Custom appearance for local-agent conversations.
+ *
+ * <p>The same model powers the global appearance page and per-agent overrides.
+ * A snapshot is either the global SharedPreferences record or an agent JSON file
+ * under {@code files/ox_chat_agents/}; the runtime only reads it while an agent
+ * chat is open and restores Telegram's paints on pause.</p>
  */
 public class OxChatTheme {
 
     public static final String MODE_NATIVE = "native";
     public static final String MODE_CUSTOM = "custom";
+    public static final String BG_SOLID = "solid";
+    public static final String BG_GRADIENT = "gradient";
+    public static final String BG_IMAGE = "image";
+    public static final String STYLE_SOLID = "solid";
+    public static final String STYLE_FROSTED = "frosted";
 
     private static final String PREFS = "ox_chat_theme";
     private static final String DIR_PRESETS = "ox_chat_presets";
+    private static final String DIR_AGENTS = "ox_chat_agents";
+    private static final String DIR_FONTS = "oxfonts";
     private static final String BG_FILE = "ox_chat_bg";
 
     private static boolean applied;
+    private static View appliedRoot;
+    private static View appliedDecor;
+    private static Drawable appliedDecorBg;
+    private static View appliedWallpaper;
+    private static Drawable appliedWallpaperBg;
+    private static android.view.Window appliedWindow;
+    private static int appliedStatusColor, appliedNavColor, appliedUiFlags;
+    private static long appliedDialogId;
+    private static org.telegram.ui.ChatActivity.ThemeDelegate activityThemeDelegate;
+    private static View appliedScrim;
+    private static android.view.ViewGroup appliedScrimParent;
+    private static org.telegram.ui.Components.SizeNotifierFrameLayout activityContentView;
     private static float originalTextSize;
+    private static int originalTextColor;
+    private static int originalCodeColor;
+    private static int originalCode2Color;
+    private static int originalCode3Color;
+    private static Typeface originalTypeface;
+    private static Typeface originalCodeTypeface;
+    private static Typeface originalCode2Typeface;
+    private static Typeface originalCode3Typeface;
 
-    private static SharedPreferences prefs() {
-        return ApplicationLoader.applicationContext.getSharedPreferences(PREFS, 0);
-    }
+    /** Non-null while the appearance page is editing one agent's override. */
+    private static String activeAgentKey;
+    private static Snapshot activeAgent;
 
-    public static boolean isCustom() {
-        return MODE_CUSTOM.equals(prefs().getString("mode", MODE_NATIVE));
-    }
+    public static class Snapshot {
+        public String mode = MODE_NATIVE;
+        public String backgroundMode = BG_SOLID;
+        public int background = 0xFFF3F1F7;
+        public int background2 = 0xFFE8E4F0;
+        public int backgroundAlpha = 255;
+        public int backgroundDim = 0;
+        public int gradientIndex = 0;
+        public String backgroundImage = "";
+        public int inBubble = 0xFFFFFFFF;
+        public int outBubble = 0xFFE3F2FD;
+        public int bubbleAlpha = 255;
+        public int cornerRadius = 16;
+        public String bubbleStyle = STYLE_SOLID;
+        public int borderColor = 0;
+        public int borderWidth = 0;
+        public int textColor = 0;
+        public float fontScale = 1f;
+        public String fontPath = "";
+        public String codeFontPath = "";
 
-    public static void setMode(String mode) {
-        prefs().edit().putString("mode", MODE_NATIVE.equals(mode) ? MODE_NATIVE : MODE_CUSTOM).apply();
-    }
+        public Snapshot copy() {
+            Snapshot s = new Snapshot();
+            s.mode = mode;
+            s.backgroundMode = backgroundMode;
+            s.background = background;
+            s.background2 = background2;
+            s.backgroundAlpha = backgroundAlpha;
+            s.backgroundDim = backgroundDim;
+            s.gradientIndex = gradientIndex;
+            s.backgroundImage = backgroundImage;
+            s.inBubble = inBubble;
+            s.outBubble = outBubble;
+            s.bubbleAlpha = bubbleAlpha;
+            s.cornerRadius = cornerRadius;
+            s.bubbleStyle = bubbleStyle;
+            s.borderColor = borderColor;
+            s.borderWidth = borderWidth;
+            s.textColor = textColor;
+            s.fontScale = fontScale;
+            s.fontPath = fontPath;
+            s.codeFontPath = codeFontPath;
+            return s;
+        }
 
-    public static int background() {
-        return prefs().getInt("background", 0xFFF3F1F7);
-    }
+        public JSONObject toJson(String name) throws Exception {
+            JSONObject o = new JSONObject();
+            o.put("name", name == null ? "" : name);
+            o.put("mode", mode);
+            o.put("backgroundMode", backgroundMode);
+            o.put("backgroundArgb", background);
+            o.put("background2Argb", background2);
+            o.put("backgroundAlpha", backgroundAlpha);
+            o.put("backgroundDim", backgroundDim);
+            o.put("gradientIndex", gradientIndex);
+            o.put("backgroundImage", backgroundImage == null ? "" : backgroundImage);
+            o.put("inBubbleArgb", inBubble);
+            o.put("outBubbleArgb", outBubble);
+            o.put("bubbleAlpha", bubbleAlpha);
+            o.put("cornerRadius", cornerRadius);
+            o.put("bubbleStyle", bubbleStyle);
+            o.put("borderArgb", borderColor);
+            o.put("borderWidth", borderWidth);
+            o.put("textArgb", textColor);
+            o.put("fontScale", fontScale);
+            o.put("fontPath", fontPath == null ? "" : fontPath);
+            o.put("codeFontPath", codeFontPath == null ? "" : codeFontPath);
+            return o;
+        }
 
-    public static int inBubble() {
-        return prefs().getInt("in_bubble", 0xFFFFFFFF);
-    }
-
-    public static int outBubble() {
-        return prefs().getInt("out_bubble", 0xFFE3F2FD);
-    }
-
-    public static int bubbleAlpha() {
-        return prefs().getInt("bubble_alpha", 255);
-    }
-
-    public static int cornerRadius() {
-        return prefs().getInt("corner_radius", 16);
-    }
-
-    public static float fontScale() {
-        return prefs().getFloat("font_scale", 1f);
-    }
-
-    public static String backgroundImage() {
-        return prefs().getString("background_image", "");
-    }
-
-    public static void setInt(String key, int value) {
-        prefs().edit().putInt(key, value).apply();
-    }
-
-    public static void setFloat(String key, float value) {
-        prefs().edit().putFloat(key, value).apply();
-    }
-
-    public static void setString(String key, String value) {
-        prefs().edit().putString(key, value).apply();
-    }
-
-    public static void enableCustom() {
-        if (!isCustom()) {
-            prefs().edit().putString("mode", MODE_CUSTOM)
-                    .putInt("background", 0xFFF3F1F7)
-                    .putInt("in_bubble", 0xFFFFFFFF)
-                    .putInt("out_bubble", 0xFFE3F2FD)
-                    .putInt("bubble_alpha", 255)
-                    .putInt("corner_radius", 16)
-                    .putFloat("font_scale", 1f)
-                    .apply();
+        public String summary() {
+            return "背景 " + (BG_IMAGE.equals(backgroundMode) && backgroundImage != null && !backgroundImage.isEmpty()
+                    ? new File(backgroundImage).getName()
+                    : hex(background) + (BG_GRADIENT.equals(backgroundMode) ? " → " + hex(background2) : ""))
+                    + " · 收 " + hex(inBubble) + " · 发 " + hex(outBubble)
+                    + " · " + Math.round(bubbleAlpha * 100f / 255f) + "%"
+                    + " · " + cornerRadius + "dp"
+                    + " · " + String.format("%.1fx", fontScale)
+                    + (STYLE_FROSTED.equals(bubbleStyle) ? " · 磨砂" : "")
+                    + (borderWidth > 0 ? " · 边框 " + borderWidth + "dp" : "");
         }
     }
 
-    public static void resetNative() {
-        prefs().edit().clear().apply();
-        File bg = new File(ApplicationLoader.applicationContext.getFilesDir(), BG_FILE);
-        if (bg.exists()) bg.delete();
+    private static SharedPreferences prefs() {
+        return ApplicationLoader.applicationContext.getSharedPreferences(PREFS, 0);
     }
 
     public static String hex(int color) {
@@ -122,46 +175,359 @@ public class OxChatTheme {
         return (a << 24) | (Math.min(255, r) << 16) | (Math.min(255, g) << 8) | Math.min(255, b);
     }
 
-    public static String importJson(String raw) throws Exception {
-        JSONObject o = new JSONObject(raw);
-        int bg = color(o, "backgroundArgb", "backgroundColorArgb", "background", "background_color",
-                "chat_background", "chatBackground", "backgroundColor");
-        int in = color(o, "inBubbleArgb", "incomingBubbleArgb", "inBubbleColorArgb", "bubbleInArgb",
-                "in_bubble", "incoming_bubble", "incomingBubble", "inBubbleColor", "bubble_in",
-                "secondaryColorArgb", "secondary_color_argb");
-        int out = color(o, "outBubbleArgb", "outgoingBubbleArgb", "outBubbleColorArgb", "bubbleOutArgb",
-                "out_bubble", "outgoing_bubble", "outgoingBubble", "outBubbleColor", "bubble_out",
-                "primaryColorArgb", "primary_color_argb");
-        int alpha = intValue(o, 255, "bubbleAlpha", "bubble_alpha", "bubble_opacity", "bubbleOpacity", "opacity");
-        if (alpha <= 1) alpha = Math.round(alpha * 255);
-        int radius = intValue(o, 16, "cornerRadius", "bubbleCornerRadius", "corner_radius", "bubble_radius", "radius");
-        float scale = floatValue(o, 1f, "fontScale", "font_scale", "fontSizeScale", "font_size", "message_font_scale");
-        String name = o.optString("name", "");
-        if (bg == 0 && in == 0 && out == 0) throw new IllegalArgumentException("no colors");
-        prefs().edit().putString("mode", MODE_CUSTOM)
-                .putInt("background", bg == 0 ? 0xFFF3F1F7 : bg)
-                .putInt("in_bubble", in == 0 ? 0xFFFFFFFF : in)
-                .putInt("out_bubble", out == 0 ? 0xFFE3F2FD : out)
-                .putInt("bubble_alpha", Math.max(40, Math.min(255, alpha)))
-                .putInt("corner_radius", Math.max(0, Math.min(28, radius)))
-                .putFloat("font_scale", Math.max(0.8f, Math.min(1.4f, scale)))
-                .apply();
-        return name;
+    // ---------------- agent scope ----------------
+
+    private static String agentKey(long tgId) {
+        return "agent_" + tgId;
     }
 
-    public static void setBackgroundImage(InputStream in) throws Exception {
-        File f = new File(ApplicationLoader.applicationContext.getFilesDir(), BG_FILE);
-        FileOutputStream out = new FileOutputStream(f);
-        byte[] buf = new byte[16384];
-        int n;
-        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-        out.close();
-        in.close();
-        prefs().edit().putString("background_image", f.getAbsolutePath()).apply();
+    private static File agentDir() {
+        File dir = new File(ApplicationLoader.applicationContext.getFilesDir(), DIR_AGENTS);
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    private static File agentFile(String key) {
+        return new File(agentDir(), key + ".json");
+    }
+
+    private static Snapshot readFile(File f) {
+        try {
+            if (f == null || !f.isFile()) return null;
+            byte[] data = new byte[(int) f.length()];
+            java.io.FileInputStream in = new java.io.FileInputStream(f);
+            int off = 0;
+            while (off < data.length) {
+                int n = in.read(data, off, data.length - off);
+                if (n <= 0) break;
+                off += n;
+            }
+            in.close();
+            return parseJsonObject(new JSONObject(new String(data, "UTF-8")), new Snapshot());
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** Called by the agent appearance page so every getter/setter edits this file. */
+    public static void openAgent(long tgId) {
+        activeAgentKey = agentKey(tgId);
+        activeAgent = readFile(agentFile(activeAgentKey));
+        if (activeAgent == null) {
+            // Start from the global look, so "edit this agent" feels like an override.
+            activeAgent = readPrefs().copy();
+        }
+    }
+
+    public static void closeAgent() {
+        activeAgentKey = null;
+        activeAgent = null;
+    }
+
+    public static boolean isAgentScope() {
+        return activeAgent != null;
+    }
+
+    public static String agentScopeName() {
+        return activeAgentKey;
+    }
+
+    private static Snapshot current() {
+        return activeAgent != null ? activeAgent : readPrefs();
+    }
+
+    private static void persist(Snapshot s) {
+        if (s == null) return;
+        if (activeAgent != null) {
+            activeAgent = s;
+            try {
+                FileOutputStream out = new FileOutputStream(agentFile(activeAgentKey));
+                out.write(s.toJson("").toString().getBytes("UTF-8"));
+                out.close();
+            } catch (Throwable ignored) {
+            }
+        } else {
+            writePrefs(s);
+        }
+    }
+
+    private static Snapshot readPrefs() {
+        Snapshot s = new Snapshot();
+        SharedPreferences p = prefs();
+        s.mode = p.getString("mode", MODE_NATIVE);
+        s.backgroundMode = p.getString("background_mode", BG_SOLID);
+        s.background = p.getInt("background", s.background);
+        s.background2 = p.getInt("background2", s.background2);
+        s.backgroundAlpha = p.getInt("background_alpha", 255);
+        s.backgroundDim = p.getInt("background_dim", 0);
+        s.gradientIndex = p.getInt("gradient_index", 0);
+        s.backgroundImage = p.getString("background_image", "");
+        s.inBubble = p.getInt("in_bubble", s.inBubble);
+        s.outBubble = p.getInt("out_bubble", s.outBubble);
+        s.bubbleAlpha = p.getInt("bubble_alpha", 255);
+        s.cornerRadius = p.getInt("corner_radius", 16);
+        s.bubbleStyle = p.getString("bubble_style", STYLE_SOLID);
+        s.borderColor = p.getInt("border_color", 0);
+        s.borderWidth = p.getInt("border_width", 0);
+        s.textColor = p.getInt("text_color", 0);
+        s.fontScale = p.getFloat("font_scale", 1f);
+        s.fontPath = p.getString("font_path", "");
+        s.codeFontPath = p.getString("code_font_path", "");
+        return s;
+    }
+
+    private static void writePrefs(Snapshot s) {
+        prefs().edit()
+                .putString("mode", s.mode)
+                .putString("background_mode", s.backgroundMode)
+                .putInt("background", s.background)
+                .putInt("background2", s.background2)
+                .putInt("background_alpha", s.backgroundAlpha)
+                .putInt("background_dim", s.backgroundDim)
+                .putInt("gradient_index", s.gradientIndex)
+                .putString("background_image", s.backgroundImage == null ? "" : s.backgroundImage)
+                .putInt("in_bubble", s.inBubble)
+                .putInt("out_bubble", s.outBubble)
+                .putInt("bubble_alpha", s.bubbleAlpha)
+                .putInt("corner_radius", s.cornerRadius)
+                .putString("bubble_style", s.bubbleStyle)
+                .putInt("border_color", s.borderColor)
+                .putInt("border_width", s.borderWidth)
+                .putInt("text_color", s.textColor)
+                .putFloat("font_scale", s.fontScale)
+                .putString("font_path", s.fontPath == null ? "" : s.fontPath)
+                .putString("code_font_path", s.codeFontPath == null ? "" : s.codeFontPath)
+                .apply();
+    }
+
+    // ---------------- getters/setters (current scope) ----------------
+
+    public static boolean isCustom() {
+        return MODE_CUSTOM.equals(current().mode);
+    }
+
+    public static void setMode(String mode) {
+        Snapshot s = current();
+        s.mode = MODE_NATIVE.equals(mode) ? MODE_NATIVE : MODE_CUSTOM;
+        persist(s);
+    }
+
+    public static String backgroundMode() { return current().backgroundMode; }
+    public static int background() { return current().background; }
+    public static int background2() { return current().background2; }
+    public static int backgroundAlpha() { return current().backgroundAlpha; }
+    public static int backgroundDim() { return current().backgroundDim; }
+    public static int gradientIndex() { return current().gradientIndex; }
+    public static String backgroundImage() { return current().backgroundImage; }
+    public static int inBubble() { return current().inBubble; }
+    public static int outBubble() { return current().outBubble; }
+    public static int bubbleAlpha() { return current().bubbleAlpha; }
+    public static int cornerRadius() { return current().cornerRadius; }
+    public static String bubbleStyle() { return current().bubbleStyle; }
+    public static int borderColor() { return current().borderColor; }
+    public static int borderWidth() { return current().borderWidth; }
+    public static int textColor() { return current().textColor; }
+    public static float fontScale() { return current().fontScale; }
+    public static String fontPath() { return current().fontPath; }
+    public static String codeFontPath() { return current().codeFontPath; }
+
+    public static void setInt(String key, int value) {
+        Snapshot s = current();
+        switch (key) {
+            case "background": s.background = value; break;
+            case "background2": s.background2 = value; break;
+            case "background_alpha": s.backgroundAlpha = value; break;
+            case "background_dim": s.backgroundDim = value; break;
+            case "gradient_index": s.gradientIndex = value; break;
+            case "in_bubble": s.inBubble = value; break;
+            case "out_bubble": s.outBubble = value; break;
+            case "bubble_alpha": s.bubbleAlpha = value; break;
+            case "corner_radius": s.cornerRadius = value; break;
+            case "border_color": s.borderColor = value; break;
+            case "border_width": s.borderWidth = value; break;
+            case "text_color": s.textColor = value; break;
+            default: break;
+        }
+        persist(s);
+    }
+
+    public static void setBackgroundMode(String mode) {
+        Snapshot s = current();
+        s.backgroundMode = mode == null ? BG_SOLID : mode;
+        persist(s);
+    }
+
+    public static void setBubbleStyle(String style) {
+        Snapshot s = current();
+        s.bubbleStyle = STYLE_FROSTED.equals(style) ? STYLE_FROSTED : STYLE_SOLID;
+        persist(s);
+    }
+
+    public static void setFloat(String key, float value) {
+        Snapshot s = current();
+        if ("font_scale".equals(key)) s.fontScale = value;
+        persist(s);
+    }
+
+    public static void setString(String key, String value) {
+        Snapshot s = current();
+        if ("font_path".equals(key)) s.fontPath = value == null ? "" : value;
+        else if ("code_font_path".equals(key)) s.codeFontPath = value == null ? "" : value;
+        persist(s);
+    }
+
+    public static void setBackgroundImage(String path) {
+        Snapshot s = current();
+        s.backgroundImage = path == null ? "" : path;
+        if (!s.backgroundImage.isEmpty()) s.backgroundMode = BG_IMAGE;
+        persist(s);
     }
 
     public static void clearBackgroundImage() {
-        prefs().edit().putString("background_image", "").apply();
+        Snapshot s = current();
+        s.backgroundImage = "";
+        if (BG_IMAGE.equals(s.backgroundMode)) s.backgroundMode = BG_SOLID;
+        persist(s);
+    }
+
+    public static void enableCustom() {
+        Snapshot s = current();
+        if (!MODE_CUSTOM.equals(s.mode)) {
+            s.mode = MODE_CUSTOM;
+            persist(s);
+        }
+    }
+
+    /** Copies the current agent override to the global appearance. */
+    public static void applyCurrentToGlobal() {
+        if (activeAgent == null) return;
+        writePrefs(activeAgent.copy());
+    }
+
+    /** WCAG contrast ratio for the effective text/bubble pair. */
+    public static double contrast(int fg, int bg) {
+        double l1 = luminance(fg);
+        double l2 = luminance(bg);
+        double hi = Math.max(l1, l2), lo = Math.min(l1, l2);
+        return (hi + 0.05) / (lo + 0.05);
+    }
+
+    public static int autoTextColor(int bubble) {
+        return luminance(bubble) > 0.45 ? 0xFF111111 : 0xFFFFFFFF;
+    }
+
+    private static double luminance(int color) {
+        double r = channel((color >> 16) & 0xFF);
+        double g = channel((color >> 8) & 0xFF);
+        double b = channel(color & 0xFF);
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    private static double channel(int v) {
+        double c = v / 255.0;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    }
+
+    public static void resetNative() {
+        if (activeAgent != null) {
+            File f = agentFile(activeAgentKey);
+            if (f.exists()) f.delete();
+            // An agent reset falls back to the global look, but the page keeps
+            // editing this agent so the next change creates a fresh override.
+            activeAgent = readPrefs().copy();
+            return;
+        }
+        prefs().edit().clear().apply();
+        File bg = new File(ApplicationLoader.applicationContext.getFilesDir(), BG_FILE);
+        if (bg.exists()) bg.delete();
+    }
+
+    // ---------------- JSON import/export ----------------
+
+    public static String importJson(String raw) throws Exception {
+        Snapshot s = parseJson(raw, current());
+        persist(s);
+        return s.mode;
+    }
+
+    /** Read-only parse used by the import preview dialog. */
+    public static String previewJson(String raw) throws Exception {
+        Snapshot s = parseJson(raw, current());
+        return s.summary();
+    }
+
+    public static String exportJson(String name) throws Exception {
+        return current().toJson(name).toString(2);
+    }
+
+    private static Snapshot parseJson(String raw, Snapshot base) throws Exception {
+        JSONObject o = new JSONObject(raw);
+        Snapshot s = parseJsonObject(o, base == null ? new Snapshot() : base.copy());
+        if (s.mode == null || (!MODE_CUSTOM.equals(s.mode) && !MODE_NATIVE.equals(s.mode))) {
+            s.mode = MODE_CUSTOM;
+        }
+        return s;
+    }
+
+    private static Snapshot parseJsonObject(JSONObject o, Snapshot s) throws Exception {
+        if (o.has("mode")) s.mode = MODE_CUSTOM.equals(o.optString("mode")) ? MODE_CUSTOM : s.mode;
+        if (o.has("backgroundMode")) s.backgroundMode = o.optString("backgroundMode", s.backgroundMode);
+        int bg = color(o, "backgroundArgb", "backgroundColorArgb", "background", "background_color",
+                "chat_background", "chatBackground", "backgroundColor");
+        if (bg != 0) s.background = bg;
+        int bg2 = color(o, "background2Argb", "backgroundGradientArgb", "background_gradient", "gradient_color");
+        if (bg2 != 0) s.background2 = bg2;
+        if (has(o, "backgroundAlpha", "background_alpha")) {
+            s.backgroundAlpha = clamp(intValue(o, s.backgroundAlpha, "backgroundAlpha", "background_alpha"), 0, 255);
+        }
+        if (has(o, "backgroundDim", "background_dim", "dim")) {
+            s.backgroundDim = clamp(intValue(o, s.backgroundDim, "backgroundDim", "background_dim", "dim"), 0, 220);
+        }
+        if (has(o, "gradientIndex", "gradient_index")) {
+            s.gradientIndex = clamp(intValue(o, s.gradientIndex, "gradientIndex", "gradient_index"), 0, 2);
+        }
+        int in = color(o, "inBubbleArgb", "incomingBubbleArgb", "inBubbleColorArgb", "bubbleInArgb",
+                "in_bubble", "incoming_bubble", "incomingBubble", "inBubbleColor", "bubble_in",
+                "secondaryColorArgb", "secondary_color_argb");
+        if (in != 0) s.inBubble = in;
+        int out = color(o, "outBubbleArgb", "outgoingBubbleArgb", "outBubbleColorArgb", "bubbleOutArgb",
+                "out_bubble", "outgoing_bubble", "outgoingBubble", "outBubbleColor", "bubble_out",
+                "primaryColorArgb", "primary_color_argb");
+        if (out != 0) s.outBubble = out;
+        int alpha = intValue(o, s.bubbleAlpha, "bubbleAlpha", "bubble_alpha", "bubble_opacity", "bubbleOpacity", "opacity");
+        if (alpha <= 1 && has(o, "bubbleAlpha", "bubble_alpha", "bubble_opacity", "bubbleOpacity", "opacity")) {
+            alpha = Math.round(alpha * 255);
+        }
+        s.bubbleAlpha = clamp(alpha, 40, 255);
+        s.cornerRadius = clamp(intValue(o, s.cornerRadius, "cornerRadius", "bubbleCornerRadius", "corner_radius", "bubble_radius", "radius"), 0, 28);
+        s.fontScale = Math.max(0.8f, Math.min(1.5f,
+                floatValue(o, s.fontScale, "fontScale", "font_scale", "fontSizeScale", "font_size", "message_font_scale")));
+        if (has(o, "bubbleStyle", "bubble_style")) {
+            s.bubbleStyle = STYLE_FROSTED.equals(o.optString("bubbleStyle", o.optString("bubble_style")))
+                    ? STYLE_FROSTED : STYLE_SOLID;
+        }
+        int border = color(o, "borderArgb", "borderColorArgb", "border_color", "borderColor", "borderArgbLight", "borderArgbDark");
+        if (border != 0) s.borderColor = border;
+        if (has(o, "borderWidth", "border_width")) {
+            s.borderWidth = clamp(intValue(o, s.borderWidth, "borderWidth", "border_width"), 0, 4);
+        }
+        int text = color(o, "textArgb", "textColorArgb", "text_color", "textColor", "textArgbLight", "textArgbDark");
+        if (text != 0) s.textColor = text;
+        String fp = o.optString("fontPath", o.optString("font_path", ""));
+        if (!fp.isEmpty()) s.fontPath = fp;
+        String cfp = o.optString("codeFontPath", o.optString("code_font_path", ""));
+        if (!cfp.isEmpty()) s.codeFontPath = cfp;
+        if (o.has("backgroundImage") || o.has("background_image")) {
+            String img = o.optString("backgroundImage", o.optString("background_image", ""));
+            if (!img.isEmpty()) {
+                s.backgroundImage = img;
+                s.backgroundMode = BG_IMAGE;
+            }
+        }
+        if (s.background == 0 && s.inBubble == 0 && s.outBubble == 0) {
+            throw new IllegalArgumentException("no colors");
+        }
+        return s;
     }
 
     // ---------------- presets ----------------
@@ -187,7 +553,7 @@ public class OxChatTheme {
     public static void savePreset(String name) throws Exception {
         if (name == null || name.trim().isEmpty()) throw new IllegalArgumentException("name");
         String safe = name.trim().replaceAll("[^a-zA-Z0-9._\\-\\u4e00-\\u9fa5]", "_");
-        JSONObject o = toJson(name.trim());
+        JSONObject o = current().toJson(name.trim());
         FileOutputStream out = new FileOutputStream(new File(presetDir(), safe + ".json"));
         out.write(o.toString().getBytes("UTF-8"));
         out.close();
@@ -195,16 +561,10 @@ public class OxChatTheme {
 
     public static void applyPreset(String name) throws Exception {
         File f = new File(presetDir(), name + ".json");
-        byte[] data = new byte[(int) f.length()];
-        java.io.FileInputStream in = new java.io.FileInputStream(f);
-        int off = 0;
-        while (off < data.length) {
-            int n = in.read(data, off, data.length - off);
-            if (n <= 0) break;
-            off += n;
-        }
-        in.close();
-        importJson(new String(data, "UTF-8"));
+        Snapshot s = readFile(f);
+        if (s == null) throw new IllegalArgumentException("preset not found");
+        s.mode = MODE_CUSTOM;
+        persist(s);
     }
 
     public static void deletePreset(String name) {
@@ -212,61 +572,174 @@ public class OxChatTheme {
     }
 
     public static JSONObject toJson(String name) throws Exception {
-        JSONObject o = new JSONObject();
-        o.put("name", name == null ? "" : name);
-        o.put("backgroundArgb", background());
-        o.put("inBubbleArgb", inBubble());
-        o.put("outBubbleArgb", outBubble());
-        o.put("bubbleAlpha", bubbleAlpha());
-        o.put("cornerRadius", cornerRadius());
-        o.put("fontScale", fontScale());
-        return o;
+        return current().toJson(name);
+    }
+
+    // ---------------- fonts ----------------
+
+    public static void importFont(InputStream in, boolean code) throws Exception {
+        File dir = new File(ApplicationLoader.applicationContext.getFilesDir(), DIR_FONTS);
+        if (!dir.exists()) dir.mkdirs();
+        File f = new File(dir, (code ? "code_" : "chat_") + System.currentTimeMillis() + ".ttf");
+        FileOutputStream out = new FileOutputStream(f);
+        byte[] buf = new byte[16384];
+        int n;
+        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+        out.close();
+        in.close();
+        Typeface tf = Typeface.createFromFile(f);
+        if (tf == null) {
+            f.delete();
+            throw new IllegalArgumentException("unsupported font");
+        }
+        Snapshot s = current();
+        if (code) s.codeFontPath = f.getAbsolutePath();
+        else s.fontPath = f.getAbsolutePath();
+        persist(s);
     }
 
     // ---------------- runtime application ----------------
 
+    /** Reads the override for this dialog: per-agent file first, then global. */
+    private static Snapshot forDialog(long dialogId) {
+        if (OxAgentsBridge.agentKeyForDialog(dialogId) != null) {
+            Snapshot s = readFile(agentFile(agentKey(dialogId)));
+            if (s != null) return s;
+        }
+        return readPrefs();
+    }
+
+    private static Drawable makeBackground(Snapshot s, android.content.res.Resources res) {
+        Drawable base;
+        String mode = s.backgroundMode == null ? BG_SOLID : s.backgroundMode;
+        if (BG_IMAGE.equals(mode)) {
+            File f = s.backgroundImage == null || s.backgroundImage.isEmpty() ? null : new File(s.backgroundImage);
+            android.graphics.Bitmap bmp = f != null && f.isFile() ? BitmapFactory.decodeFile(f.getAbsolutePath()) : null;
+            if (bmp != null) {
+                BitmapDrawable bd = new BitmapDrawable(res, bmp);
+                bd.setAlpha(clamp(s.backgroundAlpha, 0, 255));
+                base = bd;
+            } else {
+                base = new ColorDrawable(withAlpha(s.background, s.backgroundAlpha));
+            }
+        } else if (BG_GRADIENT.equals(mode)) {
+            GradientDrawable gd = new GradientDrawable(
+                    s.gradientIndex == 1 ? GradientDrawable.Orientation.LEFT_RIGHT
+                            : s.gradientIndex == 2 ? GradientDrawable.Orientation.TL_BR
+                            : GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{withAlpha(s.background, s.backgroundAlpha), withAlpha(s.background2, s.backgroundAlpha)});
+            base = gd;
+        } else {
+            base = new ColorDrawable(withAlpha(s.background, s.backgroundAlpha));
+        }
+        if (s.backgroundDim > 0) {
+            return new LayerDrawable(new Drawable[]{base, new ColorDrawable(Color.argb(clamp(s.backgroundDim, 0, 220), 0, 0, 0))});
+        }
+        return base;
+    }
+
     public static void applyToChat(ChatActivity activity, long dialogId, View listView) {
         if (activity == null || listView == null) return;
-        if (!isCustom() || !OxAgentsBridge.isAgentDialog(dialogId)) return;
+        if (!OxAgentsBridge.isAgentDialog(dialogId)) return;
+        Snapshot s = forDialog(dialogId);
+        if (!MODE_CUSTOM.equals(s.mode)) return;
         try {
-            int alpha = bubbleAlpha();
-            int bg = background();
-            bg = (bg & 0x00FFFFFF) | (Math.min(255, Math.max(0, alpha)) << 24);
-            String bgPath = backgroundImage();
-            File bgFile = bgPath == null || bgPath.isEmpty() ? null : new File(bgPath);
-            if (bgFile != null && bgFile.isFile()) {
-                android.graphics.Bitmap bmp = BitmapFactory.decodeFile(bgFile.getAbsolutePath());
-                if (bmp != null) {
-                    BitmapDrawable d = new BitmapDrawable(activity.getParentActivity().getResources(), bmp);
-                    d.setAlpha(Math.min(255, Math.max(0, alpha)));
-                    listView.setBackground(d);
-                } else {
-                    listView.setBackgroundColor(bg);
-                }
-            } else {
-                listView.setBackgroundColor(bg);
-            }
-            int in = withAlpha(inBubble(), alpha);
-            int out = withAlpha(outBubble(), alpha);
+            int alpha = s.bubbleAlpha;
+            if (STYLE_FROSTED.equals(s.bubbleStyle)) alpha = Math.min(alpha, 200);
+            int in = withAlpha(s.inBubble, alpha);
+            int out = withAlpha(s.outBubble, alpha);
             if (Theme.chat_msgInDrawable != null) {
                 Theme.chat_msgInDrawable.overrideColor = in;
-                Theme.chat_msgInDrawable.setOverrideRoundRadius(AndroidUtilities.dp(cornerRadius()));
+                Theme.chat_msgInDrawable.setOverrideRoundRadius(AndroidUtilities.dp(s.cornerRadius));
+                Theme.chat_msgInDrawable.setOverrideBorder(s.borderColor, s.borderWidth);
             }
             if (Theme.chat_msgOutDrawable != null) {
                 Theme.chat_msgOutDrawable.overrideColor = out;
-                Theme.chat_msgOutDrawable.setOverrideRoundRadius(AndroidUtilities.dp(cornerRadius()));
+                Theme.chat_msgOutDrawable.setOverrideRoundRadius(AndroidUtilities.dp(s.cornerRadius));
+                Theme.chat_msgOutDrawable.setOverrideBorder(s.borderColor, s.borderWidth);
             }
             if (Theme.chat_msgInSelectedDrawable != null) {
                 Theme.chat_msgInSelectedDrawable.overrideColor = in;
-                Theme.chat_msgInSelectedDrawable.setOverrideRoundRadius(AndroidUtilities.dp(cornerRadius()));
+                Theme.chat_msgInSelectedDrawable.setOverrideRoundRadius(AndroidUtilities.dp(s.cornerRadius));
+                Theme.chat_msgInSelectedDrawable.setOverrideBorder(s.borderColor, s.borderWidth);
             }
             if (Theme.chat_msgOutSelectedDrawable != null) {
                 Theme.chat_msgOutSelectedDrawable.overrideColor = out;
-                Theme.chat_msgOutSelectedDrawable.setOverrideRoundRadius(AndroidUtilities.dp(cornerRadius()));
+                Theme.chat_msgOutSelectedDrawable.setOverrideRoundRadius(AndroidUtilities.dp(s.cornerRadius));
+                Theme.chat_msgOutSelectedDrawable.setOverrideBorder(s.borderColor, s.borderWidth);
             }
+            android.content.res.Resources res = activity.getParentActivity() != null
+                    ? activity.getParentActivity().getResources()
+                    : ApplicationLoader.applicationContext.getResources();
+            // Put the custom background in its own layer between Telegram's
+            // wallpaper view and the message list. Overriding the list background
+            // alone leaves the native wallpaper visible around the input bar.
+            appliedRoot = activity.getFragmentView();
+            listView.setBackground(makeBackground(s, res));
+            if (activity.themeDelegate != null) {
+                activityThemeDelegate = activity.themeDelegate;
+                activity.themeDelegate.setOxWallpaperDrawable(makeBackground(s, res));
+            }
+            if (activity.getParentActivity() != null && appliedWindow == null) {
+                appliedWindow = activity.getParentActivity().getWindow();
+                appliedStatusColor = appliedWindow.getStatusBarColor();
+                appliedNavColor = appliedWindow.getNavigationBarColor();
+                appliedUiFlags = appliedWindow.getDecorView().getSystemUiVisibility();
+            }
+            appliedDialogId = dialogId;
+            final Snapshot fs = s;
+            final android.content.res.Resources fres = res;
+            applySystemBars(fs);
+            // Telegram applies its wallpaper and bar colors after onResume; repeat
+            // the chrome pass once so the custom background wins.
+            AndroidUtilities.runOnUIThread(() -> {
+                if (applied && appliedDialogId == dialogId) {
+                    applySystemBars(fs);
+                    if (activity.themeDelegate != null) {
+                        activity.themeDelegate.setOxWallpaperDrawable(makeBackground(fs, fres));
+                    }
+                }
+            }, 500);
+            AndroidUtilities.runOnUIThread(() -> {
+                if (applied && appliedDialogId == dialogId) {
+                    listView.setBackground(makeBackground(fs, fres));
+                }
+            }, 1600);
             if (Theme.chat_msgTextPaint != null) {
-                if (!applied) originalTextSize = Theme.chat_msgTextPaint.getTextSize();
-                Theme.chat_msgTextPaint.setTextSize(AndroidUtilities.dp(SharedConfig.fontSize * fontScale()));
+                if (!applied) {
+                    originalTextSize = Theme.chat_msgTextPaint.getTextSize();
+                    originalTextColor = Theme.chat_msgTextPaint.getColor();
+                    originalTypeface = Theme.chat_msgTextPaint.getTypeface();
+                }
+                Theme.chat_msgTextPaint.setTextSize(AndroidUtilities.dp(SharedConfig.fontSize * s.fontScale));
+                if (s.textColor != 0) Theme.chat_msgTextPaint.setColor(s.textColor);
+                Typeface tf = typefaceFrom(s.fontPath);
+                if (tf != null) Theme.chat_msgTextPaint.setTypeface(tf);
+            }
+            if (!applied) {
+                if (Theme.chat_msgTextCodePaint != null) {
+                    originalCodeColor = Theme.chat_msgTextCodePaint.getColor();
+                    originalCodeTypeface = Theme.chat_msgTextCodePaint.getTypeface();
+                }
+                if (Theme.chat_msgTextCode2Paint != null) {
+                    originalCode2Color = Theme.chat_msgTextCode2Paint.getColor();
+                    originalCode2Typeface = Theme.chat_msgTextCode2Paint.getTypeface();
+                }
+                if (Theme.chat_msgTextCode3Paint != null) {
+                    originalCode3Color = Theme.chat_msgTextCode3Paint.getColor();
+                    originalCode3Typeface = Theme.chat_msgTextCode3Paint.getTypeface();
+                }
+            }
+            Typeface codeTf = typefaceFrom(s.codeFontPath);
+            if (codeTf != null) {
+                if (Theme.chat_msgTextCodePaint != null) Theme.chat_msgTextCodePaint.setTypeface(codeTf);
+                if (Theme.chat_msgTextCode2Paint != null) Theme.chat_msgTextCode2Paint.setTypeface(codeTf);
+                if (Theme.chat_msgTextCode3Paint != null) Theme.chat_msgTextCode3Paint.setTypeface(codeTf);
+            }
+            if (s.textColor != 0) {
+                if (Theme.chat_msgTextCodePaint != null) Theme.chat_msgTextCodePaint.setColor(s.textColor);
+                if (Theme.chat_msgTextCode2Paint != null) Theme.chat_msgTextCode2Paint.setColor(s.textColor);
+                if (Theme.chat_msgTextCode3Paint != null) Theme.chat_msgTextCode3Paint.setColor(s.textColor);
             }
             if (listView instanceof androidx.recyclerview.widget.RecyclerView) {
                 androidx.recyclerview.widget.RecyclerView.Adapter a = ((androidx.recyclerview.widget.RecyclerView) listView).getAdapter();
@@ -278,30 +751,83 @@ public class OxChatTheme {
         }
     }
 
+    private static Typeface typefaceFrom(String path) {
+        if (path == null || path.isEmpty()) return null;
+        if ("serif".equals(path)) return Typeface.SERIF;
+        if ("monospace".equals(path)) return Typeface.MONOSPACE;
+        try {
+            File f = new File(path);
+            return f.isFile() ? Typeface.createFromFile(f) : null;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static void applySystemBars(Snapshot s) {
+        if (appliedWindow == null) return;
+        appliedWindow.setStatusBarColor(s.background);
+        appliedWindow.setNavigationBarColor(s.background);
+        int flags = appliedUiFlags;
+        boolean light = luminance(s.background) > 0.45;
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            if (light) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            else flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        }
+        appliedWindow.getDecorView().setSystemUiVisibility(flags);
+    }
+
     public static void restoreChat(View listView) {
         if (!applied) return;
         try {
             if (Theme.chat_msgInDrawable != null) {
                 Theme.chat_msgInDrawable.overrideColor = null;
                 Theme.chat_msgInDrawable.setOverrideRoundRadius(0);
+                Theme.chat_msgInDrawable.setOverrideBorder(0, 0);
             }
             if (Theme.chat_msgOutDrawable != null) {
                 Theme.chat_msgOutDrawable.overrideColor = null;
                 Theme.chat_msgOutDrawable.setOverrideRoundRadius(0);
+                Theme.chat_msgOutDrawable.setOverrideBorder(0, 0);
             }
             if (Theme.chat_msgInSelectedDrawable != null) {
                 Theme.chat_msgInSelectedDrawable.overrideColor = null;
                 Theme.chat_msgInSelectedDrawable.setOverrideRoundRadius(0);
+                Theme.chat_msgInSelectedDrawable.setOverrideBorder(0, 0);
             }
             if (Theme.chat_msgOutSelectedDrawable != null) {
                 Theme.chat_msgOutSelectedDrawable.overrideColor = null;
                 Theme.chat_msgOutSelectedDrawable.setOverrideRoundRadius(0);
+                Theme.chat_msgOutSelectedDrawable.setOverrideBorder(0, 0);
             }
-            if (Theme.chat_msgTextPaint != null && originalTextSize > 0) {
-                Theme.chat_msgTextPaint.setTextSize(originalTextSize);
+            if (Theme.chat_msgTextPaint != null) {
+                if (originalTextSize > 0) Theme.chat_msgTextPaint.setTextSize(originalTextSize);
+                Theme.chat_msgTextPaint.setColor(originalTextColor);
+                Theme.chat_msgTextPaint.setTypeface(originalTypeface);
+            }
+            if (Theme.chat_msgTextCodePaint != null) {
+                Theme.chat_msgTextCodePaint.setColor(originalCodeColor);
+                Theme.chat_msgTextCodePaint.setTypeface(originalCodeTypeface);
+            }
+            if (Theme.chat_msgTextCode2Paint != null) {
+                Theme.chat_msgTextCode2Paint.setColor(originalCode2Color);
+                Theme.chat_msgTextCode2Paint.setTypeface(originalCode2Typeface);
+            }
+            if (Theme.chat_msgTextCode3Paint != null) {
+                Theme.chat_msgTextCode3Paint.setColor(originalCode3Color);
+                Theme.chat_msgTextCode3Paint.setTypeface(originalCode3Typeface);
             }
             if (listView != null) {
-                listView.setBackground(null);
+                appliedRoot = null;
+                if (activityThemeDelegate != null) {
+                    activityThemeDelegate.clearOxWallpaperDrawable();
+                    activityThemeDelegate = null;
+                }
+                if (appliedWindow != null) {
+                    appliedWindow.setStatusBarColor(appliedStatusColor);
+                    appliedWindow.setNavigationBarColor(appliedNavColor);
+                    appliedWindow.getDecorView().setSystemUiVisibility(appliedUiFlags);
+                    appliedWindow = null;
+                }
                 if (listView instanceof androidx.recyclerview.widget.RecyclerView) {
                     androidx.recyclerview.widget.RecyclerView.Adapter a = ((androidx.recyclerview.widget.RecyclerView) listView).getAdapter();
                     if (a != null) a.notifyDataSetChanged();
@@ -313,8 +839,28 @@ public class OxChatTheme {
         applied = false;
     }
 
+    public static void setBackgroundImage(InputStream in) throws Exception {
+        File f = new File(ApplicationLoader.applicationContext.getFilesDir(), BG_FILE);
+        FileOutputStream out = new FileOutputStream(f);
+        byte[] buf = new byte[16384];
+        int n;
+        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+        out.close();
+        in.close();
+        setBackgroundImage(f.getAbsolutePath());
+    }
+
     private static int withAlpha(int color, int alpha) {
         return (color & 0x00FFFFFF) | (Math.min(255, Math.max(0, alpha)) << 24);
+    }
+
+    private static int clamp(int v, int min, int max) {
+        return Math.max(min, Math.min(max, v));
+    }
+
+    private static boolean has(JSONObject o, String... keys) {
+        for (String k : keys) if (o.has(k)) return true;
+        return false;
     }
 
     private static int color(JSONObject o, String... keys) {

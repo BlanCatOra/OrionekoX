@@ -2462,6 +2462,25 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
   `e22563e1c6e3…`）；debug `dist/OrionekoX-0.9.1-debug-arm64-x64.apk`（sha256
   `15c1cc7a73eb…`）。详见 `docs/qa-0.9.1.md`。
 
+## 5.118 alpha 0.10.0 —— 按 Agent 主题、边框/字体/渐变与导出预览（2026-10-27 04:00–05:20）
+
+- 外观模型升级为快照（`Snapshot`）：全局 SharedPreferences + 按 Agent 的
+  `files/ox_chat_agents/agent_<tgId>.json`；智能体长按菜单新增「Agent 会话外观」，
+  支持「应用到全部 Agent」，未覆盖时回退全局。实测 C2 浅色/白气泡与 R2C Card 全局
+  深色并存，隔离生效。
+- 背景支持纯色 / 双色渐变（3 方向）/ 图片，独立背景不透明度与暗化；状态栏/导航栏
+  跟随主题。新增 `ThemeDelegate.setOxWallpaperDrawable` 直接替换聊天壁纸 drawable。
+- 气泡支持实心/磨砂、边框颜色与 1–3dp 宽度、独立文字颜色；新增 WCAG 对比度提示。
+- 字体支持聊天/代码字体（系统/衬线/等宽/导入 TTF）与 0.9–1.3× 字号；导入字体校验后
+  存入 `files/oxfonts/`。
+- 导入改为主线程摘要预览，确认后才写入；新增当前主题 JSON 导出（SAF）；原生模式新增
+  「打开 Telegram 聊天主题」入口。
+- 设备验证：按 Agent 隔离、边框/磨砂/衬线、原生入口与重置均通过；`-gpu off` 模拟器
+  下 C2 浅色背景仍隐约透出 emoji 壁纸纹理（合成限制），列入真机复验。
+- 产物：`dist/OrionekoX-0.10.0-alpha-arm64-x64.apk`（versionCode 1409，sha256
+  `4a08b638e9c5…`）；debug `dist/OrionekoX-0.10.0-debug-arm64-x64.apk`（sha256
+  `19faa4252589…`）。详见 `docs/qa-0.10.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

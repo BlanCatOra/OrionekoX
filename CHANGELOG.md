@@ -4,6 +4,17 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.10.0 — 2026-10-27
+
+- Per-agent chat appearances with global fallback and “apply to all agents”.
+- Solid/gradient/image backgrounds, independent background opacity and dimming,
+  system bar colors and a wallpaper-layer override.
+- Solid/frosted bubbles, bubble borders, text color and a WCAG contrast hint.
+- Chat/code font families with TTF import; JSON import preview before applying;
+  theme export to a file; shortcut to Telegram's native chat theme.
+- Agent chats retry an empty first history pass (0.9.1) and file-picker images
+  become photo bubbles with vision.
+
 ## 0.9.1 — 2026-10-27
 
 - Agent chats no longer reopen blank: stale scroll positions are ignored, an empty

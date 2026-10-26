@@ -65,7 +65,20 @@ public class MessageDrawable extends Drawable {
     public static MotionBackgroundDrawable[] motionBackground = new MotionBackgroundDrawable[3];
 
     public Integer overrideColor = null;
+    public Integer overrideBorderColor = null;
+    public int overrideBorderWidth;
+    private final Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     public boolean shadow = true;
+
+    public void setOverrideBorder(int color, int widthDp) {
+        Integer newColor = color == 0 || widthDp <= 0 ? null : color;
+        if (overrideBorderWidth == widthDp && (newColor == null ? overrideBorderColor == null : newColor.equals(overrideBorderColor))) {
+            return;
+        }
+        overrideBorderColor = newColor;
+        overrideBorderWidth = Math.max(0, widthDp);
+        invalidateSelf();
+    }
 
     public void setOverrideRoundRadius(int radius) {
         if (overrideRoundRadius == radius) return;
@@ -625,6 +638,12 @@ public class MessageDrawable extends Drawable {
         }
 
         canvas.drawPath(path, p);
+        if (paintToUse == null && overrideBorderColor != null && overrideBorderWidth > 0) {
+            borderPaint.setStyle(Paint.Style.STROKE);
+            borderPaint.setStrokeWidth(dp(overrideBorderWidth));
+            borderPaint.setColor(overrideBorderColor);
+            canvas.drawPath(path, borderPaint);
+        }
         if (gradientShader != null && isSelected && paintToUse == null) {
             int color = getColor(Theme.key_chat_outBubbleGradientSelectedOverlay);
             selectedPaint.setColor(ColorUtils.setAlphaComponent(color, (int) (Color.alpha(color) * alpha / 255f)));

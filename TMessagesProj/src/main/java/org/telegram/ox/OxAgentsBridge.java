@@ -976,6 +976,12 @@ public class OxAgentsBridge {
         return null;
     }
 
+    /** Stable key for per-agent appearance overrides; null for non-agent dialogs. */
+    public static String agentKeyForDialog(long dialogId) {
+        OxAgent a = agentByTgId(dialogId);
+        return a == null ? null : a.id;
+    }
+
     /** Inserts a dialog row for the agent so the chat list has something to show. */
     private static void ensureDialogRow(long dialogId) {
         MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
