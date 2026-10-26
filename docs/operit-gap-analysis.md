@@ -466,3 +466,14 @@ of a separate automation graph:
 - Rewrote each from the English source with natural spacing/punctuation and also
   fixed the Premium-boosting sentences. Pack 57; the private-use count is now zero
   and the Messages privacy screen was verified on device.
+
+### 0.8.80 archive round-trip and build hygiene
+
+- Verified the full archive flow on a local group chat: select → Archive (toast
+  “对话已归档。”, archived row with unread count), open the archive folder, select
+  again → Unarchive. The chat returned to the main list with history intact.
+- Rewrote the archive help copy (“擦掉/未同步的聊天” machine translations) into
+  natural Chinese. Pack 58.
+- Added `org.gradle.vfs.watch=false` to `gradle.properties`: the Gradle daemon had
+  been spinning at ~100% CPU for 10+ minutes after every build; with VFS watching
+  disabled the post-build CPU is 0%.
