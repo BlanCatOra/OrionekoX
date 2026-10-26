@@ -444,3 +444,13 @@ of a separate automation graph:
   like “( E)”: live-stream/voice-chat endings, votes, privacy counters, price
   breakdowns, and the Mini Apps catalogue description. The AI style editor now
   uses the “海盗” example instead of “Pilate/海象”. Packs 54–55.
+
+### 0.8.78 privacy and gallery copy
+
+- Replaced the garbled “请检查url=值 (帮助)Telegram户口.” with “查看已登录你
+  Telegram 帐号的设备列表。”, fixed `PrivacyInvites` (“请” → “邀请”) and the
+  groups/channels explanation, and rewrote the account-deletion note in natural
+  second person.
+- Normalized 13 “画廊” to “相册”, 11 “私人聊天” to “私聊”, and “组” to “群组”,
+  including the save-to-gallery hints that previously mixed clauses and a stray
+  backslash. Pack 56; verified on the privacy screen and in the runtime pack.
