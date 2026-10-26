@@ -720,6 +720,17 @@ public class OxBuiltinTools {
         });
 
         register(new OxTool() {
+            @Override public String name() { return "ui_input_text"; }
+            @Override public String description() { return "Type text into the focused or first editable field. Optional target selects a field by visible text, content description or hint."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"text", "target"}); }
+            @Override public String execute(JSONObject args) {
+                if (!args.has("text")) return "error: text is required";
+                return OxAccessibilityService.inputText(args.optString("target", ""), args.optString("text", ""));
+            }
+        });
+
+        register(new OxTool() {
             @Override public String name() { return "ui_find_text"; }
             @Override public String description() { return "Find visible text by scrolling the active scrollable container up to max_scrolls times. Set direction=backward to scroll up. Returns label, bounds and clickable flag without clicking."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }

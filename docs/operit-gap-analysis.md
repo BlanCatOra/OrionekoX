@@ -78,11 +78,12 @@ gaps that were previously listed as "gap":
 
 1. **Android UI automation — done v1** — `ui_dump`, `ui_tap`, `ui_long_press`,
    `ui_swipe`, `ui_screenshot`, `ui_key`, `ui_tap_text`, `ui_long_press_text`,
-   `ui_find_text`, `ui_scroll_tap_text` (forward/backward) are implemented through
-   the accessibility service and ask-by-default; `app_open` launches installed apps
-   by package or label and `ui_wait_text` waits for a target label to appear. Long-list scroll+click, both long-press variants and
-   cross-app launch are verified end-to-end; the remaining refinements are node
-   caching and arbitrary key events via ADB/root.
+   `ui_find_text`, `ui_scroll_tap_text` (forward/backward), `ui_input_text` are
+   implemented through the accessibility service and ask-by-default; `app_open`
+   launches installed apps by package or label and `ui_wait_text` waits for a target
+   label to appear. Long-list scroll+click, both long-press variants, cross-app
+   launch, and the full open → tap → type chain are verified end-to-end; the
+   remaining refinements are node caching and arbitrary key events via ADB/root.
 2. **Executable ToolPkg / JS/Wasm packages** — skills are readable now; executing
    package code needs a sandbox/runtime.
 3. **Local stdio MCP runtime** — Operit's catalogue is mostly Python/Node/npx.
@@ -378,3 +379,18 @@ of a separate automation graph:
   `opened Settings`, then `ui_wait_text(Settings, 8000)` returned
   `found "Settings" bounds=[63,401][408,528]`, with Settings as the resumed activity.
   The test workflow and temporary Auto policies were removed afterwards.
+
+### 0.8.70 ui_input_text
+
+- Added `ui_input_text(text, target)`: locates an editable field by text,
+  content-description or hint (exact → contains → focused field → first editable),
+  focuses it and applies `ACTION_SET_TEXT`; returns `typed into "<label>"` or a
+  specific error. Permission defaults to Ask.
+- Verified the three-step cross-app chain on Yuki: `app_open(Settings)` returned
+  `opened Settings`, `ui_tap_text("Search settings")` clicked
+  `bounds=[200,624][553,695]`, and `ui_input_text("battery")` returned
+  `typed into "Search settings"`. A `uiautomator dump` confirmed the search field
+  `EditText text='battery'` and filtered Battery Saver / Battery usage results.
+- Note: reinstalling or force-stopping the app can unbind the accessibility service
+  (the secure setting becomes null); re-enabling it restores automation. Temporary
+  Auto policies and the test workflow were reverted afterwards.
