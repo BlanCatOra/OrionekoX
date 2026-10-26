@@ -84,6 +84,8 @@ public class ProfileActionsView extends View {
     public static final int MODE_USER = 0;
     public static final int MODE_CHANNEL = 1;
     public static final int MODE_BOT = 2;
+    /** Local synthetic agents are bots in the model but cannot be stopped/blocked. */
+    public boolean hideStop;
     public static final int MODE_GROUP = 3;
     public static final int MODE_FORUM = 4;
     public static final int MODE_TOPIC = 5;
@@ -764,7 +766,9 @@ public class ProfileActionsView extends View {
                 insertIfAvailable(out, KEY_MESSAGE);
                 insertIfAvailable(out, KEY_NOTIFICATION);
                 insertIfAvailable(out, KEY_SHARE);
-                out.add(getOrCreate(KEY_STOP));
+                if (!hideStop) {
+                    out.add(getOrCreate(KEY_STOP));
+                }
                 break;
         }
 

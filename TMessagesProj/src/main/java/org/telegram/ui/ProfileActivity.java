@@ -2306,6 +2306,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private void setActionsMode() {
         if (actionsView == null) return;
 
+        actionsView.hideStop = isBot && org.telegram.ox.OxAgentsBridge.isAgentDialog(userId);
         if (myProfile) {
             actionsView.mode = ProfileActionsView.MODE_MY_PROFILE;
         } else if (isTopic) {
