@@ -12020,4 +12020,7 @@
     <string name="OxMcpImportPreview">Will import %1$d server(s), skip %2$d</string>
     <string name="OxToolsPolicyHint">Tap to cycle Auto / Ask / Deny. Long-press to restore the default.</string>
     <string name="OxToolsPolicyResetDone">Default policy restored</string>
+    <string name="OxImportCard">Import SillyTavern character card (JSON)</string>
+    <string name="OxAgentCardImported">Imported character card: %1$s</string>
+    <string name="OxAgentCardFailed">Character card import failed: %1$s</string>
 </resources>
