@@ -708,6 +708,18 @@ public class OxBuiltinTools {
         });
 
         register(new OxTool() {
+            @Override public String name() { return "ui_wait_text"; }
+            @Override public String description() { return "Wait up to timeout_ms (default 5000, max 15000) for visible text or a content description to appear. Returns the label and bounds, or a timeout message."; }
+            @Override public String defaultPolicy() { return POLICY_ASK; }
+            @Override public JSONObject parameters() { return schema(new String[]{"text", "timeout_ms"}); }
+            @Override public String execute(JSONObject args) {
+                String text = args.optString("text", "").trim();
+                if (text.isEmpty()) return "error: text is required";
+                return OxAccessibilityService.waitForText(text, intArg(args, "timeout_ms"));
+            }
+        });
+
+        register(new OxTool() {
             @Override public String name() { return "ui_find_text"; }
             @Override public String description() { return "Find visible text by scrolling the active scrollable container up to max_scrolls times. Set direction=backward to scroll up. Returns label, bounds and clickable flag without clicking."; }
             @Override public String defaultPolicy() { return POLICY_ASK; }

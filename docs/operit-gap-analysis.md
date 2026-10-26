@@ -80,7 +80,7 @@ gaps that were previously listed as "gap":
    `ui_swipe`, `ui_screenshot`, `ui_key`, `ui_tap_text`, `ui_long_press_text`,
    `ui_find_text`, `ui_scroll_tap_text` (forward/backward) are implemented through
    the accessibility service and ask-by-default; `app_open` launches installed apps
-   by package or label. Long-list scroll+click, both long-press variants and
+   by package or label and `ui_wait_text` waits for a target label to appear. Long-list scroll+click, both long-press variants and
    cross-app launch are verified end-to-end; the remaining refinements are node
    caching and arbitrary key events via ADB/root.
 2. **Executable ToolPkg / JS/Wasm packages** — skills are readable now; executing
@@ -368,3 +368,13 @@ of a separate automation graph:
   returned `opened Settings (com.android.settings)` and `topResumedActivity` became
   `com.android.settings/.Settings`. The test workflow and temporary Auto policy were
   removed afterwards; no alarms or crashes.
+
+### 0.8.69 ui_wait_text
+
+- Added `ui_wait_text(text, timeout_ms)`: polls the active window every 400 ms, with
+  exact then contains matching plus the framework text index, for up to 15 seconds.
+  Permission defaults to Ask.
+- Verified the cross-app chain in a background workflow: `app_open(Settings)` returned
+  `opened Settings`, then `ui_wait_text(Settings, 8000)` returned
+  `found "Settings" bounds=[63,401][408,528]`, with Settings as the resumed activity.
+  The test workflow and temporary Auto policies were removed afterwards.

@@ -301,6 +301,81 @@ public class OxAccessibilityService extends AccessibilityService {
         return result[0] == null ? "timeout" : result[0];
     }
 
+    /** Polls the active window until the text appears or timeout_ms elapses. */
+    public static String waitForText(String query, int timeoutMs) {
+        OxAccessibilityService service = instance;
+        if (service == null) return "error: accessibility service is not enabled";
+        if (query == null || query.trim().isEmpty()) return "error: text is required";
+        final String needle = query.trim().toLowerCase();
+        final long timeout = Math.max(500, Math.min(15000, timeoutMs <= 0 ? 5000 : timeoutMs));
+        final long deadline = System.currentTimeMillis() + timeout;
+        while (System.currentTimeMillis() < deadline) {
+            final String[] out = new String[1];
+            final CountDownLatch latch = new CountDownLatch(1);
+            AndroidUtilities.runOnUIThread(() -> {
+                try {
+                    AccessibilityNodeInfo root = service.activeRoot();
+                    if (root == null) return;
+                    java.util.ArrayList<AccessibilityNodeInfo> nodes = new java.util.ArrayList<>();
+                    collect(root, nodes, 0);
+                    java.util.ArrayList<AccessibilityNodeInfo> matches = new java.util.ArrayList<>();
+                    try {
+                        java.util.List<AccessibilityNodeInfo> byText =
+                                root.findAccessibilityNodeInfosByText(query.trim());
+                        if (byText != null) {
+                            for (AccessibilityNodeInfo n : byText) {
+                                if (n != null && !matches.contains(n)) matches.add(n);
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                    for (int pass = 0; pass < 2; pass++) {
+                        for (AccessibilityNodeInfo node : nodes) {
+                            CharSequence text = node.getText();
+                            CharSequence desc = node.getContentDescription();
+                            String label = text != null && text.length() > 0 ? text.toString()
+                                    : (desc != null ? desc.toString() : null);
+                            if (label == null) continue;
+                            String lower = label.toLowerCase();
+                            boolean hit = pass == 0 ? lower.equals(needle) : lower.contains(needle);
+                            if (hit && !matches.contains(node)) matches.add(node);
+                        }
+                        if (!matches.isEmpty()) break;
+                    }
+                    if (!matches.isEmpty()) {
+                        AccessibilityNodeInfo match = matches.get(0);
+                        CharSequence text = match.getText();
+                        CharSequence desc = match.getContentDescription();
+                        String label = text != null && text.length() > 0 ? text.toString()
+                                : (desc != null ? desc.toString() : "");
+                        Rect r = new Rect();
+                        match.getBoundsInScreen(r);
+                        out[0] = "found \"" + label.replace('\n', ' ') + "\" bounds=["
+                                + r.left + "," + r.top + "][" + r.right + "," + r.bottom + "]";
+                    }
+                } catch (Throwable t) {
+                    out[0] = "error: " + t.getMessage();
+                } finally {
+                    latch.countDown();
+                }
+            });
+            try {
+                latch.await(4, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return "timeout waiting for: " + query;
+            }
+            if (out[0] != null) return out[0];
+            try {
+                Thread.sleep(400);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return "timeout waiting for: " + query;
+    }
+
     public static String tapText(String query) {
         OxAccessibilityService service = instance;
         if (service == null) return "error: accessibility service is not enabled";

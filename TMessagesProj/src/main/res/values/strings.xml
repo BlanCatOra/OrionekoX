@@ -11908,6 +11908,7 @@
     <string name="OxToolDescUiScreenshot">Capture the screen to a PNG file.</string>
     <string name="OxToolDescUiTapText">Find visible text and click it.</string>
     <string name="OxToolDescUiFindText">Find text, scrolling if needed.</string>
+    <string name="OxToolDescUiWaitText">Wait for text to appear on screen.</string>
     <string name="OxToolDescUiScrollTapText">Scroll until text is found, then click it.</string>
     <string name="OxAgentBadgeLocal">LOCAL</string>
     <string name="OxWorkspace">Workspace</string>
