@@ -474,6 +474,6 @@ of a separate automation graph:
   again → Unarchive. The chat returned to the main list with history intact.
 - Rewrote the archive help copy (“擦掉/未同步的聊天” machine translations) into
   natural Chinese. Pack 58.
-- Added `org.gradle.vfs.watch=false` to `gradle.properties`: the Gradle daemon had
-  been spinning at ~100% CPU for 10+ minutes after every build; with VFS watching
-  disabled the post-build CPU is 0%.
+- Corrected a false alarm: `ps` reported ~100% CPU for the Gradle daemon because that
+  column is a lifetime average; sampling `/proc/<pid>/stat` over 5 seconds shows 0
+  ticks while idle. The temporary `org.gradle.vfs.watch=false` change was reverted.
