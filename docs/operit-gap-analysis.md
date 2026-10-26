@@ -573,3 +573,10 @@ of a separate automation graph:
 - Corrected the account page’s misuse of “注销” for logging out: logout now reads
   “退出登录会使所有加密聊天失效。”, support reads “联系客服 / 退出登录通常并不能解决
   问题。”, and session termination uses “终止…会话” instead of “注销”. Pack 63.
+
+### 0.8.91 hide Stop on agent profiles
+
+- Agent profiles still exposed the bot “Stop” action, which calls
+  `onBlockContactClicked(true)` for a synthetic user. `ProfileActionsView` now has a
+  `hideStop` flag set by `ProfileActivity.setActionsMode` when the bot id belongs to
+  a local agent, so the action row shows only 消息 / 静音 / 共享. Real bots keep Stop.
