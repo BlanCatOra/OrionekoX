@@ -11972,6 +11972,8 @@
     <string name="OxWorkflowEnabled">Enabled</string>
     <string name="OxWorkflowPaused">Paused</string>
     <string name="OxWorkflowRunNow">Run now</string>
+    <string name="OxWorkflowDuplicate">Duplicate</string>
+    <string name="OxWorkflowDuplicated">Duplicated %1$s (paused)</string>
     <string name="OxWorkflowEnable">Enable</string>
     <string name="OxWorkflowPause">Pause</string>
     <string name="OxWorkflowTapHint">Tap to edit. Long-press to run, pause or delete.</string>
