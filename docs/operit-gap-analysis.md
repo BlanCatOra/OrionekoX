@@ -628,3 +628,10 @@ of a separate automation graph:
   checked+disabled because she is already a participant. Message long-press shows
   回复/复制/转发/置顶/举报/删除. No membership or message changes; details in
   `docs/qa-group-0.8.100.md`.
+
+### 0.8.100 skills and terminal-settings QA
+
+- Skills library remains read-only as described: one 示例技能 entry, raw SKILL.md with
+  YAML frontmatter shown in a dialog. Terminal settings exposes 5 color schemes and
+  12/14/16/18 sp font sizes plus the shared-storage note; values were not changed.
+  Details: `docs/qa-skills-terminal-0.8.100.md`.
