@@ -11869,4 +11869,6 @@
     <string name="OxAppearanceResetDone">已恢复 Telegram 默认强调色</string>
     <string name="OxMcpImportFile">从文件</string>
     <string name="OxMcpImportPreview">将导入 %1$d 个服务器，跳过 %2$d 个</string>
+    <string name="OxToolsPolicyHint">点击切换 自动/询问/禁止；长按恢复默认。</string>
+    <string name="OxToolsPolicyResetDone">已恢复默认策略</string>
 </resources>

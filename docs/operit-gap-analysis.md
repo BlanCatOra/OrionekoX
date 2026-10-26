@@ -746,3 +746,12 @@ of a separate automation graph:
   first names/URLs, stdio note). Writes happen only after confirmation; cancel leaves
   the store untouched. Re-importing the same file produced no duplicate (URL-based).
 - Verified with one HTTP server (headers) and one stdio entry; test server removed.
+
+### 0.8.113 tool-policy reset
+
+- Long-pressing a tool row removes the per-agent policy override instead of cycling,
+  restoring the tool default; a footer hint explains both gestures. Verified `get_time`
+  going from “自动” to “默认 · 自动”.
+- Markdown runtime remains unverified: the Telegram input layer strips `**` before send
+  and the test model does not emit markers. Assistant-side entity conversion is
+  code-reviewed only.

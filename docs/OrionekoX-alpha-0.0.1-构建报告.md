@@ -2373,6 +2373,18 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `bf1007887d1b…`）；debug `dist/OrionekoX-0.8.112-debug-arm64-x64.apk`（sha256
 `27ce6578064d…`）。
 
+## 5.112 alpha 0.8.113 —— 工具权限恢复默认（2026-10-26 20:45–20:58）
+
+- 工具行保留点击切换 自动/询问/禁止；新增长按删除该 Agent 的覆盖、恢复工具默认，
+  并加页脚提示。实测 `get_time` 从“自动”长按后变为“默认 · 自动”，提示“已恢复默认策略”。
+- Markdown 运行期仍无法确定性验证：输入层的 `**bold**` 在发送前被消化，模型也不主动
+  输出标记；助理侧 `applyMarkdown` 仅完成代码审查，未宣称视觉通过。
+- 中文包 71；无 FATAL/ANR。记录见 `OrionekoX/docs/qa-0.8.113.md`。
+
+**产物**：`dist/OrionekoX-0.8.113-alpha-arm64-x64.apk`（versionCode 1289，sha256
+`50a55e0ef61c…`）；debug `dist/OrionekoX-0.8.113-debug-arm64-x64.apk`（sha256
+`bab445258e90…`）。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

@@ -111,7 +111,7 @@ public class OxToolsActivity extends BaseFragment {
                         t.name(), toolDesc(t), policyLabel(t)));
             }
         }
-        items.add(UItem.asShadow(null));
+        items.add(UItem.asShadow(LocaleController.getString(R.string.OxToolsPolicyHint)));
     }
 
     private void addPermission(ArrayList<UItem> items, int index, String title, String[] status) {
@@ -141,6 +141,12 @@ public class OxToolsActivity extends BaseFragment {
     }
 
     private boolean onLongClick(UItem item, View view, int position, float x, float y) {
+        if (item.id >= TOOL_BASE && item.id - TOOL_BASE < toolList.size()) {
+            resetPolicy(toolList.get(item.id - TOOL_BASE));
+            toast(LocaleController.getString(R.string.OxToolsPolicyResetDone));
+            rebuild();
+            return true;
+        }
         return false;
     }
 
@@ -270,6 +276,17 @@ public class OxToolsActivity extends BaseFragment {
         if (OxTool.POLICY_DENY.equals(p)) return LocaleController.getString(R.string.OxToolsPolicyDeny);
         if (OxTool.POLICY_ASK.equals(p)) return LocaleController.getString(R.string.OxToolsPolicyAsk);
         return LocaleController.getString(R.string.OxToolsPolicyAuto);
+    }
+
+    private void resetPolicy(OxTool tool) {
+        if (selectedAgent == null) return;
+        try {
+            JSONObject policies = selectedAgent.toolsPolicy == null ? new JSONObject() : selectedAgent.toolsPolicy;
+            policies.remove(tool.name());
+            selectedAgent.toolsPolicy = policies;
+            OxAgentStore.saveAgent(selectedAgent);
+        } catch (Exception ignored) {
+        }
     }
 
     private void cyclePolicy(OxTool tool) {
