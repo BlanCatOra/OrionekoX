@@ -3441,7 +3441,7 @@
     <string name="DynamicPackOrderOffInfo">每次使用贴纸时,粘贴包将不再优先放置.</string>
     <string name="Edit">编辑</string>
     <string name="EditAccountInfo2">账户</string>
-    <string name="EditAccountInfoHeader">您的信息</string>
+    <string name="EditAccountInfoHeader">你的信息</string>
     <string name="EditAdmin">修改管理权限</string>
     <string name="EditAdminAddAdmins">添加新的管理员</string>
     <string name="EditAdminAddUsers">添加用户</string>
@@ -3532,8 +3532,8 @@
     <string name="EditProfileBirthday">你的生日</string>
     <string name="EditProfileBirthdayAdd">添加</string>
     <string name="EditProfileBirthdayButton">保存</string>
-    <string name="EditProfileBirthdayInfo">选择谁可以看到你的生日**设置。**</string>
-    <string name="EditProfileBirthdayInfoContacts">只有你的联系人才能看到你的生日**变动>**</string>
+    <string name="EditProfileBirthdayInfo">在**设置**中选择谁可以看到你的生日。</string>
+    <string name="EditProfileBirthdayInfoContacts">只有你的联系人可以看到你的生日。**更改 >**</string>
     <string name="EditProfileBirthdayRemove">删除出生日期</string>
     <string name="EditProfileBirthdayText">出生日期</string>
     <string name="EditProfileBirthdayTitle">出生日期</string>
@@ -3550,7 +3550,7 @@
     <string name="EditProfileHours">更改开放时间</string>
     <string name="EditProfileLastName">用户名</string>
     <string name="EditProfileLocation">更改位置</string>
-    <string name="EditProfileName">你的名字( E)</string>
+    <string name="EditProfileName">你的名字</string>
     <string name="EditSticker">编辑标签</string>
     <string name="EditStickerPack">编辑粘贴包</string>
     <string name="EditStickers">编辑标签</string>
