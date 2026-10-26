@@ -595,3 +595,14 @@ of a separate automation graph:
   The “添加到群组或频道” row and its “manage a group or channel” hint are also
   suppressed for agent ids, since they describe a management bot rather than a local
   conversational agent. Real bots/contacts keep the row.
+
+### 0.8.95–0.8.98 local-group profile
+
+- Local-group profiles were empty after restart because ChatFull existed only in
+  memory. `ensureLocalGroupFull(chatId)` now rebuilds participants from
+  `OxGroupStore`, puts the full into `MessagesController` and persists it with
+  `MessagesStorage.updateChatInfo`; creation also persists immediately, and
+  `ProfileActivity` calls the rebuild before reading ChatFull.
+- Verified 添加成员, the 2-member list and the Yuki Waifu row appear. Residual: the
+  creator’s own row is still blank (only the 创建者 badge); needs a targeted look at
+  ProfileActivity’s self-participant resolution.
