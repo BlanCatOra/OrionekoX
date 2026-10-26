@@ -731,3 +731,11 @@ of a separate automation graph:
   writes them back and posts `replaceMessagesObjects`.
 - Verified by renaming a copy to `RenamedCopy`; the chat shows the new greeting and the
   log reports `onAgentRenamed updated greetings ... count=1`.
+
+### 0.8.111 MCP file import and zip skills verified
+
+- MCP import dialog gained “从文件”; a Kelivo-style `mcpServers` JSON with one HTTP
+  server (headers) and one stdio entry imported the HTTP server, skipped stdio, and
+  refreshed the list. The test server was removed afterwards.
+- The zip skills path was verified end-to-end: a zip containing `ZipSkill/SKILL.md`
+  imported into `files/oxskills/ZipSkill/SKILL.md` and appeared in the list.

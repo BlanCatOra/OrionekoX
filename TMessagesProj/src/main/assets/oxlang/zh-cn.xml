@@ -11867,4 +11867,5 @@
     <string name="OxAppearanceImported">已应用主题：%1$s</string>
     <string name="OxAppearanceImportFailed">导入失败：%1$s</string>
     <string name="OxAppearanceResetDone">已恢复 Telegram 默认强调色</string>
+    <string name="OxMcpImportFile">从文件</string>
 </resources>
