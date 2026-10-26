@@ -499,3 +499,15 @@ of a separate automation graph:
 - Date patterns now use Chinese `M月d日 HH:mm` / `yyyy年M月d日 HH:mm`; the garbled
   “瓳” in the sticker-choosing state is gone. Pack 60; the pack contains zero
   `{\fn` occurrences and still parses 11,842 strings.
+
+### 0.8.82 QA local group and media
+
+- Environment: the frequent whole-emulator crashes on chat/archive/search were
+  SwiftShader rendering failures; `-gpu off` keeps chat, attachment picker and media
+  preview stable with no OrionekoX FATAL/ANR.
+- Local group reply still works (`onRound tools=0`, one reply, 已查看).
+- First successful media send: 2.7 KB PNG delivered to Yuki's `inbox/`; the agent
+  called `list_dir` and saw `1792983667815_ox_photo.png` (2745 B) and replied. The
+  bubble thumbnail still shows X / “0 KB / 2.7 KB”, so local document injection
+  needs an attachment-cache or local photo-size fix; delivery itself works.
+- Details: `docs/qa-media-0.8.82.md`.
