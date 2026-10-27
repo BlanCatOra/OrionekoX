@@ -12097,6 +12097,18 @@
     <string name="OxChatFontImportedDone">Font imported: %1$s</string>
     <string name="OxChatExport">Export theme package (.oxtheme)</string>
     <string name="OxChatExportDone">Theme exported</string>
+    <string name="OxChatImportBundle">Import preset bundle</string>
+    <string name="OxChatExportBundle">Export preset bundle</string>
+    <string name="OxChatBundleHint">.oxthemes · same names are skipped</string>
+    <string name="OxChatExportBundleInfo">All named presets, including backgrounds and fonts</string>
+    <string name="OxChatBundleExported">Preset bundle exported</string>
+    <string name="OxChatBundleExportFailed">Export failed: %1$s</string>
+    <string name="OxChatBundlePreview">Presets: %1$d</string>
+    <string name="OxChatBundleDuplicates">%1$d already exist or repeat and will be skipped</string>
+    <string name="OxChatBundleAssets">%1$d with backgrounds · %2$d with fonts</string>
+    <string name="OxChatBundleImported">Imported %1$d presets, skipped %2$d</string>
+    <string name="OxChatBundleEmpty">No presets available</string>
+    <string name="OxChatBundleInvalid">Not a valid OrionekoX preset bundle</string>
     <string name="OxChatReadability">Check text contrast</string>
     <string name="OxChatAutoPalette">Auto palette from background</string>
     <string name="OxChatAutoPaletteInfo">Generate bubbles, text and border from the wallpaper color</string>
@@ -12109,5 +12121,7 @@
     <string name="OxChatApplyAllDone">Applied to all agents</string>
     <string name="OxChatImportPreviewTitle">Import this appearance?</string>
     <string name="OxChatImportApply">Apply</string>
+    <string name="OxChatBundlePreviewTitle">Import this preset bundle?</string>
+    <string name="OxChatBundleApply">Import</string>
     <string name="OxChatAgentEntry">Agent chat appearance</string>
 </resources>

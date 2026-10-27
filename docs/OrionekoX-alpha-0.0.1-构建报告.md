@@ -2617,6 +2617,27 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `ac1f54faaa92…`）；debug `dist/OrionekoX-0.17.1-debug-arm64-x64.apk`（sha256
 `a4630952a316…`）。0.17.0 产物保留在 `dist/`。详见 `docs/qa-0.17.1.md`。
 
+## 5.127 alpha 0.18.0 —— 主题预设包 .oxthemes（2026-10-27 23:25–23:58）
+
+- 新增 `.oxthemes` 预设包：zip 内 `bundle.json`（格式/版本/预设数组）加每个
+  预设的背景图、聊天字体、代码字体资产；导出全部命名预设，导入前预览数量、
+  名称、同名跳过数与资产数。
+- 导入整包先校验再写盘：最多 100 个预设、单资产 8 MB、总资产 40 MB、zip 条目
+  300；同名预设跳过不覆盖；资产恢复到 app-private 新文件并改写快照路径；
+  写入失败删除本次创建的资产与预设文件。非法/损坏包直接拒绝且不写入。
+- 设备：`DarkSea`/`R2C-Image` 导出 506 B 包，重复导入提示 0/2，文件不变；
+  新建含背景图的 `BundleQA` 导出 4713 B（含 16360 B `background.img`），删除后
+  再导入 1/2，`BundleQA.json` 指向新资产，应用预设后背景正常；13 B 纯文本
+  `.oxthemes` 被拒绝，预设与资产均未变化。无 FATAL/ANR。
+- 修复中文包版本遗漏：修改字符串后未再提高 `OX_ZH_PACK_VERSION`，首轮安装显示
+  旧文案/英文；包版本 85→86 重建后，导入/导出提示、预览标题与确认按钮均为中文。
+- 版本规则：新增可携带资产的多预设包能力，按 minor 从 0.17.1 → 0.18.0，
+  versionCode 1809。
+
+**产物**：`dist/OrionekoX-0.18.0-alpha-arm64-x64.apk`（versionCode 1809，sha256
+`d9dbb96c518f…`）；debug `dist/OrionekoX-0.18.0-debug-arm64-x64.apk`（sha256
+`6cd3a82e130d…`）。详见 `docs/qa-0.18.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

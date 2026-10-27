@@ -11948,6 +11948,18 @@
     <string name="OxChatFontImportedDone">已导入字体：%1$s</string>
     <string name="OxChatExport">导出主题包（.oxtheme）</string>
     <string name="OxChatExportDone">主题已导出</string>
+    <string name="OxChatImportBundle">导入预设包</string>
+    <string name="OxChatExportBundle">导出预设包</string>
+    <string name="OxChatBundleHint">.oxthemes · 同名自动跳过</string>
+    <string name="OxChatExportBundleInfo">全部命名预设，含背景与字体</string>
+    <string name="OxChatBundleExported">预设包已导出</string>
+    <string name="OxChatBundleExportFailed">导出失败：%1$s</string>
+    <string name="OxChatBundlePreview">预设 %1$d 个：</string>
+    <string name="OxChatBundleDuplicates">已存在或同名 %1$d 个，导入时跳过</string>
+    <string name="OxChatBundleAssets">含背景图 %1$d 个 · 含字体 %2$d 个</string>
+    <string name="OxChatBundleImported">已导入 %1$d 个预设，跳过 %2$d 个</string>
+    <string name="OxChatBundleEmpty">没有可用的预设</string>
+    <string name="OxChatBundleInvalid">不是有效的 OrionekoX 预设包</string>
     <string name="OxChatReadability">检查文字对比度</string>
     <string name="OxChatAutoPalette">从背景自动配色</string>
     <string name="OxChatAutoPaletteInfo">根据壁纸颜色生成气泡、文字与边框</string>
@@ -11960,5 +11972,7 @@
     <string name="OxChatApplyAllDone">已应用到全部 Agent</string>
     <string name="OxChatImportPreviewTitle">导入这个外观？</string>
     <string name="OxChatImportApply">应用</string>
+    <string name="OxChatBundlePreviewTitle">导入这个预设包？</string>
+    <string name="OxChatBundleApply">导入</string>
     <string name="OxChatAgentEntry">Agent 会话外观</string>
 </resources>
