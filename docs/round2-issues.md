@@ -90,3 +90,14 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - `.oxthemes` 导出/导入设备结果：2 个纯色预设重复导入 0/2；含 16KB 背景图的预设删除后恢复 1/2，资产路径改写并成功应用；非法 13B 文件被拒绝且无写入。
 - 测试后删除 Downloads 临时包与非法文件；`BundleQA` 预设及其资产保留为模拟器回归样本。
+
+## 0.19.0 RikkaHub 备份导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-29 | 0.19.0 QA | RikkaHub 导入只覆盖 settings.json，聊天数据库/附件/技能/工作区未导入；独立 Provider、OAuth、SSE MCP、图片头像与开场白也未映射 | 本轮先完成助手/Provider/MCP 预览与幂等导入；其余明确标注为边界，待真实备份与后续轮次 | 部分完成 |
+| R2-30 | 0.19.0 QA | 样例备份按 RikkaHub 当前源码 schema 构造，尚未用真机 RikkaHub 导出复测 | 记录字段来源与映射；下一轮优先找真实备份做兼容性回归 | 待复验 |
+
+- 设备结果：预览“助手 2 / Provider 1 / MCP 1”，SSE 跳过 1；导入“新建 2 / 更新 0 / 新增 MCP 1”；重复导入“新建 0 / 更新 2 / 新增 0 / 跳过 1”；非 RikkaHub JSON 被拒绝且无写入。
+- Agent JSON 的 model/context/maxTokens/temperature/topP/reasoning/emoji/tg_id 与样例一致；MCP headers 正确；预览、结果与 logcat 均未出现测试 Key。
+- 测试后通过 UI 删除两个测试助手和 RikkaTestMCP；Downloads 样例与非法文件已删除。

@@ -19,6 +19,7 @@ import org.telegram.messenger.UserConfig;
 import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxMode;
 import org.telegram.ox.OxOperitImporter;
+import org.telegram.ox.OxRikkaImporter;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -50,6 +51,8 @@ public class OxSettingsActivity extends BaseFragment {
     private static final int ID_WORKSPACE = 114;
     private static final int ID_WORKFLOWS = 115;
     private static final int ID_APPEARANCE = 116;
+    private static final int ID_IMPORT_RIKKA = 117;
+    private static final int REQ_RIKKA = 601;
 
     private UniversalRecyclerView listView;
 
@@ -111,6 +114,9 @@ public class OxSettingsActivity extends BaseFragment {
                 R.drawable.msg_link, LocaleController.getString(R.string.OxMcp)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_IMPORT, 0xFF55CA47, 0xFF27B434,
                 R.drawable.settings_data, LocaleController.getString(R.string.OxImportOperit)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_IMPORT_RIKKA, 0xFF55CA47, 0xFF27B434,
+                R.drawable.settings_data, LocaleController.getString(R.string.OxRikkaImport),
+                LocaleController.getString(R.string.OxRikkaImportInfo)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_TOOLS, 0xFFE8A33D, 0xFFD98A1F,
                 R.drawable.settings_privacy, LocaleController.getString(R.string.OxToolsTitle)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_SKILLS, 0xFF55CA47, 0xFF27B434,
@@ -173,6 +179,9 @@ public class OxSettingsActivity extends BaseFragment {
             case ID_IMPORT:
                 startOperitImport();
                 break;
+            case ID_IMPORT_RIKKA:
+                pickRikkaBackup();
+                break;
             case ID_TOOLS:
                 presentFragment(new OxToolsActivity());
                 break;
@@ -228,6 +237,116 @@ public class OxSettingsActivity extends BaseFragment {
             getParentActivity().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (Throwable ignored) {
         }
+    }
+
+    private void pickRikkaBackup() {
+        if (getParentActivity() == null) return;
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("*/*");
+        startActivityForResult(i, REQ_RIKKA);
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
+        if (requestCode != REQ_RIKKA || resultCode != android.app.Activity.RESULT_OK) return;
+        Uri uri = data == null ? null : data.getData();
+        Context ctx = getParentActivity();
+        if (uri == null || ctx == null) return;
+        new Thread(() -> {
+            OxRikkaImporter.Preview preview = null;
+            String error = null;
+            try {
+                preview = OxRikkaImporter.preview(ctx, uri);
+            } catch (Throwable t) {
+                error = t.getMessage();
+            }
+            final OxRikkaImporter.Preview p = preview;
+            final String err = error;
+            AndroidUtilities.runOnUIThread(() -> {
+                if (getParentActivity() == null) return;
+                if (p == null) {
+                    showRikkaError(err);
+                    return;
+                }
+                new AlertDialog.Builder(getParentActivity())
+                        .setTitle(LocaleController.getString(R.string.OxRikkaPreviewTitle))
+                        .setMessage(rikkaPreviewText(p))
+                        .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                        .setPositiveButton(LocaleController.getString(R.string.OxRikkaApply), (d, w) ->
+                                importRikka(ctx, uri))
+                        .show();
+            });
+        }, "ox-rikka-preview").start();
+    }
+
+    private void importRikka(Context ctx, Uri uri) {
+        new Thread(() -> {
+            try {
+                final OxRikkaImporter.Result result = OxRikkaImporter.importFrom(ctx, uri);
+                AndroidUtilities.runOnUIThread(() -> {
+                    OxAgentsBridge.syncAgents(true);
+                    NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.dialogsNeedReload);
+                    if (getParentActivity() == null) return;
+                    new AlertDialog.Builder(getParentActivity())
+                            .setTitle(LocaleController.getString(R.string.OxRikkaImport))
+                            .setMessage(rikkaResultText(result))
+                            .setPositiveButton(LocaleController.getString(R.string.OK), null)
+                            .show();
+                });
+            } catch (Throwable t) {
+                AndroidUtilities.runOnUIThread(() -> showRikkaError(t.getMessage()));
+            }
+        }, "ox-rikka-import").start();
+    }
+
+    private String rikkaPreviewText(OxRikkaImporter.Preview p) {
+        StringBuilder sb = new StringBuilder(LocaleController.formatString(
+                "OxRikkaPreview", R.string.OxRikkaPreview, p.assistants, p.providers, p.mcp));
+        if (!p.names.isEmpty()) {
+            StringBuilder names = new StringBuilder();
+            for (int i = 0; i < p.names.size(); i++) {
+                if (i > 0) names.append("、");
+                names.append(p.names.get(i));
+            }
+            sb.append("\n").append(LocaleController.formatString(
+                    "OxRikkaNames", R.string.OxRikkaNames, names.toString()));
+        }
+        if (p.existingAssistants > 0 || p.existingMcp > 0) {
+            sb.append("\n").append(LocaleController.formatString(
+                    "OxRikkaExisting", R.string.OxRikkaExisting, p.existingAssistants, p.existingMcp));
+        }
+        for (String n : p.notes) sb.append("\n• ").append(n);
+        return sb.toString();
+    }
+
+    private String rikkaResultText(OxRikkaImporter.Result r) {
+        if (r.agentsCreated == 0 && r.agentsUpdated == 0 && r.mcpAdded == 0) {
+            return LocaleController.getString(R.string.OxRikkaNothing);
+        }
+        StringBuilder sb = new StringBuilder(LocaleController.formatString(
+                "OxRikkaDone", R.string.OxRikkaDone,
+                r.agentsCreated, r.agentsUpdated, r.mcpAdded, r.mcpSkipped));
+        for (String n : r.notes) sb.append("\n• ").append(n);
+        return sb.toString();
+    }
+
+    private void showRikkaError(String message) {
+        if (getParentActivity() == null) return;
+        String m = message == null ? "" : message;
+        if ("not a RikkaHub settings file".equals(m)) {
+            m = LocaleController.getString(R.string.OxRikkaInvalid);
+        } else if ("settings.json missing".equals(m)) {
+            m = LocaleController.getString(R.string.OxRikkaMissingSettings);
+        } else if ("cannot open backup".equals(m)) {
+            m = LocaleController.getString(R.string.OxRikkaOpenFailed);
+        }
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxRikkaImport))
+                .setMessage(LocaleController.formatString(
+                        "OxRikkaFailed", R.string.OxRikkaFailed, m))
+                .setPositiveButton(LocaleController.getString(R.string.OK), null)
+                .show();
     }
 
     private void startOperitImport() {

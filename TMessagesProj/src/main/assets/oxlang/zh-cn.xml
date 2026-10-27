@@ -11975,4 +11975,17 @@
     <string name="OxChatBundlePreviewTitle">导入这个预设包？</string>
     <string name="OxChatBundleApply">导入</string>
     <string name="OxChatAgentEntry">Agent 会话外观</string>
+    <string name="OxRikkaImport">从 RikkaHub 备份导入</string>
+    <string name="OxRikkaImportInfo">settings.json 或备份 zip · 预览后写入</string>
+    <string name="OxRikkaPreviewTitle">导入这个 RikkaHub 备份？</string>
+    <string name="OxRikkaPreview">助手 %1$d 个 · Provider %2$d 个 · MCP %3$d 个</string>
+    <string name="OxRikkaNames">助手：%1$s</string>
+    <string name="OxRikkaExisting">已存在助手 %1$d 个、MCP %2$d 个，将更新或跳过</string>
+    <string name="OxRikkaApply">导入</string>
+    <string name="OxRikkaDone">新建助手 %1$d，更新 %2$d，新增 MCP %3$d，跳过 MCP %4$d</string>
+    <string name="OxRikkaNothing">备份里没有可导入的助手或 MCP</string>
+    <string name="OxRikkaFailed">RikkaHub 导入失败：%1$s</string>
+    <string name="OxRikkaInvalid">不是有效的 RikkaHub 备份</string>
+    <string name="OxRikkaMissingSettings">备份里缺少 settings.json</string>
+    <string name="OxRikkaOpenFailed">无法读取备份文件</string>
 </resources>

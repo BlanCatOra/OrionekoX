@@ -2638,6 +2638,31 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `d9dbb96c518f…`）；debug `dist/OrionekoX-0.18.0-debug-arm64-x64.apk`（sha256
 `6cd3a82e130d…`）。详见 `docs/qa-0.18.0.md`。
 
+## 5.128 alpha 0.19.0 —— RikkaHub 备份 settings.json 导入（2026-10-28 00:10–00:35）
+
+- Ox 设置新增“从 RikkaHub 备份导入”：SAF 选择备份 zip 或 `settings.json`，
+  预览助手数、实际引用的 Provider 数、可导入 MCP 数、已存在数量和前 8 个助手名。
+- 映射 RikkaHub 的 `providers[]`（openai/google/claude，baseUrl/apiKey/models）、
+  `assistants[]`（systemPrompt、chatModelId、emoji 头像、temperature、topP、
+  maxTokens、reasoningLevel）和 `mcpServers[]`（streamable_http URL/name/
+  enable/headers）。聊天数据库、附件、技能目录、OAuth token 与 SSE MCP 不导入。
+- 幂等：Agent id 固定为 `rikka_<assistant UUID>`，重复导入更新而不是新建；
+  MCP 按 URL 去重；更新时保留 `tg_id` 与自定义头像。Provider 解析顺序为
+  助手模型 → 全局 `chatModelId` → 第一个有 Key 的启用 Provider。
+- 设备（schema 样例 zip）：预览“助手 2 · Provider 1 · MCP 1”，SSE 跳过 1；
+  导入“新建 2，更新 0，新增 MCP 1”；Agent JSON 的 model/context/maxTokens/
+  temperature/topP/reasoning/emoji/tg_id 与备份一致，MCP headers 正确；
+  再次导入“新建 0，更新 2，新增 MCP 0，跳过 1”，Agent 目录仍为 2 个；
+  非 RikkaHub JSON 提示“不是有效的 RikkaHub 备份”且无写入。
+- 安全：预览/结果不显示 API Key；`logcat` 检索测试 Key 命中 0；无 FATAL/ANR。
+  测试后通过 UI 删除两个测试助手与测试 MCP，Downloads 临时文件已清理。
+- 版本规则：新增外部备份格式的导入能力，按 minor 从 0.18.0 → 0.19.0，
+  versionCode 1909。
+
+**产物**：`dist/OrionekoX-0.19.0-alpha-arm64-x64.apk`（versionCode 1909，sha256
+`e869a33fdcd6…`）；debug `dist/OrionekoX-0.19.0-debug-arm64-x64.apk`（sha256
+`b5391295cc83…`）。详见 `docs/qa-0.19.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
