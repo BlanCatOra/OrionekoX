@@ -11678,6 +11678,7 @@
     <string name="OxRikkaPreview">Assistants %1$d · Providers %2$d · MCP %3$d · Skills %4$d</string>
     <string name="OxRikkaNames">Assistants: %1$s</string>
     <string name="OxRikkaSkillNames">Skills: %1$s</string>
+    <string name="OxRikkaHistory">History: %1$d conversations · %2$d message nodes</string>
     <string name="OxRikkaExisting">%1$d assistants, %2$d MCP servers and %3$d skills already exist; they will be updated or skipped</string>
     <string name="OxRikkaApply">Import</string>
     <string name="OxRikkaDone">Created %1$d assistants, updated %2$d, added %3$d MCP, skipped %4$d MCP, imported %5$d skills</string>
