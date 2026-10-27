@@ -28,7 +28,7 @@ requirements.
 | Dynamic color | theme studio | Material You | Material 3 Expressive | **0.13.0** palette derived from background image/gradient (not Material You) |
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
-| RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP from `settings.json` with preview and idempotent update; **0.20.0** `skills/*/SKILL.md`; DB, attachments, OAuth and SSE MCP not imported |
+| RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** `skills/*/SKILL.md`; **0.21.1** assistant `enabledSkills` and `customHeaders` mapping; DB, attachments, OAuth and SSE MCP not imported |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -343,12 +343,24 @@ These confirm the feature directions rather than relying on guesses. Checked
   bubbles remain an alpha simulation; custom TTF preview was not separately
   captured.
 
+## 0.21.1 fixes — skill assignment and assistant headers
+
+- Import skills before assistants, build a name/id → skill directory map, and map
+  non-empty `enabledSkills` onto `agent.skillIds`. An empty list leaves the
+  agent's existing selection untouched.
+- Map assistant `customHeaders` (`{name,value}`) onto the agent's `headers` as
+  `[[name,value], ...]`; empty arrays also leave existing values untouched.
+- Device QA: `Rikka QA` with `enabledSkills=["Rikka Test Skill"]` and
+  `X-Rikka-Assistant: 1` produced `skill_ids=["TestSkill"]` and
+  `headers=[["X-Rikka-Assistant","1"]]`; repeat import updated the same two
+  agents and kept both mappings. Test objects were removed afterwards.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
 2. Kelivo full backup import; RikkaHub chat database/attachments, skill
-   attachments, `enabledSkills` assignment and standalone providers.
+   attachments, provider-level headers and standalone providers.
 3. Persona-based appearance recommendation (the live preview itself is now
    covered by 0.21.0).
 4. Per-conversation theme inheritance still copies the parent’s text color; a

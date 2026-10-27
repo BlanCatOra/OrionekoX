@@ -133,6 +133,21 @@ public class OxRikkaImporter {
         String defaultModel = settings.optString("chatModelId", "");
         ProviderRef fallback = firstProvider(models);
         Result r = new Result();
+        for (Map.Entry<String, byte[]> entry : archive.skills.entrySet()) {
+            try {
+                OxSkillStore.importSkill(entry.getKey(), entry.getValue());
+                r.skills++;
+            } catch (Throwable t) {
+                r.notes.add("技能「" + entry.getKey() + "」导入失败");
+            }
+        }
+        Map<String, String> skillIdsByName = new HashMap<>();
+        for (OxSkillStore.Skill s : OxSkillStore.list()) {
+            if (s.id != null) skillIdsByName.put(s.id.toLowerCase(java.util.Locale.ROOT), s.id);
+            if (s.name != null && s.id != null) {
+                skillIdsByName.putIfAbsent(s.name.toLowerCase(java.util.Locale.ROOT), s.id);
+            }
+        }
 
         JSONArray assistants = settings.optJSONArray("assistants");
         for (int i = 0; assistants != null && i < assistants.length(); i++) {
@@ -181,6 +196,29 @@ public class OxRikkaImporter {
                 a.model = "";
                 r.notes.add("助手「" + name + "」没有可用的 Provider，按离线模式导入");
             }
+            JSONArray enabledSkills = src.optJSONArray("enabledSkills");
+            if (enabledSkills != null && enabledSkills.length() > 0) {
+                JSONArray ids = new JSONArray();
+                Set<String> seen = new HashSet<>();
+                for (int s = 0; s < enabledSkills.length(); s++) {
+                    String key = enabledSkills.optString(s, "").toLowerCase(java.util.Locale.ROOT);
+                    String skillId = skillIdsByName.get(key);
+                    if (skillId != null && seen.add(skillId)) ids.put(skillId);
+                }
+                if (ids.length() > 0) a.skillIds = ids;
+            }
+            JSONArray customHeaders = src.optJSONArray("customHeaders");
+            if (customHeaders != null && customHeaders.length() > 0) {
+                JSONArray mapped = new JSONArray();
+                for (int h = 0; h < customHeaders.length(); h++) {
+                    JSONObject header = customHeaders.optJSONObject(h);
+                    if (header == null) continue;
+                    String headerName = header.optString("name", "").trim();
+                    if (headerName.isEmpty()) continue;
+                    mapped.put(new JSONArray().put(headerName).put(header.optString("value", "")));
+                }
+                if (mapped.length() > 0) a.headers = mapped;
+            }
             OxAgentStore.saveAgent(a);
             r.importedAgentIds.add(a.id);
             if (update) r.agentsUpdated++;
@@ -207,14 +245,6 @@ public class OxRikkaImporter {
             if (headers.length() > 0) s.headersJson = headers.toString();
             OxMcpManager.saveServer(s);
             r.mcpAdded++;
-        }
-        for (Map.Entry<String, byte[]> entry : archive.skills.entrySet()) {
-            try {
-                OxSkillStore.importSkill(entry.getKey(), entry.getValue());
-                r.skills++;
-            } catch (Throwable t) {
-                r.notes.add("技能「" + entry.getKey() + "」导入失败");
-            }
         }
         return r;
     }

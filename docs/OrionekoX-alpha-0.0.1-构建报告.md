@@ -2707,6 +2707,25 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `aa148b515f6c…`）；debug `dist/OrionekoX-0.21.0-debug-arm64-x64.apk`（sha256
 `248150fa0f6c…`）。详见 `docs/qa-0.21.0.md`。
 
+## 5.131 alpha 0.21.1 —— RikkaHub 技能分配与助手请求头（2026-10-28 01:25–01:35）
+
+- RikkaHub 导入顺序改为先写技能库、再导入 Agent；按技能名称/id 建立映射，
+  助手 `enabledSkills` 非空时匹配到的 id 写入 `agent.skillIds`，为空不覆盖。
+- 助手 `customHeaders` 的 `{name,value}` 数组映射为 Agent
+  `headers` 的 `[[name,value]]`；非空才写入，空数组保留原值。
+- 设备：样例 `Rikka QA` 带 `enabledSkills=["Rikka Test Skill"]` 与
+  `X-Rikka-Assistant: 1`；导入后 `agent.json` 为
+  `skill_ids=["TestSkill"]`、`headers=[["X-Rikka-Assistant","1"]]`；
+  重复导入“新建 0，更新 2，跳过 MCP 1，导入技能 1”，Agent 仍 2 个且映射不变。
+- 清理：删除两个测试助手、RikkaTestMCP、TestSkill 与 Downloads 样例；
+  无 Key 泄漏、无 FATAL/ANR。
+- 版本规则：仅补既有导入字段映射，按 patch 从 0.21.0 → 0.21.1，
+  versionCode 2119。
+
+**产物**：`dist/OrionekoX-0.21.1-alpha-arm64-x64.apk`（versionCode 2119，sha256
+`af4c78660ea1…`）；debug `dist/OrionekoX-0.21.1-debug-arm64-x64.apk`（sha256
+`9944a2c2c005…`）。详见 `docs/qa-0.21.1.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

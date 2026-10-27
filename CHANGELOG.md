@@ -4,6 +4,18 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.21.1 — 2026-10-28
+
+- RikkaHub backup import now resolves assistant `enabledSkills` against the
+  imported/local skill library by skill name or id and writes the matches to the
+  agent's `skillIds`; an empty list preserves the existing selection.
+- Assistant `customHeaders` are mapped into the agent's request-header array;
+  empty arrays also leave existing values untouched.
+- Verified with a schema sample: `Rikka QA` with skill `Rikka Test Skill` and
+  header `X-Rikka-Assistant: 1` imported as `skill_ids=["TestSkill"]` and
+  `headers=[["X-Rikka-Assistant","1"]]`; repeat import updated the same agents
+  and kept both mappings.
+
 ## 0.21.0 — 2026-10-28
 
 - Added a live appearance preview in the custom appearance editor: a native
