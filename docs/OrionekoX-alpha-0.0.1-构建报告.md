@@ -2801,6 +2801,20 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `c939c48301f7…`）；debug `dist/OrionekoX-0.24.0-debug-arm64-x64.apk`（sha256
 `bc7247e7f0b7…`）。详见 `docs/qa-0.24.0.md`。
 
+## 5.136 alpha 0.24.1 —— Ox 界面中文化补漏（2026-10-28 02:40–02:48）
+
+- 扫描 Ox 自有 Java 代码的 531 个 `R.string` 引用，发现 12 个可见 key 缺少
+  中文：Operit 导入（标题/说明/导入中/完成/授权）、本地会员（标题/说明）、
+  终端（标题/清空/重启/输入提示）。
+- 补齐中文译文，中文包 93 → 94；仅改文案，不改功能代码。
+- 设备：Ox 设置显示“本地会员”“从 Operit / Operit2 导入”；终端显示“终端”
+  “清空”“重启”“输入命令…”，无英文回退；无 FATAL/ANR。
+- 版本规则：仅补翻译/文案，按 patch 从 0.24.0 → 0.24.1，versionCode 2419。
+
+**产物**：`dist/OrionekoX-0.24.1-alpha-arm64-x64.apk`（versionCode 2419，sha256
+`f5bdcc7047d7…`）；debug `dist/OrionekoX-0.24.1-debug-arm64-x64.apk`（sha256
+`2564d44e7987…`）。详见 `docs/qa-0.24.1.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

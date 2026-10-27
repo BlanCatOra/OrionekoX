@@ -4,6 +4,15 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.24.1 — 2026-10-28
+
+- Filled 12 missing Chinese strings found by auditing `R.string` references in the
+  Ox sources: Operit import (title/explanation/running/done/permission), local
+  premium (title/description) and terminal (title/clear/restart/hint).
+- Bumped the Chinese pack to 94 so installed devices reload the translations.
+  No functional code changed; the settings page and terminal now render in
+  Chinese without English fallbacks.
+
 ## 0.24.0 — 2026-10-28
 
 - RikkaHub backup import now reads `rikka_hub.db` and imports the selected text
