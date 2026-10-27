@@ -11886,6 +11886,9 @@
     <string name="OxChatPreviewTitle">外观预览</string>
     <string name="OxChatPreviewInText">晚上好，这是收到的消息预览。</string>
     <string name="OxChatPreviewOutText">这是发出的消息预览。</string>
+    <string name="OxChatRecommend">从人设推荐外观</string>
+    <string name="OxChatRecommendInfo">根据 Agent 名称与 AGENTS.md 关键词选择内置主题</string>
+    <string name="OxChatRecommendApplied">已套用推荐外观：%1$s</string>
     <string name="OxChatModeNative">Telegram 原生</string>
     <string name="OxChatModeCustom">自定义</string>
     <string name="OxChatNativeHint">当前使用 Telegram 原生外观。切换到自定义后可编辑背景、气泡、透明度、圆角与字号。</string>

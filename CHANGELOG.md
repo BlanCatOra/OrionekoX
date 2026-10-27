@@ -4,6 +4,18 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.22.0 — 2026-10-28
+
+- Added persona-based appearance recommendation on agent appearance pages:
+  local keyword scoring over the agent name and AGENTS.md selects one of the six
+  built-in themes, with 深海 as the deterministic fallback. No model or network
+  request is made.
+- Applying a recommendation replaces the agent's current appearance snapshot and
+  shows the chosen theme name; the agent remains scoped to that override until
+  cleared.
+- Device QA: `barB-nokey` (深夜/酒吧 persona) recommended 赛博霓虹 and rendered
+  the expected gradient, purple outgoing bubble, cyan text and 2 dp pink border.
+
 ## 0.21.2 — 2026-10-28
 
 - RikkaHub provider `customHeaders` and assistant `customHeaders` are merged by

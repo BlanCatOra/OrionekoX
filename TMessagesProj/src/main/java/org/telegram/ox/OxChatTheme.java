@@ -1045,6 +1045,33 @@ public class OxChatTheme {
         persist(s);
     }
 
+    /** Deterministic keyword score over an agent's name/persona; no network. */
+    public static int recommendBuiltIn(String persona) {
+        String text = persona == null ? "" : persona.toLowerCase(java.util.Locale.ROOT);
+        int[] scores = new int[BUILT_IN_NAMES.length];
+        score(scores, 0, text, "墨黑", "极简", "黑", "暗", "amoled", "midnight", "dark");
+        score(scores, 1, text, "纸", "书", "墨", "文", "历史", "古典", "诗", "paper", "ink", "book");
+        score(scores, 2, text, "深海", "海洋", "海", "水", "蓝", "冷静", "科技", "代码", "程序", "blue", "ocean", "code");
+        score(scores, 3, text, "樱花", "樱", "粉", "少女", "可爱", "恋爱", "甜", "sakura", "pink");
+        score(scores, 4, text, "森林", "自然", "植物", "树", "叶", "治愈", "green", "forest", "茶");
+        score(scores, 5, text, "赛博", "霓虹", "未来", "cyber", "neon", "深夜", "酒吧", "调酒", "夜店");
+        int best = 2;
+        int bestScore = 0;
+        for (int i = 0; i < scores.length; i++) {
+            if (scores[i] > bestScore) {
+                best = i;
+                bestScore = scores[i];
+            }
+        }
+        return best;
+    }
+
+    private static void score(int[] scores, int index, String text, String... words) {
+        for (String word : words) {
+            if (text.contains(word)) scores[index]++;
+        }
+    }
+
     public static void deletePreset(String name) {
         new File(presetDir(), name + ".json").delete();
     }

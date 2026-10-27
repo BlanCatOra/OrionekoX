@@ -2745,6 +2745,25 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `16b01215b881…`）；debug `dist/OrionekoX-0.21.2-debug-arm64-x64.apk`（sha256
 `3475b1bfb461…`）。详见 `docs/qa-0.21.2.md`。
 
+## 5.133 alpha 0.22.0 —— 按 Agent 人设推荐外观（2026-10-28 02:00–02:12）
+
+- `OxChatTheme.recommendBuiltIn(persona)` 对 Agent 名称 + AGENTS.md 做本地
+  关键词评分，从六款内置主题中选择一款；无命中默认“深海”。
+- Agent 外观页新增“从人设推荐外观”行（仅 Agent 作用域）；点击套用内置主题
+  到当前 Agent 并 toast 推荐名称，完全离线、确定性。
+- 设备：`barB-nokey`（人设含“深夜/酒吧”）点击推荐后提示
+  “已套用推荐外观：赛博霓虹”，页面变为 `#0A0014 → #1B0033` 渐变、收
+  `#1B0033`、发 `#7C00FF`、文字 `#00F0FF`、洋红 2dp 边框、8dp 圆角；
+  `agent_555000016.json` 与赛博霓虹一致。测试后删除该覆盖，恢复跟随全局。
+- 边界：关键词启发式、非语义；applyBuiltIn 会覆盖整份快照（含背景图/字体）；
+  仅 Agent 作用域；无候选预览/撤销。无 FATAL/ANR。
+- 版本规则：新增可见的个性化能力，按 minor 从 0.21.2 → 0.22.0，
+  versionCode 2209。
+
+**产物**：`dist/OrionekoX-0.22.0-alpha-arm64-x64.apk`（versionCode 2209，sha256
+`50c97563bd68…`）；debug `dist/OrionekoX-0.22.0-debug-arm64-x64.apk`（sha256
+`de3f88606aa3…`）。详见 `docs/qa-0.22.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
