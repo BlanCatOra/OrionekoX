@@ -4,6 +4,23 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.32.0 — 2026-10-28
+
+- Added “Export Kelivo / Chatbox backup” in Ox settings: writes all non-built-in
+  agents, chats, avatars, images and attachments to a Chatbox v2 zip through the
+  system save picker.
+- Each agent is written once: agents with chat history become a Chatbox session,
+  chatless agents become copilots, so importing the export back does not create
+  duplicate agents.
+- Resources use data-URL payloads with SHA-256/size descriptors, global/session
+  scopes and original storage keys; the manifest carries matching stats.
+- API keys, provider URLs, Authorization headers, workspaces, memory, skills,
+  MCP and themes are never exported.
+- Verified with a 483,866 B full export whose manifest/checksums/stats passed and
+  contained no `ox1:`/`sk-`/`test-key`; a filtered 8,306 B subset round-tripped
+  back into one assistant and one 4-message conversation with prompt, sampling,
+  avatar, image and file intact.
+
 ## 0.31.0 — 2026-10-28
 
 - Non-image attachments from Kelivo/Chatbox backups are now imported. Chatbox
