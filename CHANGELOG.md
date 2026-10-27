@@ -4,6 +4,17 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.23.0 — 2026-10-28
+
+- Added a one-tap AMOLED pure-black toggle in the appearance editor. It paints
+  the current scope's wallpaper and system bars pure black while keeping bubbles,
+  text, border, font and line height; turning it off restores the stored
+  wallpaper.
+- The `amoled` flag persists through global/agent/chat scopes, presets and theme
+  packages, and the import parser accepts boolean or 0/1 aliases.
+- Device QA: with an image background, enabling showed pure black in the editor
+  preview and a local group; disabling restored the image and cleared the flag.
+
 ## 0.22.0 — 2026-10-28
 
 - Added persona-based appearance recommendation on agent appearance pages:

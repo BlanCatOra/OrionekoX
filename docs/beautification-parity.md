@@ -38,7 +38,7 @@ requirements.
 | Live appearance preview | theme studio | preview | preview | **0.21.0** editor dialog with current-scope wallpaper (image/blur/dim), bubbles, border, font and line height |
 | Persona-based recommendation | theme studio | — | — | **0.22.0** local keyword scoring over agent name + AGENTS.md picks one of six built-in themes |
 | Wallpaper ↔ bubble coordination | — | — | — | **0.13.0** auto palette from current background (device-verified) |
-| AMOLED / pure black | theme | yes | yes | **0.12.0** built-in AMOLED theme; Telegram themes also native |
+| AMOLED / pure black | theme | yes | yes | **0.12.0** built-in AMOLED theme; **0.23.0** one-tap pure-black background toggle that preserves the rest of the snapshot; Telegram themes also native |
 | Import preview / rollback | ToolPkg validation | preview? | — | **0.10.0** appearance preview before write; invalid input leaves state unchanged |
 
 ## Community pain points (to validate next research pass)
@@ -382,6 +382,22 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: keyword heuristics rather than semantic understanding, default 深海
   when nothing matches, whole-snapshot replacement (including wallpaper/fonts),
   agent scope only, and no candidate preview or undo.
+
+## 0.23.0 implementation — AMOLED toggle
+
+- The appearance snapshot gains an `amoled` boolean that travels through prefs,
+  per-agent/per-chat JSON, presets and theme packages; imports accept boolean or
+  0/1 aliases.
+- A one-tap “AMOLED 纯黑” row makes the current scope's wallpaper a pure-black
+  ColorDrawable and paints the status/navigation bars black, while keeping the
+  rest of the snapshot (bubbles, text, border, font). Turning it off restores the
+  stored wallpaper without losing it.
+- Device QA: with an image background, enabling showed pure black in the editor
+  preview and in a local group; disabling restored the image and `amoled=false`.
+  No FATAL/ANR.
+- Limits: background/system bars only (text colors are not auto-adjusted), one
+  scope at a time, no schedule/system-dark automation, and no real-screen power
+  measurement.
 
 ## Gaps / next phases
 

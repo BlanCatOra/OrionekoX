@@ -76,6 +76,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final int ID_EXPORT_BUNDLE = 34;
     private static final int ID_PREVIEW = 35;
     private static final int ID_RECOMMEND = 36;
+    private static final int ID_AMOLED = 37;
     private static final int PRESET_BASE = 100;
     private static final int BUILTIN_BASE = 200;
 
@@ -241,6 +242,10 @@ public class OxChatAppearanceActivity extends BaseFragment {
         items.add(SettingsActivity.SettingCell.Factory.of(ID_BG_BLUR, accent, dark, R.drawable.msg_theme,
                 LocaleController.getString(R.string.OxChatBgBlur),
                 OxChatTheme.blurLabel(OxChatTheme.backgroundBlur())));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_AMOLED, 0xFF111111, 0xFF000000, R.drawable.msg_theme,
+                LocaleController.getString(R.string.OxChatAmoled),
+                LocaleController.getString(OxChatTheme.amoled()
+                        ? R.string.OxChatAmoledOn : R.string.OxChatAmoledOff)));
         String image = OxChatTheme.backgroundImage();
         items.add(SettingsActivity.SettingCell.Factory.of(ID_BG_IMAGE, 0xFF2AABEE, 0xFF1488E1,
                 R.drawable.msg_download, LocaleController.getString(R.string.OxChatBackgroundImage),
@@ -392,6 +397,9 @@ public class OxChatAppearanceActivity extends BaseFragment {
             rebuild();
         } else if (item.id == ID_BG_BLUR) {
             OxChatTheme.setInt("background_blur", nextInt(BLURS, OxChatTheme.backgroundBlur()));
+            rebuild();
+        } else if (item.id == ID_AMOLED) {
+            OxChatTheme.setInt("amoled", OxChatTheme.amoled() ? 0 : 1);
             rebuild();
         } else if (item.id == ID_BG_IMAGE) {
             pickImage();

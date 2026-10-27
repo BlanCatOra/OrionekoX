@@ -12100,6 +12100,9 @@
     <string name="OxChatBgAlpha">Background opacity</string>
     <string name="OxChatDim">Background dimming</string>
     <string name="OxChatBgBlur">Background blur</string>
+    <string name="OxChatAmoled">AMOLED pure black</string>
+    <string name="OxChatAmoledOn">On</string>
+    <string name="OxChatAmoledOff">Off</string>
     <string name="OxChatBubbleStyle">Bubble style</string>
     <string name="OxChatStyleSolid">Solid</string>
     <string name="OxChatStyleFrosted">Frosted</string>
