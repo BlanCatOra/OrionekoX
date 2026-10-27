@@ -11925,6 +11925,9 @@
     <string name="OxChatImportFailed">导入失败：%1$s</string>
     <string name="OxChatPresetSaved">已保存预设：%1$s</string>
     <string name="OxChatPresetDeleted">已删除预设：%1$s</string>
+    <string name="OxChatPresetRenamed">已重命名预设：%1$s</string>
+    <string name="OxChatPresetExists">同名预设已存在</string>
+    <string name="OxChatRename">重命名</string>
     <string name="OxChatPresetNameHint">预设名称</string>
     <string name="OxChatDeletePresetMsg">删除这个预设？</string>
     <string name="OxChatBgPicked">背景图片已应用</string>

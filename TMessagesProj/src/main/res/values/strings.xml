@@ -12089,6 +12089,9 @@
     <string name="OxChatImportFailed">Import failed: %1$s</string>
     <string name="OxChatPresetSaved">Saved preset: %1$s</string>
     <string name="OxChatPresetDeleted">Deleted preset: %1$s</string>
+    <string name="OxChatPresetRenamed">Renamed preset: %1$s</string>
+    <string name="OxChatPresetExists">A preset with that name already exists</string>
+    <string name="OxChatRename">Rename</string>
     <string name="OxChatPresetNameHint">Preset name</string>
     <string name="OxChatDeletePresetMsg">Delete this preset?</string>
     <string name="OxChatBgPicked">Background image applied</string>

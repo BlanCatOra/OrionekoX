@@ -519,19 +519,65 @@ public class OxChatAppearanceActivity extends BaseFragment {
                 String name = presets.get(index);
                 new AlertDialog.Builder(getParentActivity())
                         .setTitle(name)
-                        .setMessage(LocaleController.getString(R.string.OxChatDeletePresetMsg))
-                        .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
-                        .setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
-                            OxChatTheme.deletePreset(name);
-                            toast(LocaleController.formatString("OxChatPresetDeleted",
-                                    R.string.OxChatPresetDeleted, name));
-                            rebuild();
+                        .setItems(new CharSequence[]{
+                                LocaleController.getString(R.string.OxChatRename),
+                                LocaleController.getString(R.string.Delete)}, (d, which) -> {
+                            if (which == 0) showRenamePreset(name);
+                            else showDeletePreset(name);
                         })
                         .show();
                 return true;
             }
         }
         return false;
+    }
+
+    private void showRenamePreset(String name) {
+        if (getParentActivity() == null) return;
+        EditText input = new EditText(getParentActivity());
+        input.setText(name);
+        input.setSingleLine(true);
+        input.setSelection(input.getText().length());
+        FrameLayout wrap = new FrameLayout(getParentActivity());
+        wrap.setPadding(AndroidUtilities.dp(24), 0, AndroidUtilities.dp(24), 0);
+        wrap.addView(input, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxChatRename))
+                .setView(wrap)
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .setPositiveButton(LocaleController.getString(R.string.Save), (d, w) -> {
+                    String newName = input.getText().toString().trim();
+                    try {
+                        OxChatTheme.renamePreset(name, newName);
+                        toast(LocaleController.formatString("OxChatPresetRenamed",
+                                R.string.OxChatPresetRenamed, newName));
+                        rebuild();
+                    } catch (Throwable t) {
+                        String msg = t.getMessage();
+                        if ("preset exists".equals(msg)) {
+                            toast(LocaleController.getString(R.string.OxChatPresetExists));
+                        } else {
+                            toast(LocaleController.formatString("OxChatImportFailed",
+                                    R.string.OxChatImportFailed, msg));
+                        }
+                    }
+                })
+                .show();
+    }
+
+    private void showDeletePreset(String name) {
+        if (getParentActivity() == null) return;
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(name)
+                .setMessage(LocaleController.getString(R.string.OxChatDeletePresetMsg))
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .setPositiveButton(LocaleController.getString(R.string.Delete), (d, w) -> {
+                    OxChatTheme.deletePreset(name);
+                    toast(LocaleController.formatString("OxChatPresetDeleted",
+                            R.string.OxChatPresetDeleted, name));
+                    rebuild();
+                })
+                .show();
     }
 
     private void askPresetName() {
