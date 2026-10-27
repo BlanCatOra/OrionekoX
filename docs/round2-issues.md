@@ -264,3 +264,14 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：1 助手 + 1 HTTP + 1 SSE 样例，预览“1 个 HTTP MCP / 跳过 1”；导入“新建 1 / 新增 MCP 1 / 跳过 1”，`KelivoHTTP` 的 URL、enabled、`X-Kelivo` header 正确，SSE 不存在；重复导入“新建 0/更新 1/新增 MCP 0/跳过 2”，仍 1 条。
 - 边界：SSE/stdio/inmemory 未导入；MCP 工具白名单、OAuth、客户端注册、环境变量未导入；不做连通性测试；真实备份待复验。
+
+## 0.28.0 Kelivo / Chatbox 对话导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-58 | 0.28.0 QA | Kelivo/Chatbox 备份的对话历史未导入；只导入助手/技能/MCP | 解析 Chatbox v2 manifest + sessions/*/session.json、旧 zip sessions 与直接 JSON；每 thread 建本地 Agent 并写 chat.json；导入后 replay 到原生 messages_v2 | 已修复 |
+| R2-59 | 0.28.0 QA | 首次导入后聊天界面只显示欢迎语，历史在 chat.json 但不在 SQLite | `importKelivo` 对每段对话调用 `replayImportedHistory`，清理欢迎语并回放历史；重复导入替换历史 | 已修复 |
+
+- 设备：zip 2 个 session（含 1 个 thread）预览 3 段/7 条；导入 3 个 Agent，provider/model/0.4/0.8/128 正确；原生界面显示“当前话题”“2025年10月28日”和三条历史气泡；重复导入 3 段替换，消息仍 2/3/2 条。JSON 样例 1 段/2 条，0.3/0.6/64 与“10月25日”正确。
+- 清理：删除 4 个测试 Agent 与样例，dialogs/messages 归零；无本包 FATAL/ANR。
+- 边界：图片/文件只留占位，tool 压平为 assistant；旧时间戳导致列表靠后；每 thread 独立 Agent；加密/真实 Kelivo 备份未复测。

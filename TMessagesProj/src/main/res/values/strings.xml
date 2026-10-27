@@ -11688,11 +11688,14 @@
     <string name="OxKelivoImportInfo">zip or JSON · preview before writing</string>
     <string name="OxKelivoPreviewTitle">Import this Kelivo / Chatbox backup?</string>
     <string name="OxKelivoPreview">Assistants: %1$d</string>
-    <string name="OxKelivoNames">Assistants: %1$s</string>
+    <string name="OxKelivoConversations">Conversations: %1$d (%2$d messages)</string>
+    <string name="OxKelivoItems">Items: %1$s</string>
     <string name="OxKelivoExisting">%1$d already exist and will be updated</string>
+    <string name="OxKelivoConvExisting">%1$d conversation histories will be replaced</string>
     <string name="OxKelivoApply">Import</string>
     <string name="OxKelivoDone">Created %1$d assistants, updated %2$d</string>
-    <string name="OxKelivoNothing">No importable assistants in this backup</string>
+    <string name="OxKelivoConvDone">Imported %1$d conversations (%2$d messages)</string>
+    <string name="OxKelivoNothing">No importable assistants or conversations in this backup</string>
     <string name="OxKelivoFailed">Kelivo import failed: %1$s</string>
     <string name="OxRikkaInvalid">Not a valid RikkaHub backup</string>
     <string name="OxRikkaMissingSettings">settings.json is missing from the backup</string>

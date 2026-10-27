@@ -518,16 +518,43 @@ These confirm the feature directions rather than relying on guesses. Checked
   replies, avatars or real wrapping); missing preset assets fall back to inherited
   fields; no editing or side-by-side comparison.
 
+## 0.28.0 implementation — Kelivo/Chatbox conversations
+
+- Chatbox v2 zips are read through `manifest.json` and
+  `sessions/*/session.json`; older zips with `sessions/**/*.json` and direct JSON
+  exports using `chat-sessions-list` + `session:<id>` are also accepted.
+- Each thread becomes its own local agent with a stable
+  `kelivo_chat_<session>_<thread|current>` id. The first system message becomes
+  the agent prompt (falling back to `defaultPrompt`), and session settings wire
+  provider/model/temperature/topP/maxTokens (backup provider first, local
+  provider otherwise).
+- Messages keep their original epoch-ms timestamps; tool turns become
+  `[工具] …` assistant bubbles, later system turns `[系统] …`, and
+  images/files become `[图片]`/`[文件]` placeholders. Caps: 100 conversations,
+  500 messages each, 20k characters per message.
+- Imported history is replayed into the native message DB after `syncAgents`,
+  so the stock chat screen shows the backup bubbles instead of a greeting.
+  Re-import replaces history without duplicating messages.
+- Device QA: a 2-session zip produced 3 conversations / 7 messages; a repeat
+  import updated all 3 and kept 2/3/2 message rows. The native chat showed the
+  system prompt as config, the user/assistant/tool bubbles and the original
+  date. A legacy JSON sample imported 1 conversation with its 0.3/0.6/64
+  settings. Test agents and samples were removed.
+- Limits: attachments are placeholders only; tool calls are flattened; old
+  timestamps keep conversations ordered by their original date; threads are
+  independent agents with no multi-conversation parent UI; encrypted/real
+  Kelivo exports still need a compatibility pass.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping (background blur is now
    mapped by 0.26.2).
-2. Kelivo full backup import beyond assistants/skills/HTTP MCP (conversations,
-   SSE/stdio MCP with their tool allowlists, avatars/backgrounds, workspaces;
-   provider keys are now mapped); RikkaHub non-selected branches, non-image
-   attachments, per-conversation grouping, skill attachments, standalone
-   providers and image avatars.
+2. Kelivo full backup import beyond assistants/skills/conversations/MCP:
+   attachments, avatars/backgrounds and workspaces; SSE/stdio MCP with their
+   tool allowlists; RikkaHub non-selected branches, non-image attachments,
+   per-conversation grouping, skill attachments, standalone providers and image
+   avatars.
 3. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 4. Per-conversation theme inheritance still copies the parent’s text color; a
