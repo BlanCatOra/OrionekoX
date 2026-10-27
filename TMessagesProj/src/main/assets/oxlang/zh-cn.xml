@@ -11889,6 +11889,12 @@
     <string name="OxChatRecommend">从人设推荐外观</string>
     <string name="OxChatRecommendInfo">根据 Agent 名称与 AGENTS.md 关键词选择内置主题</string>
     <string name="OxChatRecommendApplied">已套用推荐外观：%1$s</string>
+    <string name="OxChatRecommendTitle">推荐外观</string>
+    <string name="OxChatRecommendMessage">根据当前 Agent 的名称与 AGENTS.md，建议使用「%1$s」。是否应用？</string>
+    <string name="OxChatRecommendApply">应用</string>
+    <string name="OxChatUndoRecommend">撤销上次推荐</string>
+    <string name="OxChatUndoRecommendInfo">恢复推荐前的外观</string>
+    <string name="OxChatRecommendRestored">已恢复推荐前的外观</string>
     <string name="OxChatModeNative">Telegram 原生</string>
     <string name="OxChatModeCustom">自定义</string>
     <string name="OxChatNativeHint">当前使用 Telegram 原生外观。切换到自定义后可编辑背景、气泡、透明度、圆角与字号。</string>
