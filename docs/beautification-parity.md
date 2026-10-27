@@ -29,6 +29,7 @@ requirements.
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete; **0.25.2** rename with duplicate-name rejection |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
+| Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; conversations, provider keys, skills and MCP not imported |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -460,11 +461,30 @@ These confirm the feature directions rather than relying on guesses. Checked
   names can collide (then rejected), and exported `.oxthemes` files keep their
   old names.
 
+## 0.26.0 implementation — Kelivo/Chatbox assistants
+
+- Add a Kelivo/Chatbox backup import entry accepting a zip or JSON. From zips it
+  reads `copilots.json` and the `assistants_v1` value in `settings.json` (JSON
+  string, array or id→object map); direct JSON arrays/objects are also accepted.
+- Mapping covers name, systemPrompt/prompt, temperature/topP/maxTokens,
+  customHeaders and a chatModelId model-name override. Provider wiring is
+  inherited from the first existing agent with baseUrl+apiKey (otherwise offline).
+  Agent ids are `kelivo_<id>` and repeat imports update while preserving tg_id
+  and custom avatars.
+- Device QA with a schema sample: 2 assistants previewed, both created, the
+  Kelivo assistant kept its prompt/model/0.5/0.9/256/X-Kelivo header, and a repeat
+  import reported 0 created/2 updated with exactly two agents. Test objects and
+  the sample were removed.
+- Limits: assistants only; Provider keys/configs, conversations, skills, MCP,
+  workspaces, avatars/backgrounds, preset messages and regex rules are not
+  imported. A real Kelivo export still needs a compatibility pass.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
-2. Kelivo full backup import; RikkaHub non-selected branches, non-image
+2. Kelivo full backup import beyond assistants (providers/keys, conversations,
+   skills, MCP, avatars/backgrounds); RikkaHub non-selected branches, non-image
    attachments, per-conversation grouping, skill attachments, standalone
    providers and image avatars.
 3. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1

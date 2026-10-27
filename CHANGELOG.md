@@ -4,6 +4,21 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.26.0 — 2026-10-28
+
+- Added Kelivo/Chatbox backup import for assistants: pick a zip or JSON and
+  preview the assistant count/names before writing.
+- Zips are read through `copilots.json` and the `assistants_v1` value in
+  `settings.json` (JSON string, array or id→object map); direct JSON arrays and
+  objects are also accepted.
+- Assistants map name, system prompt/prompt, temperature, topP, max tokens,
+  custom headers and a model-name override. Provider wiring is inherited from
+  the first existing agent with a base URL and key (otherwise offline). Repeat
+  imports update `kelivo_<id>` agents while preserving tg_id and avatars.
+- Conversations, provider keys/configs, skills, MCP, workspaces, avatars and
+  preset/regex data are not imported. Verified with a schema sample: two
+  assistants created, then a repeat import updated both.
+
 ## 0.25.2 — 2026-10-28
 
 - Named presets can now be renamed: long-press opens a native rename/delete menu.

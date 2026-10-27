@@ -209,3 +209,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：RenameQA → RenameQA2，目录仅保留新文件；改名为已存在的 BundleQA 被拒绝，原文件不变；取消对话框无副作用。
 - 测试后删除临时预设；无 FATAL/ANR。
+
+## 0.26.0 Kelivo/Chatbox 助手导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-51 | 0.26.0 QA | 只导入助手/人设；Provider 配置与密钥、对话、skills、MCP、工作区、头像背景、presetMessages/regex/skillIds 未导入 | 明确边界；Provider 仅从现有 Agent 继承，无则离线 | 部分完成 |
+| R2-52 | 0.26.0 QA | 样例按源码字段构造，真实 Kelivo/Chatbox 备份未复测；`chatModelId` 可能是逻辑模型 id | 记录兼容性风险，待真实备份验证 | 待复验 |
+
+- 设备：样例 zip（1 copilot + 1 assistants_v1）预览 2；导入“新建 2”；Kelivo Assistant 的 prompt/model/0.5/0.9/256/X-Kelivo 正确；重复导入“新建 0，更新 2”，仍 2 个 Agent。
+- 清理测试助手与样例；无 Key 泄漏、无 FATAL/ANR。

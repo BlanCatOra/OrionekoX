@@ -12007,6 +12007,16 @@
     <string name="OxRikkaDone">新建助手 %1$d，更新 %2$d，新增 MCP %3$d，跳过 MCP %4$d，导入技能 %5$d</string>
     <string name="OxRikkaNothing">备份里没有可导入的助手、MCP 或技能</string>
     <string name="OxRikkaFailed">RikkaHub 导入失败：%1$s</string>
+    <string name="OxKelivoImport">从 Kelivo / Chatbox 备份导入</string>
+    <string name="OxKelivoImportInfo">zip 或 JSON · 预览后写入</string>
+    <string name="OxKelivoPreviewTitle">导入这个 Kelivo / Chatbox 备份？</string>
+    <string name="OxKelivoPreview">助手 %1$d 个</string>
+    <string name="OxKelivoNames">助手：%1$s</string>
+    <string name="OxKelivoExisting">已存在 %1$d 个，将更新</string>
+    <string name="OxKelivoApply">导入</string>
+    <string name="OxKelivoDone">新建助手 %1$d，更新 %2$d</string>
+    <string name="OxKelivoNothing">备份里没有可导入的助手</string>
+    <string name="OxKelivoFailed">Kelivo 导入失败：%1$s</string>
     <string name="OxRikkaInvalid">不是有效的 RikkaHub 备份</string>
     <string name="OxRikkaMissingSettings">备份里缺少 settings.json</string>
     <string name="OxRikkaOpenFailed">无法读取备份文件</string>
