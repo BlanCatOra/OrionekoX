@@ -4,6 +4,23 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.30.0 — 2026-10-28
+
+- Chat images from Kelivo/Chatbox backups are now imported. Chatbox v2
+  `resources[]` entries of kind `image` (and image attachments) are matched to
+  message image parts by storage key or URL.
+- Matched images are copied into the agent's `media/` directory and recorded on
+  the chat entry; surrounding text becomes the photo caption and a pure-image
+  message is allowed to have an empty caption.
+- Imported images replay as native photo bubbles through
+  `generatePhotoSizes`, with a text fallback when a photo cannot be prepared.
+  One image is attached per message and extra images keep a `[图片]` placeholder.
+- Caps: 40 images per conversation, 2 MB per image, 24 MB total, PNG/JPEG/GIF/
+  WebP only. Preview and result report image counts.
+- Verified with a 4-message session containing one raw PNG and one data-URL PNG:
+  both landed as files, the native chat showed PIC1 with its caption and PIC2 as
+  a pure photo bubble, and a repeat import kept both hashes and 4 message rows.
+
 ## 0.29.0 — 2026-10-28
 
 - Kelivo/Chatbox backups now import assistant and conversation avatars. Chatbox

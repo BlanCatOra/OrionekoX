@@ -285,3 +285,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：1 助手 + 1 会话、2 个头像资源；预览/结果均提示“2 个头像”；落盘 avatar.png 1310 B/1623 B；原生会话页显示绿色 S1、助手页显示蓝色 AI；重复导入 0 新建/1 更新，头像 sha256 未变；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：仅 avatar/copilot-image；聊天图片、文件、背景、字体不导入；http(s) 头像不下载；HEIC/AVIF 跳过；真实备份待复测。
+
+## 0.30.0 Kelivo / Chatbox 聊天图片导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-62 | 0.30.0 QA | 0.28.0 对话导入把图片只写成 `[图片]` 占位，备份图片资源未落盘，原生聊天看不到照片 | 解析 resources 的 image/图片附件，消息按 storageKey/url 匹配；写入 Agent media/ 并填充 image_path；replay 用 generatePhotoSizes 生成原生照片气泡 | 已修复 |
+| R2-63 | 0.30.0 QA | 纯图片消息正文为空，按旧逻辑会被跳过 | 转换/回放允许“空正文 + imagePath”的消息；无说明图片仍生成照片气泡 | 已修复 |
+
+- 设备：1 会话/4 条、2 张图片（原始 PNG + data URL）；预览/结果均提示“2 张”；落盘 img_0.png 2783 B、img_2.png 3272 B；原生界面 PIC1 带“看看这张”说明、PIC2 纯图片气泡；重复导入图片 sha256 不变、messages_v2 仍 4 条；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：每消息仅首图、不生成相册；文件/音视频/网络图片不导入；真实备份待复测。
