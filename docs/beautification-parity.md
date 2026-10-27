@@ -35,6 +35,7 @@ requirements.
 | Custom vs native mode | — | — | — | **0.9.0** two-mode switch |
 | Contrast / readability check | — | — | — | **0.10.0** WCAG-style check on device |
 | Preset marketplace / one-tap apply | ToolPkg catalog | — | preset list | **0.12.0** six built-in themes + one-tap apply; no online marketplace |
+| Live appearance preview | theme studio | preview | preview | **0.21.0** editor dialog with current-scope wallpaper (image/blur/dim), bubbles, border, font and line height |
 | Wallpaper ↔ bubble coordination | — | — | — | **0.13.0** auto palette from current background (device-verified) |
 | AMOLED / pure black | theme | yes | yes | **0.12.0** built-in AMOLED theme; Telegram themes also native |
 | Import preview / rollback | ToolPkg validation | preview? | — | **0.10.0** appearance preview before write; invalid input leaves state unchanged |
@@ -323,14 +324,33 @@ These confirm the feature directions rather than relying on guesses. Checked
   the RikkaHub chat database and attachments, OAuth and SSE MCP. A real export
   still needs to be tested.
 
+## 0.21.0 implementation — live appearance preview
+
+- In custom mode the appearance editor now has “预览当前外观”. It opens a native
+  AlertDialog rendered from the active scope: wallpaper drawable (solid, gradient
+  or image with dim/blur), incoming and outgoing sample bubbles, bubble alpha and
+  frosted reduction, corner radius, border, text color, chat typeface, font scale
+  and line height.
+- The preview reads `OxChatTheme.current()` every time, so global, per-agent and
+  per-chat scopes each show their own values. `currentBackgroundDrawable()` and
+  `currentTypeface()` reuse the chat rendering helpers instead of duplicating them.
+- Device QA: the global image theme showed `VERIFYRICE0.9.1` under the bubbles;
+  changing blur from off to strong and reopening the preview softened the
+  wallpaper text/border while keeping bubble colors and typography, then blur was
+  restored to off. No FATAL/ANR.
+- Limits: it is a lightweight sample, not real ChatMessageCell instances, so
+  media/tool bubbles, replies, avatars and real wrapping are not shown; frosted
+  bubbles remain an alpha simulation; custom TTF preview was not separately
+  captured.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
 2. Kelivo full backup import; RikkaHub chat database/attachments, skill
    attachments, `enabledSkills` assignment and standalone providers.
-3. Persona-based appearance recommendation and live chat preview inside the
-   appearance editor.
+3. Persona-based appearance recommendation (the live preview itself is now
+   covered by 0.21.0).
 4. Per-conversation theme inheritance still copies the parent’s text color; a
    low-contrast combination is reported by the check row but not auto-corrected.
 5. Re-run the third A/B/C round on current builds once a real-device/GPU pass can

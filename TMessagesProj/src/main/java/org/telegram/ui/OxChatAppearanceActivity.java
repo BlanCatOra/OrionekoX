@@ -3,16 +3,22 @@ package org.telegram.ui;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
+import org.telegram.messenger.SharedConfig;
 import org.telegram.ox.OxAgent;
 import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxChatTheme;
@@ -68,6 +74,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final int ID_BG_BLUR = 32;
     private static final int ID_IMPORT_BUNDLE = 33;
     private static final int ID_EXPORT_BUNDLE = 34;
+    private static final int ID_PREVIEW = 35;
     private static final int PRESET_BASE = 100;
     private static final int BUILTIN_BASE = 200;
 
@@ -202,6 +209,9 @@ public class OxChatAppearanceActivity extends BaseFragment {
         }
 
         String bgMode = OxChatTheme.backgroundMode();
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_PREVIEW, accent, dark, R.drawable.msg_theme,
+                LocaleController.getString(R.string.OxChatPreview),
+                LocaleController.getString(R.string.OxChatPreviewInfo)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_BG_MODE, accent, dark, R.drawable.msg_colors,
                 LocaleController.getString(R.string.OxChatBgMode), bgModeLabel(bgMode)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_BG, OxChatTheme.background(),
@@ -336,6 +346,8 @@ public class OxChatAppearanceActivity extends BaseFragment {
             if (OxChatTheme.isCustom()) OxChatTheme.setMode(OxChatTheme.MODE_NATIVE);
             else OxChatTheme.enableCustom();
             rebuild();
+        } else if (item.id == ID_PREVIEW) {
+            showPreview();
         } else if (item.id == ID_NATIVE_THEME) {
             presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC));
         } else if (item.id == ID_RESET) {
@@ -512,6 +524,78 @@ public class OxChatAppearanceActivity extends BaseFragment {
         boolean ok = ratio >= 3.0;
         toast(LocaleController.formatString(ok ? "OxChatReadabilityOk" : "OxChatReadabilityWarn",
                 ok ? R.string.OxChatReadabilityOk : R.string.OxChatReadabilityWarn, ratio));
+    }
+
+    private void showPreview() {
+        if (getParentActivity() == null) return;
+        Context ctx = getParentActivity();
+        int alpha = OxChatTheme.bubbleAlpha();
+        if (OxChatTheme.STYLE_FROSTED.equals(OxChatTheme.bubbleStyle())) alpha = Math.min(alpha, 200);
+        int inColor = withAlpha(OxChatTheme.inBubble(), alpha);
+        int outColor = withAlpha(OxChatTheme.outBubble(), alpha);
+        float size = AndroidUtilities.dp(SharedConfig.fontSize * OxChatTheme.fontScale());
+        float lineHeight = OxChatTheme.lineHeight() > 0 ? OxChatTheme.lineHeight() : 1f;
+        Typeface typeface = OxChatTheme.currentTypeface();
+
+        FrameLayout root = new FrameLayout(ctx);
+        android.graphics.drawable.Drawable bg = OxChatTheme.currentBackgroundDrawable();
+        if (bg != null) root.setBackground(bg);
+        root.setMinimumHeight(AndroidUtilities.dp(280));
+
+        LinearLayout column = new LinearLayout(ctx);
+        column.setOrientation(LinearLayout.VERTICAL);
+        int pad = AndroidUtilities.dp(16);
+        column.setPadding(pad, pad, pad, pad);
+        root.addView(column, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView incoming = previewBubble(ctx, R.string.OxChatPreviewInText, inColor,
+                OxChatTheme.textColor() != 0 ? OxChatTheme.textColor() : OxChatTheme.autoTextColor(inColor),
+                size, lineHeight, typeface);
+        incoming.setMaxWidth(AndroidUtilities.dp(280));
+        LinearLayout.LayoutParams inParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        inParams.gravity = Gravity.LEFT;
+        inParams.bottomMargin = AndroidUtilities.dp(12);
+        column.addView(incoming, inParams);
+
+        TextView outgoing = previewBubble(ctx, R.string.OxChatPreviewOutText, outColor,
+                OxChatTheme.textColor() != 0 ? OxChatTheme.textColor() : OxChatTheme.autoTextColor(outColor),
+                size, lineHeight, typeface);
+        outgoing.setMaxWidth(AndroidUtilities.dp(280));
+        LinearLayout.LayoutParams outParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        outParams.gravity = Gravity.RIGHT;
+        column.addView(outgoing, outParams);
+
+        new AlertDialog.Builder(ctx)
+                .setTitle(LocaleController.getString(R.string.OxChatPreviewTitle))
+                .setView(root)
+                .setPositiveButton(LocaleController.getString(R.string.Close), null)
+                .show();
+    }
+
+    private TextView previewBubble(Context ctx, int textRes, int bubbleColor, int textColor,
+                                   float size, float lineHeight, Typeface typeface) {
+        TextView tv = new TextView(ctx);
+        tv.setText(LocaleController.getString(textRes));
+        tv.setTextColor(textColor);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, size);
+        if (typeface != null) tv.setTypeface(typeface);
+        tv.setLineSpacing(0, lineHeight);
+        tv.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(8),
+                AndroidUtilities.dp(12), AndroidUtilities.dp(8));
+        GradientDrawable bubble = new GradientDrawable();
+        bubble.setColor(bubbleColor);
+        bubble.setCornerRadius(AndroidUtilities.dp(OxChatTheme.cornerRadius()));
+        if (OxChatTheme.borderWidth() > 0 && OxChatTheme.borderColor() != 0) {
+            bubble.setStroke(AndroidUtilities.dp(OxChatTheme.borderWidth()), OxChatTheme.borderColor());
+        }
+        tv.setBackground(bubble);
+        return tv;
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return (Math.max(0, Math.min(255, alpha)) << 24) | (color & 0xFFFFFF);
     }
 
     private void exportTheme() {
