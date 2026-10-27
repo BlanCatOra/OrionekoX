@@ -11937,6 +11937,9 @@
     <string name="OxChatBgAlpha">背景不透明度</string>
     <string name="OxChatDim">背景暗化</string>
     <string name="OxChatBgBlur">背景模糊</string>
+    <string name="OxChatAmoled">AMOLED 纯黑</string>
+    <string name="OxChatAmoledOn">已开启</string>
+    <string name="OxChatAmoledOff">已关闭</string>
     <string name="OxChatBubbleStyle">气泡样式</string>
     <string name="OxChatStyleSolid">实心</string>
     <string name="OxChatStyleFrosted">磨砂</string>

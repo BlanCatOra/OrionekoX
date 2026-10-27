@@ -97,6 +97,7 @@ public class OxChatTheme {
         public int backgroundAlpha = 255;
         public int backgroundDim = 0;
         public int backgroundBlur = 0;
+        public boolean amoled = false;
         public int gradientIndex = 0;
         public String backgroundImage = "";
         public int inBubble = 0xFFFFFFFF;
@@ -121,6 +122,7 @@ public class OxChatTheme {
             s.backgroundAlpha = backgroundAlpha;
             s.backgroundDim = backgroundDim;
             s.backgroundBlur = backgroundBlur;
+            s.amoled = amoled;
             s.gradientIndex = gradientIndex;
             s.backgroundImage = backgroundImage;
             s.inBubble = inBubble;
@@ -148,6 +150,7 @@ public class OxChatTheme {
             o.put("backgroundAlpha", backgroundAlpha);
             o.put("backgroundDim", backgroundDim);
             o.put("backgroundBlur", backgroundBlur);
+            o.put("amoled", amoled);
             o.put("gradientIndex", gradientIndex);
             o.put("backgroundImage", backgroundImage == null ? "" : backgroundImage);
             o.put("inBubbleArgb", inBubble);
@@ -172,6 +175,7 @@ public class OxChatTheme {
                     + " · 收 " + hex(inBubble) + " · 发 " + hex(outBubble)
                     + " · " + Math.round(bubbleAlpha * 100f / 255f) + "%"
                     + (backgroundBlur > 0 ? " · 模糊" + blurLabel(backgroundBlur) : "")
+                    + (amoled ? " · AMOLED" : "")
                     + " · " + cornerRadius + "dp"
                     + " · " + String.format("%.1fx", fontScale)
                     + (Math.abs(lineHeight - 1f) > 0.001f ? " · 行高 " + String.format("%.1fx", lineHeight) : "")
@@ -343,6 +347,7 @@ public class OxChatTheme {
         s.backgroundAlpha = p.getInt("background_alpha", 255);
         s.backgroundDim = p.getInt("background_dim", 0);
         s.backgroundBlur = p.getInt("background_blur", 0);
+        s.amoled = p.getBoolean("amoled", false);
         s.gradientIndex = p.getInt("gradient_index", 0);
         s.backgroundImage = p.getString("background_image", "");
         s.inBubble = p.getInt("in_bubble", s.inBubble);
@@ -369,6 +374,7 @@ public class OxChatTheme {
                 .putInt("background_alpha", s.backgroundAlpha)
                 .putInt("background_dim", s.backgroundDim)
                 .putInt("background_blur", s.backgroundBlur)
+                .putBoolean("amoled", s.amoled)
                 .putInt("gradient_index", s.gradientIndex)
                 .putString("background_image", s.backgroundImage == null ? "" : s.backgroundImage)
                 .putInt("in_bubble", s.inBubble)
@@ -404,6 +410,7 @@ public class OxChatTheme {
     public static int backgroundAlpha() { return current().backgroundAlpha; }
     public static int backgroundDim() { return current().backgroundDim; }
     public static int backgroundBlur() { return current().backgroundBlur; }
+    public static boolean amoled() { return current().amoled; }
     public static int gradientIndex() { return current().gradientIndex; }
     public static String backgroundImage() { return current().backgroundImage; }
     public static int inBubble() { return current().inBubble; }
@@ -427,6 +434,7 @@ public class OxChatTheme {
             case "background_alpha": s.backgroundAlpha = value; break;
             case "background_dim": s.backgroundDim = value; break;
             case "background_blur": s.backgroundBlur = Math.max(0, Math.min(3, value)); break;
+            case "amoled": s.amoled = value != 0; break;
             case "gradient_index": s.gradientIndex = value; break;
             case "in_bubble": s.inBubble = value; break;
             case "out_bubble": s.outBubble = value; break;
@@ -797,6 +805,9 @@ public class OxChatTheme {
         if (has(o, "backgroundBlur", "background_blur", "blur", "blurSigma", "blur_sigma")) {
             s.backgroundBlur = clamp(intValue(o, s.backgroundBlur,
                     "backgroundBlur", "background_blur", "blur", "blurSigma", "blur_sigma"), 0, 3);
+        }
+        if (has(o, "amoled", "amoledMode", "amoled_mode")) {
+            s.amoled = boolValue(o, s.amoled, "amoled", "amoledMode", "amoled_mode");
         }
         if (has(o, "gradientIndex", "gradient_index")) {
             s.gradientIndex = clamp(intValue(o, s.gradientIndex, "gradientIndex", "gradient_index"), 0, 2);
@@ -1414,6 +1425,7 @@ public class OxChatTheme {
     }
 
     private static Drawable makeBackground(Snapshot s, android.content.res.Resources res) {
+        if (s.amoled) return new ColorDrawable(0xFF000000);
         Drawable base;
         String mode = s.backgroundMode == null ? BG_SOLID : s.backgroundMode;
         if (BG_IMAGE.equals(mode)) {
@@ -1580,10 +1592,11 @@ public class OxChatTheme {
 
     private static void applySystemBars(Snapshot s) {
         if (appliedWindow == null) return;
-        appliedWindow.setStatusBarColor(s.background);
-        appliedWindow.setNavigationBarColor(s.background);
+        int bar = s.amoled ? 0xFF000000 : s.background;
+        appliedWindow.setStatusBarColor(bar);
+        appliedWindow.setNavigationBarColor(bar);
         int flags = appliedUiFlags;
-        boolean light = luminance(s.background) > 0.45;
+        boolean light = luminance(bar) > 0.45;
         if (android.os.Build.VERSION.SDK_INT >= 23) {
             if (light) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
             else flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
@@ -1702,6 +1715,19 @@ public class OxChatTheme {
                 return Integer.parseInt(String.valueOf(v).replace("%", "").trim());
             } catch (Throwable ignored) {
             }
+        }
+        return def;
+    }
+
+    private static boolean boolValue(JSONObject o, boolean def, String... keys) {
+        for (String key : keys) {
+            if (!o.has(key)) continue;
+            Object v = o.opt(key);
+            if (v instanceof Boolean) return (Boolean) v;
+            if (v instanceof Number) return ((Number) v).intValue() != 0;
+            String s = String.valueOf(v).trim().toLowerCase(java.util.Locale.ROOT);
+            if ("true".equals(s) || "1".equals(s) || "on".equals(s) || "yes".equals(s)) return true;
+            if ("false".equals(s) || "0".equals(s) || "off".equals(s) || "no".equals(s)) return false;
         }
         return def;
     }

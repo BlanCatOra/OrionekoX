@@ -2764,6 +2764,24 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `50c97563bd68…`）；debug `dist/OrionekoX-0.22.0-debug-arm64-x64.apk`（sha256
 `de3f88606aa3…`）。详见 `docs/qa-0.22.0.md`。
 
+## 5.134 alpha 0.23.0 —— AMOLED 纯黑快捷开关（2026-10-28 02:14–02:24）
+
+- `OxChatTheme.Snapshot` 新增 `amoled`；persist 到 prefs/Agent/会话 JSON/预设/
+  主题包，导入识别 `amoled`/`amoledMode`/`amoled_mode`（布尔或 0/1）。
+- 外观页新增“AMOLED 纯黑”开关，副标题显示已开启/已关闭；开启时
+  `makeBackground` 返回纯黑 ColorDrawable，聊天背景与状态栏/导航栏均为
+  `#000000`，关闭恢复原背景配置；预览同步显示纯黑。
+- 设备：全局图片背景主题下开启后 `amoled=true`，预览与 R2B 本地群背景均为
+  纯黑，气泡/文字/边框正常；关闭后 `amoled=false`，原图片背景保留。无
+  FATAL/ANR。
+- 边界：只改背景/系统栏，不自动改文字色；只作用于当前作用域；无定时/系统
+  深色联动；未在真实 AMOLED 屏测功耗。
+- 版本规则：新增可见外观能力，按 minor 从 0.22.0 → 0.23.0，versionCode 2309。
+
+**产物**：`dist/OrionekoX-0.23.0-alpha-arm64-x64.apk`（versionCode 2309，sha256
+`311fc6456dbb…`）；debug `dist/OrionekoX-0.23.0-debug-arm64-x64.apk`（sha256
+`b6c48bfa0dd4…`）。详见 `docs/qa-0.23.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
