@@ -3023,6 +3023,30 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `660e383315c2…`）；debug `dist/OrionekoX-0.29.0-debug-arm64-x64.apk`（sha256
 `58214581a4f9…`）。详见 `docs/qa-0.29.0.md`。
 
+## 5.148 alpha 0.30.0 —— Kelivo / Chatbox 聊天图片导入（2026-10-28 06:20–06:38）
+
+- Chatbox v2 `resources[]` 增加 `kind=image`（及图片类 attachment）解析，按
+  `originalStorageKeys`/资源 id 映射；消息图片按 `storageKey`/`url` 命中。
+- 导入时写入 `files/oxagents/<agentId>/media/img_<n>.<ext>`，写入
+  `OxChatEntry.imagePath`；有文字作为照片说明，纯图片正文为空，其余图片保留
+  `[图片]` 占位。
+- `replayImportedHistory` 用 `SendMessagesHelper.generatePhotoSizes` 生成原生
+  照片气泡；失败退回文字，不阻塞其余历史。
+- 每会话最多 40 张图片；单张 2 MB、资源总量 24 MB；仅 PNG/JPEG/GIF/WebP，
+  不下载网络图片。预览/结果增加图片计数。
+- 设备：1 会话/4 条、2 张图片（原始 PNG + data URL）；预览/结果均提示 2 张；
+  落盘 2783 B/3272 B，chat.json 的 image_path 正确；原生界面显示 PIC1 带
+  说明、PIC2 纯图片气泡；重复导入图片 sha256 不变、messages_v2 仍 4 条；
+  清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：每消息仅首图，不生成相册；文件/音视频/网络图片不导入；真实备份待
+  复测。
+- 版本规则：新增可见的聊天图片导入与原生照片气泡能力，按 minor 从 0.29.0 →
+  0.30.0，versionCode 3009。
+
+**产物**：`dist/OrionekoX-0.30.0-alpha-arm64-x64.apk`（versionCode 3009，sha256
+`199d7c5e2361…`）；debug `dist/OrionekoX-0.30.0-debug-arm64-x64.apk`（sha256
+`e1af87f999cd…`）。详见 `docs/qa-0.30.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

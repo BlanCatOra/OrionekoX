@@ -565,14 +565,33 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: chat images/files, backgrounds, fonts and remote avatars are not
   imported; HEIC/AVIF are skipped; real exports still need a compatibility pass.
 
+## 0.30.0 implementation — Kelivo/Chatbox chat images
+
+- Chatbox v2 `resources[]` now also maps `kind=image` (and image attachments)
+  through their original storage keys. Message image parts match by
+  `storageKey`, then by `url`.
+- On import each matched image is copied to the agent's `media/` directory and
+  recorded in `OxChatEntry.imagePath`; text becomes the photo caption and a pure
+  image message keeps an empty caption.
+- `replayImportedHistory` generates native photo bubbles with
+  `SendMessagesHelper.generatePhotoSizes`; one image per message is attached and
+  further images keep a `[图片]` placeholder.
+- Caps: 40 images per conversation, 2 MB per image, 24 MB total, PNG/JPEG/GIF/
+  WebP only. Preview/result report image counts.
+- Device QA: a 4-message session with two images produced two files (2783 B and
+  3272 B); the native chat showed PIC1 with its “看看这张” caption and PIC2 as a
+  pure photo bubble. Repeat import kept both hashes and 4 message rows.
+- Limits: no albums, files/audio/video or remote images; real exports still
+  need a compatibility pass.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping (background blur is now
    mapped by 0.26.2).
-2. Kelivo full backup import beyond assistants/skills/conversations/MCP/avatars:
-   chat attachments, backgrounds and workspaces; SSE/stdio MCP with their
-   tool allowlists; RikkaHub non-selected branches, non-image attachments,
+2. Kelivo full backup import beyond assistants/skills/conversations/MCP/avatars/
+   images: non-image attachments, backgrounds and workspaces; SSE/stdio MCP with
+   their tool allowlists; RikkaHub non-selected branches, non-image attachments,
    per-conversation grouping, skill attachments, standalone providers and image
    avatars.
 3. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1

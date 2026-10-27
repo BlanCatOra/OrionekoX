@@ -2240,13 +2240,33 @@ public class OxAgentsBridge {
             }
             AndroidUtilities.runOnUIThread(() -> {
                 for (OxChatEntry e : chat) {
-                    if (e == null || e.content == null || e.content.trim().isEmpty()) continue;
+                    if (e == null) continue;
+                    boolean hasImage = e.imagePath != null && new File(e.imagePath).isFile();
+                    if ((e.content == null || e.content.trim().isEmpty()) && !hasImage) continue;
                     boolean out = "user".equals(e.role);
                     TLRPC.TL_message msg = baseOutgoing(did);
                     msg.out = out;
                     msg.date = e.ts > 0 ? (int) (e.ts / 1000) : (int) (System.currentTimeMillis() / 1000);
-                    msg.message = e.content;
+                    msg.message = e.content == null ? "" : e.content;
                     msg.media = new TLRPC.TL_messageMediaEmpty();
+                    if (hasImage) {
+                        try {
+                            TLRPC.TL_photo photo = SendMessagesHelper.getInstance(0)
+                                    .generatePhotoSizes(e.imagePath, null);
+                            if (photo != null) {
+                                msg.flags = 256 | 512;
+                                msg.media = new TLRPC.TL_messageMediaPhoto();
+                                msg.media.flags |= 1;
+                                msg.media.photo = photo;
+                                msg.attachPath = e.imagePath;
+                            } else if (msg.message.trim().isEmpty()) {
+                                continue;
+                            }
+                        } catch (Throwable t) {
+                            logErr("replay photo failed " + e.imagePath, t);
+                            if (msg.message.trim().isEmpty()) continue;
+                        }
+                    }
                     msg.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
                     msg.from_id = new TLRPC.TL_peerUser();
                     msg.from_id.user_id = out ? SELF_ID : did;
