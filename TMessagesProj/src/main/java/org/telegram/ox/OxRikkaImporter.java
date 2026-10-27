@@ -65,6 +65,7 @@ public class OxRikkaImporter {
         JSONObject settings;
         byte[] database;
         final Map<String, byte[]> skills = new java.util.LinkedHashMap<>();
+        final Map<String, byte[]> uploads = new java.util.LinkedHashMap<>();
     }
 
     private static class ProviderRef {
@@ -133,9 +134,12 @@ public class OxRikkaImporter {
             p.conversations = history[0];
             p.messageNodes = history[1];
         }
-        p.notes.add("仅导入 settings.json、skills/ 技能与聊天数据库的文本历史；不含附件和 OAuth token。");
+        p.notes.add("仅导入 settings.json、skills/ 技能、聊天文本历史与匹配的图片附件；不含其他附件和 OAuth token。");
         if (p.conversations > 0) {
-            p.notes.add("历史按每个消息节点的当前分支导入；图片、工具与附件消息会跳过。");
+            p.notes.add("历史按每个消息节点的当前分支导入；工具与未匹配附件的消息会跳过。");
+        }
+        if (!archive.uploads.isEmpty()) {
+            p.notes.add("备份中的聊天图片附件会随文本历史一起导入（最多 40 个）。");
         }
         if (archive.skills.size() > 0) {
             p.notes.add("技能按目录名导入，同名技能更新，不删除本地其他技能。");
@@ -258,7 +262,7 @@ public class OxRikkaImporter {
             OxMcpManager.saveServer(s);
             r.mcpAdded++;
         }
-        importConversations(archive.database, r);
+        importConversations(archive.database, archive.uploads, r);
         return r;
     }
 
@@ -282,6 +286,7 @@ public class OxRikkaImporter {
                 ZipInputStream zin = new ZipInputStream(in);
                 ZipEntry e;
                 int entries = 0;
+                long uploadTotal = 0;
                 while ((e = zin.getNextEntry()) != null) {
                     if (++entries > 1000) throw new IllegalArgumentException("too many entries");
                     if (e.isDirectory()) continue;
@@ -297,6 +302,15 @@ public class OxRikkaImporter {
                     } else if (out.database == null
                             && ("rikka_hub.db".equals(n) || n.endsWith("/rikka_hub.db"))) {
                         out.database = readBytes(zin, 64 * 1024 * 1024);
+                    } else if (out.uploads.size() < 40 && n.startsWith("upload/") && !n.endsWith("/")) {
+                        String name = n.substring(n.lastIndexOf('/') + 1);
+                        if (!name.isEmpty() && !name.contains("..")) {
+                            byte[] data = readBytes(zin, 4 * 1024 * 1024);
+                            if (data.length > 0 && uploadTotal + data.length <= 40L * 1024 * 1024) {
+                                out.uploads.put(name, data);
+                                uploadTotal += data.length;
+                            }
+                        }
                     }
                 }
             } else {
@@ -457,7 +471,7 @@ public class OxRikkaImporter {
         }
     }
 
-    private static void importConversations(byte[] database, Result r) {
+    private static void importConversations(byte[] database, Map<String, byte[]> uploads, Result r) {
         if (database == null || database.length == 0) return;
         File file = null;
         SQLiteDatabase db = null;
@@ -477,6 +491,7 @@ public class OxRikkaImporter {
             }
             Map<String, List<OxChatEntry>> chats = new HashMap<>();
             Map<String, Set<String>> seen = new HashMap<>();
+            Map<String, String> uploaded = new HashMap<>();
             int total = 0;
             for (int i = 0; i < ids.size() && total < 5000; i++) {
                 String assistantId = assistants.get(i);
@@ -512,12 +527,19 @@ public class OxRikkaImporter {
                         String role = message.optString("role", "").toLowerCase(java.util.Locale.ROOT);
                         if (!"user".equals(role) && !"assistant".equals(role)) continue;
                         StringBuilder text = new StringBuilder();
+                        String imagePath = null;
                         JSONArray parts = message.optJSONArray("parts");
                         if (parts != null) {
                             for (int p = 0; p < parts.length(); p++) {
                                 JSONObject part = parts.optJSONObject(p);
                                 if (part == null) continue;
                                 String type = part.optString("type", "text");
+                                if ("image".equals(type)) {
+                                    if (imagePath == null) {
+                                        imagePath = materializeUpload(part.optString("url", ""), uploads, uploaded);
+                                    }
+                                    continue;
+                                }
                                 if (!"text".equals(type)) continue;
                                 String body = part.optString("text", part.optString("content", "")).trim();
                                 if (body.isEmpty()) continue;
@@ -528,6 +550,7 @@ public class OxRikkaImporter {
                             text.append(message.optString("content", "").trim());
                         }
                         String content = text.toString().trim();
+                        if (content.isEmpty() && imagePath != null) content = "[图片]";
                         if (content.isEmpty()) continue;
                         if (content.length() > 100_000) content = content.substring(0, 100_000);
                         long ts = base + order * 1000L;
@@ -535,7 +558,9 @@ public class OxRikkaImporter {
                         String key = role + "\u0000" + content + "\u0000" + ts;
                         Set<String> keys = seen.get(agentId);
                         if (keys != null && !keys.add(key)) continue;
-                        chat.add(new OxChatEntry(role, content, ts));
+                        chat.add(imagePath == null
+                                ? new OxChatEntry(role, content, ts)
+                                : new OxChatEntry(role, content, ts, imagePath));
                         total++;
                     }
                 } catch (Throwable t) {
@@ -555,6 +580,35 @@ public class OxRikkaImporter {
             if (conversations != null) try { conversations.close(); } catch (Throwable ignored) {}
             if (db != null) try { db.close(); } catch (Throwable ignored) {}
             if (file != null) file.delete();
+        }
+    }
+
+    private static String materializeUpload(String url, Map<String, byte[]> uploads,
+                                            Map<String, String> cache) {
+        if (url == null || url.isEmpty() || url.startsWith("data:")) return null;
+        String name = url;
+        int query = name.indexOf('?');
+        if (query >= 0) name = name.substring(0, query);
+        name = name.substring(name.lastIndexOf('/') + 1);
+        name = new File(name).getName();
+        if (name.isEmpty() || name.contains("..")) return null;
+        if (cache.containsKey(name)) return cache.get(name);
+        byte[] data = uploads.get(name);
+        if (data == null || data.length == 0) return null;
+        File out = new File(ApplicationLoader.applicationContext.getFilesDir(), "rikka_upload_" + name);
+        try {
+            if (!out.isFile() || out.length() != data.length) {
+                FileOutputStream fos = new FileOutputStream(out);
+                try {
+                    fos.write(data);
+                } finally {
+                    fos.close();
+                }
+            }
+            cache.put(name, out.getAbsolutePath());
+            return out.getAbsolutePath();
+        } catch (Throwable t) {
+            return null;
         }
     }
 

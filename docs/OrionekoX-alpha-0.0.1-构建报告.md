@@ -2815,6 +2815,25 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `f5bdcc7047d7…`）；debug `dist/OrionekoX-0.24.1-debug-arm64-x64.apk`（sha256
 `2564d44e7987…`）。详见 `docs/qa-0.24.1.md`。
 
+## 5.137 alpha 0.25.0 —— RikkaHub 聊天图片附件导入（2026-10-28 02:50–03:05）
+
+- 备份 zip 读取 `upload/` 图片（最多 40 个、单文件 4 MB、总 40 MB）；历史导入
+  遇到 image part 时按文件名匹配，写入 `files/rikka_upload_<name>` 并记录
+  `OxChatEntry.imagePath`；纯图片消息用 `[图片]` 占位。
+- 现有 `OxAgentsBridge` 在组装 user 历史时会把 `imagePath` 作为 inline base64
+  视觉输入，图片因此可参与后续多模态对话。
+- 设备：1 会话/3 节点（文本、回复、图片）样例预览正确；导入 3 条，`chat.json`
+  第 3 条含 `image_path`，本地文件 70 B；重复导入仍 3 条。清理测试对象；
+  无 Key 泄漏、无 FATAL/ANR。
+- 边界：只匹配 `upload/` 文件名；远程/data URL、其他文件类型、每消息第二张
+  以后图片跳过；聊天中不以原生照片气泡展示；真实 RikkaHub 备份待复测。
+- 版本规则：新增聊天图片资产导入能力，按 minor 从 0.24.1 → 0.25.0，
+  versionCode 2509。
+
+**产物**：`dist/OrionekoX-0.25.0-alpha-arm64-x64.apk`（versionCode 2509，sha256
+`31eba8aed98f…`）；debug `dist/OrionekoX-0.25.0-debug-arm64-x64.apk`（sha256
+`95b6640e3a03…`）。详见 `docs/qa-0.25.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
