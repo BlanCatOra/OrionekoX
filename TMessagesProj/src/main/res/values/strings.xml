@@ -12089,7 +12089,7 @@
     <string name="OxChatImportFont">Import chat font (TTF)</string>
     <string name="OxChatImportCodeFont">Import code font (TTF)</string>
     <string name="OxChatFontImportedDone">Font imported: %1$s</string>
-    <string name="OxChatExport">Export current theme JSON</string>
+    <string name="OxChatExport">Export theme package (.oxtheme)</string>
     <string name="OxChatExportDone">Theme exported</string>
     <string name="OxChatReadability">Check text contrast</string>
     <string name="OxChatReadabilityOk">Contrast %.1f:1 — readable</string>

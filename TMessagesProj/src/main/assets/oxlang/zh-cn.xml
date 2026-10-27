@@ -11940,7 +11940,7 @@
     <string name="OxChatImportFont">导入聊天字体（TTF）</string>
     <string name="OxChatImportCodeFont">导入代码字体（TTF）</string>
     <string name="OxChatFontImportedDone">已导入字体：%1$s</string>
-    <string name="OxChatExport">导出当前主题 JSON</string>
+    <string name="OxChatExport">导出主题包（.oxtheme）</string>
     <string name="OxChatExportDone">主题已导出</string>
     <string name="OxChatReadability">检查文字对比度</string>
     <string name="OxChatReadabilityOk">对比度 %.1f:1 — 可读</string>

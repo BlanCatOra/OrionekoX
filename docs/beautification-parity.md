@@ -132,6 +132,19 @@ These confirm the feature directions rather than relying on guesses. Checked
   PARTIAL on the `-gpu off` emulator (faint native pattern remains); needs a
   real-device/GPU pass. See `docs/qa-0.10.0.md`.
 
+## 0.11.0 implementation — portable `.oxtheme` packages
+
+- Export now writes a zip (`theme.json`, `background.<ext>`, `chat-font.ttf`,
+  `code-font.ttf`) instead of a JSON that only carries local file paths.
+- Import detects JSON or zip; the preview lists the summary plus “含背景图 /
+  含字体”; applying restores assets into app-private storage and rewrites the
+  snapshot paths before persisting.
+- Device round-trip PASS: imported `qa-sans.ttf`, set `verify-rice.jpg` as
+  background, exported a 464 KB `.oxtheme`, switched the font back to system,
+  re-imported the package, and got the imported font + background back.
+- This closes the Operit #1104-style gap (theme backup without media) and the
+  Kelivo #979 request for a portable appearance module.
+
 ## Gaps / next phases
 
 1. Full Operit theme-v1 mapping (background images, 9-patch, fonts, input styles,
