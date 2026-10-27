@@ -262,6 +262,9 @@ public class OxSettingsActivity extends BaseFragment {
                 final OxKelivoImporter.Result result = OxKelivoImporter.importFrom(ctx, uri);
                 AndroidUtilities.runOnUIThread(() -> {
                     OxAgentsBridge.syncAgents(true);
+                    for (String id : result.conversationIds) {
+                        OxAgentsBridge.replayImportedHistory(id);
+                    }
                     NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.dialogsNeedReload);
                     if (getParentActivity() == null) return;
                     new AlertDialog.Builder(getParentActivity())
@@ -277,8 +280,20 @@ public class OxSettingsActivity extends BaseFragment {
     }
 
     private String kelivoPreviewText(OxKelivoImporter.Preview p) {
-        StringBuilder sb = new StringBuilder(LocaleController.formatString(
-                "OxKelivoPreview", R.string.OxKelivoPreview, p.assistants));
+        StringBuilder sb = new StringBuilder();
+        if (p.assistants > 0) {
+            sb.append(LocaleController.formatString(
+                    "OxKelivoPreview", R.string.OxKelivoPreview, p.assistants));
+        }
+        if (p.conversations > 0) {
+            if (sb.length() > 0) sb.append("\n");
+            sb.append(LocaleController.formatString(
+                    "OxKelivoConversations", R.string.OxKelivoConversations,
+                    p.conversations, p.messages));
+        }
+        if (sb.length() == 0) {
+            sb.append(LocaleController.getString(R.string.OxKelivoNothing));
+        }
         if (!p.names.isEmpty()) {
             StringBuilder names = new StringBuilder();
             for (int i = 0; i < p.names.size(); i++) {
@@ -286,23 +301,39 @@ public class OxSettingsActivity extends BaseFragment {
                 names.append(p.names.get(i));
             }
             sb.append("\n").append(LocaleController.formatString(
-                    "OxKelivoNames", R.string.OxKelivoNames, names.toString()));
+                    "OxKelivoItems", R.string.OxKelivoItems, names.toString()));
         }
         if (p.existing > 0) {
             sb.append("\n").append(LocaleController.formatString(
                     "OxKelivoExisting", R.string.OxKelivoExisting, p.existing));
+        }
+        if (p.existingConversations > 0) {
+            sb.append("\n").append(LocaleController.formatString(
+                    "OxKelivoConvExisting", R.string.OxKelivoConvExisting,
+                    p.existingConversations));
         }
         for (String n : p.notes) sb.append("\n• ").append(n);
         return sb.toString();
     }
 
     private String kelivoResultText(OxKelivoImporter.Result r) {
-        if (r.created == 0 && r.updated == 0 && r.skills == 0 && r.mcpAdded == 0) {
+        if (r.created == 0 && r.updated == 0 && r.skills == 0 && r.mcpAdded == 0
+                && r.conversations == 0) {
             return LocaleController.getString(R.string.OxKelivoNothing);
         }
-        StringBuilder sb = new StringBuilder(LocaleController.formatString(
-                "OxKelivoDone", R.string.OxKelivoDone, r.created, r.updated));
+        StringBuilder sb = new StringBuilder();
+        if (r.created > 0 || r.updated > 0) {
+            sb.append(LocaleController.formatString(
+                    "OxKelivoDone", R.string.OxKelivoDone, r.created, r.updated));
+        }
+        if (r.conversations > 0) {
+            if (sb.length() > 0) sb.append("\n");
+            sb.append(LocaleController.formatString(
+                    "OxKelivoConvDone", R.string.OxKelivoConvDone,
+                    r.conversations, r.messages));
+        }
         for (String n : r.notes) sb.append("\n• ").append(n);
+        if (sb.length() > 0 && sb.charAt(0) == '\n') sb.deleteCharAt(0);
         return sb.toString();
     }
 
@@ -311,7 +342,7 @@ public class OxSettingsActivity extends BaseFragment {
         String m = message == null ? "" : message;
         if ("cannot open backup".equals(m)) {
             m = LocaleController.getString(R.string.OxRikkaOpenFailed);
-        } else if ("no assistants found".equals(m)) {
+        } else if ("no assistants found".equals(m) || "nothing importable".equals(m)) {
             m = LocaleController.getString(R.string.OxKelivoNothing);
         }
         new AlertDialog.Builder(getParentActivity())

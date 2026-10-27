@@ -4,6 +4,22 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.28.0 — 2026-10-28
+
+- Kelivo/Chatbox backups now import conversation history. Chatbox v2 zips are
+  read through `manifest.json` and `sessions/*/session.json`; older zips and
+  direct JSON exports (`chat-sessions-list` / `session:<id>`) are also accepted.
+- Every thread becomes a local agent with a stable id. The first system message
+  becomes its prompt, session provider/model/sampling settings are inherited,
+  and user/assistant/tool/system turns keep their original timestamps.
+- Imported history is replayed into the native message DB, so the stock chat
+  screen shows the backup bubbles instead of a greeting. Repeat imports replace
+  history without duplicating messages.
+- Covers 100 conversations, 500 messages per conversation and 20,000 characters
+  per message. Images/files are placeholders, and tool turns are flattened into
+  assistant bubbles. Verified with a 3-conversation zip and a legacy JSON sample,
+  including repeat-import row counts, then all test objects were removed.
+
 ## 0.27.2 — 2026-10-28
 
 - Kelivo/Chatbox backup import now reads HTTP MCP servers from

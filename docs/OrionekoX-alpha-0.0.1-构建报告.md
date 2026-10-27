@@ -2975,6 +2975,30 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `82b76f4e3a69…`）；debug `dist/OrionekoX-0.27.2-debug-arm64-x64.apk`（sha256
 `0e070cc8bed2…`）。详见 `docs/qa-0.27.2.md`。
 
+## 5.146 alpha 0.28.0 —— Kelivo / Chatbox 对话历史导入（2026-10-28 05:15–05:45）
+
+- Chatbox v2 zip 读取 `manifest.json` + `sessions/*/session.json`；兼容旧包的
+  `sessions/**/*.json` 与直接 JSON 的 `chat-sessions-list` / `session:<id>`。
+- 每个 session 的 threads 各导入为一段对话；`session.messages` 作为当前话题，
+  与 thread 消息 id 集合相同时不重复。
+- 每段对话生成稳定 id 的本地 Agent（`kelivo_chat_<session>_<thread|current>`），
+  首条 system 作为人设，继承 provider/model/temperature/topP/maxTokens；
+  消息保留原始时间戳，tool/system/附件转为可读文本。
+- 导入后调用 `replayImportedHistory` 写入原生 messages_v2，聊天界面可看到
+  备份历史而非只有欢迎语；重复导入替换历史且不重复消息。
+- 设备：zip 样例 3 段/7 条，预览与结果一致；重复导入仍 3 个 Agent、消息
+  2/3/2 条；原生界面正确显示“当前话题”与三条历史气泡。JSON 样例 1 段/2 条，
+  0.3/0.6/64 配置与“10月25日”历史正确。清理 4 个测试 Agent 与样例后
+  dialogs/messages 归零；无本包 FATAL/ANR。
+- 边界：不复制图片/文件资源，只留占位；tool 压平为 assistant；旧时间戳使
+  对话在列表中靠后；每 thread 独立 Agent，无父子会话切换。
+- 版本规则：新增可见的备份对话历史导入能力，按 minor 从 0.27.2 → 0.28.0，
+  versionCode 2809。
+
+**产物**：`dist/OrionekoX-0.28.0-alpha-arm64-x64.apk`（versionCode 2809，sha256
+`7cff4b8b9b36…`）；debug `dist/OrionekoX-0.28.0-debug-arm64-x64.apk`（sha256
+`149ed3bd0483…`）。详见 `docs/qa-0.28.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
