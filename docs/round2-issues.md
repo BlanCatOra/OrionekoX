@@ -255,3 +255,12 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：1 助手 + KelivoSkill 样例，预览“将导入 1 个技能”；导入后 skill 96 B；重复导入“新建 0/更新 1/技能 1”，仍 1 个目录；清理测试对象。
 - 边界：仅 zip 的 skills/；只导入 SKILL.md 正文；脚本/附件、对话、MCP、工作区、头像背景未导入。
+
+## 0.27.2 Kelivo HTTP MCP 导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-57 | 0.27.2 QA | Kelivo/Chatbox 备份的 MCP 服务器未导入，预览文案仍称“不含 MCP” | 解析 mcp_servers_v1/mcpServers，仅导入 HTTP/streamableHttp 到本机 MCP 列表，按 URL 去重；SSE/stdio/inmemory 计数跳过 | 部分完成 |
+
+- 设备：1 助手 + 1 HTTP + 1 SSE 样例，预览“1 个 HTTP MCP / 跳过 1”；导入“新建 1 / 新增 MCP 1 / 跳过 1”，`KelivoHTTP` 的 URL、enabled、`X-Kelivo` header 正确，SSE 不存在；重复导入“新建 0/更新 1/新增 MCP 0/跳过 2”，仍 1 条。
+- 边界：SSE/stdio/inmemory 未导入；MCP 工具白名单、OAuth、客户端注册、环境变量未导入；不做连通性测试；真实备份待复验。

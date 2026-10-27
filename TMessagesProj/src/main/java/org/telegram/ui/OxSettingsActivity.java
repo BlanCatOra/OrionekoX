@@ -297,7 +297,7 @@ public class OxSettingsActivity extends BaseFragment {
     }
 
     private String kelivoResultText(OxKelivoImporter.Result r) {
-        if (r.created == 0 && r.updated == 0 && r.skills == 0) {
+        if (r.created == 0 && r.updated == 0 && r.skills == 0 && r.mcpAdded == 0) {
             return LocaleController.getString(R.string.OxKelivoNothing);
         }
         StringBuilder sb = new StringBuilder(LocaleController.formatString(

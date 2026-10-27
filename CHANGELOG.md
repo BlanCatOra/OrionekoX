@@ -4,6 +4,18 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.27.2 — 2026-10-28
+
+- Kelivo/Chatbox backup import now reads HTTP MCP servers from
+  `mcp_servers_v1` (also `mcpServers`) into the local MCP list, including name,
+  URL, headers and enabled state. Entries are keyed by URL, so repeat imports
+  do not duplicate.
+- SSE, stdio/command and inmemory entries are reported as skipped and never
+  executed. Preview and result show imported/skipped MCP counts, and the
+  overview copy now says assistants, personas, skills and HTTP MCP are imported.
+- Verified with one HTTP and one SSE entry: only the HTTP server landed with its
+  header, a repeat import added nothing, and the test objects were removed.
+
 ## 0.27.1 — 2026-10-28
 
 - Kelivo/Chatbox backup import now reads `skills/**/SKILL.md` from the zip into
