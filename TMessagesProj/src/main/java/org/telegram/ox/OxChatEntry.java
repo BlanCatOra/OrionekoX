@@ -14,6 +14,8 @@ public class OxChatEntry {
     public String content;
     public long ts;
     public String imagePath;   // optional: local image attached to this entry (vision)
+    public String filePath;    // optional: local document attached to this entry
+    public String fileName;    // display name for filePath
 
     public OxChatEntry(String role, String content, long ts) {
         this.role = role;
@@ -35,6 +37,11 @@ public class OxChatEntry {
             OxChatEntry e = new OxChatEntry(o.optString("role", "user"), o.optString("content"), o.optLong("ts"));
             String img = o.optString("image_path", "");
             if (!img.isEmpty()) e.imagePath = img;
+            String file = o.optString("file_path", "");
+            if (!file.isEmpty()) {
+                e.filePath = file;
+                e.fileName = o.optString("file_name", "");
+            }
             out.add(e);
         }
         return out;
@@ -48,6 +55,10 @@ public class OxChatEntry {
             o.put("content", e.content);
             o.put("ts", e.ts);
             if (e.imagePath != null && !e.imagePath.isEmpty()) o.put("image_path", e.imagePath);
+            if (e.filePath != null && !e.filePath.isEmpty()) {
+                o.put("file_path", e.filePath);
+                if (e.fileName != null && !e.fileName.isEmpty()) o.put("file_name", e.fileName);
+            }
             a.put(o);
         }
         return a;

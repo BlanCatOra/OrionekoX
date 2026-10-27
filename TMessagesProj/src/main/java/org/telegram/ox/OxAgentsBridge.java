@@ -1577,10 +1577,31 @@ public class OxAgentsBridge {
         return new long[]{w, h, duration};
     }
 
+    private static String mimeForName(String name) {
+        String n = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
+        if (n.endsWith(".txt") || n.endsWith(".md") || n.endsWith(".log")) return "text/plain";
+        if (n.endsWith(".json")) return "application/json";
+        if (n.endsWith(".csv")) return "text/csv";
+        if (n.endsWith(".pdf")) return "application/pdf";
+        if (n.endsWith(".zip")) return "application/zip";
+        if (n.endsWith(".html") || n.endsWith(".htm")) return "text/html";
+        if (n.endsWith(".xml")) return "application/xml";
+        if (n.endsWith(".doc")) return "application/msword";
+        if (n.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        if (n.endsWith(".xls")) return "application/vnd.ms-excel";
+        if (n.endsWith(".xlsx")) return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        if (n.endsWith(".ppt")) return "application/vnd.ms-powerpoint";
+        if (n.endsWith(".pptx")) return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        if (n.endsWith(".mp3")) return "audio/mpeg";
+        if (n.endsWith(".wav")) return "audio/wav";
+        if (n.endsWith(".mp4")) return "video/mp4";
+        if (n.endsWith(".webm")) return "video/webm";
+        return "application/octet-stream";
+    }
+
     private static TLRPC.TL_document buildLocalDocument(String path, String name, String mime,
                                                         boolean video, boolean animated,
-                                                        int w, int h, double durationSec) {
-        TLRPC.TL_document doc = new TLRPC.TL_document();
+                                                        int w, int h, double durationSec) {        TLRPC.TL_document doc = new TLRPC.TL_document();
         doc.id = Integer.MIN_VALUE;
         doc.access_hash = 0;
         doc.date = (int) (System.currentTimeMillis() / 1000);
@@ -2003,7 +2024,8 @@ public class OxAgentsBridge {
             int start = history.size();
             for (int i = history.size() - 1; i >= 0 && history.size() - i <= 60; i--) {
                 OxChatEntry e = history.get(i);
-                int c = e.imagePath != null ? 2000 : (e.content == null ? 0 : e.content.length());
+                int c = e.imagePath != null || e.filePath != null ? 2000
+                        : (e.content == null ? 0 : e.content.length());
                 if (chars + c > budget && start < history.size()) break;
                 chars += c;
                 start = i;
@@ -2030,7 +2052,14 @@ public class OxAgentsBridge {
                             .put("image_url", new JSONObject().put("url", "data:image/jpeg;base64," + b64)));
                     messages.put(new JSONObject().put("role", "user").put("content", parts));
                 } else {
-                    messages.put(new JSONObject().put("role", e.role).put("content", e.content));
+                    String content = e.content == null ? "" : e.content;
+                    if (e.filePath != null && !e.filePath.isEmpty()) {
+                        String name = e.fileName != null && !e.fileName.isEmpty()
+                                ? e.fileName : new File(e.filePath).getName();
+                        String label = "[文件] " + name;
+                        content = content.trim().isEmpty() ? label : content + "\n" + label;
+                    }
+                    messages.put(new JSONObject().put("role", e.role).put("content", content));
                 }
             }
         }
@@ -2242,13 +2271,15 @@ public class OxAgentsBridge {
                 for (OxChatEntry e : chat) {
                     if (e == null) continue;
                     boolean hasImage = e.imagePath != null && new File(e.imagePath).isFile();
-                    if ((e.content == null || e.content.trim().isEmpty()) && !hasImage) continue;
+                    boolean hasFile = e.filePath != null && new File(e.filePath).isFile();
+                    if ((e.content == null || e.content.trim().isEmpty()) && !hasImage && !hasFile) continue;
                     boolean out = "user".equals(e.role);
                     TLRPC.TL_message msg = baseOutgoing(did);
                     msg.out = out;
                     msg.date = e.ts > 0 ? (int) (e.ts / 1000) : (int) (System.currentTimeMillis() / 1000);
                     msg.message = e.content == null ? "" : e.content;
                     msg.media = new TLRPC.TL_messageMediaEmpty();
+                    boolean attached = false;
                     if (hasImage) {
                         try {
                             TLRPC.TL_photo photo = SendMessagesHelper.getInstance(0)
@@ -2259,14 +2290,29 @@ public class OxAgentsBridge {
                                 msg.media.flags |= 1;
                                 msg.media.photo = photo;
                                 msg.attachPath = e.imagePath;
-                            } else if (msg.message.trim().isEmpty()) {
-                                continue;
+                                attached = true;
                             }
                         } catch (Throwable t) {
                             logErr("replay photo failed " + e.imagePath, t);
-                            if (msg.message.trim().isEmpty()) continue;
                         }
                     }
+                    if (!attached && hasFile) {
+                        try {
+                            String name = e.fileName != null && !e.fileName.isEmpty()
+                                    ? e.fileName : new File(e.filePath).getName();
+                            TLRPC.TL_document doc = buildLocalDocument(e.filePath, name,
+                                    mimeForName(name), false, false, 0, 0, 0);
+                            msg.flags = 256 | 512;
+                            msg.media = new TLRPC.TL_messageMediaDocument();
+                            msg.media.flags |= 1;
+                            msg.media.document = doc;
+                            msg.attachPath = e.filePath;
+                            attached = true;
+                        } catch (Throwable t) {
+                            logErr("replay document failed " + e.filePath, t);
+                        }
+                    }
+                    if (!attached && msg.message.trim().isEmpty()) continue;
                     msg.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
                     msg.from_id = new TLRPC.TL_peerUser();
                     msg.from_id.user_id = out ? SELF_ID : did;

@@ -3047,6 +3047,28 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `199d7c5e2361…`）；debug `dist/OrionekoX-0.30.0-debug-arm64-x64.apk`（sha256
 `e1af87f999cd…`）。详见 `docs/qa-0.30.0.md`。
 
+## 5.149 alpha 0.31.0 —— Kelivo / Chatbox 聊天附件导入（2026-10-28 06:42–06:52）
+
+- `OxChatEntry` 增加 filePath/fileName 并持久化到 chat.json；旧记录兼容。
+- Chatbox v2 `parsed-attachment`/`raw-attachment` 的非图片资源进入附件映射，
+  消息 file part 按 storageKey/rawStorageKey/url 匹配；导入复制到 Agent
+  media/<index>_<safeName>，原名用于显示。
+- 每会话最多 20 个附件；有文字作为说明，纯附件允许空正文；其余附件保留
+  `[文件]` 占位；Agent 上下文补 `[文件] 名称`，不执行文件内容。
+- `replayImportedHistory` 用 `buildLocalDocument` 生成原生文件气泡（名称、
+  大小、MIME、localPath），失败退回文字。
+- 设备：1 会话/4 条、2 个附件（raw txt + data URL json）；预览/结果均提示
+  2 个；落盘 35 B/38 B，chat.json 字段正确；原生界面显示 notes.txt 带说明、
+  data.json 纯文件气泡；重复导入附件 sha256 不变、messages_v2 仍 4 条；
+  清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：每消息仅首附件；音视频按文档展示；网络附件不下载；真实备份待复测。
+- 版本规则：新增可见的聊天附件导入与原生文件气泡能力，按 minor 从 0.30.0 →
+  0.31.0，versionCode 3109。
+
+**产物**：`dist/OrionekoX-0.31.0-alpha-arm64-x64.apk`（versionCode 3109，sha256
+`b64728dd51ab…`）；debug `dist/OrionekoX-0.31.0-debug-arm64-x64.apk`（sha256
+`8699b26da48a…`）。详见 `docs/qa-0.31.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
