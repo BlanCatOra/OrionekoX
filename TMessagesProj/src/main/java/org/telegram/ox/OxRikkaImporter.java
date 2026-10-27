@@ -1,14 +1,19 @@
 package org.telegram.ox;
 
 import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -21,9 +26,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * Imports the assistants, provider wiring and remote MCP servers from a RikkaHub
- * backup's {@code settings.json}. The archive's chat database and attachments are
- * deliberately ignored; OAuth tokens and SSE-only servers are not imported.
+ * Imports assistants, provider wiring, remote MCP servers, skills and the selected
+ * text branch of chat history from a RikkaHub backup. Attachments, tool parts and
+ * OAuth tokens are not imported.
  */
 public class OxRikkaImporter {
 
@@ -35,6 +40,8 @@ public class OxRikkaImporter {
         public int mcp;
         public int skippedSse;
         public int skills;
+        public int conversations;
+        public int messageNodes;
         public int existingAssistants;
         public int existingMcp;
         public int existingSkills;
@@ -49,12 +56,14 @@ public class OxRikkaImporter {
         public int mcpAdded;
         public int mcpSkipped;
         public int skills;
+        public int messages;
         public final List<String> importedAgentIds = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
 
     private static class Archive {
         JSONObject settings;
+        byte[] database;
         final Map<String, byte[]> skills = new java.util.LinkedHashMap<>();
     }
 
@@ -119,7 +128,15 @@ public class OxRikkaImporter {
             if (p.skillNames.size() < 8) p.skillNames.add(safe);
             if (skillIds.contains(safe)) p.existingSkills++;
         }
-        p.notes.add("仅导入 settings.json 与 skills/ 技能；不含聊天数据库、附件和 OAuth token。");
+        if (archive.database != null && archive.database.length > 0) {
+            int[] history = countHistory(archive.database);
+            p.conversations = history[0];
+            p.messageNodes = history[1];
+        }
+        p.notes.add("仅导入 settings.json、skills/ 技能与聊天数据库的文本历史；不含附件和 OAuth token。");
+        if (p.conversations > 0) {
+            p.notes.add("历史按每个消息节点的当前分支导入；图片、工具与附件消息会跳过。");
+        }
         if (archive.skills.size() > 0) {
             p.notes.add("技能按目录名导入，同名技能更新，不删除本地其他技能。");
         }
@@ -241,6 +258,7 @@ public class OxRikkaImporter {
             OxMcpManager.saveServer(s);
             r.mcpAdded++;
         }
+        importConversations(archive.database, r);
         return r;
     }
 
@@ -276,6 +294,9 @@ public class OxRikkaImporter {
                             byte[] body = readBytes(zin, 512 * 1024);
                             if (body.length > 0) out.skills.put(id, body);
                         }
+                    } else if (out.database == null
+                            && ("rikka_hub.db".equals(n) || n.endsWith("/rikka_hub.db"))) {
+                        out.database = readBytes(zin, 64 * 1024 * 1024);
                     }
                 }
             } else {
@@ -412,6 +433,141 @@ public class OxRikkaImporter {
             default:
                 return "auto";
         }
+    }
+
+    private static int[] countHistory(byte[] database) {
+        File file = null;
+        SQLiteDatabase db = null;
+        Cursor c = null;
+        try {
+            file = writeHistoryDb(database);
+            db = SQLiteDatabase.openDatabase(file.getPath(), null, SQLiteDatabase.OPEN_READONLY);
+            c = db.rawQuery("SELECT COUNT(*) FROM conversationentity", null);
+            int conversations = c.moveToFirst() ? c.getInt(0) : 0;
+            c.close();
+            c = db.rawQuery("SELECT COUNT(*) FROM message_node", null);
+            int nodes = c.moveToFirst() ? c.getInt(0) : 0;
+            return new int[]{conversations, nodes};
+        } catch (Throwable t) {
+            return new int[]{0, 0};
+        } finally {
+            if (c != null) try { c.close(); } catch (Throwable ignored) {}
+            if (db != null) try { db.close(); } catch (Throwable ignored) {}
+            if (file != null) file.delete();
+        }
+    }
+
+    private static void importConversations(byte[] database, Result r) {
+        if (database == null || database.length == 0) return;
+        File file = null;
+        SQLiteDatabase db = null;
+        Cursor conversations = null;
+        try {
+            file = writeHistoryDb(database);
+            db = SQLiteDatabase.openDatabase(file.getPath(), null, SQLiteDatabase.OPEN_READONLY);
+            conversations = db.rawQuery(
+                    "SELECT id, assistant_id, create_at FROM conversationentity ORDER BY create_at ASC LIMIT 200", null);
+            List<String> ids = new ArrayList<>();
+            List<String> assistants = new ArrayList<>();
+            List<Long> created = new ArrayList<>();
+            while (conversations.moveToNext()) {
+                ids.add(conversations.getString(0));
+                assistants.add(conversations.getString(1));
+                created.add(conversations.getLong(2));
+            }
+            Map<String, List<OxChatEntry>> chats = new HashMap<>();
+            Map<String, Set<String>> seen = new HashMap<>();
+            int total = 0;
+            for (int i = 0; i < ids.size() && total < 5000; i++) {
+                String assistantId = assistants.get(i);
+                String agentId = agentId(assistantId, assistantId == null ? "" : assistantId);
+                OxAgent agent = findById(agentId);
+                if (agent == null) continue;
+                List<OxChatEntry> chat = chats.get(agentId);
+                if (chat == null) {
+                    chat = OxAgentStore.loadChat(agentId);
+                    chats.put(agentId, chat);
+                    Set<String> keys = new HashSet<>();
+                    for (OxChatEntry e : chat) keys.add(e.role + "\u0000" + e.content + "\u0000" + e.ts);
+                    seen.put(agentId, keys);
+                }
+                long base = created.get(i) == null || created.get(i) <= 0
+                        ? 1_700_000_000_000L + (long) i * 10_000_000L : created.get(i);
+                Cursor nodes = null;
+                try {
+                    nodes = db.rawQuery("SELECT messages, select_index FROM message_node "
+                            + "WHERE conversation_id=? ORDER BY node_index ASC LIMIT 500", new String[]{ids.get(i)});
+                    int order = 0;
+                    while (nodes.moveToNext() && total < 5000) {
+                        JSONArray messages;
+                        try {
+                            messages = new JSONArray(nodes.getString(0));
+                        } catch (Throwable t) {
+                            continue;
+                        }
+                        int selected = nodes.getInt(1);
+                        JSONObject message = messages.optJSONObject(selected);
+                        if (message == null) message = messages.optJSONObject(0);
+                        if (message == null) continue;
+                        String role = message.optString("role", "").toLowerCase(java.util.Locale.ROOT);
+                        if (!"user".equals(role) && !"assistant".equals(role)) continue;
+                        StringBuilder text = new StringBuilder();
+                        JSONArray parts = message.optJSONArray("parts");
+                        if (parts != null) {
+                            for (int p = 0; p < parts.length(); p++) {
+                                JSONObject part = parts.optJSONObject(p);
+                                if (part == null) continue;
+                                String type = part.optString("type", "text");
+                                if (!"text".equals(type)) continue;
+                                String body = part.optString("text", part.optString("content", "")).trim();
+                                if (body.isEmpty()) continue;
+                                if (text.length() > 0) text.append('\n');
+                                text.append(body);
+                            }
+                        } else {
+                            text.append(message.optString("content", "").trim());
+                        }
+                        String content = text.toString().trim();
+                        if (content.isEmpty()) continue;
+                        if (content.length() > 100_000) content = content.substring(0, 100_000);
+                        long ts = base + order * 1000L;
+                        order++;
+                        String key = role + "\u0000" + content + "\u0000" + ts;
+                        Set<String> keys = seen.get(agentId);
+                        if (keys != null && !keys.add(key)) continue;
+                        chat.add(new OxChatEntry(role, content, ts));
+                        total++;
+                    }
+                } catch (Throwable t) {
+                    r.notes.add("读取会话历史失败：" + ids.get(i));
+                } finally {
+                    if (nodes != null) try { nodes.close(); } catch (Throwable ignored) {}
+                }
+            }
+            for (Map.Entry<String, List<OxChatEntry>> e : chats.entrySet()) {
+                OxAgentStore.saveChat(e.getKey(), e.getValue());
+            }
+            r.messages += total;
+            if (total > 0) r.notes.add("已导入历史消息 " + total + " 条");
+        } catch (Throwable t) {
+            r.notes.add("读取 RikkaHub 聊天数据库失败");
+        } finally {
+            if (conversations != null) try { conversations.close(); } catch (Throwable ignored) {}
+            if (db != null) try { db.close(); } catch (Throwable ignored) {}
+            if (file != null) file.delete();
+        }
+    }
+
+    private static File writeHistoryDb(byte[] database) throws Exception {
+        File file = new File(ApplicationLoader.applicationContext.getCacheDir(),
+                "rikka_history_" + System.nanoTime() + ".db");
+        FileOutputStream out = new FileOutputStream(file);
+        try {
+            out.write(database);
+        } finally {
+            out.close();
+        }
+        return file;
     }
 
     private static JSONArray mergeHeaders(JSONArray provider, JSONArray assistant) {

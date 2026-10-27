@@ -4,6 +4,21 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.24.0 — 2026-10-28
+
+- RikkaHub backup import now reads `rikka_hub.db` and imports the selected text
+  branch of each conversation into the matching local agent chat.
+- For every message node the importer takes `messages[select_index]`, keeps only
+  user/assistant text parts, and appends with deterministic timestamps;
+  re-imports are deduplicated. Limits: 200 conversations, 500 nodes each, 5000
+  messages, 100k characters per message.
+- The preview reports conversation/message-node counts and the result reports how
+  many messages were imported.
+- Verified with a schema sample: two conversations/four nodes imported the
+  selected `Branch B selected` (not the unselected branch) and stayed at four
+  entries after a repeat import. Images, files, tool parts and attachments are
+  not imported.
+
 ## 0.23.0 — 2026-10-28
 
 - Added a one-tap AMOLED pure-black toggle in the appearance editor. It paints

@@ -322,6 +322,10 @@ public class OxSettingsActivity extends BaseFragment {
             sb.append("\n").append(LocaleController.formatString(
                     "OxRikkaSkillNames", R.string.OxRikkaSkillNames, names.toString()));
         }
+        if (p.conversations > 0) {
+            sb.append("\n").append(LocaleController.formatString(
+                    "OxRikkaHistory", R.string.OxRikkaHistory, p.conversations, p.messageNodes));
+        }
         if (p.existingAssistants > 0 || p.existingMcp > 0 || p.existingSkills > 0) {
             sb.append("\n").append(LocaleController.formatString(
                     "OxRikkaExisting", R.string.OxRikkaExisting,

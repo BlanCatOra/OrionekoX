@@ -11992,6 +11992,7 @@
     <string name="OxRikkaPreview">助手 %1$d 个 · Provider %2$d 个 · MCP %3$d 个 · 技能 %4$d 个</string>
     <string name="OxRikkaNames">助手：%1$s</string>
     <string name="OxRikkaSkillNames">技能：%1$s</string>
+    <string name="OxRikkaHistory">历史：会话 %1$d 个 · 消息节点 %2$d 条</string>
     <string name="OxRikkaExisting">已存在助手 %1$d 个、MCP %2$d 个、技能 %3$d 个，将更新或跳过</string>
     <string name="OxRikkaApply">导入</string>
     <string name="OxRikkaDone">新建助手 %1$d，更新 %2$d，新增 MCP %3$d，跳过 MCP %4$d，导入技能 %5$d</string>

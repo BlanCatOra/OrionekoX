@@ -2782,6 +2782,25 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `311fc6456dbb…`）；debug `dist/OrionekoX-0.23.0-debug-arm64-x64.apk`（sha256
 `b6c48bfa0dd4…`）。详见 `docs/qa-0.23.0.md`。
 
+## 5.135 alpha 0.24.0 —— RikkaHub 聊天数据库文本历史导入（2026-10-28 02:26–02:38）
+
+- 备份 zip 额外读取 `rikka_hub.db`（≤64 MB）；预览显示“历史：会话 N 个 ·
+  消息节点 M 条”，导入结果附“已导入历史消息 N 条”。
+- 只读查询 `conversationentity` 与 `message_node`：每个节点取
+  `messages[select_index]` 当前分支，仅提取 user/assistant 的 text parts；
+  上限 200 会话/500 节点/5000 消息、单条 100k 字符；按
+  `role+content+ts` 去重，重复导入不追加。
+- 设备（schema 样例）：2 会话/4 节点，分支 `Branch B selected` 被正确选中，
+  导入 4 条历史；重复导入仍 4 条。清理测试对象；无 Key 泄漏、无 FATAL/ANR。
+- 边界：不导入其他分支/图片/文件/工具/推理；同 Agent 多会话合并；标题不保存；
+  时间戳为合成值；真实 RikkaHub 导出 DB 待复测。
+- 版本规则：新增聊天历史导入能力，按 minor 从 0.23.0 → 0.24.0，
+  versionCode 2409。
+
+**产物**：`dist/OrionekoX-0.24.0-alpha-arm64-x64.apk`（versionCode 2409，sha256
+`c939c48301f7…`）；debug `dist/OrionekoX-0.24.0-debug-arm64-x64.apk`（sha256
+`bc7247e7f0b7…`）。详见 `docs/qa-0.24.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
