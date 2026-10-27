@@ -1011,6 +1011,21 @@ public class OxChatTheme {
         return base;
     }
 
+    private static void applyBubbleOverride(org.telegram.ui.ActionBar.MessageDrawable d,
+                                            int color, int radius, int borderColor, int borderWidth) {
+        if (d == null) return;
+        d.overrideColor = color;
+        d.setOverrideRoundRadius(radius);
+        d.setOverrideBorder(borderColor, borderWidth);
+    }
+
+    private static void clearBubbleOverride(org.telegram.ui.ActionBar.MessageDrawable d) {
+        if (d == null) return;
+        d.overrideColor = null;
+        d.setOverrideRoundRadius(0);
+        d.setOverrideBorder(0, 0);
+    }
+
     public static void applyToChat(ChatActivity activity, long dialogId, View listView) {
         if (activity == null || listView == null) return;
         if (!OxAgentsBridge.isAgentDialog(dialogId)) return;
@@ -1021,26 +1036,15 @@ public class OxChatTheme {
             if (STYLE_FROSTED.equals(s.bubbleStyle)) alpha = Math.min(alpha, 200);
             int in = withAlpha(s.inBubble, alpha);
             int out = withAlpha(s.outBubble, alpha);
-            if (Theme.chat_msgInDrawable != null) {
-                Theme.chat_msgInDrawable.overrideColor = in;
-                Theme.chat_msgInDrawable.setOverrideRoundRadius(AndroidUtilities.dp(s.cornerRadius));
-                Theme.chat_msgInDrawable.setOverrideBorder(s.borderColor, s.borderWidth);
-            }
-            if (Theme.chat_msgOutDrawable != null) {
-                Theme.chat_msgOutDrawable.overrideColor = out;
-                Theme.chat_msgOutDrawable.setOverrideRoundRadius(AndroidUtilities.dp(s.cornerRadius));
-                Theme.chat_msgOutDrawable.setOverrideBorder(s.borderColor, s.borderWidth);
-            }
-            if (Theme.chat_msgInSelectedDrawable != null) {
-                Theme.chat_msgInSelectedDrawable.overrideColor = in;
-                Theme.chat_msgInSelectedDrawable.setOverrideRoundRadius(AndroidUtilities.dp(s.cornerRadius));
-                Theme.chat_msgInSelectedDrawable.setOverrideBorder(s.borderColor, s.borderWidth);
-            }
-            if (Theme.chat_msgOutSelectedDrawable != null) {
-                Theme.chat_msgOutSelectedDrawable.overrideColor = out;
-                Theme.chat_msgOutSelectedDrawable.setOverrideRoundRadius(AndroidUtilities.dp(s.cornerRadius));
-                Theme.chat_msgOutSelectedDrawable.setOverrideBorder(s.borderColor, s.borderWidth);
-            }
+            int radius = AndroidUtilities.dp(s.cornerRadius);
+            applyBubbleOverride(Theme.chat_msgInDrawable, in, radius, s.borderColor, s.borderWidth);
+            applyBubbleOverride(Theme.chat_msgInSelectedDrawable, in, radius, s.borderColor, s.borderWidth);
+            applyBubbleOverride(Theme.chat_msgInMediaDrawable, in, radius, s.borderColor, s.borderWidth);
+            applyBubbleOverride(Theme.chat_msgInMediaSelectedDrawable, in, radius, s.borderColor, s.borderWidth);
+            applyBubbleOverride(Theme.chat_msgOutDrawable, out, radius, s.borderColor, s.borderWidth);
+            applyBubbleOverride(Theme.chat_msgOutSelectedDrawable, out, radius, s.borderColor, s.borderWidth);
+            applyBubbleOverride(Theme.chat_msgOutMediaDrawable, out, radius, s.borderColor, s.borderWidth);
+            applyBubbleOverride(Theme.chat_msgOutMediaSelectedDrawable, out, radius, s.borderColor, s.borderWidth);
             android.content.res.Resources res = activity.getParentActivity() != null
                     ? activity.getParentActivity().getResources()
                     : ApplicationLoader.applicationContext.getResources();
@@ -1153,26 +1157,14 @@ public class OxChatTheme {
     public static void restoreChat(View listView) {
         if (!applied) return;
         try {
-            if (Theme.chat_msgInDrawable != null) {
-                Theme.chat_msgInDrawable.overrideColor = null;
-                Theme.chat_msgInDrawable.setOverrideRoundRadius(0);
-                Theme.chat_msgInDrawable.setOverrideBorder(0, 0);
-            }
-            if (Theme.chat_msgOutDrawable != null) {
-                Theme.chat_msgOutDrawable.overrideColor = null;
-                Theme.chat_msgOutDrawable.setOverrideRoundRadius(0);
-                Theme.chat_msgOutDrawable.setOverrideBorder(0, 0);
-            }
-            if (Theme.chat_msgInSelectedDrawable != null) {
-                Theme.chat_msgInSelectedDrawable.overrideColor = null;
-                Theme.chat_msgInSelectedDrawable.setOverrideRoundRadius(0);
-                Theme.chat_msgInSelectedDrawable.setOverrideBorder(0, 0);
-            }
-            if (Theme.chat_msgOutSelectedDrawable != null) {
-                Theme.chat_msgOutSelectedDrawable.overrideColor = null;
-                Theme.chat_msgOutSelectedDrawable.setOverrideRoundRadius(0);
-                Theme.chat_msgOutSelectedDrawable.setOverrideBorder(0, 0);
-            }
+            clearBubbleOverride(Theme.chat_msgInDrawable);
+            clearBubbleOverride(Theme.chat_msgInSelectedDrawable);
+            clearBubbleOverride(Theme.chat_msgInMediaDrawable);
+            clearBubbleOverride(Theme.chat_msgInMediaSelectedDrawable);
+            clearBubbleOverride(Theme.chat_msgOutDrawable);
+            clearBubbleOverride(Theme.chat_msgOutSelectedDrawable);
+            clearBubbleOverride(Theme.chat_msgOutMediaDrawable);
+            clearBubbleOverride(Theme.chat_msgOutMediaSelectedDrawable);
             if (Theme.chat_msgTextPaint != null) {
                 if (originalTextSize > 0) Theme.chat_msgTextPaint.setTextSize(originalTextSize);
                 Theme.chat_msgTextPaint.setColor(originalTextColor);

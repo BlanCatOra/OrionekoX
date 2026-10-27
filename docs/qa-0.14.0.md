@@ -82,7 +82,7 @@
   `font_scale` 或 `background_image_opacity` 的 Kelivo/RikkaHub JSON 不会被误判，
   且缺少 `theme_mode` 时不再改写背景基色。重建后用同一文件复验，结果不变。
 - 已知视觉缺口：Agent 工具调用状态气泡（🔧 行）仍沿用原生白色，不随自定义收发气泡
-  着色；不影响文字气泡与边框，已记入后续外观缺口。
+  着色；已在 0.14.1 通过覆盖媒体/选中媒体气泡 drawable 修复（见 `docs/qa-0.14.1.md`）。
 - 本轮未覆盖：Operit 9-patch 气泡图、自定义头像/字体 URI、逐气泡内边距与图片裁剪。
 - 无 FATAL/ANR；导入过程未修改或删除用户会话、Agent、记忆与工作区数据。
 

@@ -2532,11 +2532,28 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 - 导入按“当前快照 + 命中字段覆盖”合并，预览会显示继承的背景图/字体；未覆盖 Operit
   9-patch、头像/字体 URI、内边距与图片裁剪。兼容性上只在命中 Operit 专有键时进入该
   分支，缺少 `theme_mode` 不改背景基色，避免误伤 Kelivo/RikkaHub JSON。
-- 已知缺口：工具调用状态气泡仍为原生白色，未随自定义气泡着色。无 FATAL/ANR。
+- 已知缺口：工具调用状态气泡仍为原生白色，未随自定义气泡着色（0.14.1 修复）。
+  无 FATAL/ANR。
 
 **产物**：`dist/OrionekoX-0.14.0-alpha-arm64-x64.apk`（versionCode 1449，sha256
 `5c7a27b98bfa…`）；debug `dist/OrionekoX-0.14.0-debug-arm64-x64.apk`（sha256
 `2807a1dc3197…`）。详见 `docs/qa-0.14.0.md`。
+
+## 5.123 alpha 0.14.1 —— 工具/媒体气泡随主题着色（2026-10-27 21:18–21:26）
+
+- 0.14.0 只覆盖 `chat_msgIn/OutDrawable` 与选中文字气泡；工具调用提示气泡走媒体
+  drawable，保持原生白色，而自定义文字色为白色时正文不可见。
+- 抽出 `applyBubbleOverride` / `clearBubbleOverride`，统一覆盖并恢复全部 8 个气泡
+  drawable（in/out、selected、media、mediaSelected），颜色、圆角、边框共用同一
+  快照；退出 Agent 会话时全部还原。
+- 设备：`**Bold** Card` 的两条历史工具提示 `🔧 device_info({}) …`、`get_time({}) …`
+  由白底白字变为深紫 `#2D2A45` + 洋红 `#FF2D95` 1dp 边框，白字完整可读；主回复与
+  发气泡不变，无需发送新消息。无 FATAL/ANR。
+- 版本规则：单一视觉缺陷修复，按 patch 从 0.14.0 → 0.14.1。
+
+**产物**：`dist/OrionekoX-0.14.1-alpha-arm64-x64.apk`（versionCode 1459，sha256
+`9030915746d2…`）；debug `dist/OrionekoX-0.14.1-debug-arm64-x64.apk`（sha256
+`fc0758b06bc9…`）。详见 `docs/qa-0.14.1.md`。
 
 ## 6. 与开发报告路线图的对应关系
 
