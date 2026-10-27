@@ -63,6 +63,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final int ID_APPLY_ALL = 27;
     private static final int ID_RESET = 28;
     private static final int ID_NATIVE_THEME = 29;
+    private static final int ID_AUTO_PALETTE = 30;
     private static final int PRESET_BASE = 100;
     private static final int BUILTIN_BASE = 200;
 
@@ -279,6 +280,9 @@ public class OxChatAppearanceActivity extends BaseFragment {
                         presets.get(i), LocaleController.getString(R.string.OxChatPresetHint)));
             }
         }
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_AUTO_PALETTE, 0xFF7C5CFF, 0xFF5B3FE0,
+                R.drawable.msg_colors, LocaleController.getString(R.string.OxChatAutoPalette),
+                LocaleController.getString(R.string.OxChatAutoPaletteInfo)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_READABILITY, accent, dark, R.drawable.msg_theme,
                 LocaleController.getString(R.string.OxChatReadability), null));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_RESET, 0xFF8E8E93, 0xFF6E6E73,
@@ -369,6 +373,10 @@ public class OxChatAppearanceActivity extends BaseFragment {
         } else if (item.id == ID_APPLY_ALL) {
             OxChatTheme.applyCurrentToGlobal();
             toast(LocaleController.getString(R.string.OxChatApplyAllDone));
+        } else if (item.id == ID_AUTO_PALETTE) {
+            OxChatTheme.autoPaletteFromBackground();
+            toast(LocaleController.getString(R.string.OxChatAutoPaletteDone));
+            rebuild();
         } else if (item.id == ID_READABILITY) {
             showContrast();
         } else if (item.id >= BUILTIN_BASE && item.id < BUILTIN_BASE + OxChatTheme.builtInCount()) {

@@ -11943,6 +11943,9 @@
     <string name="OxChatExport">导出主题包（.oxtheme）</string>
     <string name="OxChatExportDone">主题已导出</string>
     <string name="OxChatReadability">检查文字对比度</string>
+    <string name="OxChatAutoPalette">从背景自动配色</string>
+    <string name="OxChatAutoPaletteInfo">根据壁纸颜色生成气泡、文字与边框</string>
+    <string name="OxChatAutoPaletteDone">已根据背景生成配色</string>
     <string name="OxChatReadabilityOk">对比度 %.1f:1 — 可读</string>
     <string name="OxChatReadabilityWarn">对比度 %.1f:1 — 文字可能不易读</string>
     <string name="OxChatNativeTheme">打开 Telegram 聊天主题</string>
