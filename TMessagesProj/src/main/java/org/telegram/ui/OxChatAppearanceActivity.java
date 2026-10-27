@@ -520,9 +520,11 @@ public class OxChatAppearanceActivity extends BaseFragment {
                 new AlertDialog.Builder(getParentActivity())
                         .setTitle(name)
                         .setItems(new CharSequence[]{
+                                LocaleController.getString(R.string.OxChatPreviewPreset),
                                 LocaleController.getString(R.string.OxChatRename),
                                 LocaleController.getString(R.string.Delete)}, (d, which) -> {
-                            if (which == 0) showRenamePreset(name);
+                            if (which == 0) showPresetPreview(name);
+                            else if (which == 1) showRenamePreset(name);
                             else showDeletePreset(name);
                         })
                         .show();
@@ -530,6 +532,16 @@ public class OxChatAppearanceActivity extends BaseFragment {
             }
         }
         return false;
+    }
+
+    private void showPresetPreview(String name) {
+        OxChatTheme.Snapshot snapshot = OxChatTheme.presetSnapshot(name);
+        if (snapshot == null) {
+            toast(LocaleController.formatString("OxChatImportFailed",
+                    R.string.OxChatImportFailed, "preset not found"));
+            return;
+        }
+        showPreview(snapshot);
     }
 
     private void showRenamePreset(String name) {
@@ -617,18 +629,22 @@ public class OxChatAppearanceActivity extends BaseFragment {
     }
 
     private void showPreview() {
-        if (getParentActivity() == null) return;
+        showPreview(OxChatTheme.currentSnapshot());
+    }
+
+    private void showPreview(OxChatTheme.Snapshot snapshot) {
+        if (getParentActivity() == null || snapshot == null) return;
         Context ctx = getParentActivity();
-        int alpha = OxChatTheme.bubbleAlpha();
-        if (OxChatTheme.STYLE_FROSTED.equals(OxChatTheme.bubbleStyle())) alpha = Math.min(alpha, 200);
-        int inColor = withAlpha(OxChatTheme.inBubble(), alpha);
-        int outColor = withAlpha(OxChatTheme.outBubble(), alpha);
-        float size = AndroidUtilities.dp(SharedConfig.fontSize * OxChatTheme.fontScale());
-        float lineHeight = OxChatTheme.lineHeight() > 0 ? OxChatTheme.lineHeight() : 1f;
-        Typeface typeface = OxChatTheme.currentTypeface();
+        int alpha = snapshot.bubbleAlpha;
+        if (OxChatTheme.STYLE_FROSTED.equals(snapshot.bubbleStyle)) alpha = Math.min(alpha, 200);
+        int inColor = withAlpha(snapshot.inBubble, alpha);
+        int outColor = withAlpha(snapshot.outBubble, alpha);
+        float size = AndroidUtilities.dp(SharedConfig.fontSize * snapshot.fontScale);
+        float lineHeight = snapshot.lineHeight > 0 ? snapshot.lineHeight : 1f;
+        Typeface typeface = OxChatTheme.typefaceFor(snapshot);
 
         FrameLayout root = new FrameLayout(ctx);
-        android.graphics.drawable.Drawable bg = OxChatTheme.currentBackgroundDrawable();
+        android.graphics.drawable.Drawable bg = OxChatTheme.backgroundDrawableFor(snapshot);
         if (bg != null) root.setBackground(bg);
         root.setMinimumHeight(AndroidUtilities.dp(280));
 
@@ -639,8 +655,8 @@ public class OxChatAppearanceActivity extends BaseFragment {
         root.addView(column, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         TextView incoming = previewBubble(ctx, R.string.OxChatPreviewInText, inColor,
-                OxChatTheme.textColor() != 0 ? OxChatTheme.textColor() : OxChatTheme.autoTextColor(inColor),
-                size, lineHeight, typeface);
+                snapshot.textColor != 0 ? snapshot.textColor : OxChatTheme.autoTextColor(inColor),
+                size, lineHeight, typeface, snapshot.cornerRadius, snapshot.borderWidth, snapshot.borderColor);
         incoming.setMaxWidth(AndroidUtilities.dp(280));
         LinearLayout.LayoutParams inParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -649,8 +665,8 @@ public class OxChatAppearanceActivity extends BaseFragment {
         column.addView(incoming, inParams);
 
         TextView outgoing = previewBubble(ctx, R.string.OxChatPreviewOutText, outColor,
-                OxChatTheme.textColor() != 0 ? OxChatTheme.textColor() : OxChatTheme.autoTextColor(outColor),
-                size, lineHeight, typeface);
+                snapshot.textColor != 0 ? snapshot.textColor : OxChatTheme.autoTextColor(outColor),
+                size, lineHeight, typeface, snapshot.cornerRadius, snapshot.borderWidth, snapshot.borderColor);
         outgoing.setMaxWidth(AndroidUtilities.dp(280));
         LinearLayout.LayoutParams outParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -665,7 +681,8 @@ public class OxChatAppearanceActivity extends BaseFragment {
     }
 
     private TextView previewBubble(Context ctx, int textRes, int bubbleColor, int textColor,
-                                   float size, float lineHeight, Typeface typeface) {
+                                   float size, float lineHeight, Typeface typeface,
+                                   int cornerRadius, int borderWidth, int borderColor) {
         TextView tv = new TextView(ctx);
         tv.setText(LocaleController.getString(textRes));
         tv.setTextColor(textColor);
@@ -676,9 +693,9 @@ public class OxChatAppearanceActivity extends BaseFragment {
                 AndroidUtilities.dp(12), AndroidUtilities.dp(8));
         GradientDrawable bubble = new GradientDrawable();
         bubble.setColor(bubbleColor);
-        bubble.setCornerRadius(AndroidUtilities.dp(OxChatTheme.cornerRadius()));
-        if (OxChatTheme.borderWidth() > 0 && OxChatTheme.borderColor() != 0) {
-            bubble.setStroke(AndroidUtilities.dp(OxChatTheme.borderWidth()), OxChatTheme.borderColor());
+        bubble.setCornerRadius(AndroidUtilities.dp(cornerRadius));
+        if (borderWidth > 0 && borderColor != 0) {
+            bubble.setStroke(AndroidUtilities.dp(borderWidth), borderColor);
         }
         tv.setBackground(bubble);
         return tv;

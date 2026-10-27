@@ -11928,6 +11928,7 @@
     <string name="OxChatPresetRenamed">已重命名预设：%1$s</string>
     <string name="OxChatPresetExists">同名预设已存在</string>
     <string name="OxChatRename">重命名</string>
+    <string name="OxChatPreviewPreset">预览</string>
     <string name="OxChatPresetNameHint">预设名称</string>
     <string name="OxChatDeletePresetMsg">删除这个预设？</string>
     <string name="OxChatBgPicked">背景图片已应用</string>

@@ -4,6 +4,17 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.27.0 — 2026-10-28
+
+- Named presets can now be previewed before applying: long-press opens a native
+  menu with 预览 / 重命名 / 删除. Preview reads the stored preset JSON and renders
+  its background, bubbles, border, font and line height without writing the
+  active scope.
+- The preview renderer was refactored to accept any appearance snapshot, shared by
+  the current-theme preview and preset preview.
+- Verified on device: previewing DarkSea showed its black/green look while the
+  current image-background theme and prefs file remained unchanged.
+
 ## 0.26.2 — 2026-10-28
 
 - Fixed Operit appearance import blur mapping: `use_background_blur` and

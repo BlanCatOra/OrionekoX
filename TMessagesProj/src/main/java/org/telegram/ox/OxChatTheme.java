@@ -1480,8 +1480,24 @@ public class OxChatTheme {
         return makeBackground(current(), ApplicationLoader.applicationContext.getResources());
     }
 
+    public static Drawable backgroundDrawableFor(Snapshot s) {
+        return makeBackground(s, ApplicationLoader.applicationContext.getResources());
+    }
+
     public static Typeface currentTypeface() {
         return typefaceFrom(current().fontPath);
+    }
+
+    public static Typeface typefaceFor(Snapshot s) {
+        return typefaceFrom(s.fontPath);
+    }
+
+    public static Snapshot currentSnapshot() {
+        return current();
+    }
+
+    public static Snapshot presetSnapshot(String name) {
+        return readFile(new File(presetDir(), name + ".json"));
     }
 
     private static Drawable makeBackground(Snapshot s, android.content.res.Resources res) {
