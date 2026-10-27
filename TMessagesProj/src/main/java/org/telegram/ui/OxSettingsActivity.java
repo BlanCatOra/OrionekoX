@@ -20,6 +20,7 @@ import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxMode;
 import org.telegram.ox.OxOperitImporter;
 import org.telegram.ox.OxKelivoImporter;
+import org.telegram.ox.OxKelivoExporter;
 import org.telegram.ox.OxRikkaImporter;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
@@ -54,8 +55,10 @@ public class OxSettingsActivity extends BaseFragment {
     private static final int ID_APPEARANCE = 116;
     private static final int ID_IMPORT_RIKKA = 117;
     private static final int ID_IMPORT_KELIVO = 118;
+    private static final int ID_EXPORT_KELIVO = 119;
     private static final int REQ_RIKKA = 601;
     private static final int REQ_KELIVO = 602;
+    private static final int REQ_KELIVO_EXPORT = 603;
 
     private UniversalRecyclerView listView;
 
@@ -123,6 +126,9 @@ public class OxSettingsActivity extends BaseFragment {
         items.add(SettingsActivity.SettingCell.Factory.of(ID_IMPORT_KELIVO, 0xFF55CA47, 0xFF27B434,
                 R.drawable.settings_data, LocaleController.getString(R.string.OxKelivoImport),
                 LocaleController.getString(R.string.OxKelivoImportInfo)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_EXPORT_KELIVO, 0xFF7C5CFF, 0xFF5B3FE0,
+                R.drawable.msg_download, LocaleController.getString(R.string.OxKelivoExport),
+                LocaleController.getString(R.string.OxKelivoExportInfo)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_TOOLS, 0xFFE8A33D, 0xFFD98A1F,
                 R.drawable.settings_privacy, LocaleController.getString(R.string.OxToolsTitle)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_SKILLS, 0xFF55CA47, 0xFF27B434,
@@ -191,6 +197,9 @@ public class OxSettingsActivity extends BaseFragment {
             case ID_IMPORT_KELIVO:
                 pickKelivoBackup();
                 break;
+            case ID_EXPORT_KELIVO:
+                confirmKelivoExport();
+                break;
             case ID_TOOLS:
                 presentFragment(new OxToolsActivity());
                 break;
@@ -254,6 +263,60 @@ public class OxSettingsActivity extends BaseFragment {
         i.addCategory(Intent.CATEGORY_OPENABLE);
         i.setType("*/*");
         startActivityForResult(i, REQ_KELIVO);
+    }
+
+    private void confirmKelivoExport() {
+        if (getParentActivity() == null) return;
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxKelivoExport))
+                .setMessage(LocaleController.getString(R.string.OxKelivoExportConfirm))
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .setPositiveButton(LocaleController.getString(R.string.OxKelivoExportAction),
+                        (d, w) -> pickKelivoExportTarget())
+                .show();
+    }
+
+    private void pickKelivoExportTarget() {
+        if (getParentActivity() == null) return;
+        try {
+            Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("application/zip");
+            i.putExtra(Intent.EXTRA_TITLE, "orioneko-chatbox-backup.zip");
+            startActivityForResult(i, REQ_KELIVO_EXPORT);
+        } catch (Throwable t) {
+            showKelivoError(t.getMessage());
+        }
+    }
+
+    private void exportKelivo(Context ctx, Uri uri) {
+        new Thread(() -> {
+            String message;
+            try {
+                OxKelivoExporter.Result r = OxKelivoExporter.exportTo(ctx, uri);
+                StringBuilder sb = new StringBuilder(LocaleController.formatString(
+                        "OxKelivoExportDone", R.string.OxKelivoExportDone,
+                        r.assistants, r.conversations, r.messages, r.resources));
+                int shown = Math.min(3, r.notes.size());
+                for (int i = 0; i < shown; i++) sb.append("\n• ").append(r.notes.get(i));
+                message = sb.toString();
+            } catch (Throwable t) {
+                String detail = t.getMessage();
+                if ("no agents to export".equals(detail)) {
+                    detail = LocaleController.getString(R.string.OxKelivoExportNothing);
+                }
+                message = LocaleController.formatString(
+                        "OxKelivoExportFailed", R.string.OxKelivoExportFailed,
+                        detail == null ? "" : detail);
+            }
+            final String text = message;
+            AndroidUtilities.runOnUIThread(() -> {
+                if (getParentActivity() != null) {
+                    android.widget.Toast.makeText(getParentActivity(), text,
+                            android.widget.Toast.LENGTH_LONG).show();
+                }
+            });
+        }, "ox-kelivo-export").start();
     }
 
     private void importKelivo(Context ctx, Uri uri) {
@@ -367,6 +430,10 @@ public class OxSettingsActivity extends BaseFragment {
         Uri uri = data == null ? null : data.getData();
         Context ctx = getParentActivity();
         if (uri == null || ctx == null) return;
+        if (requestCode == REQ_KELIVO_EXPORT) {
+            exportKelivo(ctx, uri);
+            return;
+        }
         if (requestCode == REQ_KELIVO) {
             new Thread(() -> {
                 OxKelivoImporter.Preview preview = null;

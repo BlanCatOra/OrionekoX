@@ -3069,6 +3069,29 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `b64728dd51ab…`）；debug `dist/OrionekoX-0.31.0-debug-arm64-x64.apk`（sha256
 `8699b26da48a…`）。详见 `docs/qa-0.31.0.md`。
 
+## 5.150 alpha 0.32.0 —— 导出 Kelivo / Chatbox 备份（2026-10-28 07:00–07:18）
+
+- Ox 设置新增“Export Kelivo / Chatbox backup”，确认后 SAF 创建
+  `orioneko-chatbox-backup.zip`。
+- 导出非内置 Agent：有聊天写 session（system prompt+消息，不再重复 copilot），
+  无聊天写 copilot（prompt/模型/采样/头像）；资源含 avatar/image/
+  raw-attachment，data URL 编码，global/session 作用域与 storage key 映射。
+- 明确不导出 API Key、provider baseUrl、Authorization、工作区、记忆、技能、
+  MCP、主题；资源上限 64 个/2 MB/24 MB。
+- 设备：seed 导入 1 助手+1 会话（2 头像/1 图片/1 附件）；导出 483,866 B，
+  manifest/checksum/stats 校验通过，无 `ox1:`/`sk-`/`test-key`；过滤子集
+  8,306 B 回环导入后 prompt、采样、头像、图片、附件、4 条消息均恢复；
+  原生界面显示 AV 头像、RT 图片说明与 notes.txt 文件气泡；清理后
+  dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：全量导出无选择；有聊天只写 session、无聊天只写 copilot，回环 id 会
+  多一层前缀；外部 Chatbox 未实际导入验证。
+- 版本规则：新增可见的 Chatbox v2 备份导出能力，按 minor 从 0.31.0 →
+  0.32.0，versionCode 3209。
+
+**产物**：`dist/OrionekoX-0.32.0-alpha-arm64-x64.apk`（versionCode 3209，sha256
+`c358fd23483d…`）；debug `dist/OrionekoX-0.32.0-debug-arm64-x64.apk`（sha256
+`5e0a54de54e0…`）。详见 `docs/qa-0.32.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

@@ -603,6 +603,27 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: one attachment per message, audio/video shown as documents, remote
   files skipped; real exports still need a compatibility pass.
 
+## 0.32.0 implementation — Chatbox backup export
+
+- Ox settings offers “Export Kelivo / Chatbox backup”: a confirmation dialog
+  explains the scope, then SAF creates `orioneko-chatbox-backup.zip`.
+- All non-built-in agents are written once: agents with chat history become a
+  Chatbox session (system prompt + messages), chatless agents become copilots.
+  This avoids duplicate agents when the app imports its own export.
+- Sessions carry text, image and file content parts; avatars, images and
+  attachments are emitted as data-URL resources with SHA-256/size descriptors,
+  global/session scopes and original storage keys.
+- The manifest matches the Chatbox v2 format (`format`, `formatVersion=2`,
+  `application`, `data`, `sessions`, `resources`, `warnings`, `stats`).
+  API keys, provider URLs, Authorization headers, workspaces, memory, skills,
+  MCP and themes are never exported.
+- Device QA: the full export was 483,866 B and passed manifest/checksum/stats
+  checks; a filtered 8,306 B subset round-tripped back into one assistant and
+  one 4-message conversation with prompt, sampling, avatar, image and file
+  intact. No `ox1:`/`sk-`/`test-key` appeared in the zip.
+- Limits: export is all-or-nothing (no selection), round-tripped ids gain a
+  `kelivo_` prefix, and a real Chatbox client has not imported the file yet.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -613,6 +634,8 @@ These confirm the feature directions rather than relying on guesses. Checked
    allowlists; RikkaHub non-selected branches, non-image attachments,
    per-conversation grouping, skill attachments, standalone providers and image
    avatars.
+3. Bidirectional export still lacks agent selection, workspaces, memory, skills,
+   MCP and themes, and needs validation against a real Chatbox client.
 3. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 4. Per-conversation theme inheritance still copies the parent’s text color; a

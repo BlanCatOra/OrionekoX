@@ -305,3 +305,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：1 会话/4 条、2 个附件（raw txt + data URL json）；预览/结果均提示“2 个”；落盘 0_notes.txt 35 B、2_data.json 38 B；原生 notes.txt 带“看一下附件”说明、data.json 纯文件气泡；重复导入附件 sha256 不变、messages_v2 仍 4 条；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：每消息仅首附件；音视频按文档展示；网络附件不下载；真实备份待复测。
+
+## 0.32.0 Kelivo / Chatbox 备份导出 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-66 | 0.32.0 QA | 三位一体兼容只有导入方向，无法把本机 Agent/聊天交给 Kelivo/Chatbox | 新增 Chatbox v2 导出器与 Ox 设置入口；有聊天写 session、无聊天写 copilot；头像/图片/附件按 data URL 资源与 sha256 描述导出 | 已修复 |
+| R2-67 | 0.32.0 QA | 若同时写 copilot 和 session，回环导入会产生两个 Agent | 有聊天记录的 Agent 只写 session，无聊天只写 copilot；回环后每个源 Agent 只生成一个目标 Agent | 已修复 |
+
+- 设备：seed 1 助手+1 会话（2 头像/1 图片/1 附件）；完整导出 483,866 B，manifest/checksum/stats 通过，无真实密钥；过滤子集 8,306 B 回环导入后 prompt、采样、头像、图片、附件、4 条消息完整；原生界面显示 AV 头像、RT 图片说明与 notes.txt 文件气泡；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：全量导出无选择；回环 id 多一层 `kelivo_` 前缀；不导出 Key/provider URL/工作区/记忆/技能/MCP/主题；外部 Chatbox 未实测。
