@@ -11684,6 +11684,16 @@
     <string name="OxRikkaDone">Created %1$d assistants, updated %2$d, added %3$d MCP, skipped %4$d MCP, imported %5$d skills</string>
     <string name="OxRikkaNothing">No importable assistants, MCP servers or skills</string>
     <string name="OxRikkaFailed">RikkaHub import failed: %1$s</string>
+    <string name="OxKelivoImport">Import from Kelivo / Chatbox backup</string>
+    <string name="OxKelivoImportInfo">zip or JSON · preview before writing</string>
+    <string name="OxKelivoPreviewTitle">Import this Kelivo / Chatbox backup?</string>
+    <string name="OxKelivoPreview">Assistants: %1$d</string>
+    <string name="OxKelivoNames">Assistants: %1$s</string>
+    <string name="OxKelivoExisting">%1$d already exist and will be updated</string>
+    <string name="OxKelivoApply">Import</string>
+    <string name="OxKelivoDone">Created %1$d assistants, updated %2$d</string>
+    <string name="OxKelivoNothing">No importable assistants in this backup</string>
+    <string name="OxKelivoFailed">Kelivo import failed: %1$s</string>
     <string name="OxRikkaInvalid">Not a valid RikkaHub backup</string>
     <string name="OxRikkaMissingSettings">settings.json is missing from the backup</string>
     <string name="OxRikkaOpenFailed">Cannot open the backup file</string>

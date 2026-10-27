@@ -2865,6 +2865,27 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `454b52f3f044…`）；debug `dist/OrionekoX-0.25.2-debug-arm64-x64.apk`（sha256
 `c0027b7821f9…`）。详见 `docs/qa-0.25.2.md`。
 
+## 5.140 alpha 0.26.0 —— Kelivo / Chatbox 备份助手导入（2026-10-28 03:34–03:48）
+
+- Ox 设置新增 Kelivo/Chatbox 备份导入；解析 zip 的 `copilots.json` 与
+  `settings.json` 的 `assistants_v1`（JSON 字符串/数组/映射），也支持直接
+  JSON；预览助手数量、名称与已存在数。
+- 映射 name、systemPrompt/prompt→AGENTS.md、temperature/topP/maxTokens、
+  customHeaders，`chatModelId` 覆盖模型名；Provider 从现有第一个有
+  baseUrl+apiKey 的 Agent 继承（无则离线）。Agent id `kelivo_<id>`，重复导入
+  更新并保留 tg_id/头像。
+- 设备（schema 样例）：1 个 copilot + 1 个 assistant，预览 2；导入
+  “新建 2”，Kelivo Assistant 的人设/模型/0.5/0.9/256/X-Kelivo 均正确；
+  重复导入“新建 0，更新 2”，仍 2 个 Agent。清理测试对象；无 Key/FATAL/ANR。
+- 边界：只导入助手；Provider 密钥、对话、skills、MCP、工作区、头像背景、
+  presetMessages/regex/skillIds 未导入；真实 Kelivo 备份待复测。
+- 版本规则：新增第三方备份助手导入能力，按 minor 从 0.25.2 → 0.26.0，
+  versionCode 2609。
+
+**产物**：`dist/OrionekoX-0.26.0-alpha-arm64-x64.apk`（versionCode 2609，sha256
+`bdf2b2a2d03e…`）；debug `dist/OrionekoX-0.26.0-debug-arm64-x64.apk`（sha256
+`f02f1a18c1ea…`）。详见 `docs/qa-0.26.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
