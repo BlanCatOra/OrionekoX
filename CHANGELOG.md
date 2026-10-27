@@ -4,6 +4,19 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.20.0 — 2026-10-28
+
+- RikkaHub backup import now also reads `skills/<name>/SKILL.md` from the same
+  zip (up to 50 skills of 512 KB each) and writes them into the app-private
+  skill library through the new `OxSkillStore.importSkill` entry point.
+- Skill ids come from the folder relative to `skills/`; repeat imports update
+  the same skill instead of creating copies and never delete other local skills.
+- The preview and result dialogs report skill counts and existing skills; a
+  `settings.json`-only import still works with zero skills.
+- Verified with a schema sample: preview “2 assistants · 1 provider · 1 MCP ·
+  1 skill”; import created the skill with frontmatter intact; repeat import kept
+  exactly one skill directory. Test objects and the sample file were removed.
+
 ## 0.19.0 — 2026-10-28
 
 - Added RikkaHub backup import: pick a backup zip or `settings.json` and preview

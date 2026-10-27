@@ -11675,12 +11675,13 @@
     <string name="OxRikkaImport">Import from RikkaHub backup</string>
     <string name="OxRikkaImportInfo">settings.json or backup zip · preview before writing</string>
     <string name="OxRikkaPreviewTitle">Import this RikkaHub backup?</string>
-    <string name="OxRikkaPreview">Assistants %1$d · Providers %2$d · MCP %3$d</string>
+    <string name="OxRikkaPreview">Assistants %1$d · Providers %2$d · MCP %3$d · Skills %4$d</string>
     <string name="OxRikkaNames">Assistants: %1$s</string>
-    <string name="OxRikkaExisting">%1$d assistants and %2$d MCP servers already exist; they will be updated or skipped</string>
+    <string name="OxRikkaSkillNames">Skills: %1$s</string>
+    <string name="OxRikkaExisting">%1$d assistants, %2$d MCP servers and %3$d skills already exist; they will be updated or skipped</string>
     <string name="OxRikkaApply">Import</string>
-    <string name="OxRikkaDone">Created %1$d assistants, updated %2$d, added %3$d MCP, skipped %4$d MCP</string>
-    <string name="OxRikkaNothing">No importable assistants or MCP servers</string>
+    <string name="OxRikkaDone">Created %1$d assistants, updated %2$d, added %3$d MCP, skipped %4$d MCP, imported %5$d skills</string>
+    <string name="OxRikkaNothing">No importable assistants, MCP servers or skills</string>
     <string name="OxRikkaFailed">RikkaHub import failed: %1$s</string>
     <string name="OxRikkaInvalid">Not a valid RikkaHub backup</string>
     <string name="OxRikkaMissingSettings">settings.json is missing from the backup</string>

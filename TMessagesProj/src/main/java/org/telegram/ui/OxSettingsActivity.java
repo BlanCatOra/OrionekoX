@@ -302,7 +302,8 @@ public class OxSettingsActivity extends BaseFragment {
 
     private String rikkaPreviewText(OxRikkaImporter.Preview p) {
         StringBuilder sb = new StringBuilder(LocaleController.formatString(
-                "OxRikkaPreview", R.string.OxRikkaPreview, p.assistants, p.providers, p.mcp));
+                "OxRikkaPreview", R.string.OxRikkaPreview,
+                p.assistants, p.providers, p.mcp, p.skills));
         if (!p.names.isEmpty()) {
             StringBuilder names = new StringBuilder();
             for (int i = 0; i < p.names.size(); i++) {
@@ -312,21 +313,31 @@ public class OxSettingsActivity extends BaseFragment {
             sb.append("\n").append(LocaleController.formatString(
                     "OxRikkaNames", R.string.OxRikkaNames, names.toString()));
         }
-        if (p.existingAssistants > 0 || p.existingMcp > 0) {
+        if (!p.skillNames.isEmpty()) {
+            StringBuilder names = new StringBuilder();
+            for (int i = 0; i < p.skillNames.size(); i++) {
+                if (i > 0) names.append("、");
+                names.append(p.skillNames.get(i));
+            }
             sb.append("\n").append(LocaleController.formatString(
-                    "OxRikkaExisting", R.string.OxRikkaExisting, p.existingAssistants, p.existingMcp));
+                    "OxRikkaSkillNames", R.string.OxRikkaSkillNames, names.toString()));
+        }
+        if (p.existingAssistants > 0 || p.existingMcp > 0 || p.existingSkills > 0) {
+            sb.append("\n").append(LocaleController.formatString(
+                    "OxRikkaExisting", R.string.OxRikkaExisting,
+                    p.existingAssistants, p.existingMcp, p.existingSkills));
         }
         for (String n : p.notes) sb.append("\n• ").append(n);
         return sb.toString();
     }
 
     private String rikkaResultText(OxRikkaImporter.Result r) {
-        if (r.agentsCreated == 0 && r.agentsUpdated == 0 && r.mcpAdded == 0) {
+        if (r.agentsCreated == 0 && r.agentsUpdated == 0 && r.mcpAdded == 0 && r.skills == 0) {
             return LocaleController.getString(R.string.OxRikkaNothing);
         }
         StringBuilder sb = new StringBuilder(LocaleController.formatString(
                 "OxRikkaDone", R.string.OxRikkaDone,
-                r.agentsCreated, r.agentsUpdated, r.mcpAdded, r.mcpSkipped));
+                r.agentsCreated, r.agentsUpdated, r.mcpAdded, r.mcpSkipped, r.skills));
         for (String n : r.notes) sb.append("\n• ").append(n);
         return sb.toString();
     }
