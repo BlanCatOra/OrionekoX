@@ -12046,6 +12046,11 @@
     <string name="OxSkillDeleted">Deleted skill: %1$s</string>
     <string name="OxSkillDeleteReadOnly">This skill lives in Download and is read-only</string>
     <string name="OxSkillsImportFailed">Import failed: %1$s</string>
+    <string name="OxSkillsExport">Export skills zip</string>
+    <string name="OxSkillsExportInfo">Write skills/**/SKILL.md, importable by Kelivo, Chatbox or RikkaHub</string>
+    <string name="OxSkillsExported">Exported %1$d skill(s)</string>
+    <string name="OxSkillsExportEmpty">No skills to export</string>
+    <string name="OxSkillsExportFailed">Skills export failed: %1$s</string>
     <string name="OxAppearance">Appearance</string>
     <string name="OxAppearanceEntryInfo">Accent color and Kelivo / RikkaHub theme import</string>
     <string name="OxAppearanceCurrent">Current accent</string>

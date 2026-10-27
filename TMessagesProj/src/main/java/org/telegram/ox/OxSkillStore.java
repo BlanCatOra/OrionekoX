@@ -11,15 +11,20 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Read-only view of Operit's SKILL.md packages (Download/Operit/skills and
@@ -73,6 +78,11 @@ public class OxSkillStore {
                 int slash = n.lastIndexOf('/');
                 String parent = slash > 0 ? n.substring(0, slash) : "";
                 while (parent.endsWith("/")) parent = parent.substring(0, parent.length() - 1);
+                // Chatbox/Kelivo backups use skills/<id>/SKILL.md; the wrapper
+                // folder is not part of the skill id, otherwise re-importing an
+                // export would create skills_<id> next to <id>.
+                if (parent.startsWith("skills/")) parent = parent.substring("skills/".length());
+                else if ("skills".equals(parent)) parent = "";
                 String id = sanitizeSkillId(parent.isEmpty() ? stripMd(display) : parent);
                 writeSkill(id, body);
                 imported++;
@@ -89,8 +99,41 @@ public class OxSkillStore {
         return imported;
     }
 
-    private static void writeSkill(String id, byte[] body) throws Exception {
-        File base = new File(ApplicationLoader.applicationContext.getFilesDir(), "oxskills");
+    /** Writes all visible SKILL.md files as skills/<id>/SKILL.md, the layout used
+     *  by Kelivo/Chatbox backups and this app's own skill importer. */
+    public static synchronized int exportZip(Context ctx, Uri uri) throws Exception {
+        if (ctx == null || uri == null) throw new IllegalArgumentException("missing uri");
+        List<Skill> skills = list();
+        if (skills.isEmpty()) throw new IllegalStateException("no skills to export");
+        OutputStream raw = ctx.getContentResolver().openOutputStream(uri);
+        if (raw == null) throw new IllegalStateException("cannot open output");
+        ZipOutputStream zip = new ZipOutputStream(new BufferedOutputStream(raw));
+        int count = 0;
+        Set<String> used = new HashSet<>();
+        try {
+            for (Skill skill : skills) {
+                if (skill == null || skill.file == null || !skill.file.isFile()) continue;
+                byte[] body = readAll(new FileInputStream(skill.file), 512 * 1024);
+                if (body.length == 0) continue;
+                String base = sanitizeSkillId(skill.id != null && !skill.id.isEmpty()
+                        ? skill.id : skill.name);
+                String dir = base;
+                int n = 2;
+                while (!used.add(dir)) dir = base + "_" + (n++);
+                zip.putNextEntry(new ZipEntry("skills/" + dir + "/SKILL.md"));
+                zip.write(body);
+                zip.closeEntry();
+                count++;
+            }
+            zip.finish();
+        } finally {
+            zip.close();
+        }
+        if (count == 0) throw new IllegalStateException("no skills to export");
+        return count;
+    }
+
+    private static void writeSkill(String id, byte[] body) throws Exception {        File base = new File(ApplicationLoader.applicationContext.getFilesDir(), "oxskills");
         File dir = new File(base, id);
         // Re-importing the same skill updates it instead of piling up
         // `name_1`, `name_2` duplicates.

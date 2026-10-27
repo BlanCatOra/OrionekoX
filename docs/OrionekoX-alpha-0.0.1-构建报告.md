@@ -3112,6 +3112,26 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `b291c20d7863…`）；debug `dist/OrionekoX-0.33.0-debug-arm64-x64.apk`（sha256
 `bb8d787220ee…`）。详见 `docs/qa-0.33.0.md`。
 
+## 5.152 alpha 0.34.0 —— 技能库导出 SKILL.md zip（2026-10-28 07:40–07:55）
+
+- 技能库新增 “Export skills zip”，SAF 创建 `orioneko-skills.zip`；
+  `OxSkillStore.exportZip` 遍历私有与 Download 技能，写
+  `skills/<id>/SKILL.md`，同名 id 加后缀，单技能 512 KB。
+- 只导出 SKILL.md 正文，不含脚本/附件/密钥；结果 toast 计数。
+- 修正导入侧 `skills/<id>/SKILL.md` 的容器前缀：不再生成 `skills_<id>`，
+  回环导入得到准确 id。
+- 设备：QASkill0340 150 B 导入后导出 2,353 B/7 个 SKILL.md；裁剪 272 B
+  子集删除后回环导入，修正后得到 `files/oxskills/QASkill0340/SKILL.md`
+  150 B；列表显示正确、无重复 skills_ 目录；清理后无残留，无本包
+  FATAL/ANR。
+- 边界：全量导出、无多选；仅 SKILL.md 正文；外部客户端未实测。
+- 版本规则：新增可见的技能库导出能力，按 minor 从 0.33.0 → 0.34.0，
+  versionCode 3409。
+
+**产物**：`dist/OrionekoX-0.34.0-alpha-arm64-x64.apk`（versionCode 3409，sha256
+`79be212983be…`）；debug `dist/OrionekoX-0.34.0-debug-arm64-x64.apk`（sha256
+`092601ccd828…`）。详见 `docs/qa-0.34.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

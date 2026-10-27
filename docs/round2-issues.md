@@ -324,3 +324,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：`Single Export` 导入后长按导出 6,190 B；schema 1 session/0 copilot/3 资源，stats/checksum 通过，无其他 Agent、无密钥；回环导入保留 prompt、0.5/0.7/80、头像、图片、notes.txt 与 4 条消息；原生 SE 头像/SE1 图片说明/文件气泡正确；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：单 Agent、无多选；回环 id 多一层前缀；不导出 Key/provider URL/工作区/记忆/技能/MCP/主题；外部 Chatbox 未实测。
+
+## 0.34.0 技能库导出 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-69 | 0.34.0 QA | 技能库只有导入，无法把私有技能交给 Kelivo/Chatbox/RikkaHub | 新增 `OxSkillStore.exportZip` 与 “Export skills zip”，写 `skills/<id>/SKILL.md`、同名 id 加后缀 | 已修复 |
+| R2-70 | 0.34.0 QA | 回环导入 `skills/<id>/SKILL.md` 时把容器目录算进 id，生成 `skills_<id>` 重复技能 | `importFromUri` 去掉 `skills/` 前缀后再 sanitize；重建后回环得到准确 `<id>` | 已修复 |
+
+- 设备：QASkill0340 150 B 导入后导出 2,353 B/7 个 SKILL.md；裁剪 272 B 子集删除后回环导入，修正后得到 `files/oxskills/QASkill0340/SKILL.md` 150 B；列表正确、无 `skills_` 重复目录；清理后无残留，无本包 FATAL/ANR。
+- 边界：全量导出、无多选；仅 SKILL.md 正文；外部客户端未实测。
