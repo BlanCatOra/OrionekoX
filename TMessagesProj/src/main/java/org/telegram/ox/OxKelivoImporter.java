@@ -32,6 +32,8 @@ public class OxKelivoImporter {
         public int existing;
         public int skills;
         public int existingSkills;
+        public int mcp;
+        public int skippedMcp;
         public final List<String> names = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -40,6 +42,8 @@ public class OxKelivoImporter {
         public int created;
         public int updated;
         public int skills;
+        public int mcpAdded;
+        public int mcpSkipped;
         public final List<String> ids = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -48,6 +52,7 @@ public class OxKelivoImporter {
         final List<JSONObject> assistants = new ArrayList<>();
         final Map<String, JSONObject> providers = new HashMap<>();
         final Map<String, byte[]> skills = new HashMap<>();
+        final List<JSONObject> mcpServers = new ArrayList<>();
     }
 
     public static Preview preview(Context context, Uri uri) throws Exception {
@@ -64,7 +69,7 @@ public class OxKelivoImporter {
             if (p.names.size() < 8) p.names.add(name);
             if (existing.contains(id)) p.existing++;
         }
-        p.notes.add("仅导入 Kelivo / Chatbox 备份中的助手、人设与技能；不含对话、Provider 密钥与 MCP。");
+        p.notes.add("仅导入 Kelivo / Chatbox 备份中的助手、人设、技能与 HTTP MCP；不含对话与 Provider 密钥。");
         if (!archive.providers.isEmpty()) {
             p.notes.add("将使用备份中的 " + archive.providers.size() + " 个 Provider 配置为助手接线。");
         }
@@ -79,6 +84,14 @@ public class OxKelivoImporter {
         }
         if (!archive.skills.isEmpty()) {
             p.notes.add("将导入 " + archive.skills.size() + " 个技能；同名技能会更新。");
+        }
+        for (JSONObject s : archive.mcpServers) {
+            if (isHttpMcp(s)) p.mcp++;
+            else p.skippedMcp++;
+        }
+        if (p.mcp > 0 || p.skippedMcp > 0) {
+            p.notes.add("将导入 " + p.mcp + " 个 HTTP MCP；跳过 "
+                    + p.skippedMcp + " 个 SSE/stdio/inmemory 条目。");
         }
         return p;
     }
@@ -158,6 +171,28 @@ public class OxKelivoImporter {
             }
         }
         if (r.skills > 0) r.notes.add("导入技能 " + r.skills + " 个");
+        for (JSONObject s : archive.mcpServers) {
+            if (!isHttpMcp(s)) {
+                r.mcpSkipped++;
+                continue;
+            }
+            String url = mcpUrl(s);
+            if (url.isEmpty() || mcpExists(url)) {
+                r.mcpSkipped++;
+                continue;
+            }
+            String name = s.optString("name", s.optString("id", "Kelivo MCP")).trim();
+            if (name.isEmpty()) name = "Kelivo MCP";
+            OxMcpManager.McpServer server = new OxMcpManager.McpServer(name, url);
+            server.enabled = s.optBoolean("isActive", s.optBoolean("enabled", true));
+            JSONObject headers = mcpHeaders(s.opt("headers"));
+            if (headers.length() > 0) server.headersJson = headers.toString();
+            OxMcpManager.saveServer(server);
+            r.mcpAdded++;
+        }
+        if (r.mcpAdded > 0 || r.mcpSkipped > 0) {
+            r.notes.add("新增 MCP " + r.mcpAdded + " 个，跳过 " + r.mcpSkipped + " 个");
+        }
         return r;
     }
 
@@ -249,6 +284,8 @@ public class OxKelivoImporter {
         if (o == null || depth > 3) return;
         addProviders(o.opt("provider_configs_v1"), out);
         addProviders(o.opt("providers"), out);
+        addMcp(o.opt("mcp_servers_v1"), out);
+        addMcp(o.opt("mcpServers"), out);
         JSONArray direct = o.optJSONArray("myCopilots");
         if (direct != null) addArray(direct, out);
         Object assistants = o.opt("assistants_v1");
@@ -259,6 +296,95 @@ public class OxKelivoImporter {
             Object v = o.opt(keys.optString(i));
             if (v instanceof JSONObject) scan((JSONObject) v, out, depth + 1);
         }
+    }
+
+    private static void addMcp(Object value, Archive out) {
+        try {
+            if (value instanceof String) {
+                String s = ((String) value).trim();
+                if (s.startsWith("[")) addMcp(new JSONArray(s), out);
+                else if (s.startsWith("{")) addMcp(new JSONObject(s), out);
+            } else if (value instanceof JSONArray) {
+                JSONArray arr = (JSONArray) value;
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject s = arr.optJSONObject(i);
+                    if (s != null) addMcpEntry(s, "", out);
+                }
+            } else if (value instanceof JSONObject) {
+                JSONObject map = (JSONObject) value;
+                if (map.has("mcpServers")) {
+                    addMcp(map.opt("mcpServers"), out);
+                    return;
+                }
+                if (map.has("url") || map.has("baseUrl") || map.has("command")) {
+                    addMcpEntry(map, "", out);
+                    return;
+                }
+                JSONArray keys = map.names();
+                for (int i = 0; keys != null && i < keys.length(); i++) {
+                    String key = keys.optString(i);
+                    JSONObject s = map.optJSONObject(key);
+                    if (s != null) addMcpEntry(s, key, out);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void addMcpEntry(JSONObject s, String fallbackId, Archive out) {
+        String id = s.optString("id", fallbackId).trim();
+        String url = mcpUrl(s);
+        String command = s.optString("command", "").trim();
+        if (url.isEmpty() && command.isEmpty()) return;
+        for (JSONObject existing : out.mcpServers) {
+            if (!id.isEmpty() && id.equals(existing.optString("id", ""))) return;
+            if (!url.isEmpty() && url.equals(mcpUrl(existing))) return;
+        }
+        out.mcpServers.add(s);
+    }
+
+    private static boolean isHttpMcp(JSONObject s) {
+        String type = s.optString("type", "").toLowerCase(java.util.Locale.ROOT);
+        if (type.contains("sse") || type.contains("stdio") || type.contains("inmemory")) return false;
+        if (!s.optString("command", "").trim().isEmpty()) return false;
+        return !mcpUrl(s).isEmpty();
+    }
+
+    private static String mcpUrl(JSONObject s) {
+        String url = s.optString("baseUrl", "").trim();
+        if (url.isEmpty()) url = s.optString("url", "").trim();
+        return url;
+    }
+
+    private static boolean mcpExists(String url) {
+        for (OxMcpManager.McpServer s : OxMcpManager.getServers()) {
+            if (s.url != null && s.url.equals(url)) return true;
+        }
+        return false;
+    }
+
+    private static JSONObject mcpHeaders(Object raw) {
+        JSONObject out = new JSONObject();
+        try {
+            if (raw instanceof JSONObject) {
+                JSONObject map = (JSONObject) raw;
+                JSONArray keys = map.names();
+                for (int i = 0; keys != null && i < keys.length(); i++) {
+                    String key = keys.optString(i);
+                    out.put(key, map.optString(key, ""));
+                }
+            } else if (raw instanceof JSONArray) {
+                JSONArray arr = (JSONArray) raw;
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject h = arr.optJSONObject(i);
+                    if (h == null) continue;
+                    String name = h.optString("name", h.optString("key", "")).trim();
+                    if (!name.isEmpty()) out.put(name, h.optString("value", ""));
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return out;
     }
 
     private static void addProviders(Object value, Archive out) {

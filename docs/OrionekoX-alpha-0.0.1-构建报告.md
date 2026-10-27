@@ -2954,6 +2954,27 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `39cb7424a9e8…`）；debug `dist/OrionekoX-0.27.1-debug-arm64-x64.apk`（sha256
 `26769a56fb6a…`）。详见 `docs/qa-0.27.1.md`。
 
+## 5.145 alpha 0.27.2 —— Kelivo / Chatbox HTTP MCP 导入（2026-10-28 04:42–04:58）
+
+- Kelivo/Chatbox 备份 `mcp_servers_v1`（兼容 `mcpServers`）中的 HTTP /
+  streamableHttp 条目写入 `files/oxmcp/servers.json`：name、url、headers、
+  enabled；按 URL 去重，重复导入不新增。
+- SSE、stdio/command、inmemory 条目只计数跳过，不执行外部命令；SSE 等后续
+  再评估。预览/结果增加 HTTP MCP 数量与跳过数量。
+- 总览文案修正为“助手、人设、技能与 HTTP MCP；不含对话与 Provider 密钥”。
+- 设备：样例 1 助手 + 1 HTTP + 1 SSE；预览“1 个 HTTP MCP / 跳过 1”；导入
+  “新建 1 / 新增 MCP 1 / 跳过 1”，`KelivoHTTP` URL、enabled、`X-Kelivo` header
+  均落盘，SSE 不存在；重复导入“新建 0 / 更新 1 / 新增 MCP 0 / 跳过 2”，仍
+  只有 1 条。清理测试助手、MCP 条目与样例；无 FATAL/ANR。
+- 边界：仅 HTTP；不导入工具白名单/OAuth/客户端注册/环境变量；不做连通性
+  测试；Kelivo 对话、工作区、头像/背景仍未导入；真实备份待复测。
+- 版本规则：仅补既有 Kelivo 导入的 MCP 包，按 patch 从 0.27.1 → 0.27.2，
+  versionCode 2729。
+
+**产物**：`dist/OrionekoX-0.27.2-alpha-arm64-x64.apk`（versionCode 2729，sha256
+`82b76f4e3a69…`）；debug `dist/OrionekoX-0.27.2-debug-arm64-x64.apk`（sha256
+`0e070cc8bed2…`）。详见 `docs/qa-0.27.2.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
