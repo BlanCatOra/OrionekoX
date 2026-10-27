@@ -4,6 +4,22 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.29.0 — 2026-10-28
+
+- Kelivo/Chatbox backups now import assistant and conversation avatars. Chatbox
+  v2 `manifest.json.resources[]` entries with `kind=avatar` or
+  `kind=copilot-image` are mapped through their original storage keys, from raw
+  image bytes or `data-url-base64` text.
+- A matched image is written to `files/oxagents/<agentId>/avatar.<ext>`, so the
+  imported agent shows it in the native chat header and profile. Repeat imports
+  keep an existing avatar instead of overwriting a user-set one, and remote
+  URLs are never fetched.
+- Resources are capped at 64 files, 2 MB each and 24 MB total; only PNG, JPEG,
+  GIF and WebP magic is accepted. Preview and result report avatar counts.
+- Verified with one assistant and one session using two resources: both avatar
+  files landed, the native headers showed the S1/AI images, and a repeat import
+  left both hashes unchanged. Test agents and the sample were removed.
+
 ## 0.28.0 — 2026-10-28
 
 - Kelivo/Chatbox backups now import conversation history. Chatbox v2 zips are
