@@ -4,6 +4,19 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.34.0 — 2026-10-28
+
+- The skill library can export all visible skills as an SAF-created zip with
+  `skills/<id>/SKILL.md` entries, importable by Kelivo, Chatbox, RikkaHub or
+  this app. Duplicate ids get `_2`, `_3` suffixes; only SKILL.md bodies are
+  written, without scripts, attachments or keys.
+- Fixed the import side so the `skills/` container is not part of the skill id;
+  re-importing an export now restores `<id>` instead of creating a duplicate
+  `skills_<id>`.
+- Verified with a 150 B QASkill0340: the export was 2,353 B / 7 SKILL.md files,
+  and a 272 B filtered subset re-imported to the exact
+  `files/oxskills/QASkill0340/SKILL.md` with no duplicate id.
+
 ## 0.33.0 — 2026-10-28
 
 - The non-built-in agent long-press menu now offers “Export Chatbox backup”.

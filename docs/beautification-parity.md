@@ -640,6 +640,21 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: one non-built-in agent per export, no multi-select; round-tripped ids
   gain a `kelivo_` prefix; a real Chatbox client is still untested.
 
+## 0.34.0 implementation — skills export
+
+- The skill library now offers “Export skills zip”, writing every visible
+  SKILL.md as `skills/<id>/SKILL.md` into an SAF-created zip. Duplicate ids get
+  `_2`, `_3` suffixes, and only the SKILL.md body is exported (no scripts,
+  attachments or keys).
+- The import side now strips the `skills/` container prefix, so re-importing
+  this zip restores `<id>` instead of creating a duplicate `skills_<id>`.
+- Device QA: a 150 B QASkill0340 was exported in a 2,353 B/7-entry zip; a
+  272 B filtered subset was re-imported after deleting the private skill and
+  restored exact `files/oxskills/QASkill0340/SKILL.md` content with no
+  `skills_` duplicate.
+- Limits: all-or-nothing export, SKILL.md bodies only, and external
+  Kelivo/Chatbox/RikkaHub clients have not imported the zip yet.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -650,8 +665,8 @@ These confirm the feature directions rather than relying on guesses. Checked
    allowlists; RikkaHub non-selected branches, non-image attachments,
    per-conversation grouping, skill attachments, standalone providers and image
    avatars.
-3. Bidirectional export still lacks workspaces, memory, skills, MCP and themes,
-   plus multi-agent selection and validation against a real Chatbox client.
+3. Bidirectional export still lacks workspaces, memory, MCP and themes, plus
+   multi-agent selection and validation against real external clients.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 5. Per-conversation theme inheritance still copies the parent’s text color; a
