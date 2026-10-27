@@ -729,6 +729,79 @@ public class OxChatTheme {
         persist(s);
     }
 
+    // ---------------- auto palette from the background ----------------
+
+    /** Derives a readable bubble/text/border set from the current background.
+     *  Images are sampled down to 64px so large wallpapers never allocate much. */
+    public static void autoPaletteFromBackground() {
+        Snapshot s = current();
+        int base = averageBackgroundColor(s);
+        float[] hsv = new float[3];
+        Color.colorToHSV(base, hsv);
+        hsv[1] = Math.min(1f, hsv[1] * 1.25f + 0.08f);
+        float[] accentHsv = new float[]{hsv[0], hsv[1], Math.max(0.35f, Math.min(0.75f, hsv[2]))};
+        int accent = Color.HSVToColor(accentHsv);
+        boolean dark = luminance(base) < 0.42;
+        s.inBubble = blend(base, 0xFFFFFFFF, dark ? 0.84f : 0.94f);
+        s.outBubble = blend(accent, 0xFFFFFFFF, dark ? 0.62f : 0.72f);
+        int text = autoTextColor(blend(s.inBubble, s.outBubble, 0.5f));
+        s.textColor = text;
+        s.borderColor = blend(s.outBubble, luminance(s.outBubble) > 0.5 ? 0xFF111111 : 0xFFFFFFFF, 0.28f);
+        s.borderWidth = 1;
+        s.bubbleStyle = STYLE_SOLID;
+        s.bubbleAlpha = 255;
+        s.cornerRadius = 16;
+        s.backgroundDim = dark ? 60 : 0;
+        persist(s);
+    }
+
+    private static int averageBackgroundColor(Snapshot s) {
+        String mode = s.backgroundMode == null ? BG_SOLID : s.backgroundMode;
+        if (BG_GRADIENT.equals(mode)) {
+            return blend(s.background, s.background2, 0.5f);
+        }
+        File f = s.backgroundImage == null || s.backgroundImage.isEmpty() ? null : new File(s.backgroundImage);
+        if (BG_IMAGE.equals(mode) && f != null && f.isFile()) {
+            try {
+                android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options();
+                bounds.inJustDecodeBounds = true;
+                android.graphics.BitmapFactory.decodeFile(f.getAbsolutePath(), bounds);
+                int sample = 1;
+                while (bounds.outWidth / sample > 64 || bounds.outHeight / sample > 64) sample *= 2;
+                android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
+                opts.inSampleSize = sample;
+                android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeFile(f.getAbsolutePath(), opts);
+                if (bmp != null) {
+                    long r = 0, g = 0, b = 0, n = 0;
+                    for (int y = 0; y < bmp.getHeight(); y += 2) {
+                        for (int x = 0; x < bmp.getWidth(); x += 2) {
+                            int c = bmp.getPixel(x, y);
+                            if ((c >>> 24) < 32) continue;
+                            r += (c >> 16) & 0xFF;
+                            g += (c >> 8) & 0xFF;
+                            b += c & 0xFF;
+                            n++;
+                        }
+                    }
+                    bmp.recycle();
+                    if (n > 0) {
+                        return 0xFF000000 | ((int) (r / n) << 16) | ((int) (g / n) << 8) | (int) (b / n);
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return s.background;
+    }
+
+    private static int blend(int a, int b, float t) {
+        float k = Math.max(0f, Math.min(1f, t));
+        int r = Math.round(((a >> 16) & 0xFF) * (1 - k) + ((b >> 16) & 0xFF) * k);
+        int g = Math.round(((a >> 8) & 0xFF) * (1 - k) + ((b >> 8) & 0xFF) * k);
+        int bl = Math.round((a & 0xFF) * (1 - k) + (b & 0xFF) * k);
+        return 0xFF000000 | (r << 16) | (g << 8) | bl;
+    }
+
     // ---------------- built-in one-tap themes ----------------
 
     private static final String[] BUILT_IN_NAMES = {

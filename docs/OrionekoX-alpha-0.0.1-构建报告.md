@@ -2509,6 +2509,18 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
   `b26932a9e6a9…`）；debug `dist/OrionekoX-0.12.0-debug-arm64-x64.apk`（sha256
   `83783c9dd30f…`）。详见 `docs/qa-0.12.0.md`。
 
+## 5.121 alpha 0.13.0 —— 从背景自动配色（2026-10-27 20:38–20:47）
+
+- 新增“壁纸气泡联动/动态取色”：背景图降采样到 ≤64px 求平均 RGB，渐变取两色
+  50% 混合；由平均色生成高饱和发气泡、浅色收气泡、自动对比文字与细边框，
+  暗背景自动加 60/255 暗化。
+- 实测深蓝 `verify-rice.jpg`：生成收 `#DCDDE5`、发 `#A3A6C2`、边框 `#BDBFD3`，
+  文字深色可读，背景图保留；应用至 R2C Card 正常，无 FATAL/ANR。
+- 版本：0.12.0 → 0.13.0（minor，新功能）。
+- 产物：`dist/OrionekoX-0.13.0-alpha-arm64-x64.apk`（versionCode 1439，sha256
+  `08a983b1e39a…`）；debug `dist/OrionekoX-0.13.0-debug-arm64-x64.apk`（sha256
+  `14ba073efeb6…`）。详见 `docs/qa-0.13.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

@@ -12092,6 +12092,9 @@
     <string name="OxChatExport">Export theme package (.oxtheme)</string>
     <string name="OxChatExportDone">Theme exported</string>
     <string name="OxChatReadability">Check text contrast</string>
+    <string name="OxChatAutoPalette">Auto palette from background</string>
+    <string name="OxChatAutoPaletteInfo">Generate bubbles, text and border from the wallpaper color</string>
+    <string name="OxChatAutoPaletteDone">Palette generated from the background</string>
     <string name="OxChatReadabilityOk">Contrast %.1f:1 — readable</string>
     <string name="OxChatReadabilityWarn">Contrast %.1f:1 — text may be hard to read</string>
     <string name="OxChatNativeTheme">Open Telegram chat theme</string>

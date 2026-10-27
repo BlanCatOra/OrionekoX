@@ -159,6 +159,17 @@ These confirm the feature directions rather than relying on guesses. Checked
   color (white-on-white); built-ins always write a matching set and the contrast
   row reports such cases.
 
+## 0.13.0 implementation — auto palette from the background
+
+- “从背景自动配色” samples the current image down to 64 px (or averages the
+  gradient/solid colors), derives saturated incoming/outgoing bubbles, picks a
+  readable text color and a subtle border, and dims dark backgrounds.
+- Device QA with the dark-blue `verify-rice.jpg`: generated `#DCDDE5` incoming,
+  `#A3A6C2` outgoing, `#BDBFD3` border, dark readable text, dim 60; applied to
+  R2C Card without losing the wallpaper.
+- This closes the “wallpaper ↔ bubble coordination / dynamic color” innovation
+  gap and complements the manual per-agent colors.
+
 ## Gaps / next phases
 
 1. Full Operit theme-v1 mapping (background images, 9-patch, fonts, input styles,

@@ -4,6 +4,13 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.13.0 — 2026-10-27
+
+- “Auto palette from background”: samples the wallpaper (or averages the
+  gradient/solid colors), then generates a readable incoming/outgoing bubble
+  pair, text color, border and dimming. Verified with a dark-blue wallpaper on
+  R2C Card while keeping the wallpaper.
+
 ## 0.12.0 — 2026-10-27
 
 - Six one-tap built-in themes: AMOLED “Midnight Ink”, Paper, Deep Sea,
