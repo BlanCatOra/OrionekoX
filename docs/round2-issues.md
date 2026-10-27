@@ -121,3 +121,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：全局图片背景主题下预览显示 `VERIFYRICE0.9.1`、深色收气泡、紫色发气泡、洋红边框、1.15× 字号/1.4× 行高；模糊从“关”切到“强”后预览背景明显抹平，随后恢复 `background_blur=0`。
 - 无 FATAL/ANR；未修改消息或联系人，无新增测试对象。
+
+## 0.21.1 RikkaHub 技能分配/请求头映射 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-35 | 0.21.1 QA | 0.20.0 只把技能写入技能库，未按 RikkaHub `enabledSkills` 关联到助手；助手 `customHeaders` 也未导入 | 先导入技能再导入 Agent，按名称/id 匹配 skillIds；customHeaders 映射为 headers；空数组不覆盖原值 | 已修复并设备验证 |
+| R2-36 | 0.21.1 QA | 仅映射助手级 headers；Provider 级 headers、图片头像、开场白仍未映射 | 记录边界，待后续备份字段补全 | 待补 |
+
+- 设备：`Rikka QA` 的 `enabledSkills=["Rikka Test Skill"]` → `skill_ids=["TestSkill"]`；`X-Rikka-Assistant: 1` → `headers=[["X-Rikka-Assistant","1"]]`；重复导入仍为同一 Agent，映射保持。
+- 清理：删除测试助手、RikkaTestMCP、TestSkill 与 Downloads 样例；无 Key 泄漏、无 FATAL/ANR。
