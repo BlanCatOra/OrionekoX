@@ -4,6 +4,19 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.18.0 — 2026-10-27
+
+- Added portable preset bundles (`.oxthemes`): a zip with `bundle.json` and the
+  background/font assets referenced by every named preset. Export all presets,
+  preview the count/names/duplicate names before importing, and restore assets
+  into app-private storage with rewritten paths.
+- Imports skip existing preset names instead of overwriting, validate the whole
+  bundle before writing (100 presets, 300 entries, 8 MB per asset, 40 MB total),
+  and remove files created by a failed import.
+- Device QA: colour-only presets re-imported idempotently (0/2); a preset with a
+  16 KB wallpaper was exported, deleted, restored (1/2) and applied; an invalid
+  file was rejected without touching presets or assets.
+
 ## 0.17.1 — 2026-10-27
 
 - Fixed per-chat appearance being skipped on the first open after a cold start:

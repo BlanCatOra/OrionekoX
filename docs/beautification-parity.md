@@ -28,7 +28,7 @@ requirements.
 | Dynamic color | theme studio | Material You | Material 3 Expressive | **0.13.0** palette derived from background image/gradient (not Material You) |
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
-| Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; JSON export |
+| Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
 | Custom vs native mode | — | — | — | **0.9.0** two-mode switch |
@@ -264,12 +264,32 @@ These confirm the feature directions rather than relying on guesses. Checked
   rendering. This is an emulator limitation, not an app FATAL/ANR, and still
   needs a real-device/GPU pass.
 
+## 0.18.0 implementation — portable preset bundle
+
+- `.oxthemes` is a zip with `bundle.json` plus per-preset background/font assets.
+  Export covers every named preset; import previews the count, up to eight names,
+  duplicate names and asset counts before writing anything.
+- Import validates the whole bundle first (format, 100 presets, 300 zip entries,
+  8 MB per asset, 40 MB total), skips names that already exist instead of
+  overwriting, restores assets to new app-private files and rewrites the snapshot
+  paths. A failed write removes the preset and asset files created by that import.
+- Device QA: two colour-only presets exported to a 506 B bundle and re-imported
+  idempotently (0 imported / 2 skipped); a preset with the 16 KB wallpaper exported
+  to a 4.7 KB bundle, was deleted, then restored (1 imported / 2 skipped) with a
+  fresh asset path and a working apply action. A 13-byte text file with the
+  `.oxthemes` extension was rejected without touching presets or assets.
+- The Chinese pack version had to be bumped again after the copy changed; the first
+  0.18.0 install still showed old/English strings. Final pack 86 shows
+  “导入预设包 / 导出预设包”, “导入这个预设包？” and “导入”.
+- Limits: font assets were not exercised by the test presets, assets over 8 MB are
+  skipped on export, and the mid-write rollback path is code-reviewed only.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
-2. Kelivo/RikkaHub full backup import and preset-bundle export/import; an online
-   preset marketplace remains out of scope.
+2. Kelivo/RikkaHub full backup import; an online preset marketplace remains out
+   of scope. Preset-bundle export/import is covered by 0.18.0.
 3. Persona-based appearance recommendation and live chat preview inside the
    appearance editor.
 4. Per-conversation theme inheritance still copies the parent’s text color; a

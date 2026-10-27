@@ -66,6 +66,8 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final int ID_AUTO_PALETTE = 30;
     private static final int ID_LINE_HEIGHT = 31;
     private static final int ID_BG_BLUR = 32;
+    private static final int ID_IMPORT_BUNDLE = 33;
+    private static final int ID_EXPORT_BUNDLE = 34;
     private static final int PRESET_BASE = 100;
     private static final int BUILTIN_BASE = 200;
 
@@ -74,6 +76,9 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final int REQ_FONT = 503;
     private static final int REQ_CODE_FONT = 504;
     private static final int REQ_EXPORT = 505;
+    private static final int REQ_IMPORT_BUNDLE = 506;
+    private static final int REQ_EXPORT_BUNDLE = 507;
+    private static final int MAX_PICK_BYTES = 48 * 1024 * 1024;
 
     private static final int[] BG_COLORS = {
             0xFFF3F1F7, 0xFF101114, 0xFFFDF6E3, 0xFFE8F0FE, 0xFF1E1B2E, 0x00000000
@@ -116,6 +121,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private long scopeDialogId;
     private String dialogTitle;
     private byte[] pendingExport;
+    private byte[] pendingBundle;
 
     @Override
     public View createView(Context context) {
@@ -281,6 +287,12 @@ public class OxChatAppearanceActivity extends BaseFragment {
                 LocaleController.getString(R.string.OxChatImportInfo)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_EXPORT, 0xFF2AABEE, 0xFF1488E1,
                 R.drawable.msg_download, LocaleController.getString(R.string.OxChatExport), null));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_IMPORT_BUNDLE, 0xFF34C759, 0xFF2AA84A,
+                R.drawable.msg_download, LocaleController.getString(R.string.OxChatImportBundle),
+                LocaleController.getString(R.string.OxChatBundleHint)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_EXPORT_BUNDLE, 0xFF2AABEE, 0xFF1488E1,
+                R.drawable.msg_download, LocaleController.getString(R.string.OxChatExportBundle),
+                LocaleController.getString(R.string.OxChatExportBundleInfo)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_SAVE, 0xFF7C5CFF, 0xFF5B3FE0,
                 R.drawable.msg_add, LocaleController.getString(R.string.OxChatSavePreset)));
         if (agentTgId != 0) {
@@ -405,6 +417,10 @@ public class OxChatAppearanceActivity extends BaseFragment {
             pickJson();
         } else if (item.id == ID_EXPORT) {
             exportTheme();
+        } else if (item.id == ID_IMPORT_BUNDLE) {
+            pickBundle();
+        } else if (item.id == ID_EXPORT_BUNDLE) {
+            exportBundle();
         } else if (item.id == ID_SAVE) {
             askPresetName();
         } else if (item.id == ID_APPLY_ALL) {
@@ -521,6 +537,65 @@ public class OxChatAppearanceActivity extends BaseFragment {
         startActivityForResult(i, REQ_IMPORT);
     }
 
+    private void exportBundle() {
+        if (getParentActivity() == null) return;
+        try {
+            pendingBundle = OxChatTheme.exportPresetBundle();
+        } catch (Throwable t) {
+            toast(bundleExportError(t));
+            return;
+        }
+        Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("application/octet-stream");
+        i.putExtra(Intent.EXTRA_TITLE, "orioneko-presets.oxthemes");
+        startActivityForResult(i, REQ_EXPORT_BUNDLE);
+    }
+
+    private void pickBundle() {
+        if (getParentActivity() == null) return;
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("*/*");
+        startActivityForResult(i, REQ_IMPORT_BUNDLE);
+    }
+
+    private String bundlePreviewText(OxChatTheme.BundlePreview p) {
+        StringBuilder sb = new StringBuilder(LocaleController.formatString(
+                "OxChatBundlePreview", R.string.OxChatBundlePreview, p.names.size()));
+        int shown = Math.min(8, p.names.size());
+        for (int i = 0; i < shown; i++) sb.append("\n• ").append(p.names.get(i));
+        if (p.names.size() > shown) sb.append("\n…");
+        if (p.duplicates > 0) {
+            sb.append("\n").append(LocaleController.formatString(
+                    "OxChatBundleDuplicates", R.string.OxChatBundleDuplicates, p.duplicates));
+        }
+        sb.append("\n").append(LocaleController.formatString(
+                "OxChatBundleAssets", R.string.OxChatBundleAssets, p.backgrounds, p.fonts));
+        return sb.toString();
+    }
+
+    private String bundleResultText(OxChatTheme.BundleResult r) {
+        return LocaleController.formatString(
+                "OxChatBundleImported", R.string.OxChatBundleImported, r.imported, r.skipped);
+    }
+
+    private String bundleError(Throwable t) {
+        String m = t == null || t.getMessage() == null ? "" : t.getMessage();
+        if ("no presets".equals(m)) return LocaleController.getString(R.string.OxChatBundleEmpty);
+        if ("not a bundle".equals(m) || "unsupported bundle".equals(m) || "bundle.json missing".equals(m)) {
+            return LocaleController.getString(R.string.OxChatBundleInvalid);
+        }
+        return LocaleController.formatString("OxChatImportFailed", R.string.OxChatImportFailed, m);
+    }
+
+    private String bundleExportError(Throwable t) {
+        String m = t == null || t.getMessage() == null ? "" : t.getMessage();
+        if ("no presets".equals(m)) return LocaleController.getString(R.string.OxChatBundleEmpty);
+        return LocaleController.formatString(
+                "OxChatBundleExportFailed", R.string.OxChatBundleExportFailed, m);
+    }
+
     private void pickImage() {
         if (getParentActivity() == null) return;
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -575,6 +650,54 @@ public class OxChatAppearanceActivity extends BaseFragment {
                             "OxChatImportFailed", R.string.OxChatImportFailed, t.getMessage())));
                 }
             }, "ox-chat-theme-read").start();
+        } else if (requestCode == REQ_IMPORT_BUNDLE) {
+            new Thread(() -> {
+                try {
+                    final byte[] raw = readBytes(ctx, uri);
+                    final OxChatTheme.BundlePreview preview = OxChatTheme.previewPresetBundle(raw);
+                    AndroidUtilities.runOnUIThread(() -> {
+                        if (getParentActivity() == null) return;
+                        new AlertDialog.Builder(getParentActivity())
+                                .setTitle(LocaleController.getString(R.string.OxChatBundlePreviewTitle))
+                                .setMessage(bundlePreviewText(preview))
+                                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                                .setPositiveButton(LocaleController.getString(R.string.OxChatBundleApply), (d, w) -> {
+                                    new Thread(() -> {
+                                        try {
+                                            final OxChatTheme.BundleResult result = OxChatTheme.importPresetBundle(raw);
+                                            AndroidUtilities.runOnUIThread(() -> {
+                                                toast(bundleResultText(result));
+                                                rebuild();
+                                            });
+                                        } catch (Throwable t) {
+                                            AndroidUtilities.runOnUIThread(() -> toast(bundleError(t)));
+                                        }
+                                    }, "ox-chat-bundle-apply").start();
+                                })
+                                .show();
+                    });
+                } catch (Throwable t) {
+                    AndroidUtilities.runOnUIThread(() -> toast(bundleError(t)));
+                }
+            }, "ox-chat-bundle-read").start();
+        } else if (requestCode == REQ_EXPORT_BUNDLE) {
+            final byte[] bytes = pendingBundle;
+            pendingBundle = null;
+            if (bytes == null) return;
+            new Thread(() -> {
+                String msg;
+                try {
+                    java.io.OutputStream out = ctx.getContentResolver().openOutputStream(uri);
+                    out.write(bytes);
+                    out.close();
+                    msg = LocaleController.getString(R.string.OxChatBundleExported);
+                } catch (Throwable t) {
+                    msg = LocaleController.formatString("OxChatBundleExportFailed",
+                            R.string.OxChatBundleExportFailed, t.getMessage());
+                }
+                final String m = msg;
+                AndroidUtilities.runOnUIThread(() -> toast(m));
+            }, "ox-chat-bundle-export").start();
         } else if (requestCode == REQ_BG) {
             new Thread(() -> {
                 String msg;
@@ -636,8 +759,8 @@ public class OxChatAppearanceActivity extends BaseFragment {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         byte[] buf = new byte[16384];
         int n;
-        while ((n = in.read(buf)) > 0 && bos.size() < 16 * 1024 * 1024) {
-            bos.write(buf, 0, Math.min(n, 16 * 1024 * 1024 - bos.size()));
+        while ((n = in.read(buf)) > 0 && bos.size() < MAX_PICK_BYTES) {
+            bos.write(buf, 0, Math.min(n, MAX_PICK_BYTES - bos.size()));
         }
         in.close();
         return bos.toByteArray();

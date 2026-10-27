@@ -11,6 +11,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.view.View;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
@@ -23,7 +24,11 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Custom appearance for local-agent conversations.
@@ -1042,6 +1047,274 @@ public class OxChatTheme {
 
     public static void deletePreset(String name) {
         new File(presetDir(), name + ".json").delete();
+    }
+
+    // ---------------- portable preset bundle ----------------
+
+    private static final String BUNDLE_FORMAT = "orionekox-theme-bundle";
+    private static final int BUNDLE_VERSION = 1;
+    private static final int BUNDLE_MAX_PRESETS = 100;
+    private static final int BUNDLE_MAX_ASSET = 8 * 1024 * 1024;
+    private static final int BUNDLE_MAX_TOTAL = 40 * 1024 * 1024;
+
+    public static class BundlePreview {
+        public final List<String> names = new ArrayList<>();
+        public int duplicates;
+        public int backgrounds;
+        public int fonts;
+    }
+
+    public static class BundleResult {
+        public int imported;
+        public int skipped;
+        public int backgrounds;
+        public int fonts;
+        public final List<String> names = new ArrayList<>();
+    }
+
+    private static class BundlePreset {
+        String name;
+        JSONObject theme;
+        byte[] background;
+        byte[] font;
+        byte[] codeFont;
+    }
+
+    private static class PendingPreset {
+        String safeName;
+        Snapshot snapshot;
+        byte[] background;
+        byte[] font;
+        byte[] codeFont;
+    }
+
+    private static String presetFileName(String name) {
+        if (name == null) return "";
+        String safe = name.trim().replaceAll("[^a-zA-Z0-9._\\-\\u4e00-\\u9fa5]", "_");
+        if (safe.length() > 80) safe = safe.substring(0, 80);
+        return safe;
+    }
+
+    /** Zips every named preset with the assets its snapshot points at. */
+    public static byte[] exportPresetBundle() throws Exception {
+        List<String> names = presets();
+        if (names.isEmpty()) throw new IllegalArgumentException("no presets");
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(bos);
+        JSONArray items = new JSONArray();
+        long total = 0;
+        try {
+            for (String name : names) {
+                if (items.length() >= BUNDLE_MAX_PRESETS) break;
+                Snapshot s = readFile(new File(presetDir(), name + ".json"));
+                if (s == null) continue;
+                int index = items.length();
+                JSONObject assets = new JSONObject();
+
+                File bg = s.backgroundImage == null || s.backgroundImage.isEmpty() ? null : new File(s.backgroundImage);
+                if (bg != null && bg.isFile() && bg.length() <= BUNDLE_MAX_ASSET && total + bg.length() <= BUNDLE_MAX_TOTAL) {
+                    String entry = "presets/" + index + "/background" + extension(bg.getName());
+                    putEntry(zip, entry, readFileBytes(bg, BUNDLE_MAX_ASSET));
+                    assets.put("background", entry);
+                    total += bg.length();
+                }
+                File font = s.fontPath == null || s.fontPath.isEmpty() ? null : new File(s.fontPath);
+                if (font != null && font.isFile() && font.length() <= BUNDLE_MAX_ASSET && total + font.length() <= BUNDLE_MAX_TOTAL) {
+                    String entry = "presets/" + index + "/chat-font.ttf";
+                    putEntry(zip, entry, readFileBytes(font, BUNDLE_MAX_ASSET));
+                    assets.put("font", entry);
+                    total += font.length();
+                }
+                File codeFont = s.codeFontPath == null || s.codeFontPath.isEmpty() ? null : new File(s.codeFontPath);
+                if (codeFont != null && codeFont.isFile() && codeFont.length() <= BUNDLE_MAX_ASSET && total + codeFont.length() <= BUNDLE_MAX_TOTAL) {
+                    String entry = "presets/" + index + "/code-font.ttf";
+                    putEntry(zip, entry, readFileBytes(codeFont, BUNDLE_MAX_ASSET));
+                    assets.put("codeFont", entry);
+                    total += codeFont.length();
+                }
+
+                JSONObject item = new JSONObject();
+                item.put("name", name);
+                item.put("theme", s.toJson(name));
+                item.put("assets", assets);
+                items.put(item);
+            }
+            if (items.length() == 0) throw new IllegalArgumentException("no presets");
+            JSONObject root = new JSONObject();
+            root.put("format", BUNDLE_FORMAT);
+            root.put("version", BUNDLE_VERSION);
+            root.put("createdAt", System.currentTimeMillis());
+            root.put("presets", items);
+            zip.putNextEntry(new java.util.zip.ZipEntry("bundle.json"));
+            zip.write(root.toString(2).getBytes("UTF-8"));
+            zip.closeEntry();
+            zip.finish();
+        } finally {
+            zip.close();
+        }
+        return bos.toByteArray();
+    }
+
+    /** Validates a bundle and reports what an import would do, without writing. */
+    public static BundlePreview previewPresetBundle(byte[] data) throws Exception {
+        List<BundlePreset> list = parseBundle(data);
+        BundlePreview p = new BundlePreview();
+        Set<String> existing = new HashSet<>(presets());
+        Set<String> seen = new HashSet<>();
+        for (BundlePreset bp : list) {
+            p.names.add(bp.name);
+            String safe = presetFileName(bp.name);
+            if (safe.isEmpty() || existing.contains(safe) || !seen.add(safe)) {
+                p.duplicates++;
+            }
+            if (bp.background != null && bp.background.length > 0) p.backgrounds++;
+            if (bp.font != null || bp.codeFont != null) p.fonts++;
+        }
+        return p;
+    }
+
+    /** Imports presets after the whole bundle has validated; duplicate names are skipped. */
+    public static BundleResult importPresetBundle(byte[] data) throws Exception {
+        List<BundlePreset> list = parseBundle(data);
+        BundleResult r = new BundleResult();
+        Set<String> existing = new HashSet<>(presets());
+        Set<String> planned = new HashSet<>();
+        List<PendingPreset> pending = new ArrayList<>();
+        for (BundlePreset bp : list) {
+            String safe = presetFileName(bp.name);
+            if (safe.isEmpty() || existing.contains(safe) || !planned.add(safe)) {
+                r.skipped++;
+                continue;
+            }
+            Snapshot s = parseJsonObject(bp.theme, new Snapshot());
+            s.mode = MODE_CUSTOM;
+            PendingPreset pp = new PendingPreset();
+            pp.safeName = safe;
+            pp.snapshot = s;
+            pp.background = bp.background;
+            pp.font = bp.font;
+            pp.codeFont = bp.codeFont;
+            pending.add(pp);
+        }
+
+        List<File> created = new ArrayList<>();
+        try {
+            long stamp = System.currentTimeMillis();
+            int index = 0;
+            for (PendingPreset pp : pending) {
+                if (pp.background != null && pp.background.length > 0) {
+                    File out = new File(ApplicationLoader.applicationContext.getFilesDir(),
+                            "ox_chat_bg_preset_" + stamp + "_" + index + ".img");
+                    writeFile(out, pp.background);
+                    created.add(out);
+                    pp.snapshot.backgroundMode = BG_IMAGE;
+                    pp.snapshot.backgroundImage = out.getAbsolutePath();
+                    r.backgrounds++;
+                } else if (BG_IMAGE.equals(pp.snapshot.backgroundMode)) {
+                    pp.snapshot.backgroundMode = BG_SOLID;
+                    pp.snapshot.backgroundImage = "";
+                }
+                if (pp.font != null && pp.font.length > 0) {
+                    File out = new File(fontDir(), "preset_font_" + stamp + "_" + index + ".ttf");
+                    writeFile(out, pp.font);
+                    created.add(out);
+                    pp.snapshot.fontPath = out.getAbsolutePath();
+                    r.fonts++;
+                } else if (!pathExists(pp.snapshot.fontPath)) {
+                    pp.snapshot.fontPath = "";
+                }
+                if (pp.codeFont != null && pp.codeFont.length > 0) {
+                    File out = new File(fontDir(), "preset_code_" + stamp + "_" + index + ".ttf");
+                    writeFile(out, pp.codeFont);
+                    created.add(out);
+                    pp.snapshot.codeFontPath = out.getAbsolutePath();
+                } else if (!pathExists(pp.snapshot.codeFontPath)) {
+                    pp.snapshot.codeFontPath = "";
+                }
+                index++;
+            }
+            for (int i = 0; i < pending.size(); i++) {
+                PendingPreset pp = pending.get(i);
+                File f = new File(presetDir(), pp.safeName + ".json");
+                FileOutputStream out = new FileOutputStream(f);
+                try {
+                    out.write(pp.snapshot.toJson(pp.safeName).toString(2).getBytes("UTF-8"));
+                } finally {
+                    out.close();
+                }
+                created.add(f);
+                r.imported++;
+                r.names.add(pp.safeName);
+            }
+        } catch (Throwable t) {
+            for (File f : created) {
+                try {
+                    f.delete();
+                } catch (Throwable ignored) {
+                }
+            }
+            throw t;
+        }
+        return r;
+    }
+
+    private static boolean pathExists(String path) {
+        return path != null && !path.isEmpty() && new File(path).isFile();
+    }
+
+    private static List<BundlePreset> parseBundle(byte[] data) throws Exception {
+        if (data == null || data.length == 0) throw new IllegalArgumentException("empty file");
+        if (!isZip(data)) throw new IllegalArgumentException("not a bundle");
+        String json = null;
+        Map<String, byte[]> assets = new HashMap<>();
+        long total = 0;
+        int entries = 0;
+        java.util.zip.ZipInputStream zis =
+                new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
+        try {
+            java.util.zip.ZipEntry e;
+            while ((e = zis.getNextEntry()) != null) {
+                if (++entries > 300) throw new IllegalArgumentException("too many entries");
+                String n = e.getName();
+                if ("bundle.json".equals(n)) {
+                    json = new String(readAll(zis, 1024 * 1024), "UTF-8");
+                } else if (n.startsWith("presets/") && !n.contains("..")) {
+                    byte[] bytes = readAll(zis, BUNDLE_MAX_ASSET);
+                    total += bytes.length;
+                    if (total > BUNDLE_MAX_TOTAL) throw new IllegalArgumentException("bundle too large");
+                    assets.put(n, bytes);
+                }
+            }
+        } finally {
+            zis.close();
+        }
+        if (json == null) throw new IllegalArgumentException("bundle.json missing");
+        JSONObject root = new JSONObject(json);
+        if (!BUNDLE_FORMAT.equals(root.optString("format"))) {
+            throw new IllegalArgumentException("unsupported bundle");
+        }
+        JSONArray arr = root.optJSONArray("presets");
+        if (arr == null) throw new IllegalArgumentException("no presets");
+        List<BundlePreset> out = new ArrayList<>();
+        for (int i = 0; i < arr.length() && out.size() < BUNDLE_MAX_PRESETS; i++) {
+            JSONObject item = arr.optJSONObject(i);
+            if (item == null) continue;
+            String name = item.optString("name", "").trim();
+            JSONObject theme = item.optJSONObject("theme");
+            if (name.isEmpty() || theme == null) continue;
+            BundlePreset bp = new BundlePreset();
+            bp.name = name;
+            bp.theme = theme;
+            JSONObject a = item.optJSONObject("assets");
+            if (a != null) {
+                bp.background = assets.get(a.optString("background", ""));
+                bp.font = assets.get(a.optString("font", ""));
+                bp.codeFont = assets.get(a.optString("codeFont", ""));
+            }
+            out.add(bp);
+        }
+        if (out.isEmpty()) throw new IllegalArgumentException("no presets");
+        return out;
     }
 
     public static JSONObject toJson(String name) throws Exception {
