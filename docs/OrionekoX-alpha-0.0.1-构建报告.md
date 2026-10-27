@@ -2904,6 +2904,22 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `18cd44f4e3d3…`）；debug `dist/OrionekoX-0.26.1-debug-arm64-x64.apk`（sha256
 `e0e1eb8209ab…`）。详见 `docs/qa-0.26.1.md`。
 
+## 5.142 alpha 0.26.2 —— Operit 背景模糊映射修正（2026-10-28 04:04–04:14）
+
+- Operit 外观 JSON 的 `use_background_blur` / `background_blur_radius` 现在映射
+  到 1–3 级真实背景模糊（≥20 强、≥12 中、其余轻），不再误把
+  `use_background_blur` 当作磨砂气泡；liquid/water glass 仍映射磨砂。
+- 设备：导入 `background_blur_radius=24` 的 Operit JSON，预览摘要显示“模糊强”，
+  Agent JSON `backgroundBlur=3`，预览壁纸文字/边框被抹平；测试后删除覆盖。
+- 边界：半径阈值是启发式；纯色/渐变无可见模糊；9-patch、输入样式、头像、
+  padding、crop/repeat/scale、视频背景仍未映射。无 FATAL/ANR。
+- 版本规则：仅修既有导入字段映射，按 patch 从 0.26.1 → 0.26.2，
+  versionCode 2629。
+
+**产物**：`dist/OrionekoX-0.26.2-alpha-arm64-x64.apk`（versionCode 2629，sha256
+`033b4c544e66…`）；debug `dist/OrionekoX-0.26.2-debug-arm64-x64.apk`（sha256
+`3ed2cc9252bd…`）。详见 `docs/qa-0.26.2.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

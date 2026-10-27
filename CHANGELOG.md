@@ -4,6 +4,15 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.26.2 — 2026-10-28
+
+- Fixed Operit appearance import blur mapping: `use_background_blur` and
+  `background_blur_radius` now drive the 1–3 image blur levels (≥20 strong,
+  ≥12 medium, otherwise light) instead of only switching bubbles to frosted.
+- Frosted bubbles now follow only the liquid/water glass flags.
+- Verified with radius 24: preview reported “模糊强”, the agent JSON stored
+  `backgroundBlur=3`, and the preview wallpaper was visibly smoothed.
+
 ## 0.26.1 — 2026-10-28
 
 - Kelivo/Chatbox assistant import now reads `provider_configs_v1` from the backup

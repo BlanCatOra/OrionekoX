@@ -228,3 +228,12 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：`prov-1` 的 baseUrl `https://kelivo.example/v1`、model `kelivo-test-model` 正确写入 Agent；Copilot 无引用时回退本机 Provider；重复导入仍 2 个 Agent；logcat 无测试 Key、无 FATAL/ANR。
 - 边界：OAuth/多 Key/代理/provider headers/body/Vertex 特殊配置未导入；仅保存被助手引用的 Provider。
+
+## 0.26.2 Operit 背景模糊映射 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-54 | 0.26.2 QA | Operit `use_background_blur` 只把气泡设为磨砂，未真正模糊壁纸；`background_blur_radius` 未使用 | 映射到 1–3 级背景模糊（≥20 强/≥12 中/其余轻）；磨砂只由 liquid/water glass 触发 | 已修复 |
+
+- 设备：`background_blur_radius=24` 的 Operit JSON 预览显示“模糊强”，Agent JSON `backgroundBlur=3`，预览壁纸明显抹平；测试后删除覆盖。
+- 边界：阈值启发式；纯色/渐变无可见模糊；9-patch/输入样式/头像/padding/crop 仍未映射。
