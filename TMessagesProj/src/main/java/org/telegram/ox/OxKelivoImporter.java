@@ -8,6 +8,8 @@ import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,8 +22,8 @@ import java.util.zip.ZipInputStream;
 
 /**
  * Imports assistant/persona definitions and chat history from Kelivo / Chatbox
- * backup files. Provider keys stay wrapped by the agent store; skills, MCP and
- * conversations have dedicated sections below.
+ * backup files. Provider keys stay wrapped by the agent store; skills, MCP,
+ * conversations and backup avatars have dedicated sections below.
  */
 public class OxKelivoImporter {
 
@@ -29,6 +31,9 @@ public class OxKelivoImporter {
     private static final int MAX_CONVERSATIONS = 100;
     private static final int MAX_MESSAGES_PER_CONVERSATION = 500;
     private static final int MAX_MESSAGE_CHARS = 20000;
+    private static final int MAX_RESOURCE_FILES = 64;
+    private static final int MAX_RESOURCE_BYTES = 2 * 1024 * 1024;
+    private static final long MAX_RESOURCE_TOTAL = 24L * 1024 * 1024;
 
     public static class Preview {
         public int assistants;
@@ -40,6 +45,7 @@ public class OxKelivoImporter {
         public int conversations;
         public int messages;
         public int existingConversations;
+        public int avatars;
         public final List<String> names = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -53,6 +59,7 @@ public class OxKelivoImporter {
         public int conversations;
         public int messages;
         public int convUpdated;
+        public int avatars;
         public final List<String> ids = new ArrayList<>();
         public final List<String> conversationIds = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
@@ -64,10 +71,16 @@ public class OxKelivoImporter {
         String systemPrompt = "";
         String providerId = "";
         String model = "";
+        String avatarRef = "";
         double temperature = 0.7;
         double topP = 1.0;
         int maxTokens = 0;
         final List<OxChatEntry> entries = new ArrayList<>();
+    }
+
+    private static class Resource {
+        String mime;
+        byte[] bytes;
     }
 
     private static class Archive {
@@ -76,6 +89,8 @@ public class OxKelivoImporter {
         final Map<String, byte[]> skills = new HashMap<>();
         final List<JSONObject> mcpServers = new ArrayList<>();
         final List<Conversation> conversations = new ArrayList<>();
+        final Map<String, Resource> avatars = new HashMap<>();
+        int avatarCount;
         String defaultPrompt = "";
     }
 
@@ -127,6 +142,10 @@ public class OxKelivoImporter {
             p.notes.add("将导入 " + p.conversations + " 段对话（" + p.messages
                     + " 条消息）；已存在的对话会替换历史。");
         }
+        p.avatars = archive.avatarCount;
+        if (p.avatars > 0) {
+            p.notes.add("备份含 " + p.avatars + " 个头像资源；匹配到的助手/对话会更新头像。");
+        }
         return p;
     }
 
@@ -152,7 +171,13 @@ public class OxKelivoImporter {
             a.agentsMd = o.optString("systemPrompt", o.optString("prompt", "")).trim();
             a.remark = "";
             a.tgId = oldTgId;
-            a.avatarPath = oldAvatar;
+            if (oldAvatar.isEmpty()) {
+                String saved = saveAvatar(a.id, avatarRef(o), archive);
+                a.avatarPath = saved == null ? "" : saved;
+                if (saved != null) r.avatars++;
+            } else {
+                a.avatarPath = oldAvatar;
+            }
             a.emoji = "🤖";
             a.providerId = "kelivo";
             a.temperature = o.has("temperature") && !o.isNull("temperature")
@@ -209,7 +234,13 @@ public class OxKelivoImporter {
             a.agentsMd = c.systemPrompt;
             a.remark = "";
             a.tgId = oldTgId;
-            a.avatarPath = oldAvatar;
+            if (oldAvatar.isEmpty()) {
+                String saved = saveAvatar(a.id, c.avatarRef, archive);
+                a.avatarPath = saved == null ? "" : saved;
+                if (saved != null) r.avatars++;
+            } else {
+                a.avatarPath = oldAvatar;
+            }
             a.emoji = "💬";
             a.providerId = "kelivo";
             a.temperature = c.temperature;
@@ -237,6 +268,9 @@ public class OxKelivoImporter {
         }
         if (r.convUpdated > 0) {
             r.notes.add("已存在的 " + r.convUpdated + " 段对话历史已替换");
+        }
+        if (r.avatars > 0) {
+            r.notes.add("导入头像 " + r.avatars + " 个");
         }
         for (Map.Entry<String, byte[]> e : archive.skills.entrySet()) {
             try {
@@ -296,7 +330,9 @@ public class OxKelivoImporter {
                 String assistants = null;
                 String manifest = null;
                 int sessionBytes = 0;
+                long resourceBytes = 0;
                 Map<String, String> sessionFiles = new HashMap<>();
+                Map<String, byte[]> resourceFiles = new HashMap<>();
                 while ((e = zin.getNextEntry()) != null) {
                     if (++entries > 1000) throw new IllegalArgumentException("too many entries");
                     if (e.isDirectory()) continue;
@@ -326,13 +362,24 @@ public class OxKelivoImporter {
                             byte[] body = readBytes(zin);
                             if (body.length > 0) out.skills.put(id, body);
                         }
+                    } else if (resourceFiles.size() < MAX_RESOURCE_FILES
+                            && resourceBytes < MAX_RESOURCE_TOTAL
+                            && !n.endsWith(".json")
+                            && !n.toLowerCase(java.util.Locale.ROOT).endsWith("skill.md")) {
+                        byte[] body = readBytes(zin, MAX_RESOURCE_BYTES);
+                        if (body != null && body.length > 0) {
+                            resourceFiles.put(normPath(n), body);
+                            resourceBytes += body.length;
+                        }
                     }
                 }
                 if (settings != null) scan(new JSONObject(settings), out, 0);
                 if (copilots != null) addArray(new JSONArray(copilots), out);
                 if (assistants != null) addArray(new JSONArray(assistants), out);
                 if (manifest != null) {
-                    addManifestSessions(new JSONObject(manifest), sessionFiles, out);
+                    JSONObject m = new JSONObject(manifest);
+                    addResources(m, resourceFiles, out);
+                    addManifestSessions(m, sessionFiles, out);
                 } else {
                     for (Map.Entry<String, String> entry : sessionFiles.entrySet()) {
                         try {
@@ -388,6 +435,17 @@ public class OxKelivoImporter {
         return bos.toByteArray();
     }
 
+    private static byte[] readBytes(InputStream in, int limit) throws Exception {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] buf = new byte[16384];
+        int n;
+        while ((n = in.read(buf)) > 0) {
+            if (bos.size() + n > limit) return null;
+            bos.write(buf, 0, n);
+        }
+        return bos.toByteArray();
+    }
+
     private static void addManifestSessions(JSONObject manifest, Map<String, String> files, Archive out) {
         JSONArray sessions = manifest.optJSONArray("sessions");
         for (int i = 0; sessions != null && i < sessions.length(); i++) {
@@ -396,10 +454,142 @@ public class OxKelivoImporter {
             String body = files.get(descriptor.optString("path", "").trim());
             if (body == null) continue;
             try {
-                addSession(new JSONObject(body), descriptor.optString("id", ""), "", out);
+                addSession(new JSONObject(body), descriptor.optString("id", ""), "",
+                        asObject(descriptor.opt("meta")), out);
             } catch (Throwable ignored) {
             }
         }
+    }
+
+    private static void addResources(JSONObject manifest, Map<String, byte[]> files, Archive out) {
+        JSONArray resources = manifest.optJSONArray("resources");
+        for (int i = 0; resources != null && i < resources.length(); i++) {
+            JSONObject descriptor = resources.optJSONObject(i);
+            if (descriptor == null) continue;
+            String kind = descriptor.optString("kind", "");
+            if (!"avatar".equals(kind) && !"copilot-image".equals(kind)) continue;
+            byte[] bytes = files.get(normPath(descriptor.optString("path", "")));
+            if (bytes == null) continue;
+            bytes = decodeDataUrl(bytes, descriptor.optString("encoding", ""));
+            if (bytes == null || bytes.length == 0 || bytes.length > MAX_RESOURCE_BYTES) continue;
+            if (!looksLikeImage(bytes)) continue;
+            String mime = descriptor.optString("mimeType", "").trim();
+            if (mime.isEmpty() || !mime.startsWith("image/")) mime = guessMime(bytes);
+            Resource resource = new Resource();
+            resource.mime = mime;
+            resource.bytes = bytes;
+            JSONArray keys = descriptor.optJSONArray("originalStorageKeys");
+            boolean keyed = false;
+            for (int j = 0; keys != null && j < keys.length(); j++) {
+                String key = keys.optString(j, "").trim();
+                if (!key.isEmpty()) {
+                    out.avatars.put(key, resource);
+                    keyed = true;
+                }
+            }
+            String id = descriptor.optString("id", "").trim();
+            if (!id.isEmpty()) out.avatars.put(id, resource);
+            if (keyed) out.avatarCount++;
+        }
+    }
+
+    private static byte[] decodeDataUrl(byte[] raw, String encoding) {
+        try {
+            String text = new String(raw, "UTF-8");
+            if (!"data-url-base64".equalsIgnoreCase(encoding) && !text.startsWith("data:")) {
+                return raw;
+            }
+            int comma = text.indexOf(',');
+            if (comma < 0) return null;
+            return android.util.Base64.decode(text.substring(comma + 1).trim(),
+                    android.util.Base64.DEFAULT);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static String normPath(String path) {
+        String p = path == null ? "" : path.replace('\\', '/').trim();
+        while (p.startsWith("./")) p = p.substring(2);
+        while (p.startsWith("/")) p = p.substring(1);
+        return p;
+    }
+
+    private static String avatarRef(JSONObject o) {
+        if (o == null) return "";
+        Object raw = o.opt("avatar");
+        if (raw instanceof JSONObject) {
+            JSONObject avatar = (JSONObject) raw;
+            String key = avatar.optString("storageKey", "").trim();
+            if (!key.isEmpty()) return key;
+            String url = avatar.optString("url", "").trim();
+            if (!url.isEmpty()) return url;
+        } else if (raw instanceof String) {
+            String value = ((String) raw).trim();
+            if (!value.isEmpty()) return value;
+        }
+        return o.optString("picUrl", "").trim();
+    }
+
+    private static String saveAvatar(String agentId, String ref, Archive archive) {
+        if (ref == null || ref.trim().isEmpty()) return null;
+        Resource resource = archive.avatars.get(ref.trim());
+        if (resource == null) return null;
+        File dir = OxAgentStore.memoryFile(agentId).getParentFile();
+        if (dir == null) return null;
+        dir.mkdirs();
+        File target = new File(dir, "avatar" + extensionForMime(resource.mime));
+        FileOutputStream out = null;
+        try {
+            out = new FileOutputStream(target);
+            out.write(resource.bytes);
+            return target.getAbsolutePath();
+        } catch (Throwable t) {
+            target.delete();
+            return null;
+        } finally {
+            if (out != null) {
+                try { out.close(); } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    private static String extensionForMime(String mime) {
+        String m = mime == null ? "" : mime.toLowerCase(java.util.Locale.ROOT);
+        if (m.contains("png")) return ".png";
+        if (m.contains("webp")) return ".webp";
+        if (m.contains("gif")) return ".gif";
+        return ".jpg";
+    }
+
+    private static String guessMime(byte[] b) {
+        if (isPng(b)) return "image/png";
+        if (isJpeg(b)) return "image/jpeg";
+        if (isGif(b)) return "image/gif";
+        if (isWebp(b)) return "image/webp";
+        return "image/jpeg";
+    }
+
+    private static boolean looksLikeImage(byte[] b) {
+        return isPng(b) || isJpeg(b) || isGif(b) || isWebp(b);
+    }
+
+    private static boolean isPng(byte[] b) {
+        return b != null && b.length > 4 && (b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G';
+    }
+
+    private static boolean isJpeg(byte[] b) {
+        return b != null && b.length > 3 && (b[0] & 0xFF) == 0xFF
+                && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF;
+    }
+
+    private static boolean isGif(byte[] b) {
+        return b != null && b.length > 4 && b[0] == 'G' && b[1] == 'I' && b[2] == 'F';
+    }
+
+    private static boolean isWebp(byte[] b) {
+        return b != null && b.length > 12 && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F'
+                && b[8] == 'W' && b[9] == 'E' && b[10] == 'B' && b[11] == 'P';
     }
 
     private static void scanSessions(JSONObject root, Archive out) {
@@ -456,6 +646,11 @@ public class OxKelivoImporter {
     }
 
     private static void addSession(JSONObject session, String fallbackId, String fallbackTitle, Archive out) {
+        addSession(session, fallbackId, fallbackTitle, null, out);
+    }
+
+    private static void addSession(JSONObject session, String fallbackId, String fallbackTitle,
+            JSONObject meta, Archive out) {
         if (session == null || out.conversations.size() >= MAX_CONVERSATIONS) return;
         String id = session.optString("id", fallbackId).trim();
         if (id.isEmpty()) return;
@@ -474,6 +669,11 @@ public class OxKelivoImporter {
                 ? settings.optDouble("topP", 1.0) : 1.0;
         int maxTokens = settings.optInt("maxTokens", 0);
 
+        String avatar = meta == null ? "" : meta.optString("assistantAvatarKey", "").trim();
+        if (avatar.isEmpty() && meta != null) avatar = meta.optString("picUrl", "").trim();
+        if (avatar.isEmpty()) avatar = session.optString("picUrl", "").trim();
+        if (avatar.isEmpty()) avatar = avatarRef(session);
+
         JSONArray current = session.optJSONArray("messages");
         String prompt = firstSystemPrompt(current);
         if (prompt.isEmpty()) prompt = out.defaultPrompt;
@@ -489,17 +689,17 @@ public class OxKelivoImporter {
             String threadTitle = thread.optString("name", "").trim();
             if (threadTitle.isEmpty()) threadTitle = title;
             addConversation(out, id + "_" + threadId, threadTitle, providerId, model,
-                    temperature, topP, maxTokens, prompt, messages);
+                    avatar, temperature, topP, maxTokens, prompt, messages);
         }
         if (current != null && current.length() > 0 && !currentDuplicated(current, threads)) {
             String threadName = session.optString("threadName", "").trim();
             addConversation(out, id + "_current", threadName.isEmpty() ? title : threadName,
-                    providerId, model, temperature, topP, maxTokens, prompt, current);
+                    providerId, model, avatar, temperature, topP, maxTokens, prompt, current);
         }
     }
 
     private static void addConversation(Archive out, String rawId, String title, String providerId,
-            String model, double temperature, double topP, int maxTokens,
+            String model, String avatarRef, double temperature, double topP, int maxTokens,
             String prompt, JSONArray messages) {
         if (out.conversations.size() >= MAX_CONVERSATIONS) return;
         String safeId = rawId == null ? "" : rawId.replaceAll("[^a-zA-Z0-9_-]", "_");
@@ -517,6 +717,7 @@ public class OxKelivoImporter {
         c.systemPrompt = prompt == null ? "" : prompt;
         c.providerId = providerId == null ? "" : providerId;
         c.model = model == null ? "" : model;
+        c.avatarRef = avatarRef == null ? "" : avatarRef;
         c.temperature = temperature;
         c.topP = topP;
         c.maxTokens = maxTokens;

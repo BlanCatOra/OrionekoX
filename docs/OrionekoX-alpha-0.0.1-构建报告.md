@@ -2999,6 +2999,30 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `7cff4b8b9b36…`）；debug `dist/OrionekoX-0.28.0-debug-arm64-x64.apk`（sha256
 `149ed3bd0483…`）。详见 `docs/qa-0.28.0.md`。
 
+## 5.147 alpha 0.29.0 —— Kelivo / Chatbox 备份头像导入（2026-10-28 05:55–06:05）
+
+- Chatbox v2 备份 `manifest.json.resources[]` 中 `kind=avatar` /
+  `copilot-image` 的图片按 `originalStorageKeys`/资源 id 建映射，支持原始字节
+  与 `data-url-base64` 两种载体。
+- 助手头像读取 `avatar.storageKey`/`avatar.url`/`picUrl`；会话头像读取
+  session meta 的 `assistantAvatarKey`/`picUrl`，其次 session 的 `picUrl`。
+- 命中资源时写入 `files/oxagents/<agentId>/avatar.<ext>` 并设置
+  `avatar_path`；重复导入保留已有头像，不覆盖用户自定义头像。
+- 上限 64 个候选文件、单文件 2 MB、总计 24 MB；只接受 PNG/JPEG/GIF/WebP
+  魔数，不做网络下载。
+- 设备：1 助手 + 1 会话、2 个头像资源；预览/结果均提示 2 个头像，落盘
+  avatar.png 1310 B/1623 B；原生会话页显示绿色 `S1` 与蓝色 `AI` 头像；
+  重复导入头像 sha256 不变、仍 2 个 Agent；清理后 dialogs/messages 归零，
+  无本包 FATAL/ANR。
+- 边界：仅头像资源；聊天图片/文件/背景/字体不导入；http(s) 头像跳过；
+  HEIC/AVIF 不支持；真实备份待复测。
+- 版本规则：新增可见的备份头像导入能力，按 minor 从 0.28.0 → 0.29.0，
+  versionCode 2909。
+
+**产物**：`dist/OrionekoX-0.29.0-alpha-arm64-x64.apk`（versionCode 2909，sha256
+`660e383315c2…`）；debug `dist/OrionekoX-0.29.0-debug-arm64-x64.apk`（sha256
+`58214581a4f9…`）。详见 `docs/qa-0.29.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

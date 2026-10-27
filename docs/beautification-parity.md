@@ -545,13 +545,33 @@ These confirm the feature directions rather than relying on guesses. Checked
   independent agents with no multi-conversation parent UI; encrypted/real
   Kelivo exports still need a compatibility pass.
 
+## 0.29.0 implementation — Kelivo/Chatbox avatars
+
+- Chatbox v2 `manifest.json.resources[]` entries with `kind=avatar` or
+  `kind=copilot-image` are mapped by `originalStorageKeys` and resource id.
+  Both raw image bytes and `data-url-base64` text are accepted.
+- Assistant avatars come from `avatar.storageKey`/`avatar.url`/`picUrl`; session
+  agents use the manifest `meta.assistantAvatarKey`/`meta.picUrl`, then the
+  session's own `picUrl`/avatar. Only resources inside the backup are used; no
+  network fetch.
+- Matching images are written to `files/oxagents/<agentId>/avatar.<ext>` and
+  become `avatar_path`; repeat imports keep the existing avatar instead of
+  overwriting a user-customized one.
+- Caps: 64 candidate files, 2 MB each, 24 MB total; only PNG/JPEG/GIF/WebP
+  magic is accepted. Preview and result report avatar counts.
+- Device QA: one assistant plus one session with two resources produced two
+  avatar files (raw 1310 B, data URL 1623 B), and the native chat headers showed
+  the green S1 and blue AI avatars. Repeat import kept both hashes unchanged.
+- Limits: chat images/files, backgrounds, fonts and remote avatars are not
+  imported; HEIC/AVIF are skipped; real exports still need a compatibility pass.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping (background blur is now
    mapped by 0.26.2).
-2. Kelivo full backup import beyond assistants/skills/conversations/MCP:
-   attachments, avatars/backgrounds and workspaces; SSE/stdio MCP with their
+2. Kelivo full backup import beyond assistants/skills/conversations/MCP/avatars:
+   chat attachments, backgrounds and workspaces; SSE/stdio MCP with their
    tool allowlists; RikkaHub non-selected branches, non-image attachments,
    per-conversation grouping, skill attachments, standalone providers and image
    avatars.

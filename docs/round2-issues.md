@@ -275,3 +275,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 - 设备：zip 2 个 session（含 1 个 thread）预览 3 段/7 条；导入 3 个 Agent，provider/model/0.4/0.8/128 正确；原生界面显示“当前话题”“2025年10月28日”和三条历史气泡；重复导入 3 段替换，消息仍 2/3/2 条。JSON 样例 1 段/2 条，0.3/0.6/64 与“10月25日”正确。
 - 清理：删除 4 个测试 Agent 与样例，dialogs/messages 归零；无本包 FATAL/ANR。
 - 边界：图片/文件只留占位，tool 压平为 assistant；旧时间戳导致列表靠后；每 thread 独立 Agent；加密/真实 Kelivo 备份未复测。
+
+## 0.29.0 Kelivo / Chatbox 头像导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-60 | 0.29.0 QA | Kelivo/Chatbox 备份中的头像资源未导入，助手与会话 Agent 仍显示 emoji/字母头像 | 解析 manifest resources 的 avatar/copilot-image，按 originalStorageKeys 映射；支持原始字节与 data-url-base64；写入 Agent 目录并设置 avatar_path | 已修复 |
+| R2-61 | 0.29.0 QA | 重复导入可能覆盖用户自定义头像 | 仅当 Agent 当前 avatar_path 为空时才写入备份头像；已有头像保留，重复导入 sha256 不变 | 已修复 |
+
+- 设备：1 助手 + 1 会话、2 个头像资源；预览/结果均提示“2 个头像”；落盘 avatar.png 1310 B/1623 B；原生会话页显示绿色 S1、助手页显示蓝色 AI；重复导入 0 新建/1 更新，头像 sha256 未变；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：仅 avatar/copilot-image；聊天图片、文件、背景、字体不导入；http(s) 头像不下载；HEIC/AVIF 跳过；真实备份待复测。
