@@ -2663,6 +2663,30 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `e869a33fdcd6…`）；debug `dist/OrionekoX-0.19.0-debug-arm64-x64.apk`（sha256
 `b5391295cc83…`）。详见 `docs/qa-0.19.0.md`。
 
+## 5.129 alpha 0.20.0 —— RikkaHub 备份 skills/ 导入（2026-10-28 00:50–01:05）
+
+- `OxRikkaImporter` 在同一备份 zip 内扫描 `skills/<name>/SKILL.md`，与
+  `settings.json` 的助手/Provider/MCP 一起预览和导入；单技能上限 512 KB、
+  最多 50 个、zip 条目仍限 1000。
+- 技能 id 取 `skills/` 后相对目录（嵌套用 `_` 连接），经
+  `OxSkillStore.skillId()` sanitize 后写入 `files/oxskills/<id>/SKILL.md`；
+  同名更新，不生成副本，不删除本地其他技能。`OxSkillStore.importSkill`
+  为新入口。
+- 预览新增“技能 N 个”、前 8 个技能 id、已存在技能数；结果新增
+  “导入技能 N”。直接选择 `settings.json` 时技能数为 0。
+- 设备：含 `skills/TestSkill/SKILL.md` 的样例 zip 预览
+  “助手 2 · Provider 1 · MCP 1 · 技能 1”；导入
+  “新建 2，更新 0，新增 MCP 1，跳过 0，导入技能 1”，文件 152 B 且
+  frontmatter 完整；重复导入“新建 0，更新 2，新增 0，跳过 1，导入技能 1”，
+  仍只有 1 个 TestSkill 目录。无 Key 泄漏、无 FATAL/ANR。
+- 清理：测试后删除两个测试助手、RikkaTestMCP、TestSkill 目录与 Downloads 样例。
+- 版本规则：新增第三方备份技能包导入能力，按 minor 从 0.19.0 → 0.20.0，
+  versionCode 2009。
+
+**产物**：`dist/OrionekoX-0.20.0-alpha-arm64-x64.apk`（versionCode 2009，sha256
+`cae7554226d5…`）；debug `dist/OrionekoX-0.20.0-debug-arm64-x64.apk`（sha256
+`79f538d0d2d3…`）。详见 `docs/qa-0.20.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

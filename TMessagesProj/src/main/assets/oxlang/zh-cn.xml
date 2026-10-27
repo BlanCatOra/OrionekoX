@@ -11978,12 +11978,13 @@
     <string name="OxRikkaImport">从 RikkaHub 备份导入</string>
     <string name="OxRikkaImportInfo">settings.json 或备份 zip · 预览后写入</string>
     <string name="OxRikkaPreviewTitle">导入这个 RikkaHub 备份？</string>
-    <string name="OxRikkaPreview">助手 %1$d 个 · Provider %2$d 个 · MCP %3$d 个</string>
+    <string name="OxRikkaPreview">助手 %1$d 个 · Provider %2$d 个 · MCP %3$d 个 · 技能 %4$d 个</string>
     <string name="OxRikkaNames">助手：%1$s</string>
-    <string name="OxRikkaExisting">已存在助手 %1$d 个、MCP %2$d 个，将更新或跳过</string>
+    <string name="OxRikkaSkillNames">技能：%1$s</string>
+    <string name="OxRikkaExisting">已存在助手 %1$d 个、MCP %2$d 个、技能 %3$d 个，将更新或跳过</string>
     <string name="OxRikkaApply">导入</string>
-    <string name="OxRikkaDone">新建助手 %1$d，更新 %2$d，新增 MCP %3$d，跳过 MCP %4$d</string>
-    <string name="OxRikkaNothing">备份里没有可导入的助手或 MCP</string>
+    <string name="OxRikkaDone">新建助手 %1$d，更新 %2$d，新增 MCP %3$d，跳过 MCP %4$d，导入技能 %5$d</string>
+    <string name="OxRikkaNothing">备份里没有可导入的助手、MCP 或技能</string>
     <string name="OxRikkaFailed">RikkaHub 导入失败：%1$s</string>
     <string name="OxRikkaInvalid">不是有效的 RikkaHub 备份</string>
     <string name="OxRikkaMissingSettings">备份里缺少 settings.json</string>

@@ -34,9 +34,12 @@ public class OxRikkaImporter {
         public int providers;
         public int mcp;
         public int skippedSse;
+        public int skills;
         public int existingAssistants;
         public int existingMcp;
+        public int existingSkills;
         public final List<String> names = new ArrayList<>();
+        public final List<String> skillNames = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
 
@@ -45,8 +48,14 @@ public class OxRikkaImporter {
         public int agentsUpdated;
         public int mcpAdded;
         public int mcpSkipped;
+        public int skills;
         public final List<String> importedAgentIds = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
+    }
+
+    private static class Archive {
+        JSONObject settings;
+        final Map<String, byte[]> skills = new java.util.LinkedHashMap<>();
     }
 
     private static class ProviderRef {
@@ -60,7 +69,8 @@ public class OxRikkaImporter {
     }
 
     public static Preview preview(Context context, Uri uri) throws Exception {
-        JSONObject settings = readSettings(context, uri);
+        Archive archive = readArchive(context, uri);
+        JSONObject settings = archive.settings;
         Preview p = new Preview();
         Map<String, ProviderRef> models = providers(settings);
         Set<String> existingIds = new HashSet<>();
@@ -98,13 +108,27 @@ public class OxRikkaImporter {
                 if (mcpExists(s.optString("url", ""))) p.existingMcp++;
             }
         }
-        p.notes.add("仅导入 settings.json 的助手 / Provider / MCP；不含聊天数据库、附件和 OAuth token。");
+        Set<String> skillIds = new HashSet<>();
+        for (OxSkillStore.Skill s : OxSkillStore.list()) {
+            if (s.id != null) skillIds.add(s.id);
+        }
+        for (String id : archive.skills.keySet()) {
+            String safe = OxSkillStore.skillId(id);
+            p.skills++;
+            if (p.skillNames.size() < 8) p.skillNames.add(safe);
+            if (skillIds.contains(safe)) p.existingSkills++;
+        }
+        p.notes.add("仅导入 settings.json 与 skills/ 技能；不含聊天数据库、附件和 OAuth token。");
+        if (archive.skills.size() > 0) {
+            p.notes.add("技能按目录名导入，同名技能更新，不删除本地其他技能。");
+        }
         if (p.skippedSse > 0) p.notes.add("SSE 传输的 MCP 暂不导入（" + p.skippedSse + " 个）。");
         return p;
     }
 
     public static Result importFrom(Context context, Uri uri) throws Exception {
-        JSONObject settings = readSettings(context, uri);
+        Archive archive = readArchive(context, uri);
+        JSONObject settings = archive.settings;
         Map<String, ProviderRef> models = providers(settings);
         String defaultModel = settings.optString("chatModelId", "");
         ProviderRef fallback = firstProvider(models);
@@ -184,10 +208,18 @@ public class OxRikkaImporter {
             OxMcpManager.saveServer(s);
             r.mcpAdded++;
         }
+        for (Map.Entry<String, byte[]> entry : archive.skills.entrySet()) {
+            try {
+                OxSkillStore.importSkill(entry.getKey(), entry.getValue());
+                r.skills++;
+            } catch (Throwable t) {
+                r.notes.add("技能「" + entry.getKey() + "」导入失败");
+            }
+        }
         return r;
     }
 
-    private static JSONObject readSettings(Context context, Uri uri) throws Exception {
+    private static Archive readArchive(Context context, Uri uri) throws Exception {
         InputStream raw;
         try {
             raw = context.getContentResolver().openInputStream(uri);
@@ -201,9 +233,9 @@ public class OxRikkaImporter {
             int a = in.read();
             int b = in.read();
             in.reset();
-            String json;
+            Archive out = new Archive();
+            String json = null;
             if (a == 'P' && b == 'K') {
-                json = null;
                 ZipInputStream zin = new ZipInputStream(in);
                 ZipEntry e;
                 int entries = 0;
@@ -211,20 +243,26 @@ public class OxRikkaImporter {
                     if (++entries > 1000) throw new IllegalArgumentException("too many entries");
                     if (e.isDirectory()) continue;
                     String n = e.getName();
-                    if ("settings.json".equals(n) || n.endsWith("/settings.json")) {
-                        json = readAll(zin);
-                        break;
+                    if (json == null && ("settings.json".equals(n) || n.endsWith("/settings.json"))) {
+                        json = readAll(zin, MAX_SETTINGS);
+                    } else if (out.skills.size() < 50 && n.toLowerCase(java.util.Locale.ROOT).endsWith("skill.md")) {
+                        String id = skillIdFromEntry(n);
+                        if (!id.isEmpty()) {
+                            byte[] body = readBytes(zin, 512 * 1024);
+                            if (body.length > 0) out.skills.put(id, body);
+                        }
                     }
                 }
             } else {
-                json = readAll(in);
+                json = readAll(in, MAX_SETTINGS);
             }
             if (json == null) throw new IllegalArgumentException("settings.json missing");
             JSONObject root = new JSONObject(json);
             if (!root.has("assistants") && !root.has("providers") && !root.has("mcpServers")) {
                 throw new IllegalArgumentException("not a RikkaHub settings file");
             }
-            return root;
+            out.settings = root;
+            return out;
         } finally {
             try {
                 in.close();
@@ -233,14 +271,34 @@ public class OxRikkaImporter {
         }
     }
 
-    private static String readAll(InputStream in) throws Exception {
+    private static String skillIdFromEntry(String name) {
+        String n = name == null ? "" : name;
+        int at = n.indexOf("skills/");
+        if (at < 0) return "";
+        String rel = n.substring(at + "skills/".length());
+        int slash = rel.lastIndexOf('/');
+        String id = slash > 0 ? rel.substring(0, slash) : rel;
+        return id.replace('/', '_');
+    }
+
+    private static String readAll(InputStream in, int max) throws Exception {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         byte[] buf = new byte[16384];
         int n;
-        while ((n = in.read(buf)) > 0 && bos.size() < MAX_SETTINGS) {
-            bos.write(buf, 0, Math.min(n, MAX_SETTINGS - bos.size()));
+        while ((n = in.read(buf)) > 0 && bos.size() < max) {
+            bos.write(buf, 0, Math.min(n, max - bos.size()));
         }
         return bos.toString("UTF-8");
+    }
+
+    private static byte[] readBytes(InputStream in, int max) throws Exception {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] buf = new byte[16384];
+        int n;
+        while ((n = in.read(buf)) > 0 && bos.size() < max) {
+            bos.write(buf, 0, Math.min(n, max - bos.size()));
+        }
+        return bos.toByteArray();
     }
 
     private static Map<String, ProviderRef> providers(JSONObject settings) {

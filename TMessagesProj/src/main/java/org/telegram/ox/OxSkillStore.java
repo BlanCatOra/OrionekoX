@@ -104,6 +104,19 @@ public class OxSkillStore {
         out.close();
     }
 
+    /** Adds one SKILL.md body (for example from a third-party backup) to the
+     *  app-private skill library; an existing id is updated in place. */
+    public static synchronized void importSkill(String id, byte[] body) throws Exception {
+        if (body == null || body.length == 0) throw new IllegalArgumentException("empty skill");
+        if (body.length > 512 * 1024) throw new IllegalArgumentException("skill too large");
+        writeSkill(sanitizeSkillId(id), body);
+        loadedAt = 0;
+    }
+
+    public static String skillId(String raw) {
+        return sanitizeSkillId(raw);
+    }
+
     /** Deletes a skill imported into app-private storage. Skills scanned from the
      *  user's Download/Operit folders stay read-only. */
     public static synchronized boolean delete(Skill skill) {

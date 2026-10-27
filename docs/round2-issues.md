@@ -101,3 +101,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 - 设备结果：预览“助手 2 / Provider 1 / MCP 1”，SSE 跳过 1；导入“新建 2 / 更新 0 / 新增 MCP 1”；重复导入“新建 0 / 更新 2 / 新增 0 / 跳过 1”；非 RikkaHub JSON 被拒绝且无写入。
 - Agent JSON 的 model/context/maxTokens/temperature/topP/reasoning/emoji/tg_id 与样例一致；MCP headers 正确；预览、结果与 logcat 均未出现测试 Key。
 - 测试后通过 UI 删除两个测试助手和 RikkaTestMCP；Downloads 样例与非法文件已删除。
+
+## 0.20.0 RikkaHub skills 导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-31 | 0.20.0 QA | RikkaHub 技能只导入 SKILL.md 正文，附件/脚本不导入，且 `enabledSkills` 未分配给 Agent | 本轮先把 `skills/*/SKILL.md` 写入私有技能库并按目录名幂等更新；其余记为边界 | 部分完成 |
+| R2-32 | 0.20.0 QA | 技能 id 取相对目录并 sanitize/截断，极端情况下可能碰撞；嵌套目录用 `_` 连接 | 记录风险；同名 id 会更新同一技能，不自动合并冲突内容 | 待改进 |
+
+- 设备：预览“助手 2 / Provider 1 / MCP 1 / 技能 1”；导入“新建 2 / 更新 0 / 新增 MCP 1 / 导入技能 1”；TestSkill/SKILL.md 152 B，frontmatter 完整；重复导入“新建 0 / 更新 2 / 新增 0 / 跳过 1 / 导入技能 1”，仍只有 1 个技能目录。
+- 清理：测试后 UI 删除两个测试助手与 RikkaTestMCP，删除 TestSkill 目录与 Downloads 样例；无 Key 泄漏、无 FATAL/ANR。

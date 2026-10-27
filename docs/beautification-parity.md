@@ -28,7 +28,7 @@ requirements.
 | Dynamic color | theme studio | Material You | Material 3 Expressive | **0.13.0** palette derived from background image/gradient (not Material You) |
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
-| RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP from `settings.json` with preview and idempotent update; DB, attachments, skills, OAuth and SSE MCP not imported |
+| RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP from `settings.json` with preview and idempotent update; **0.20.0** `skills/*/SKILL.md`; DB, attachments, OAuth and SSE MCP not imported |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -303,12 +303,32 @@ These confirm the feature directions rather than relying on guesses. Checked
   messages, enabled skills, OAuth and SSE transports. A real RikkaHub export still
   needs to be used for a compatibility pass.
 
+## 0.20.0 implementation — RikkaHub skills
+
+- The RikkaHub backup import now also scans `skills/<name>/SKILL.md` entries in
+  the same zip, capped at 50 skills of 512 KB each and 1000 zip entries.
+- Skill ids come from the folder relative to `skills/` (nested folders joined
+  with `_`), are sanitized by `OxSkillStore.skillId` and written to
+  `files/oxskills/<id>/SKILL.md`. Repeat imports update the same id rather than
+  creating `_1` copies and never delete other local skills.
+- The preview lists up to eight skill ids plus existing skill counts; the result
+  reports how many skills were imported. A `settings.json`-only pick still works
+  and reports zero skills.
+- Device QA with a schema sample: preview “2 assistants · 1 provider · 1 MCP ·
+  1 skill”; import created 2 agents, 1 MCP and 1 skill (152 B, frontmatter
+  intact); repeat import updated 2 agents and 1 skill with only one TestSkill
+  directory. No key appeared in previews/logcat, no FATAL/ANR; test objects and
+  the sample file were removed.
+- Still missing: skill attachments/scripts, agent `enabledSkills` assignment,
+  the RikkaHub chat database and attachments, OAuth and SSE MCP. A real export
+  still needs to be tested.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
-2. Kelivo full backup import; RikkaHub chat database/attachments/skills and
-   standalone providers. Preset-bundle export/import is covered by 0.18.0.
+2. Kelivo full backup import; RikkaHub chat database/attachments, skill
+   attachments, `enabledSkills` assignment and standalone providers.
 3. Persona-based appearance recommendation and live chat preview inside the
    appearance editor.
 4. Per-conversation theme inheritance still copies the parent’s text color; a
