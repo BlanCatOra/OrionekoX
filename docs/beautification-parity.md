@@ -28,7 +28,7 @@ requirements.
 | Dynamic color | theme studio | Material You | Material 3 Expressive | **0.13.0** palette derived from background image/gradient (not Material You) |
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
-| RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history from `rikka_hub.db`; attachments, tool/image parts and OAuth not imported |
+| RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -417,13 +417,29 @@ These confirm the feature directions rather than relying on guesses. Checked
   original timestamps are not preserved; a real RikkaHub export still needs a
   compatibility pass.
 
+## 0.25.0 implementation — RikkaHub image history
+
+- The backup reader collects up to 40 `upload/` images (4 MB each, 40 MB total).
+  During history import, image parts are matched to those files by basename,
+  copied to `files/rikka_upload_<name>` and stored in `OxChatEntry.imagePath`;
+  image-only messages use a `[图片]` placeholder.
+- The existing history assembly sends a user entry's `imagePath` as an inline
+  base64 vision part, so imported images remain useful for later multimodal
+  turns. Non-matching/remote/data URLs are skipped.
+- Device QA: a one-conversation/three-node sample imported a 70 B PNG as the
+  third entry with `image_path`, and a repeat import kept exactly three entries.
+  Test objects and the uploaded file were removed.
+- Limits: only the first image per message and only `upload/` basenames; other
+  file types and the remaining branches are not imported; the image is not
+  rendered as a native photo bubble, only used as history context.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
-2. Kelivo full backup import; RikkaHub non-selected branches/attachments,
-   per-conversation grouping, skill attachments, standalone providers and
-   image avatars.
+2. Kelivo full backup import; RikkaHub non-selected branches, non-image
+   attachments, per-conversation grouping, skill attachments, standalone
+   providers and image avatars.
 3. Semantic/persona recommendation with candidate preview and undo (the 0.22.0
    keyword version is deterministic and offline).
 4. Per-conversation theme inheritance still copies the parent’s text color; a

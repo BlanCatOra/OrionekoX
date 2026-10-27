@@ -4,6 +4,18 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.25.0 — 2026-10-28
+
+- RikkaHub history import now also collects `upload/` images (up to 40 files,
+  4 MB each) and matches them to image parts by file name. Matches are copied to
+  app-private storage and stored in the history entry's `imagePath`; image-only
+  messages use a `[图片]` placeholder.
+- Existing history assembly sends a user entry's `imagePath` as inline base64
+  vision content, so imported images remain usable for later multimodal turns.
+- Verified with a schema sample: a one-conversation/three-node backup imported a
+  70 B PNG as the third entry, and a repeat import kept exactly three entries.
+  Remote/data URLs and non-image files are skipped.
+
 ## 0.24.1 — 2026-10-28
 
 - Filled 12 missing Chinese strings found by auditing `R.string` references in the
