@@ -32,6 +32,7 @@ public class OxKelivoImporter {
     private static final int MAX_MESSAGES_PER_CONVERSATION = 500;
     private static final int MAX_MESSAGE_CHARS = 20000;
     private static final int MAX_IMAGES_PER_CONVERSATION = 40;
+    private static final int MAX_FILES_PER_CONVERSATION = 20;
     private static final int MAX_RESOURCE_FILES = 64;
     private static final int MAX_RESOURCE_BYTES = 2 * 1024 * 1024;
     private static final long MAX_RESOURCE_TOTAL = 24L * 1024 * 1024;
@@ -48,6 +49,7 @@ public class OxKelivoImporter {
         public int existingConversations;
         public int avatars;
         public int images;
+        public int files;
         public final List<String> names = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -63,6 +65,7 @@ public class OxKelivoImporter {
         public int convUpdated;
         public int avatars;
         public int images;
+        public int files;
         public final List<String> ids = new ArrayList<>();
         public final List<String> conversationIds = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
@@ -80,6 +83,8 @@ public class OxKelivoImporter {
         int maxTokens = 0;
         final List<OxChatEntry> entries = new ArrayList<>();
         final List<String> imageRefs = new ArrayList<>();
+        final List<String> fileRefs = new ArrayList<>();
+        final List<String> fileNames = new ArrayList<>();
     }
 
     private static class Resource {
@@ -95,8 +100,10 @@ public class OxKelivoImporter {
         final List<Conversation> conversations = new ArrayList<>();
         final Map<String, Resource> avatars = new HashMap<>();
         final Map<String, Resource> images = new HashMap<>();
+        final Map<String, Resource> files = new HashMap<>();
         int avatarCount;
         int imageCount;
+        int fileCount;
         String defaultPrompt = "";
     }
 
@@ -156,9 +163,15 @@ public class OxKelivoImporter {
             for (String ref : c.imageRefs) {
                 if (ref != null && !ref.isEmpty()) p.images++;
             }
+            for (String ref : c.fileRefs) {
+                if (ref != null && !ref.isEmpty()) p.files++;
+            }
         }
         if (p.images > 0) {
             p.notes.add("将导入 " + p.images + " 张聊天图片；原生聊天中显示为照片气泡。");
+        }
+        if (p.files > 0) {
+            p.notes.add("将导入 " + p.files + " 个聊天附件；原生聊天中显示为文件气泡。");
         }
         return p;
     }
@@ -269,6 +282,7 @@ public class OxKelivoImporter {
             OxAgentStore.saveAgent(a);
             List<OxChatEntry> chat = new ArrayList<>(c.entries);
             r.images += saveChatImages(a.id, c, archive, chat);
+            r.files += saveChatFiles(a.id, c, archive, chat);
             OxAgentStore.saveChat(a.id, chat);
             r.ids.add(a.id);
             r.conversationIds.add(a.id);
@@ -290,6 +304,9 @@ public class OxKelivoImporter {
         }
         if (r.images > 0) {
             r.notes.add("导入聊天图片 " + r.images + " 张");
+        }
+        if (r.files > 0) {
+            r.notes.add("导入聊天附件 " + r.files + " 个");
         }
         for (Map.Entry<String, byte[]> e : archive.skills.entrySet()) {
             try {
@@ -486,22 +503,27 @@ public class OxKelivoImporter {
             JSONObject descriptor = resources.optJSONObject(i);
             if (descriptor == null) continue;
             String kind = descriptor.optString("kind", "");
+            String path = descriptor.optString("path", "");
             String mime = descriptor.optString("mimeType", "").trim();
             boolean avatarKind = "avatar".equals(kind) || "copilot-image".equals(kind);
-            boolean imageKind = "image".equals(kind)
-                    || (("parsed-attachment".equals(kind) || "raw-attachment".equals(kind))
-                    && mime.startsWith("image/"));
-            if (!avatarKind && !imageKind) continue;
-            byte[] bytes = files.get(normPath(descriptor.optString("path", "")));
+            boolean attachmentKind = "parsed-attachment".equals(kind) || "raw-attachment".equals(kind);
+            byte[] bytes = files.get(normPath(path));
             if (bytes == null) continue;
             bytes = decodeDataUrl(bytes, descriptor.optString("encoding", ""));
             if (bytes == null || bytes.length == 0 || bytes.length > MAX_RESOURCE_BYTES) continue;
-            if (!looksLikeImage(bytes)) continue;
-            if (mime.isEmpty() || !mime.startsWith("image/")) mime = guessMime(bytes);
+            boolean imageLike = "image".equals(kind)
+                    || (attachmentKind && (mime.startsWith("image/")
+                    || (mime.isEmpty() && looksLikeImage(bytes))));
+            boolean fileKind = attachmentKind && !imageLike;
+            if (!avatarKind && !imageLike && !fileKind) continue;
+            if ((avatarKind || imageLike) && !looksLikeImage(bytes)) continue;
+            if (mime.isEmpty() || (imageLike && !mime.startsWith("image/"))) mime = guessMime(bytes);
+            if (fileKind && mime.isEmpty()) mime = mimeForPath(path);
             Resource resource = new Resource();
             resource.mime = mime;
             resource.bytes = bytes;
-            Map<String, Resource> target = avatarKind ? out.avatars : out.images;
+            Map<String, Resource> target = avatarKind ? out.avatars
+                    : (imageLike ? out.images : out.files);
             JSONArray keys = descriptor.optJSONArray("originalStorageKeys");
             boolean keyed = false;
             for (int j = 0; keys != null && j < keys.length(); j++) {
@@ -515,7 +537,8 @@ public class OxKelivoImporter {
             if (!id.isEmpty()) target.put(id, resource);
             if (keyed) {
                 if (avatarKind) out.avatarCount++;
-                else out.imageCount++;
+                else if (imageLike) out.imageCount++;
+                else out.fileCount++;
             }
         }
     }
@@ -588,6 +611,56 @@ public class OxKelivoImporter {
         return count;
     }
 
+    private static int saveChatFiles(String agentId, Conversation conversation,
+            Archive archive, List<OxChatEntry> chat) {
+        int count = 0;
+        for (int i = 0; i < conversation.fileRefs.size() && i < chat.size(); i++) {
+            String ref = conversation.fileRefs.get(i);
+            if (ref == null || ref.isEmpty()) continue;
+            Resource resource = archive.files.get(ref);
+            if (resource == null) continue;
+            String name = conversation.fileNames.get(i);
+            if (name == null || name.trim().isEmpty()) {
+                name = "file_" + i + extensionForFile(resource.mime);
+            }
+            File dir = new File(OxAgentStore.memoryFile(agentId).getParentFile(), "media");
+            dir.mkdirs();
+            String path = writeResource(
+                    new File(dir, i + "_" + safeFileName(name, i)), resource);
+            if (path != null) {
+                chat.get(i).filePath = path;
+                chat.get(i).fileName = name;
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static String safeFileName(String name, int index) {
+        String safe = name == null ? "" : name.replaceAll("[^a-zA-Z0-9._-]", "_");
+        while (safe.startsWith(".")) safe = safe.substring(1);
+        if (safe.isEmpty()) safe = "file_" + index;
+        if (safe.length() > 80) {
+            String ext = "";
+            int dot = safe.lastIndexOf('.');
+            if (dot > 0 && safe.length() - dot <= 8) ext = safe.substring(dot);
+            safe = safe.substring(0, 80 - ext.length()) + ext;
+        }
+        return safe;
+    }
+
+    private static String extensionForFile(String mime) {
+        String m = mime == null ? "" : mime.toLowerCase(java.util.Locale.ROOT);
+        if (m.startsWith("text/")) return ".txt";
+        if (m.contains("json")) return ".json";
+        if (m.contains("pdf")) return ".pdf";
+        if (m.contains("zip")) return ".zip";
+        if (m.contains("word")) return ".docx";
+        if (m.contains("sheet") || m.contains("excel")) return ".xlsx";
+        if (m.contains("presentation") || m.contains("powerpoint")) return ".pptx";
+        return ".bin";
+    }
+
     private static String writeResource(File target, Resource resource) {
         FileOutputStream out = null;
         try {
@@ -618,6 +691,28 @@ public class OxKelivoImporter {
         if (isGif(b)) return "image/gif";
         if (isWebp(b)) return "image/webp";
         return "image/jpeg";
+    }
+
+    private static String mimeForPath(String path) {
+        String p = path == null ? "" : path.toLowerCase(java.util.Locale.ROOT);
+        if (p.endsWith(".txt") || p.endsWith(".md") || p.endsWith(".log")) return "text/plain";
+        if (p.endsWith(".json")) return "application/json";
+        if (p.endsWith(".csv")) return "text/csv";
+        if (p.endsWith(".pdf")) return "application/pdf";
+        if (p.endsWith(".zip")) return "application/zip";
+        if (p.endsWith(".html") || p.endsWith(".htm")) return "text/html";
+        if (p.endsWith(".xml")) return "application/xml";
+        if (p.endsWith(".doc")) return "application/msword";
+        if (p.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        if (p.endsWith(".xls")) return "application/vnd.ms-excel";
+        if (p.endsWith(".xlsx")) return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        if (p.endsWith(".ppt")) return "application/vnd.ms-powerpoint";
+        if (p.endsWith(".pptx")) return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        if (p.endsWith(".mp3")) return "audio/mpeg";
+        if (p.endsWith(".wav")) return "audio/wav";
+        if (p.endsWith(".mp4")) return "video/mp4";
+        if (p.endsWith(".webm")) return "video/webm";
+        return "application/octet-stream";
     }
 
     private static boolean looksLikeImage(byte[] b) {
@@ -760,7 +855,9 @@ public class OxKelivoImporter {
             if (existing.id.equals(safeId)) return;
         }
         List<String> refs = new ArrayList<>();
-        List<OxChatEntry> entries = convertMessages(messages, out, refs);
+        List<String> frefs = new ArrayList<>();
+        List<String> fnames = new ArrayList<>();
+        List<OxChatEntry> entries = convertMessages(messages, out, refs, frefs, fnames);
         if (entries.isEmpty()) return;
         Conversation c = new Conversation();
         c.id = safeId;
@@ -774,6 +871,8 @@ public class OxKelivoImporter {
         c.maxTokens = maxTokens;
         c.entries.addAll(entries);
         c.imageRefs.addAll(refs);
+        c.fileRefs.addAll(frefs);
+        c.fileNames.addAll(fnames);
         out.conversations.add(c);
     }
 
@@ -824,11 +923,12 @@ public class OxKelivoImporter {
     }
 
     private static List<OxChatEntry> convertMessages(JSONArray messages, Archive archive,
-            List<String> imageRefs) {
+            List<String> imageRefs, List<String> fileRefs, List<String> fileNames) {
         List<OxChatEntry> out = new ArrayList<>();
         if (messages == null) return out;
         boolean consumedSystem = false;
         int imageCount = 0;
+        int fileCount = 0;
         long now = System.currentTimeMillis();
         for (int i = 0; i < messages.length() && out.size() < MAX_MESSAGES_PER_CONVERSATION; i++) {
             JSONObject msg = messages.optJSONObject(i);
@@ -836,17 +936,25 @@ public class OxKelivoImporter {
             String role = msg.optString("role", "").trim();
             String text = messageText(msg);
             String ref = imageRef(msg, archive);
+            String fref = fileRef(msg, archive);
+            String fname = fileNameFor(msg);
+            if (!ref.isEmpty()) fref = "";
             if (!ref.isEmpty() && imageCount >= MAX_IMAGES_PER_CONVERSATION) ref = "";
+            if (!fref.isEmpty() && fileCount >= MAX_FILES_PER_CONVERSATION) fref = "";
             if (!ref.isEmpty()) {
                 imageCount++;
                 text = text.replaceFirst("\\[图片\\]", "").trim();
+            }
+            if (!fref.isEmpty()) {
+                fileCount++;
+                text = text.replaceFirst("\\[文件\\](?: [^\\n]*)?", "").trim();
             }
             if ("system".equals(role)) {
                 if (!consumedSystem && !text.isEmpty()) {
                     consumedSystem = true;
                     continue;
                 }
-                if (text.isEmpty() && ref.isEmpty()) continue;
+                if (text.isEmpty() && ref.isEmpty() && fref.isEmpty()) continue;
                 role = "assistant";
                 if (!text.isEmpty()) text = "[系统] " + text;
             } else if ("tool".equals(role)) {
@@ -855,12 +963,14 @@ public class OxKelivoImporter {
             } else if (!"user".equals(role) && !"assistant".equals(role)) {
                 role = "assistant";
             }
-            if (text.isEmpty() && ref.isEmpty()) continue;
+            if (text.isEmpty() && ref.isEmpty() && fref.isEmpty()) continue;
             long ts = msg.optLong("timestamp", 0L);
             if (ts <= 0L) ts = now + i;
             if (text.length() > MAX_MESSAGE_CHARS) text = text.substring(0, MAX_MESSAGE_CHARS);
             out.add(new OxChatEntry(role, text, ts));
             imageRefs.add(ref);
+            fileRefs.add(fref);
+            fileNames.add(fref.isEmpty() ? "" : fname);
         }
         return out;
     }
@@ -874,6 +984,31 @@ public class OxKelivoImporter {
             if (!key.isEmpty() && archive.images.containsKey(key)) return key;
             String url = part.optString("url", "").trim();
             if (!url.isEmpty() && archive.images.containsKey(url)) return url;
+        }
+        return "";
+    }
+
+    private static String fileRef(JSONObject msg, Archive archive) {
+        JSONArray parts = msg.optJSONArray("contentParts");
+        for (int i = 0; parts != null && i < parts.length(); i++) {
+            JSONObject part = parts.optJSONObject(i);
+            if (part == null || !"file".equals(part.optString("type", ""))) continue;
+            String key = part.optString("storageKey", "").trim();
+            if (key.isEmpty()) key = part.optString("rawStorageKey", "").trim();
+            if (!key.isEmpty() && archive.files.containsKey(key)) return key;
+            String url = part.optString("url", "").trim();
+            if (!url.isEmpty() && archive.files.containsKey(url)) return url;
+        }
+        return "";
+    }
+
+    private static String fileNameFor(JSONObject msg) {
+        JSONArray parts = msg.optJSONArray("contentParts");
+        for (int i = 0; parts != null && i < parts.length(); i++) {
+            JSONObject part = parts.optJSONObject(i);
+            if (part == null || !"file".equals(part.optString("type", ""))) continue;
+            String name = part.optString("fileName", part.optString("name", "")).trim();
+            if (!name.isEmpty()) return name;
         }
         return "";
     }

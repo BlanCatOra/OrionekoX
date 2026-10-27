@@ -295,3 +295,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：1 会话/4 条、2 张图片（原始 PNG + data URL）；预览/结果均提示“2 张”；落盘 img_0.png 2783 B、img_2.png 3272 B；原生界面 PIC1 带“看看这张”说明、PIC2 纯图片气泡；重复导入图片 sha256 不变、messages_v2 仍 4 条；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：每消息仅首图、不生成相册；文件/音视频/网络图片不导入；真实备份待复测。
+
+## 0.31.0 Kelivo / Chatbox 聊天附件导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-64 | 0.31.0 QA | 对话导入中的非图片附件仍只有 `[文件] 名称` 占位，备份文件资源未落盘，原生聊天看不到附件 | 解析 parsed/raw-attachment 非图片资源，消息按 storageKey/rawStorageKey/url 匹配；写入 Agent media/，扩展 OxChatEntry.filePath/fileName；replay 用 buildLocalDocument 生成原生文件气泡 | 已修复 |
+| R2-65 | 0.31.0 QA | 纯附件消息正文为空，旧回放逻辑会跳过 | 回放允许“空正文 + filePath”，纯附件仍生成文件气泡；Agent 上下文补 `[文件] 名称` | 已修复 |
+
+- 设备：1 会话/4 条、2 个附件（raw txt + data URL json）；预览/结果均提示“2 个”；落盘 0_notes.txt 35 B、2_data.json 38 B；原生 notes.txt 带“看一下附件”说明、data.json 纯文件气泡；重复导入附件 sha256 不变、messages_v2 仍 4 条；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：每消息仅首附件；音视频按文档展示；网络附件不下载；真实备份待复测。

@@ -4,6 +4,23 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.31.0 — 2026-10-28
+
+- Non-image attachments from Kelivo/Chatbox backups are now imported. Chatbox
+  v2 `parsed-attachment`/`raw-attachment` resources are matched to message file
+  parts by storage key, raw storage key or URL.
+- Matched files are copied into the agent's `media/` directory; chat entries now
+  carry `file_path`/`file_name`, and the surrounding text becomes the caption
+  while a pure attachment may have an empty caption.
+- Attachments replay as native document bubbles (name, size, MIME, local path)
+  through `buildLocalDocument`; the model context gets a `[文件] name` note and
+  file contents are never executed.
+- Caps: 20 attachments per conversation, 2 MB each, 24 MB total. Preview and
+  result report attachment counts.
+- Verified with a 4-message session containing a raw 35 B text file and a 38 B
+  data-URL JSON: the native chat showed notes.txt with its caption and data.json
+  as a pure document bubble; a repeat import kept both hashes and 4 message rows.
+
 ## 0.30.0 — 2026-10-28
 
 - Chat images from Kelivo/Chatbox backups are now imported. Chatbox v2
