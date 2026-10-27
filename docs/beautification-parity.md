@@ -189,13 +189,24 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Not covered: Operit 9-patch bubble bitmaps, avatar/font URIs, per-bubble padding
   and image crop rectangles.
 
+## 0.14.1 implementation — all bubble drawables themed
+
+- 0.14.0 only overrode the text and selected-text bubble drawables. Agent tool-hint
+  messages rendered through the media drawables, stayed native white, and their
+  white custom text became invisible.
+- `applyToChat` now overrides and restores all eight bubble drawables (in/out,
+  selected, media, media-selected) with the same color, radius and border.
+- Device QA on the existing `**Bold** Card` history: both `🔧 device_info({}) …`
+  and `get_time({}) …` bubbles switched to `#2D2A45` with the `#FF2D95` 1dp border
+  and readable white text, without sending new messages. Media bubble regression
+  is covered by the same path but still needs an image-message screenshot.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
 2. Line height, true background blur (current “frosted” is an alpha simulation),
-   per-conversation (not only per-agent) themes, and theming the Agent tool-call
-   status bubbles (still native white).
+   and per-conversation (not only per-agent) themes.
 3. Kelivo/RikkaHub full backup import and preset-bundle export/import; an online
    preset marketplace remains out of scope.
 4. Persona-based appearance recommendation and live chat preview inside the

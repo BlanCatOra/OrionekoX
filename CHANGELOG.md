@@ -4,6 +4,15 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.14.1 — 2026-10-27
+
+- Theme every agent-chat bubble: the appearance snapshot now overrides all eight
+  bubble drawables (incoming/outgoing, selected, media and media-selected) and
+  restores them when the chat closes. Previously only the text bubbles were
+  covered, so agent tool-call hints kept the native white media bubble and their
+  white custom text became invisible. Verified on existing history without
+  sending new messages.
+
 ## 0.14.0 — 2026-10-27
 
 - Import Operit / Operit2 appearance backups: unwraps the nested `values`
