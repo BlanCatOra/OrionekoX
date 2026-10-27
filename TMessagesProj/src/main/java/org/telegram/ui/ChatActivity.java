@@ -43630,6 +43630,9 @@ public class ChatActivity extends BaseFragment implements
 
         @Override
         public int getColor(int key) {
+            if (oxTextColor != null && (key == Theme.key_chat_messageTextIn || key == Theme.key_chat_messageTextOut)) {
+                return oxTextColor;
+            }
             if (animatingColors != null) {
                 int index = animatingColors.indexOfKey(key);
                 if (index >= 0) {
@@ -43736,6 +43739,12 @@ public class ChatActivity extends BaseFragment implements
         }
 
         /** OrionekoX: override the chat wallpaper while a custom agent theme is active. */
+        public Integer oxTextColor;
+
+        public void setOxTextColor(Integer color) {
+            oxTextColor = color;
+        }
+
         public void setOxWallpaperDrawable(Drawable drawable) {
             backgroundDrawable = drawable;
             if (contentView != null) {

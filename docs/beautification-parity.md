@@ -145,6 +145,20 @@ These confirm the feature directions rather than relying on guesses. Checked
 - This closes the Operit #1104-style gap (theme backup without media) and the
   Kelivo #979 request for a portable appearance module.
 
+## 0.12.0 implementation — one-tap built-in themes
+
+- Six curated presets in the appearance page: AMOLED “午夜墨黑”, “纸墨”,
+  “深海”, “樱花”, “森林”, “赛博霓虹”; each writes a complete coherent snapshot
+  (background, bubbles, text, border, radius) to the current scope.
+- Fixed the custom text-color path: `ChatActivity.ThemeDelegate` now overrides
+  `key_chat_messageTextIn/Out` while a custom theme is active. Previously
+  `ChatMessageCell` reset the text paint to the Telegram theme color during
+  drawing, so e.g. cyberpunk’s cyan text rendered black.
+- Device QA: cyberpunk and AMOLED applied to R2C Card; per-agent C2 override
+  still wins over the global theme. Old test snapshots can carry a stale text
+  color (white-on-white); built-ins always write a matching set and the contrast
+  row reports such cases.
+
 ## Gaps / next phases
 
 1. Full Operit theme-v1 mapping (background images, 9-patch, fonts, input styles,

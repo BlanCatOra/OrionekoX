@@ -64,6 +64,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final int ID_RESET = 28;
     private static final int ID_NATIVE_THEME = 29;
     private static final int PRESET_BASE = 100;
+    private static final int BUILTIN_BASE = 200;
 
     private static final int REQ_IMPORT = 501;
     private static final int REQ_BG = 502;
@@ -259,6 +260,14 @@ public class OxChatAppearanceActivity extends BaseFragment {
         }
         items.add(UItem.asShadow(LocaleController.getString(R.string.OxChatApplyHint)));
 
+        items.add(UItem.asHeader("内置主题 · 一键套用"));
+        for (int i = 0; i < OxChatTheme.builtInCount(); i++) {
+            items.add(SettingsActivity.SettingCell.Factory.of(BUILTIN_BASE + i,
+                    0xFF7C5CFF, 0xFF5B3FE0, R.drawable.msg_theme,
+                    OxChatTheme.builtInName(i), "点击套用"));
+        }
+        items.add(UItem.asShadow(null));
+
         items.add(UItem.asHeader(LocaleController.getString(R.string.OxChatPresets)));
         ArrayList<String> presets = new ArrayList<>(OxChatTheme.presets());
         if (presets.isEmpty()) {
@@ -362,6 +371,12 @@ public class OxChatAppearanceActivity extends BaseFragment {
             toast(LocaleController.getString(R.string.OxChatApplyAllDone));
         } else if (item.id == ID_READABILITY) {
             showContrast();
+        } else if (item.id >= BUILTIN_BASE && item.id < BUILTIN_BASE + OxChatTheme.builtInCount()) {
+            int index = item.id - BUILTIN_BASE;
+            OxChatTheme.applyBuiltIn(index);
+            toast(LocaleController.formatString("OxChatPresetApplied",
+                    R.string.OxChatPresetApplied, OxChatTheme.builtInName(index)));
+            rebuild();
         } else if (item.id >= PRESET_BASE) {
             ArrayList<String> presets = new ArrayList<>(OxChatTheme.presets());
             int index = item.id - PRESET_BASE;

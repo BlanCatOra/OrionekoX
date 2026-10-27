@@ -2495,6 +2495,20 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
   `05b3fd0c6418…`）；debug `dist/OrionekoX-0.11.0-debug-arm64-x64.apk`（sha256
   `48b3d668860d…`）。详见 `docs/qa-0.11.0.md`。
 
+## 5.120 alpha 0.12.0 —— 内置主题一键套用与文字色修复（2026-10-27 20:15–20:32）
+
+- 外观页新增六款内置主题（午夜墨黑/纸墨/深海/樱花/森林/赛博霓虹），
+  一键写入完整快照到当前作用域；解决竞品“预设市场/一键套用”缺口。
+- 修复自定义文字色无效：`ChatMessageCell` 绘制时用主题色覆盖
+  `chat_msgTextPaint`；现在 `ChatActivity.ThemeDelegate.getColor()` 对
+  `key_chat_messageTextIn/Out` 优先返回 `oxTextColor`，应用/恢复时成对设置/清空。
+- 实测赛博霓虹：渐变 #0A0014→#1B0033、收 #1B0033、发 #7C00FF、文字 #00F0FF、
+  边框 #FF2D95 2dp、圆角 8dp；修复前文字显示黑色，修复后为青色。AMOLED 主题
+  纯黑背景 + 白字 + #333 边框正常。C2 的旧 Agent 覆盖仍优先于全局主题。
+- 产物：`dist/OrionekoX-0.12.0-alpha-arm64-x64.apk`（versionCode 1429，sha256
+  `b26932a9e6a9…`）；debug `dist/OrionekoX-0.12.0-debug-arm64-x64.apk`（sha256
+  `83783c9dd30f…`）。详见 `docs/qa-0.12.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

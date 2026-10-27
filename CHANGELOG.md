@@ -4,6 +4,15 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.12.0 — 2026-10-27
+
+- Six one-tap built-in themes: AMOLED “Midnight Ink”, Paper, Deep Sea,
+  Sakura, Forest and Cyberpunk; each writes a coherent snapshot to the current
+  global or per-agent scope.
+- Fixed custom text colors: `ThemeDelegate` now overrides
+  `chat_messageTextIn/Out` while a custom theme is active, so cyberpunk's cyan
+  text and other overrides are no longer reset to the Telegram theme color.
+
 ## 0.11.0 — 2026-10-27
 
 - Appearance export now produces a portable `.oxtheme` package containing
