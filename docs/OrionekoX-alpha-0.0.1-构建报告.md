@@ -3092,6 +3092,26 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `c358fd23483d…`）；debug `dist/OrionekoX-0.32.0-debug-arm64-x64.apk`（sha256
 `5e0a54de54e0…`）。详见 `docs/qa-0.32.0.md`。
 
+## 5.151 alpha 0.33.0 —— 按 Agent 导出 Chatbox 备份（2026-10-28 07:24–07:35）
+
+- `OxKelivoExporter.exportTo(context, uri, onlyIds)` 支持指定 Agent 集合；
+  全量导出仍走原入口。
+- Agent 长按菜单（非内置）新增 “Export Chatbox backup”，确认框说明范围与
+  “不含 API Key/provider URL”，SAF 默认文件名 `<名称>-chatbox-backup.zip`。
+- 只导出该 Agent：有聊天写 session、无聊天写 copilot；结果 toast 汇总消息与
+  文件数。
+- 设备：`Single Export` 导入后长按导出 6,190 B；schema 1 session/0 copilot/
+  3 资源，stats/checksum 通过，无其他 Agent、无密钥；回环导入保留 prompt、
+  0.5/0.7/80、头像、图片、notes.txt 与 4 条消息；原生 SE 头像、SE1 图片说明、
+  文件气泡正确；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：单 Agent、无多选；回环 id 多一层前缀；外部 Chatbox 未实测。
+- 版本规则：新增可见的单 Agent 导出能力，按 minor 从 0.32.0 → 0.33.0，
+  versionCode 3309。
+
+**产物**：`dist/OrionekoX-0.33.0-alpha-arm64-x64.apk`（versionCode 3309，sha256
+`b291c20d7863…`）；debug `dist/OrionekoX-0.33.0-debug-arm64-x64.apk`（sha256
+`bb8d787220ee…`）。详见 `docs/qa-0.33.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

@@ -62,10 +62,18 @@ public class OxKelivoExporter {
     }
 
     public static Result exportTo(Context context, Uri uri) throws Exception {
+        return exportTo(context, uri, null);
+    }
+
+    public static Result exportTo(Context context, Uri uri, List<String> onlyIds) throws Exception {
         Result result = new Result();
+        Set<String> only = onlyIds == null ? null : new HashSet<>(onlyIds);
         List<OxAgent> agents = new ArrayList<>();
         for (OxAgent a : OxAgentStore.listAgents()) {
-            if (a != null && !a.builtIn && a.id != null && !a.id.isEmpty()) agents.add(a);
+            if (a != null && !a.builtIn && a.id != null && !a.id.isEmpty()
+                    && (only == null || only.contains(a.id))) {
+                agents.add(a);
+            }
         }
         if (agents.isEmpty()) throw new IllegalStateException("no agents to export");
 

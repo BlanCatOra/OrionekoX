@@ -24,6 +24,7 @@ import org.telegram.ox.OxAgent;
 import org.telegram.ox.OxAgentArchive;
 import org.telegram.ox.OxAgentStore;
 import org.telegram.ox.OxAgentsBridge;
+import org.telegram.ox.OxKelivoExporter;
 import org.telegram.ox.OxMode;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
@@ -44,12 +45,14 @@ public class OxAgentsActivity extends BaseFragment {
     private static final int REQ_EXPORT = 1001;
     private static final int REQ_IMPORT = 1002;
     private static final int REQ_CARD = 1003;
+    private static final int REQ_EXPORT_KELIVO = 1004;
     private static final int MENU_MCP = 1;
     private static final int MENU_SETTINGS = 2;
     private static final int MENU_LOGIN = 3;
 
     private LinearLayout listContainer;
     private String pendingExportId;
+    private String pendingExportKelivoId;
 
     @Override
     public View createView(Context context) {
@@ -317,6 +320,8 @@ public class OxAgentsActivity extends BaseFragment {
         items.add(LocaleController.getString(R.string.OxExportAgent));
         actions.add(() -> exportOxAgent(agent));
         if (!agent.builtIn) {
+            items.add(LocaleController.getString(R.string.OxKelivoExportAgent));
+            actions.add(() -> exportAgentToChatbox(agent));
             items.add(LocaleController.getString(R.string.Delete));
             actions.add(() -> showDeleteDialog(agent));
         }
@@ -426,15 +431,44 @@ public class OxAgentsActivity extends BaseFragment {
         }
     }
 
+    private void exportAgentToChatbox(OxAgent agent) {
+        if (getParentActivity() == null) return;
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxKelivoExport))
+                .setMessage(LocaleController.getString(R.string.OxKelivoExportAgentConfirm))
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .setPositiveButton(LocaleController.getString(R.string.OxKelivoExportAction),
+                        (d, w) -> pickAgentChatboxTarget(agent))
+                .show();
+    }
+
+    private void pickAgentChatboxTarget(OxAgent agent) {
+        if (getParentActivity() == null) return;
+        pendingExportKelivoId = agent.id;
+        try {
+            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT);
+            i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+            i.setType("application/zip");
+            i.putExtra(android.content.Intent.EXTRA_TITLE,
+                    sanitizeFileName(agent.name) + "-chatbox-backup.zip");
+            startActivityForResult(i, REQ_EXPORT_KELIVO);
+        } catch (Exception e) {
+            pendingExportKelivoId = null;
+            toast("⚠ " + e);
+        }
+    }
+
     @Override
     public void onActivityResultFragment(int requestCode, int resultCode, android.content.Intent data) {
         if (resultCode != android.app.Activity.RESULT_OK || data == null) {
             pendingExportId = null;
+            pendingExportKelivoId = null;
             return;
         }
         android.content.Context ctx = getParentActivity();
         if (ctx == null) {
             pendingExportId = null;
+            pendingExportKelivoId = null;
             return;
         }
         if (requestCode == REQ_EXPORT && pendingExportId != null) {
@@ -460,6 +494,27 @@ public class OxAgentsActivity extends BaseFragment {
                 final String m = msg;
                 AndroidUtilities.runOnUIThread(() -> toast(m));
             }, "ox-export").start();
+        } else if (requestCode == REQ_EXPORT_KELIVO && pendingExportKelivoId != null) {
+            final String id = pendingExportKelivoId;
+            pendingExportKelivoId = null;
+            final android.net.Uri uri = data.getData();
+            new Thread(() -> {
+                String msg;
+                try {
+                    OxAgent a = OxAgentStore.loadAgent(id);
+                    if (a == null || uri == null) throw new IllegalStateException("agent or uri gone");
+                    OxKelivoExporter.Result r = OxKelivoExporter.exportTo(
+                            ctx, uri, java.util.Collections.singletonList(id));
+                    msg = LocaleController.formatString("OxKelivoExportAgentDone",
+                            R.string.OxKelivoExportAgentDone, a.name, r.messages, r.resources);
+                } catch (Throwable t) {
+                    msg = LocaleController.formatString("OxKelivoExportFailed",
+                            R.string.OxKelivoExportFailed,
+                            t.getMessage() == null ? "" : t.getMessage());
+                }
+                final String m = msg;
+                AndroidUtilities.runOnUIThread(() -> toast(m));
+            }, "ox-kelivo-agent-export").start();
         } else if (requestCode == REQ_CARD) {
             final android.net.Uri uri = data.getData();
             new Thread(() -> {

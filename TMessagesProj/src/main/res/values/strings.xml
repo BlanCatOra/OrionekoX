@@ -11704,6 +11704,9 @@
     <string name="OxKelivoExportDone">Exported %1$d agents, %2$d conversations, %3$d messages (%4$d files)</string>
     <string name="OxKelivoExportNothing">No non-built-in agents to export</string>
     <string name="OxKelivoExportFailed">Export failed: %1$s</string>
+    <string name="OxKelivoExportAgent">Export Chatbox backup</string>
+    <string name="OxKelivoExportAgentConfirm">Export this agent with its chat, avatar, images and attachments as a Chatbox v2 zip?\n\nAPI keys and provider URLs are not included.</string>
+    <string name="OxKelivoExportAgentDone">Exported %1$s (%2$d messages, %3$d files)</string>
     <string name="OxRikkaInvalid">Not a valid RikkaHub backup</string>
     <string name="OxRikkaMissingSettings">settings.json is missing from the backup</string>
     <string name="OxRikkaOpenFailed">Cannot open the backup file</string>

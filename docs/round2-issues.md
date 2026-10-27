@@ -315,3 +315,12 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：seed 1 助手+1 会话（2 头像/1 图片/1 附件）；完整导出 483,866 B，manifest/checksum/stats 通过，无真实密钥；过滤子集 8,306 B 回环导入后 prompt、采样、头像、图片、附件、4 条消息完整；原生界面显示 AV 头像、RT 图片说明与 notes.txt 文件气泡；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：全量导出无选择；回环 id 多一层 `kelivo_` 前缀；不导出 Key/provider URL/工作区/记忆/技能/MCP/主题；外部 Chatbox 未实测。
+
+## 0.33.0 按 Agent 导出 Chatbox 备份 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-68 | 0.33.0 QA | 0.32.0 只能全量导出，无法只把一个 Agent 交给 Kelivo/Chatbox | `exportTo` 增加 onlyIds 过滤；Agent 长按菜单新增 “Export Chatbox backup”，确认后 SAF 导出单个 Agent 的 session/copilot 与资源 | 已修复 |
+
+- 设备：`Single Export` 导入后长按导出 6,190 B；schema 1 session/0 copilot/3 资源，stats/checksum 通过，无其他 Agent、无密钥；回环导入保留 prompt、0.5/0.7/80、头像、图片、notes.txt 与 4 条消息；原生 SE 头像/SE1 图片说明/文件气泡正确；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：单 Agent、无多选；回环 id 多一层前缀；不导出 Key/provider URL/工作区/记忆/技能/MCP/主题；外部 Chatbox 未实测。
