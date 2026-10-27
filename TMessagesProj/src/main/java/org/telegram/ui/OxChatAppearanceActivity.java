@@ -104,8 +104,15 @@ public class OxChatAppearanceActivity extends BaseFragment {
         this.agentTgId = agentTgId;
     }
 
+    public OxChatAppearanceActivity(long dialogId, String dialogTitle) {
+        this.scopeDialogId = dialogId;
+        this.dialogTitle = dialogTitle;
+    }
+
     private UniversalRecyclerView listView;
     private long agentTgId;
+    private long scopeDialogId;
+    private String dialogTitle;
     private byte[] pendingExport;
 
     @Override
@@ -113,11 +120,16 @@ public class OxChatAppearanceActivity extends BaseFragment {
         if (getArguments() != null) {
             agentTgId = getArguments().getLong("agent_tg_id", 0);
         }
-        if (agentTgId != 0) {
+        if (scopeDialogId != 0) {
+            OxChatTheme.openDialog(scopeDialogId);
+        } else if (agentTgId != 0) {
             OxChatTheme.openAgent(agentTgId);
         }
         String title = LocaleController.getString(R.string.OxChatAppearance);
-        if (agentTgId != 0) {
+        if (scopeDialogId != 0) {
+            String name = dialogTitle == null ? "" : dialogTitle;
+            title = LocaleController.getString(R.string.OxChatDialogEntry) + (name.isEmpty() ? "" : " · " + name);
+        } else if (agentTgId != 0) {
             OxAgent a = OxAgentsBridge.agentByTgId(agentTgId);
             if (a != null && a.name != null && !a.name.isEmpty()) {
                 title = LocaleController.getString(R.string.OxChatAgentEntry) + " · " + a.name;
@@ -146,7 +158,8 @@ public class OxChatAppearanceActivity extends BaseFragment {
 
     @Override
     public void onFragmentDestroy() {
-        if (agentTgId != 0) OxChatTheme.closeAgent();
+        if (scopeDialogId != 0) OxChatTheme.closeDialog();
+        else if (agentTgId != 0) OxChatTheme.closeAgent();
         super.onFragmentDestroy();
     }
 
@@ -154,10 +167,14 @@ public class OxChatAppearanceActivity extends BaseFragment {
         boolean custom = OxChatTheme.isCustom();
         int accent = getThemedColor(Theme.key_chats_actionBackground);
         int dark = getThemedColor(Theme.key_chats_actionPressedBackground);
-        items.add(UItem.asHeader(agentTgId != 0
+        items.add(UItem.asHeader(scopeDialogId != 0
+                ? LocaleController.getString(R.string.OxChatDialogEntry)
+                : agentTgId != 0
                 ? LocaleController.getString(R.string.OxChatAgentEntry)
                 : LocaleController.getString(R.string.OxChatAppearance)));
-        if (agentTgId != 0) {
+        if (scopeDialogId != 0) {
+            items.add(UItem.asShadow(LocaleController.getString(R.string.OxChatScopeDialog)));
+        } else if (agentTgId != 0) {
             items.add(UItem.asShadow(LocaleController.getString(R.string.OxChatScopeAgent)));
         }
         items.add(SettingsActivity.SettingCell.Factory.of(ID_MODE, accent, dark, R.drawable.msg_theme,
@@ -170,7 +187,8 @@ public class OxChatAppearanceActivity extends BaseFragment {
                     R.drawable.msg_theme, LocaleController.getString(R.string.OxChatNativeTheme),
                     LocaleController.getString(R.string.OxChatNativeThemeInfo)));
             items.add(SettingsActivity.SettingCell.Factory.of(ID_RESET, 0xFF8E8E93, 0xFF6E6E73,
-                    R.drawable.msg_reset, LocaleController.getString(R.string.OxChatResetNative)));
+                    R.drawable.msg_reset, LocaleController.getString(
+                            scopeDialogId != 0 || agentTgId != 0 ? R.string.OxChatResetScope : R.string.OxChatResetNative)));
             items.add(UItem.asShadow(null));
             return;
         }
@@ -291,7 +309,8 @@ public class OxChatAppearanceActivity extends BaseFragment {
         items.add(SettingsActivity.SettingCell.Factory.of(ID_READABILITY, accent, dark, R.drawable.msg_theme,
                 LocaleController.getString(R.string.OxChatReadability), null));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_RESET, 0xFF8E8E93, 0xFF6E6E73,
-                R.drawable.msg_reset, LocaleController.getString(R.string.OxChatResetNative)));
+                R.drawable.msg_reset, LocaleController.getString(
+                        scopeDialogId != 0 || agentTgId != 0 ? R.string.OxChatResetScope : R.string.OxChatResetNative)));
         items.add(UItem.asShadow(null));
     }
 

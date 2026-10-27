@@ -12052,6 +12052,7 @@
     <string name="OxChatPresetHint">Tap to apply · long-press to delete</string>
     <string name="OxChatPresetApplied">Applied preset: %1$s</string>
     <string name="OxChatResetNative">Reset to Telegram native</string>
+    <string name="OxChatResetScope">Clear override and follow parent</string>
     <string name="OxChatResetDone">Reset to Telegram native appearance</string>
     <string name="OxChatApplyHint">Applies when you reopen an agent chat.</string>
     <string name="OxChatImported">Imported appearance: %1$s</string>
@@ -12062,6 +12063,8 @@
     <string name="OxChatDeletePresetMsg">Delete this preset?</string>
     <string name="OxChatBgPicked">Background image applied</string>
     <string name="OxChatScopeAgent">Editing appearance for this agent only</string>
+    <string name="OxChatDialogEntry">Chat appearance</string>
+    <string name="OxChatScopeDialog">Only this chat; falls back to the agent or global appearance</string>
     <string name="OxChatBgMode">Background style</string>
     <string name="OxChatBgSolid">Solid color</string>
     <string name="OxChatBgGradient">Two-color gradient</string>

@@ -46,6 +46,7 @@ public class OxChatTheme {
     private static final String PREFS = "ox_chat_theme";
     private static final String DIR_PRESETS = "ox_chat_presets";
     private static final String DIR_AGENTS = "ox_chat_agents";
+    private static final String DIR_DIALOGS = "ox_chat_dialogs";
     private static final String DIR_FONTS = "oxfonts";
     private static final String BG_FILE = "ox_chat_bg";
 
@@ -76,6 +77,10 @@ public class OxChatTheme {
     /** Non-null while the appearance page is editing one agent's override. */
     private static String activeAgentKey;
     private static Snapshot activeAgent;
+    /** Non-null while the appearance page is editing one conversation's override. */
+    private static String activeDialogKey;
+    private static Snapshot activeDialog;
+    private static long activeDialogId;
 
     public static class Snapshot {
         public String mode = MODE_NATIVE;
@@ -196,6 +201,20 @@ public class OxChatTheme {
         return new File(agentDir(), key + ".json");
     }
 
+    private static String dialogKey(long dialogId) {
+        return "dialog_" + dialogId;
+    }
+
+    private static File dialogDir() {
+        File dir = new File(ApplicationLoader.applicationContext.getFilesDir(), DIR_DIALOGS);
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    private static File dialogFile(String key) {
+        return new File(dialogDir(), key + ".json");
+    }
+
     private static Snapshot readFile(File f) {
         try {
             if (f == null || !f.isFile()) return null;
@@ -214,8 +233,18 @@ public class OxChatTheme {
         }
     }
 
+    /** Lookup used when a dialog override is created or reset. */
+    private static Snapshot fallbackForDialog(long dialogId) {
+        if (OxAgentsBridge.agentKeyForDialog(dialogId) != null) {
+            Snapshot s = readFile(agentFile(agentKey(dialogId)));
+            if (s != null) return s;
+        }
+        return readPrefs();
+    }
+
     /** Called by the agent appearance page so every getter/setter edits this file. */
     public static void openAgent(long tgId) {
+        closeDialog();
         activeAgentKey = agentKey(tgId);
         activeAgent = readFile(agentFile(activeAgentKey));
         if (activeAgent == null) {
@@ -229,8 +258,29 @@ public class OxChatTheme {
         activeAgent = null;
     }
 
+    /** Called by the per-conversation appearance page; wins over agent and global. */
+    public static void openDialog(long dialogId) {
+        closeAgent();
+        activeDialogId = dialogId;
+        activeDialogKey = dialogKey(dialogId);
+        activeDialog = readFile(dialogFile(activeDialogKey));
+        if (activeDialog == null) {
+            activeDialog = fallbackForDialog(dialogId).copy();
+        }
+    }
+
+    public static void closeDialog() {
+        activeDialogKey = null;
+        activeDialog = null;
+        activeDialogId = 0;
+    }
+
     public static boolean isAgentScope() {
         return activeAgent != null;
+    }
+
+    public static boolean isDialogScope() {
+        return activeDialog != null;
     }
 
     public static String agentScopeName() {
@@ -238,12 +288,21 @@ public class OxChatTheme {
     }
 
     private static Snapshot current() {
+        if (activeDialog != null) return activeDialog;
         return activeAgent != null ? activeAgent : readPrefs();
     }
 
     private static void persist(Snapshot s) {
         if (s == null) return;
-        if (activeAgent != null) {
+        if (activeDialog != null) {
+            activeDialog = s;
+            try {
+                FileOutputStream out = new FileOutputStream(dialogFile(activeDialogKey));
+                out.write(s.toJson("").toString().getBytes("UTF-8"));
+                out.close();
+            } catch (Throwable ignored) {
+            }
+        } else if (activeAgent != null) {
             activeAgent = s;
             try {
                 FileOutputStream out = new FileOutputStream(agentFile(activeAgentKey));
@@ -440,6 +499,13 @@ public class OxChatTheme {
     }
 
     public static void resetNative() {
+        if (activeDialog != null) {
+            File f = dialogFile(activeDialogKey);
+            if (f.exists()) f.delete();
+            // Reset means "follow the agent/global look" but keep editing this chat.
+            activeDialog = fallbackForDialog(activeDialogId).copy();
+            return;
+        }
         if (activeAgent != null) {
             File f = agentFile(activeAgentKey);
             if (f.exists()) f.delete();
@@ -986,8 +1052,10 @@ public class OxChatTheme {
 
     // ---------------- runtime application ----------------
 
-    /** Reads the override for this dialog: per-agent file first, then global. */
+    /** Reads the override for this dialog: per-chat, then per-agent, then global. */
     private static Snapshot forDialog(long dialogId) {
+        Snapshot d = readFile(dialogFile(dialogKey(dialogId)));
+        if (d != null) return d;
         if (OxAgentsBridge.agentKeyForDialog(dialogId) != null) {
             Snapshot s = readFile(agentFile(agentKey(dialogId)));
             if (s != null) return s;

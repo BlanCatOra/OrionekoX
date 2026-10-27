@@ -29,7 +29,7 @@ requirements.
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; JSON export |
-| Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** persisted per Agent (`files/ox_chat_agents/`), fallback to global; not per single chat |
+| Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified, local-group entry code path only |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
 | Custom vs native mode | — | — | — | **0.9.0** two-mode switch |
 | Contrast / readability check | — | — | — | **0.10.0** WCAG-style check on device |
@@ -215,12 +215,27 @@ These confirm the feature directions rather than relying on guesses. Checked
   losing bubble colors/tool bubbles; exported `.oxtheme` contained
   `lineHeight=1.4`, and the import preview displayed `行高 1.4x · 含背景图`.
 
+## 0.16.0 implementation — per-conversation appearance
+
+- New `files/ox_chat_dialogs/dialog_<id>.json` scope; lookup order is chat
+  override → agent override → global. A chat menu icon (local agent dialogs and
+  local groups) opens the existing appearance editor with a `会话外观 · name`
+  title and a scoped “clear override and follow parent” action.
+- Device QA on an agent chat: changed incoming/outgoing bubbles and text color,
+  saw the new look in the chat, confirmed `R2C Card` still used the global theme,
+  verified the override survived a force-stop/relaunch, then cleared it back to
+  the global look.
+- The local-group menu entry is wired through `OxGroupStore.isLocalGroup`, but the
+  `-gpu off` emulator crashed qemu via Chromium/Vulkan when opening a local group
+  twice, so that path remains code-only pending a real-device/GPU pass.
+- Inherited text color is not auto-adjusted when a chat-only bubble color is
+  changed; the existing contrast row reports low-contrast combinations.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
-2. True background blur (current “frosted” is an alpha simulation) and
-   per-conversation (not only per-agent) themes.
+2. True background blur (current “frosted” is an alpha simulation).
 3. Kelivo/RikkaHub full backup import and preset-bundle export/import; an online
    preset marketplace remains out of scope.
 4. Persona-based appearance recommendation and live chat preview inside the
