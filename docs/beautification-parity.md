@@ -28,7 +28,7 @@ requirements.
 | Dynamic color | theme studio | Material You | Material 3 Expressive | **0.13.0** palette derived from background image/gradient (not Material You) |
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
-| RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** `skills/*/SKILL.md`; **0.21.1** assistant `enabledSkills` and `customHeaders` mapping; DB, attachments, OAuth and SSE MCP not imported |
+| RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** `skills/*/SKILL.md`; **0.21.1** assistant `enabledSkills`/`customHeaders`; **0.21.2** provider+assistant header merge and `presetMessages` opener; DB, attachments, OAuth and SSE MCP not imported |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -355,12 +355,25 @@ These confirm the feature directions rather than relying on guesses. Checked
   `headers=[["X-Rikka-Assistant","1"]]`; repeat import updated the same two
   agents and kept both mappings. Test objects were removed afterwards.
 
+## 0.21.2 fixes — provider headers and opening message
+
+- Provider `customHeaders` and assistant `customHeaders` are merged by header name
+  (assistant wins) into the agent headers; provider headers only apply when one
+  of its models is actually referenced by an assistant.
+- The first assistant text part in `presetMessages` becomes `agent.firstMes`
+  (4000-character cap); other preset parts and extra preset messages are ignored.
+- QA caught a JSON-array round-trip bug where provider headers disappeared
+  (`m=1`/`m=0`); merging directly from the source arrays fixed it (`m=2`).
+- Device result: `first_mes="Welcome from RikkaHub preset."`,
+  `headers=[["X-Rikka-Provider","p"],["X-Rikka-Assistant","1"]]` and the existing
+  skill mapping survived a repeat import. Test objects were removed.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
 2. Kelivo full backup import; RikkaHub chat database/attachments, skill
-   attachments, provider-level headers and standalone providers.
+   attachments, standalone providers and image avatars.
 3. Persona-based appearance recommendation (the live preview itself is now
    covered by 0.21.0).
 4. Per-conversation theme inheritance still copies the parent’s text color; a

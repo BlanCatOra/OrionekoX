@@ -66,6 +66,7 @@ public class OxRikkaImporter {
         String providerId;
         int contextLength;
         boolean enabled = true;
+        JSONArray headers;
     }
 
     public static Preview preview(Context context, Uri uri) throws Exception {
@@ -207,18 +208,12 @@ public class OxRikkaImporter {
                 }
                 if (ids.length() > 0) a.skillIds = ids;
             }
-            JSONArray customHeaders = src.optJSONArray("customHeaders");
-            if (customHeaders != null && customHeaders.length() > 0) {
-                JSONArray mapped = new JSONArray();
-                for (int h = 0; h < customHeaders.length(); h++) {
-                    JSONObject header = customHeaders.optJSONObject(h);
-                    if (header == null) continue;
-                    String headerName = header.optString("name", "").trim();
-                    if (headerName.isEmpty()) continue;
-                    mapped.put(new JSONArray().put(headerName).put(header.optString("value", "")));
-                }
-                if (mapped.length() > 0) a.headers = mapped;
-            }
+            JSONArray mergedHeaders = mergeHeaders(
+                    provider == null ? null : provider.headers, src.optJSONArray("customHeaders"));
+            if (mergedHeaders.length() > 0) a.headers = mergedHeaders;
+            if (mergedHeaders.length() > 0) a.headers = mergedHeaders;
+            String opener = firstPresetText(src.optJSONArray("presetMessages"));
+            if (!opener.isEmpty()) a.firstMes = opener;
             OxAgentStore.saveAgent(a);
             r.importedAgentIds.add(a.id);
             if (update) r.agentsUpdated++;
@@ -360,6 +355,7 @@ public class OxRikkaImporter {
                 ref.providerId = providerId;
                 ref.contextLength = model.optInt("contextLength", 0);
                 ref.enabled = src.optBoolean("enabled", true);
+                ref.headers = src.optJSONArray("customHeaders");
                 byModel.put(modelId, ref);
             }
         }
@@ -416,6 +412,54 @@ public class OxRikkaImporter {
             default:
                 return "auto";
         }
+    }
+
+    private static JSONArray mergeHeaders(JSONArray provider, JSONArray assistant) {
+        java.util.LinkedHashMap<String, String> byName = new java.util.LinkedHashMap<>();
+        collectHeaders(provider, byName);
+        collectHeaders(assistant, byName);
+        JSONArray out = new JSONArray();
+        for (Map.Entry<String, String> e : byName.entrySet()) {
+            out.put(new JSONArray().put(e.getKey()).put(e.getValue()));
+        }
+        return out;
+    }
+
+    private static void collectHeaders(JSONArray headers,
+                                       java.util.LinkedHashMap<String, String> byName) {
+        for (int i = 0; headers != null && i < headers.length(); i++) {
+            Object item = headers.opt(i);
+            String name = null;
+            String value = null;
+            if (item instanceof JSONObject) {
+                JSONObject header = (JSONObject) item;
+                name = header.optString("name", header.optString("first", "")).trim();
+                value = header.optString("value", header.optString("second", ""));
+            } else if (item instanceof JSONArray) {
+                JSONArray pair = (JSONArray) item;
+                name = pair.optString(0, "").trim();
+                value = pair.optString(1, "");
+            }
+            if (name != null && !name.isEmpty()) byName.put(name, value == null ? "" : value);
+        }
+    }
+
+    private static String firstPresetText(JSONArray messages) {
+        for (int i = 0; messages != null && i < messages.length(); i++) {
+            JSONObject message = messages.optJSONObject(i);
+            if (message == null) continue;
+            if (!"assistant".equalsIgnoreCase(message.optString("role", ""))) continue;
+            JSONArray parts = message.optJSONArray("parts");
+            for (int p = 0; parts != null && p < parts.length(); p++) {
+                JSONObject part = parts.optJSONObject(p);
+                if (part == null) continue;
+                String type = part.optString("type", "text");
+                if (!"text".equals(type)) continue;
+                String text = part.optString("text", part.optString("content", "")).trim();
+                if (!text.isEmpty()) return text.length() > 4000 ? text.substring(0, 4000) : text;
+            }
+        }
+        return "";
     }
 
     /** kotlinx.serialization encodes Kotlin Pair either as [k,v] or {first,second}. */

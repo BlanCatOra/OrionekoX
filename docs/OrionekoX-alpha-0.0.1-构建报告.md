@@ -2726,6 +2726,25 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `af4c78660ea1…`）；debug `dist/OrionekoX-0.21.1-debug-arm64-x64.apk`（sha256
 `9944a2c2c005…`）。详见 `docs/qa-0.21.1.md`。
 
+## 5.132 alpha 0.21.2 —— RikkaHub Provider 请求头与开场白（2026-10-28 01:36–01:48）
+
+- Provider `customHeaders` 与助手 `customHeaders` 合并（名称去重，助手覆盖），
+  写入 Agent `headers`；助手 `presetMessages` 的第一条 assistant 文本写入
+  `firstMes`（上限 4000 字符）。
+- QA 发现第一版把 header 对做了一次 JSON 数组往返，设备上 `optJSONArray`
+  读回失败，导致 Provider header 丢失（`m=1`/`m=0`）；改为直接遍历源
+  `{name,value}` / `[name,value]` 写入 `LinkedHashMap`，复测 `m=2`。
+- 设备：`Rikka QA` 导入后 `first_mes="Welcome from RikkaHub preset."`、
+  `headers=[["X-Rikka-Provider","p"],["X-Rikka-Assistant","1"]]`、
+  `skill_ids=["TestSkill"]`；重复导入仍为 2 个 Agent，字段保持一致。
+- 清理测试助手/MCP/技能/样例；无 Key 泄漏、无 FATAL/ANR。
+- 版本规则：仅补既有导入字段映射，按 patch 从 0.21.1 → 0.21.2，
+  versionCode 2129。
+
+**产物**：`dist/OrionekoX-0.21.2-alpha-arm64-x64.apk`（versionCode 2129，sha256
+`16b01215b881…`）；debug `dist/OrionekoX-0.21.2-debug-arm64-x64.apk`（sha256
+`3475b1bfb461…`）。详见 `docs/qa-0.21.2.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
