@@ -4,6 +4,15 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.27.1 — 2026-10-28
+
+- Kelivo/Chatbox backup import now reads `skills/**/SKILL.md` from the zip into
+  the private skill library (up to 50 skills, 512 KB each); same-name skills are
+  updated, and preview/result report the skill counts.
+- Corrected the preview copy that incorrectly said skills were excluded.
+- Verified with a schema sample: one assistant and one 96 B SKILL.md imported,
+  then a repeat import updated the assistant and kept exactly one skill folder.
+
 ## 0.27.0 — 2026-10-28
 
 - Named presets can now be previewed before applying: long-press opens a native
