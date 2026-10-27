@@ -4,6 +4,19 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.21.0 — 2026-10-28
+
+- Added a live appearance preview in the custom appearance editor: a native
+  dialog renders the active scope's wallpaper (including image blur and dim),
+  incoming/outgoing sample bubbles, border, text color, chat font, font scale
+  and line height.
+- The preview reads the current snapshot on every open, so global, per-agent and
+  per-chat scopes each show their own values; changing blur and reopening the
+  preview reflects the new wallpaper treatment.
+- It is a lightweight sample rather than real message cells: media/tool bubbles,
+  replies, avatars and real wrapping are not shown, and frosted bubbles remain an
+  alpha simulation.
+
 ## 0.20.0 — 2026-10-28
 
 - RikkaHub backup import now also reads `skills/<name>/SKILL.md` from the same

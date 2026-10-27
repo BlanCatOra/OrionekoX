@@ -1377,6 +1377,15 @@ public class OxChatTheme {
         return blurred;
     }
 
+    /** The active scope's wallpaper, including blur and dim, for the editor preview. */
+    public static Drawable currentBackgroundDrawable() {
+        return makeBackground(current(), ApplicationLoader.applicationContext.getResources());
+    }
+
+    public static Typeface currentTypeface() {
+        return typefaceFrom(current().fontPath);
+    }
+
     private static Drawable makeBackground(Snapshot s, android.content.res.Resources res) {
         Drawable base;
         String mode = s.backgroundMode == null ? BG_SOLID : s.backgroundMode;

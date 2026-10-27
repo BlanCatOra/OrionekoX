@@ -11881,6 +11881,11 @@
     <string name="OxChatAppearance">Agent 会话外观</string>
     <string name="OxChatEntryInfo">自定义背景、气泡、字体，或切回 Telegram 原生</string>
     <string name="OxChatMode">外观模式</string>
+    <string name="OxChatPreview">预览当前外观</string>
+    <string name="OxChatPreviewInfo">背景、气泡、边框、字体与行高均取自当前作用域</string>
+    <string name="OxChatPreviewTitle">外观预览</string>
+    <string name="OxChatPreviewInText">晚上好，这是收到的消息预览。</string>
+    <string name="OxChatPreviewOutText">这是发出的消息预览。</string>
     <string name="OxChatModeNative">Telegram 原生</string>
     <string name="OxChatModeCustom">自定义</string>
     <string name="OxChatNativeHint">当前使用 Telegram 原生外观。切换到自定义后可编辑背景、气泡、透明度、圆角与字号。</string>
