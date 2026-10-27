@@ -2571,6 +2571,24 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `c9b84a56eb8b…`）；debug `dist/OrionekoX-0.15.0-debug-arm64-x64.apk`（sha256
 `00619f056f8a…`）。详见 `docs/qa-0.15.0.md`。
 
+## 5.125 alpha 0.16.0 —— 按会话主题（2026-10-27 22:00–22:18）
+
+- 新增会话作用域 `files/ox_chat_dialogs/dialog_<dialogId>.json`，读取优先级为
+  会话覆盖 → Agent 覆盖 → 全局；聊天页右上角新增“会话外观”图标（本地 Agent 会话
+  与本地群），进入带标题的作用域页，清除按钮显示“清除覆盖并跟随上层”。
+- 设备（Agent 路径）：`**Bold** Card` 会话内改收/发气泡与文字色，聊天立即使用
+  会话配色；`R2C Card` 仍为全局深色，隔离成立；`am force-stop` 重启后覆盖仍在；
+  清除后恢复全局 `#2D2A45`/白字。
+- 本地群入口通过 `OxGroupStore.isLocalGroup` 接入，但模拟器两次在打开本地群时
+  触发 Chromium/Vulkan 导致 qemu 整机掉线（`-gpu off` 已知限制），群路径只完成
+  代码审查，未做设备截图，待真机/GPU 复验。
+- 已知边界：会话继承的文字色不会随浅色气泡自动调整，页面内对比度检查可发现。
+- 版本规则：新增结构级外观作用域与入口，按 minor 从 0.15.0 → 0.16.0。
+
+**产物**：`dist/OrionekoX-0.16.0-alpha-arm64-x64.apk`（versionCode 1609，sha256
+`3e3880ecca14…`）；debug `dist/OrionekoX-0.16.0-debug-arm64-x64.apk`（sha256
+`9ac4028fb6a7…`）。详见 `docs/qa-0.16.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

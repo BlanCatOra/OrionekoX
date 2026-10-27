@@ -11903,6 +11903,7 @@
     <string name="OxChatPresetHint">点击应用 · 长按删除</string>
     <string name="OxChatPresetApplied">已应用预设：%1$s</string>
     <string name="OxChatResetNative">重置为 Telegram 原生</string>
+    <string name="OxChatResetScope">清除覆盖并跟随上层</string>
     <string name="OxChatResetDone">已恢复 Telegram 原生外观</string>
     <string name="OxChatApplyHint">重新进入 Agent 会话后生效。</string>
     <string name="OxChatImported">已导入外观：%1$s</string>
@@ -11913,6 +11914,8 @@
     <string name="OxChatDeletePresetMsg">删除这个预设？</string>
     <string name="OxChatBgPicked">背景图片已应用</string>
     <string name="OxChatScopeAgent">仅修改此 Agent 的外观</string>
+    <string name="OxChatDialogEntry">会话外观</string>
+    <string name="OxChatScopeDialog">仅修改这个会话；未设置时跟随该 Agent 或全局外观</string>
     <string name="OxChatBgMode">背景样式</string>
     <string name="OxChatBgSolid">纯色</string>
     <string name="OxChatBgGradient">双色渐变</string>

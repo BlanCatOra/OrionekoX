@@ -1704,6 +1704,7 @@ public class ChatActivity extends BaseFragment implements
     private final static int charge_fee = 72;
 
     private final static int chat_menu_topic_create = 73;
+    private final static int chat_menu_appearance = 74;
 
     private final static int id_chat_compose_panel = 1000;
 
@@ -4006,6 +4007,10 @@ public class ChatActivity extends BaseFragment implements
                         quickReplyShortcut = name;
                         avatarContainer.setTitle(name);
                     });
+                } else if (id == chat_menu_appearance) {
+                    String title = currentChat != null ? currentChat.title
+                            : currentUser != null ? ContactsController.formatName(currentUser.first_name, currentUser.last_name) : "";
+                    presentFragment(new OxChatAppearanceActivity(dialog_id, title));
                 } else if (id == chat_menu_attach) {
                     ActionBarMenuSubItem attach = new ActionBarMenuSubItem(context, false, true, true, getResourceProvider());
                     attach.setTextAndIcon(LocaleController.getString(R.string.AttachMenu), R.drawable.input_attach);
@@ -4315,6 +4320,13 @@ public class ChatActivity extends BaseFragment implements
                 searchItem.setVisibility(View.VISIBLE);
             }
             searchItemVisible = false;
+        }
+
+        if (chatMode == 0 && !isReport()
+                && (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialog_id)
+                || org.telegram.ox.OxGroupStore.isLocalGroup(dialog_id))) {
+            ActionBarMenuItem appearanceItem = menu.addItem(chat_menu_appearance, R.drawable.msg_theme);
+            appearanceItem.setContentDescription(LocaleController.getString(R.string.OxChatDialogEntry));
         }
 
         if (chatMode == 0 && (threadMessageId == 0 || isTopic) && !UserObject.isReplyUser(currentUser) && !isReport()) {

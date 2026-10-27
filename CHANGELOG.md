@@ -4,6 +4,19 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.16.0 — 2026-10-27
+
+- Per-conversation appearance: a new chat menu icon (local agent chats and local
+  groups) opens the appearance editor scoped to that conversation. Overrides are
+  stored in `files/ox_chat_dialogs/dialog_<id>.json` and read as
+  chat → agent → global; scoped pages inherit the parent look and offer a
+  “clear override and follow parent” action.
+- Verified on an agent chat: the override rendered immediately, another agent
+  kept the global theme, the override survived a force-stop/relaunch, and
+  clearing it restored the global look. The local-group entry is wired but not
+  device-verified because opening a local group repeatedly crashed qemu through
+  Chromium on the `-gpu off` emulator.
+
 ## 0.15.0 — 2026-10-27
 
 - Configurable message line height for agent chats: a new row below font size
