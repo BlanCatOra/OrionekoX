@@ -483,10 +483,23 @@ These confirm the feature directions rather than relying on guesses. Checked
   when `chatModelId` is absent, otherwise they fall back to the local provider.
   OAuth/multi-key/proxy/provider-specific headers are still skipped.
 
+## 0.26.2 fix — Operit background blur
+
+- `use_background_blur` plus `background_blur_radius` now map to OrionekoX's
+  1–3 image background blur (≥20 strong, ≥12 medium, otherwise light) instead of
+  only switching bubbles to frosted. Liquid/water glass still maps to frosted.
+- Device QA with radius 24: preview summary showed “模糊强”, the agent JSON stored
+  `backgroundBlur=3`, and the preview wallpaper was visibly smoothed. The test
+  override was removed.
+- Limits: the radius threshold is heuristic; solid/gradient backgrounds show no
+  visible blur; 9-patch assets, input styles, avatar shapes, padding/crop/repeat
+  and video backgrounds remain unmapped.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
-   input styles, per-bubble padding and image cropping.
+   input styles, per-bubble padding and image cropping (background blur is now
+   mapped by 0.26.2).
 2. Kelivo full backup import beyond assistants (providers/keys, conversations,
    skills, MCP, avatars/backgrounds); RikkaHub non-selected branches, non-image
    attachments, per-conversation grouping, skill attachments, standalone

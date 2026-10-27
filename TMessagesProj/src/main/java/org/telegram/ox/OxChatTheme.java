@@ -776,12 +776,16 @@ public class OxChatTheme {
             if (!themeMode.isEmpty()) {
                 s.background = "dark".equalsIgnoreCase(themeMode) ? 0xFF101114 : 0xFFF3F1F7;
             }
-            if (o.optBoolean("use_background_blur", false)
-                    || o.optBoolean("bubble_ai_bubble_liquid_glass", false)
+            if (o.optBoolean("bubble_ai_bubble_liquid_glass", false)
                     || o.optBoolean("bubble_ai_bubble_water_glass", false)
                     || o.optBoolean("bubble_user_bubble_liquid_glass", false)
                     || o.optBoolean("bubble_user_bubble_water_glass", false)) {
                 s.bubbleStyle = STYLE_FROSTED;
+            }
+            if (o.optBoolean("use_background_blur", false)
+                    || o.optDouble("background_blur_radius", 0) > 0) {
+                float radius = (float) o.optDouble("background_blur_radius", 10);
+                s.backgroundBlur = radius >= 20 ? 3 : radius >= 12 ? 2 : 1;
             }
             int primary = color(o, "custom_primary_color", "custom_secondary_color");
             if (primary != 0) {
