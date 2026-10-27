@@ -729,6 +729,94 @@ public class OxChatTheme {
         persist(s);
     }
 
+    // ---------------- built-in one-tap themes ----------------
+
+    private static final String[] BUILT_IN_NAMES = {
+            "午夜墨黑", "纸墨", "深海", "樱花", "森林", "赛博霓虹"
+    };
+
+    public static int builtInCount() {
+        return BUILT_IN_NAMES.length;
+    }
+
+    public static String builtInName(int index) {
+        return index >= 0 && index < BUILT_IN_NAMES.length ? BUILT_IN_NAMES[index] : "主题";
+    }
+
+    /** One-tap curated themes; they intentionally overwrite the whole snapshot. */
+    public static void applyBuiltIn(int index) {
+        Snapshot s = new Snapshot();
+        s.mode = MODE_CUSTOM;
+        s.bubbleAlpha = 255;
+        s.cornerRadius = 16;
+        s.fontScale = 1f;
+        s.bubbleStyle = STYLE_SOLID;
+        s.borderWidth = 1;
+        s.backgroundMode = BG_SOLID;
+        switch (index) {
+            case 0: // 午夜墨黑 / AMOLED
+                s.background = 0xFF000000;
+                s.background2 = 0xFF000000;
+                s.inBubble = 0xFF121212;
+                s.outBubble = 0xFF1E1E1E;
+                s.textColor = 0xFFFFFFFF;
+                s.borderColor = 0xFF333333;
+                s.cornerRadius = 14;
+                break;
+            case 1: // 纸墨
+                s.background = 0xFFF7F3E8;
+                s.background2 = 0xFFEFE7D6;
+                s.inBubble = 0xFFFFFFFF;
+                s.outBubble = 0xFFE8F0D8;
+                s.textColor = 0xFF1A1A1A;
+                s.borderColor = 0xFFD8D0C0;
+                s.cornerRadius = 12;
+                break;
+            case 2: // 深海
+                s.backgroundMode = BG_GRADIENT;
+                s.background = 0xFF0B1E3A;
+                s.background2 = 0xFF123A5A;
+                s.inBubble = 0xFF16324F;
+                s.outBubble = 0xFF1F6F8B;
+                s.textColor = 0xFFEAF6FF;
+                s.borderColor = 0xFF2A5A7A;
+                s.cornerRadius = 18;
+                break;
+            case 3: // 樱花
+                s.background = 0xFFFFF1F5;
+                s.background2 = 0xFFFFE3EC;
+                s.inBubble = 0xFFFFFFFF;
+                s.outBubble = 0xFFFFE0EC;
+                s.textColor = 0xFF3A1F2B;
+                s.borderColor = 0xFFF2C6D6;
+                s.cornerRadius = 20;
+                break;
+            case 4: // 森林
+                s.background = 0xFF0F1F17;
+                s.background2 = 0xFF163326;
+                s.inBubble = 0xFF173326;
+                s.outBubble = 0xFF2E5D3A;
+                s.textColor = 0xFFEAF7EE;
+                s.borderColor = 0xFF3E6B4D;
+                s.cornerRadius = 16;
+                break;
+            case 5: // 赛博霓虹
+                s.backgroundMode = BG_GRADIENT;
+                s.background = 0xFF0A0014;
+                s.background2 = 0xFF1B0033;
+                s.inBubble = 0xFF1B0033;
+                s.outBubble = 0xFF7C00FF;
+                s.textColor = 0xFF00F0FF;
+                s.borderColor = 0xFFFF2D95;
+                s.borderWidth = 2;
+                s.cornerRadius = 8;
+                break;
+            default:
+                return;
+        }
+        persist(s);
+    }
+
     public static void deletePreset(String name) {
         new File(presetDir(), name + ".json").delete();
     }
@@ -840,6 +928,7 @@ public class OxChatTheme {
             listView.setBackground(makeBackground(s, res));
             if (activity.themeDelegate != null) {
                 activityThemeDelegate = activity.themeDelegate;
+                activity.themeDelegate.setOxTextColor(s.textColor == 0 ? null : s.textColor);
                 activity.themeDelegate.setOxWallpaperDrawable(makeBackground(s, res));
             }
             if (activity.getParentActivity() != null && appliedWindow == null) {
@@ -981,6 +1070,7 @@ public class OxChatTheme {
             if (listView != null) {
                 appliedRoot = null;
                 if (activityThemeDelegate != null) {
+                    activityThemeDelegate.setOxTextColor(null);
                     activityThemeDelegate.clearOxWallpaperDrawable();
                     activityThemeDelegate = null;
                 }
