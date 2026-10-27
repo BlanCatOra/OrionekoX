@@ -1083,6 +1083,40 @@ public class OxChatTheme {
         }
     }
 
+    private static File recommendationFile() {
+        File dir = new File(ApplicationLoader.applicationContext.getFilesDir(), "ox_recommend");
+        if (!dir.exists()) dir.mkdirs();
+        String scope = activeDialog != null ? "dialog_" + activeDialogId
+                : activeAgent != null ? "agent_" + activeAgentKey : "global";
+        return new File(dir, scope.replaceAll("[^a-zA-Z0-9._-]", "_") + ".json");
+    }
+
+    /** Saves the pre-recommendation snapshot once, so the editor can undo it. */
+    public static void backupForRecommendation() {
+        File f = recommendationFile();
+        if (f.isFile() && f.length() > 0) return;
+        try {
+            FileOutputStream out = new FileOutputStream(f);
+            out.write(current().toJson("").toString().getBytes("UTF-8"));
+            out.close();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    public static boolean hasRecommendationBackup() {
+        File f = recommendationFile();
+        return f.isFile() && f.length() > 0;
+    }
+
+    public static boolean restoreRecommendationBackup() {
+        File f = recommendationFile();
+        Snapshot s = readFile(f);
+        if (s == null) return false;
+        persist(s);
+        f.delete();
+        return true;
+    }
+
     public static void deletePreset(String name) {
         new File(presetDir(), name + ".json").delete();
     }

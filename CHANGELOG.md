@@ -4,6 +4,18 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.25.1 — 2026-10-28
+
+- Persona recommendations now open a native confirmation dialog naming the
+  suggested theme; cancelling leaves the appearance untouched.
+- Before applying, the current scope snapshot is backed up under
+  `files/ox_recommend/<scope>.json`; an “撤销上次推荐” row restores it and removes
+  the backup. Backups are isolated per scope and the first backup is preserved.
+- Verified on an agent: recommended 赛博霓虹, then undo restored the original image
+  background, opacity, dim and AMOLED state. One test override was removed.
+- Fixed a build-only AAPT2 failure caused by an unescaped apostrophe in the English
+  confirmation copy.
+
 ## 0.25.0 — 2026-10-28
 
 - RikkaHub history import now also collects `upload/` images (up to 40 files,

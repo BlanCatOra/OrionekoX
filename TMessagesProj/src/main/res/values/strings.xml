@@ -12053,6 +12053,12 @@
     <string name="OxChatRecommend">Recommend from persona</string>
     <string name="OxChatRecommendInfo">Pick a built-in theme from the agent name and AGENTS.md keywords</string>
     <string name="OxChatRecommendApplied">Applied recommended look: %1$s</string>
+    <string name="OxChatRecommendTitle">Recommended look</string>
+    <string name="OxChatRecommendMessage">Based on this agent name and AGENTS.md, try「%1$s」?</string>
+    <string name="OxChatRecommendApply">Apply</string>
+    <string name="OxChatUndoRecommend">Undo last recommendation</string>
+    <string name="OxChatUndoRecommendInfo">Restore the appearance from before the recommendation</string>
+    <string name="OxChatRecommendRestored">Restored the pre-recommendation appearance</string>
     <string name="OxChatModeNative">Telegram native</string>
     <string name="OxChatModeCustom">Custom</string>
     <string name="OxChatNativeHint">Telegram native appearance is active. Switch to Custom to edit background, bubbles, opacity, radius and font size.</string>

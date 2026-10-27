@@ -381,7 +381,8 @@ These confirm the feature directions rather than relying on guesses. Checked
   removed to restore the agent's parent theme.
 - Limits: keyword heuristics rather than semantic understanding, default 深海
   when nothing matches, whole-snapshot replacement (including wallpaper/fonts),
-  agent scope only, and no candidate preview or undo.
+  agent scope only. **0.25.1** adds a confirmation dialog before applying and a
+  one-level “撤销上次推荐” that restores the pre-recommendation snapshot.
 
 ## 0.23.0 implementation — AMOLED toggle
 
@@ -433,6 +434,20 @@ These confirm the feature directions rather than relying on guesses. Checked
   file types and the remaining branches are not imported; the image is not
   rendered as a native photo bubble, only used as history context.
 
+## 0.25.1 fixes — recommendation confirmation and undo
+
+- Recommendation now opens a native confirmation dialog naming the candidate
+  theme; cancelling changes nothing.
+- Before applying, the current scope snapshot is stored under
+  `files/ox_recommend/<scope>.json` (first backup wins). An “撤销上次推荐” row
+  appears while that backup exists; it restores the snapshot and deletes the
+  backup. Backups are isolated per global/agent/dialog scope.
+- Device QA: `barB-nokey` showed the 赛博霓虹 candidate, applied it, then undo
+  restored the image background, 80% opacity, 24% dim and AMOLED off; the backup
+  file was removed. Test-generated agent override was cleaned up.
+- Limits: undo restores an explicit snapshot (the agent file remains), only one
+  undo level, no redo and no side-by-side candidate preview.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -440,8 +455,8 @@ These confirm the feature directions rather than relying on guesses. Checked
 2. Kelivo full backup import; RikkaHub non-selected branches, non-image
    attachments, per-conversation grouping, skill attachments, standalone
    providers and image avatars.
-3. Semantic/persona recommendation with candidate preview and undo (the 0.22.0
-   keyword version is deterministic and offline).
+3. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
+   confirmation/undo are deterministic and offline).
 4. Per-conversation theme inheritance still copies the parent’s text color; a
    low-contrast combination is reported by the check row but not auto-corrected.
 5. Re-run the third A/B/C round on current builds once a real-device/GPU pass can

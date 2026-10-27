@@ -2834,6 +2834,23 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `31eba8aed98f…`）；debug `dist/OrionekoX-0.25.0-debug-arm64-x64.apk`（sha256
 `95b6640e3a03…`）。详见 `docs/qa-0.25.0.md`。
 
+## 5.138 alpha 0.25.1 —— 人设推荐确认与撤销（2026-10-28 03:06–03:16）
+
+- 推荐改为原生确认框（显示候选主题名，取消不改状态）；应用前把当前作用域
+  快照备份到 `files/ox_recommend/<scope>.json`，应用后出现“撤销上次推荐”。
+- 撤销恢复备份快照并删除备份文件；备份按全局/Agent/会话作用域隔离且只保留
+  第一份，重复推荐不会覆盖。
+- 设备：barB-nokey 推荐“赛博霓虹”前弹出确认；应用后生成 Agent 覆盖与备份，
+  撤销后恢复图片背景/80%/24%/AMOLED 关闭，备份删除，toast 正确。
+- 构建问题：英文确认文案里的 `agent's` 撇号触发 AAPT2 字符串错误，首轮构建
+  失败；改为 `agent name` 后重建成功。
+- 版本规则：仅补推荐的确认/撤销交互，按 patch 从 0.25.0 → 0.25.1，
+  versionCode 2519。
+
+**产物**：`dist/OrionekoX-0.25.1-alpha-arm64-x64.apk`（versionCode 2519，sha256
+`6d34eb6bb7d0…`）；debug `dist/OrionekoX-0.25.1-debug-arm64-x64.apk`（sha256
+`dae337e6a870…`）。详见 `docs/qa-0.25.1.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

@@ -77,6 +77,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final int ID_PREVIEW = 35;
     private static final int ID_RECOMMEND = 36;
     private static final int ID_AMOLED = 37;
+    private static final int ID_UNDO_RECOMMEND = 38;
     private static final int PRESET_BASE = 100;
     private static final int BUILTIN_BASE = 200;
 
@@ -218,6 +219,11 @@ public class OxChatAppearanceActivity extends BaseFragment {
             items.add(SettingsActivity.SettingCell.Factory.of(ID_RECOMMEND, 0xFF7C5CFF, 0xFF5B3FE0,
                     R.drawable.msg_theme, LocaleController.getString(R.string.OxChatRecommend),
                     LocaleController.getString(R.string.OxChatRecommendInfo)));
+            if (OxChatTheme.hasRecommendationBackup()) {
+                items.add(SettingsActivity.SettingCell.Factory.of(ID_UNDO_RECOMMEND, 0xFF8E8E93, 0xFF6E6E73,
+                        R.drawable.msg_reset, LocaleController.getString(R.string.OxChatUndoRecommend),
+                        LocaleController.getString(R.string.OxChatUndoRecommendInfo)));
+            }
         }
         items.add(SettingsActivity.SettingCell.Factory.of(ID_BG_MODE, accent, dark, R.drawable.msg_colors,
                 LocaleController.getString(R.string.OxChatBgMode), bgModeLabel(bgMode)));
@@ -362,11 +368,27 @@ public class OxChatAppearanceActivity extends BaseFragment {
         } else if (item.id == ID_RECOMMEND) {
             OxAgent agent = OxAgentsBridge.agentByTgId(agentTgId);
             String text = agent == null ? "" : (agent.name + "\n" + (agent.agentsMd == null ? "" : agent.agentsMd));
-            int index = OxChatTheme.recommendBuiltIn(text);
-            OxChatTheme.applyBuiltIn(index);
-            toast(LocaleController.formatString("OxChatRecommendApplied",
-                    R.string.OxChatRecommendApplied, OxChatTheme.builtInName(index)));
-            rebuild();
+            final int index = OxChatTheme.recommendBuiltIn(text);
+            if (getParentActivity() == null) return;
+            new AlertDialog.Builder(getParentActivity())
+                    .setTitle(LocaleController.getString(R.string.OxChatRecommendTitle))
+                    .setMessage(LocaleController.formatString(
+                            "OxChatRecommendMessage", R.string.OxChatRecommendMessage,
+                            OxChatTheme.builtInName(index)))
+                    .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                    .setPositiveButton(LocaleController.getString(R.string.OxChatRecommendApply), (d, w) -> {
+                        OxChatTheme.backupForRecommendation();
+                        OxChatTheme.applyBuiltIn(index);
+                        toast(LocaleController.formatString("OxChatRecommendApplied",
+                                R.string.OxChatRecommendApplied, OxChatTheme.builtInName(index)));
+                        rebuild();
+                    })
+                    .show();
+        } else if (item.id == ID_UNDO_RECOMMEND) {
+            if (OxChatTheme.restoreRecommendationBackup()) {
+                toast(LocaleController.getString(R.string.OxChatRecommendRestored));
+                rebuild();
+            }
         } else if (item.id == ID_NATIVE_THEME) {
             presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC));
         } else if (item.id == ID_RESET) {
