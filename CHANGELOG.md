@@ -4,6 +4,17 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.21.2 — 2026-10-28
+
+- RikkaHub provider `customHeaders` and assistant `customHeaders` are merged by
+  header name (assistant overrides provider) into the agent headers; provider
+  headers apply when one of its models is referenced by an assistant.
+- The first assistant text part in `presetMessages` is imported as the agent's
+  opening message (`firstMes`, capped at 4000 characters).
+- Fixed a merge bug where pairs were round-tripped through JSON arrays and
+  provider headers disappeared; merging now collects from the source arrays.
+  Verified both headers and the opener survive a repeat import.
+
 ## 0.21.1 — 2026-10-28
 
 - RikkaHub backup import now resolves assistant `enabledSkills` against the

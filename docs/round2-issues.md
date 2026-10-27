@@ -131,3 +131,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：`Rikka QA` 的 `enabledSkills=["Rikka Test Skill"]` → `skill_ids=["TestSkill"]`；`X-Rikka-Assistant: 1` → `headers=[["X-Rikka-Assistant","1"]]`；重复导入仍为同一 Agent，映射保持。
 - 清理：删除测试助手、RikkaTestMCP、TestSkill 与 Downloads 样例；无 Key 泄漏、无 FATAL/ANR。
+
+## 0.21.2 RikkaHub Provider header/开场白 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-37 | 0.21.2 QA | 第一版 header 合并把 `{name,value}` 转成数组再读回，设备上 Provider header 丢失（`m=1`/`m=0`） | 改为直接遍历源数组写入 `LinkedHashMap`，不二次往返；复测 `m=2` | 已修复 |
+| R2-38 | 0.21.2 QA | 仅导入第一条 assistant 文本作为开场白；图片/工具预设消息与多条 preset 未处理 | 记录边界；`firstMes` 限 4000 字符 | 部分完成 |
+
+- 设备：Provider `X-Rikka-Provider: p` + 助手 `X-Rikka-Assistant: 1` 合并为两条 headers；`presetMessages` 的首条 assistant 文本进入 `first_mes`；重复导入保持 2 个 Agent、字段不变。
+- 清理测试助手/MCP/TestSkill/样例；无 Key 泄漏、无 FATAL/ANR。
