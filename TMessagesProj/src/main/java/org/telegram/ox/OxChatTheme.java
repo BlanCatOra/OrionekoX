@@ -460,6 +460,168 @@ public class OxChatTheme {
         return current().toJson(name).toString(2);
     }
 
+    // ---------------- portable .oxtheme package (JSON + background + fonts) ----------------
+
+    private static boolean isZip(byte[] data) {
+        return data != null && data.length > 4 && data[0] == 'P' && data[1] == 'K';
+    }
+
+    /** Packages the current appearance with its wallpaper and fonts so it can be
+     *  moved to another install/agent without losing assets. */
+    public static byte[] exportPackage(String name) throws Exception {
+        Snapshot s = current();
+        JSONObject theme = s.toJson(name);
+        JSONObject assets = new JSONObject();
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(bos);
+        try {
+            File bg = s.backgroundImage == null || s.backgroundImage.isEmpty() ? null : new File(s.backgroundImage);
+            if (bg != null && bg.isFile()) {
+                String entry = "background" + extension(bg.getName());
+                putEntry(zip, entry, readFileBytes(bg, 8 * 1024 * 1024));
+                assets.put("background", entry);
+            }
+            File font = s.fontPath == null || s.fontPath.isEmpty() ? null : new File(s.fontPath);
+            if (font != null && font.isFile()) {
+                putEntry(zip, "chat-font.ttf", readFileBytes(font, 8 * 1024 * 1024));
+                assets.put("font", "chat-font.ttf");
+            }
+            File codeFont = s.codeFontPath == null || s.codeFontPath.isEmpty() ? null : new File(s.codeFontPath);
+            if (codeFont != null && codeFont.isFile()) {
+                putEntry(zip, "code-font.ttf", readFileBytes(codeFont, 8 * 1024 * 1024));
+                assets.put("codeFont", "code-font.ttf");
+            }
+            theme.put("assets", assets);
+            zip.putNextEntry(new java.util.zip.ZipEntry("theme.json"));
+            zip.write(theme.toString(2).getBytes("UTF-8"));
+            zip.closeEntry();
+            zip.finish();
+        } finally {
+            zip.close();
+        }
+        return bos.toByteArray();
+    }
+
+    /** Parses a JSON or .oxtheme package and returns a preview without writing. */
+    public static String previewBytes(byte[] data) throws Exception {
+        if (data == null || data.length == 0) throw new IllegalArgumentException("empty file");
+        if (!isZip(data)) return previewJson(new String(data, "UTF-8"));
+        String json = null;
+        boolean hasBackground = false, hasFont = false;
+        java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
+        java.util.zip.ZipEntry e;
+        int entries = 0;
+        while ((e = zis.getNextEntry()) != null && entries++ < 30) {
+            String n = e.getName();
+            if ("theme.json".equals(n)) {
+                json = new String(readAll(zis, 512 * 1024), "UTF-8");
+            } else if (n.startsWith("background.")) {
+                hasBackground = true;
+            } else if (n.endsWith(".ttf")) {
+                hasFont = true;
+            }
+        }
+        zis.close();
+        if (json == null) throw new IllegalArgumentException("theme.json missing");
+        Snapshot s = parseJson(json, current());
+        return s.summary()
+                + (hasBackground ? " · 含背景图" : "")
+                + (hasFont ? " · 含字体" : "");
+    }
+
+    /** Applies a JSON or .oxtheme package, restoring its assets into app-private storage. */
+    public static void importBytes(byte[] data) throws Exception {
+        if (data == null || data.length == 0) throw new IllegalArgumentException("empty file");
+        if (!isZip(data)) {
+            importJson(new String(data, "UTF-8"));
+            return;
+        }
+        String json = null;
+        byte[] background = null;
+        byte[] font = null;
+        byte[] codeFont = null;
+        java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
+        java.util.zip.ZipEntry e;
+        int entries = 0;
+        while ((e = zis.getNextEntry()) != null && entries++ < 30) {
+            String n = e.getName();
+            if ("theme.json".equals(n)) {
+                json = new String(readAll(zis, 512 * 1024), "UTF-8");
+            } else if (n.startsWith("background.") && background == null) {
+                background = readAll(zis, 8 * 1024 * 1024);
+            } else if ("chat-font.ttf".equals(n) && font == null) {
+                font = readAll(zis, 8 * 1024 * 1024);
+            } else if ("code-font.ttf".equals(n) && codeFont == null) {
+                codeFont = readAll(zis, 8 * 1024 * 1024);
+            }
+        }
+        zis.close();
+        if (json == null) throw new IllegalArgumentException("theme.json missing");
+        Snapshot s = parseJson(json, current());
+        if (background != null && background.length > 0) {
+            File out = new File(ApplicationLoader.applicationContext.getFilesDir(),
+                    "ox_chat_bg_imported_" + System.currentTimeMillis() + ".img");
+            writeFile(out, background);
+            s.backgroundImage = out.getAbsolutePath();
+            s.backgroundMode = BG_IMAGE;
+        }
+        if (font != null && font.length > 0) {
+            File out = new File(fontDir(), "imported_chat_" + System.currentTimeMillis() + ".ttf");
+            writeFile(out, font);
+            Typeface tf = Typeface.createFromFile(out);
+            if (tf != null) s.fontPath = out.getAbsolutePath();
+        }
+        if (codeFont != null && codeFont.length > 0) {
+            File out = new File(fontDir(), "imported_code_" + System.currentTimeMillis() + ".ttf");
+            writeFile(out, codeFont);
+            Typeface tf = Typeface.createFromFile(out);
+            if (tf != null) s.codeFontPath = out.getAbsolutePath();
+        }
+        persist(s);
+    }
+
+    private static File fontDir() {
+        File dir = new File(ApplicationLoader.applicationContext.getFilesDir(), DIR_FONTS);
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    private static String extension(String name) {
+        int dot = name == null ? -1 : name.lastIndexOf('.');
+        return dot > 0 && dot < name.length() - 1 ? name.substring(dot) : ".img";
+    }
+
+    private static void putEntry(java.util.zip.ZipOutputStream zip, String name, byte[] data) throws Exception {
+        zip.putNextEntry(new java.util.zip.ZipEntry(name));
+        zip.write(data);
+        zip.closeEntry();
+    }
+
+    private static byte[] readFileBytes(File f, int max) throws Exception {
+        java.io.FileInputStream in = new java.io.FileInputStream(f);
+        try {
+            return readAll(in, max);
+        } finally {
+            in.close();
+        }
+    }
+
+    private static byte[] readAll(java.io.InputStream in, int max) throws Exception {
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[16384];
+        int n;
+        while ((n = in.read(buf)) > 0 && bos.size() < max) {
+            bos.write(buf, 0, Math.min(n, max - bos.size()));
+        }
+        return bos.toByteArray();
+    }
+
+    private static void writeFile(File f, byte[] data) throws Exception {
+        java.io.FileOutputStream out = new java.io.FileOutputStream(f);
+        out.write(data);
+        out.close();
+    }
+
     private static Snapshot parseJson(String raw, Snapshot base) throws Exception {
         JSONObject o = new JSONObject(raw);
         Snapshot s = parseJsonObject(o, base == null ? new Snapshot() : base.copy());

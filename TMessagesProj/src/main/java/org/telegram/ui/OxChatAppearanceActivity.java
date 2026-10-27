@@ -102,8 +102,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
 
     private UniversalRecyclerView listView;
     private long agentTgId;
-    private String pendingExport;
-    private String pendingImport;
+    private byte[] pendingExport;
 
     @Override
     public View createView(Context context) {
@@ -442,15 +441,15 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private void exportTheme() {
         if (getParentActivity() == null) return;
         try {
-            pendingExport = OxChatTheme.exportJson("OrionekoX appearance");
+            pendingExport = OxChatTheme.exportPackage("OrionekoX appearance");
         } catch (Throwable t) {
             toast(LocaleController.formatString("OxChatImportFailed", R.string.OxChatImportFailed, t.getMessage()));
             return;
         }
         Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         i.addCategory(Intent.CATEGORY_OPENABLE);
-        i.setType("application/json");
-        i.putExtra(Intent.EXTRA_TITLE, "orioneko-theme.json");
+        i.setType("application/octet-stream");
+        i.putExtra(Intent.EXTRA_TITLE, "orioneko-theme.oxtheme");
         startActivityForResult(i, REQ_EXPORT);
     }
 
@@ -487,31 +486,29 @@ public class OxChatAppearanceActivity extends BaseFragment {
         if (requestCode == REQ_IMPORT) {
             new Thread(() -> {
                 try {
-                    String raw = readText(ctx, uri);
-                    final String rawFinal = raw;
+                    final byte[] raw = readBytes(ctx, uri);
+                    final String summary = OxChatTheme.previewBytes(raw);
                     AndroidUtilities.runOnUIThread(() -> {
                         if (getParentActivity() == null) return;
-                        try {
-                            String summary = OxChatTheme.previewJson(rawFinal);
-                            new AlertDialog.Builder(getParentActivity())
-                                    .setTitle(LocaleController.getString(R.string.OxChatImportPreviewTitle))
-                                    .setMessage(summary)
-                                    .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
-                                    .setPositiveButton(LocaleController.getString(R.string.OxChatImportApply), (d, w) -> {
+                        new AlertDialog.Builder(getParentActivity())
+                                .setTitle(LocaleController.getString(R.string.OxChatImportPreviewTitle))
+                                .setMessage(summary)
+                                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                                .setPositiveButton(LocaleController.getString(R.string.OxChatImportApply), (d, w) -> {
+                                    new Thread(() -> {
                                         try {
-                                            OxChatTheme.importJson(rawFinal);
-                                            toast(LocaleController.getString(R.string.OxChatImport));
-                                            rebuild();
+                                            OxChatTheme.importBytes(raw);
+                                            AndroidUtilities.runOnUIThread(() -> {
+                                                toast(LocaleController.getString(R.string.OxChatImport));
+                                                rebuild();
+                                            });
                                         } catch (Throwable t) {
-                                            toast(LocaleController.formatString("OxChatImportFailed",
-                                                    R.string.OxChatImportFailed, t.getMessage()));
+                                            AndroidUtilities.runOnUIThread(() -> toast(LocaleController.formatString(
+                                                    "OxChatImportFailed", R.string.OxChatImportFailed, t.getMessage())));
                                         }
-                                    })
-                                    .show();
-                        } catch (Throwable t) {
-                            toast(LocaleController.formatString("OxChatImportFailed",
-                                    R.string.OxChatImportFailed, t.getMessage()));
-                        }
+                                    }, "ox-chat-theme-apply").start();
+                                })
+                                .show();
                     });
                 } catch (Throwable t) {
                     AndroidUtilities.runOnUIThread(() -> toast(LocaleController.formatString(
@@ -554,14 +551,14 @@ public class OxChatAppearanceActivity extends BaseFragment {
                 });
             }, "ox-chat-font").start();
         } else if (requestCode == REQ_EXPORT) {
-            final String json = pendingExport;
+            final byte[] bytes = pendingExport;
             pendingExport = null;
-            if (json == null) return;
+            if (bytes == null) return;
             new Thread(() -> {
                 String msg;
                 try {
                     java.io.OutputStream out = ctx.getContentResolver().openOutputStream(uri);
-                    out.write(json.getBytes(StandardCharsets.UTF_8));
+                    out.write(bytes);
                     out.close();
                     msg = LocaleController.getString(R.string.OxChatExportDone);
                 } catch (Throwable t) {
@@ -574,16 +571,16 @@ public class OxChatAppearanceActivity extends BaseFragment {
         }
     }
 
-    private static String readText(Context ctx, Uri uri) throws Exception {
+    private static byte[] readBytes(Context ctx, Uri uri) throws Exception {
         InputStream in = ctx.getContentResolver().openInputStream(uri);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
+        byte[] buf = new byte[16384];
         int n;
-        while ((n = in.read(buf)) > 0 && bos.size() < 256 * 1024) {
-            bos.write(buf, 0, Math.min(n, 256 * 1024 - bos.size()));
+        while ((n = in.read(buf)) > 0 && bos.size() < 16 * 1024 * 1024) {
+            bos.write(buf, 0, Math.min(n, 16 * 1024 * 1024 - bos.size()));
         }
         in.close();
-        return new String(bos.toByteArray(), StandardCharsets.UTF_8);
+        return bos.toByteArray();
     }
 
     private void rebuild() {

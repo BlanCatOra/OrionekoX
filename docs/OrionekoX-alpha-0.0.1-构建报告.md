@@ -2481,6 +2481,20 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
   `4a08b638e9c5…`）；debug `dist/OrionekoX-0.10.0-debug-arm64-x64.apk`（sha256
   `19faa4252589…`）。详见 `docs/qa-0.10.0.md`。
 
+## 5.119 alpha 0.11.0 —— 主题资产包 `.oxtheme` 导出/导入（2026-10-27 20:00–20:12）
+
+- 背景图的“只导颜色、丢资源”问题：新增 zip 主题包，内含 `theme.json`、
+  `background.img`、`chat-font.ttf`/`code-font.ttf`；导入时先恢复资产到
+  app-private 目录再重写快照路径，支持全局与按 Agent 作用域。
+- 导入预览会显示“含背景图 / 含字体”；非法 JSON/zip 不写入现有主题。
+- 设备实测：导入 Adwaita Sans（`chat_1793102842095.ttf`）、设置
+  `verify-rice.jpg` 背景 → 导出 464623 B 的 `.oxtheme`（theme.json 741 B、
+  background.img 16360 B、chat-font.ttf 879796 B）→ 切回系统字体 → 导入同一包，
+  预览显示资产信息，应用后字体与背景均恢复为包内副本。
+- 产物：`dist/OrionekoX-0.11.0-alpha-arm64-x64.apk`（versionCode 1419，sha256
+  `05b3fd0c6418…`）；debug `dist/OrionekoX-0.11.0-debug-arm64-x64.apk`（sha256
+  `48b3d668860d…`）。详见 `docs/qa-0.11.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

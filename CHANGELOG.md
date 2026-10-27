@@ -4,6 +4,15 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.11.0 — 2026-10-27
+
+- Appearance export now produces a portable `.oxtheme` package containing
+  `theme.json`, the chat background and imported chat/code fonts. Import
+  detects JSON or the package, previews the included assets, restores them to
+  app-private storage and rewrites the snapshot paths.
+- Verified on device with an imported TTF and image background: export → reset
+  font → re-import → font and background restored.
+
 ## 0.10.0 — 2026-10-27
 
 - Per-agent chat appearances with global fallback and “apply to all agents”.
