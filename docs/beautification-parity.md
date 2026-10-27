@@ -624,6 +624,22 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: export is all-or-nothing (no selection), round-tripped ids gain a
   `kelivo_` prefix, and a real Chatbox client has not imported the file yet.
 
+## 0.33.0 implementation — per-agent Chatbox export
+
+- `OxKelivoExporter.exportTo(context, uri, onlyIds)` accepts a selected agent
+  set; the original all-agent export remains available in Ox settings.
+- The agent long-press menu (non-built-in) now offers “Export Chatbox backup”
+  with a confirmation that explains the scope and that API keys/provider URLs
+  are excluded. SAF creates `<agent name>-chatbox-backup.zip`.
+- Only the selected agent is written: chat history as a session, chatless agents
+  as a copilot, with its avatar/images/attachments. No other agents leak in.
+- Device QA: a single-agent export was 6,190 B with 1 session, 0 copilots and
+  3 resources; stats/checksums passed and no `ox1:`/`sk-`/`api_key`/`test-key`
+  appeared. Re-importing it restored prompt, 0.5/0.7/80, avatar, image, notes.txt
+  and 4 messages, shown in the native SE/SE1 chat.
+- Limits: one non-built-in agent per export, no multi-select; round-tripped ids
+  gain a `kelivo_` prefix; a real Chatbox client is still untested.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -634,13 +650,13 @@ These confirm the feature directions rather than relying on guesses. Checked
    allowlists; RikkaHub non-selected branches, non-image attachments,
    per-conversation grouping, skill attachments, standalone providers and image
    avatars.
-3. Bidirectional export still lacks agent selection, workspaces, memory, skills,
-   MCP and themes, and needs validation against a real Chatbox client.
-3. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
+3. Bidirectional export still lacks workspaces, memory, skills, MCP and themes,
+   plus multi-agent selection and validation against a real Chatbox client.
+4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
-4. Per-conversation theme inheritance still copies the parent’s text color; a
+5. Per-conversation theme inheritance still copies the parent’s text color; a
    low-contrast combination is reported by the check row but not auto-corrected.
-5. Re-run the third A/B/C round on current builds once a real-device/GPU pass can
+6. Re-run the third A/B/C round on current builds once a real-device/GPU pass can
    confirm background layering and blur on local groups; cover per-agent themes,
    font import/export, preset preview, gradients, group albums, tool bubbles,
    literal `\n` in old messages, skill dedupe/delete and local-agent search.
