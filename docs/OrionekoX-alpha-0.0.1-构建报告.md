@@ -2851,6 +2851,20 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `6d34eb6bb7d0…`）；debug `dist/OrionekoX-0.25.1-debug-arm64-x64.apk`（sha256
 `dae337e6a870…`）。详见 `docs/qa-0.25.1.md`。
 
+## 5.139 alpha 0.25.2 —— 命名预设重命名（2026-10-28 03:18–03:32）
+
+- 长按预设改为原生菜单“重命名 / 删除”；重命名对话框预填当前名称，保存时
+  按既有规则 sanitize 文件名、更新 JSON `name`、删除旧文件；同名目标拒绝并
+  提示“同名预设已存在”，不覆盖已有预设。
+- 设备：临时预设 RenameQA 成功改为 RenameQA2，目录仅保留新文件；改名为已存在
+  的 BundleQA 被拒绝且原文件不变；取消对话框无副作用。测试后删除临时预设。
+- 版本规则：仅补预设管理小功能，按 patch 从 0.25.1 → 0.25.2，
+  versionCode 2529。
+
+**产物**：`dist/OrionekoX-0.25.2-alpha-arm64-x64.apk`（versionCode 2529，sha256
+`454b52f3f044…`）；debug `dist/OrionekoX-0.25.2-debug-arm64-x64.apk`（sha256
+`c0027b7821f9…`）。详见 `docs/qa-0.25.2.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

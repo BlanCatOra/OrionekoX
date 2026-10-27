@@ -878,13 +878,35 @@ public class OxChatTheme {
         return out;
     }
 
+    private static String safePresetName(String name) {
+        if (name == null) return "";
+        return name.trim().replaceAll("[^a-zA-Z0-9._\\-\\u4e00-\\u9fa5]", "_");
+    }
+
     public static void savePreset(String name) throws Exception {
         if (name == null || name.trim().isEmpty()) throw new IllegalArgumentException("name");
-        String safe = name.trim().replaceAll("[^a-zA-Z0-9._\\-\\u4e00-\\u9fa5]", "_");
+        String safe = safePresetName(name);
         JSONObject o = current().toJson(name.trim());
         FileOutputStream out = new FileOutputStream(new File(presetDir(), safe + ".json"));
         out.write(o.toString().getBytes("UTF-8"));
         out.close();
+    }
+
+    public static void renamePreset(String oldName, String newName) throws Exception {
+        if (newName == null || newName.trim().isEmpty()) throw new IllegalArgumentException("name");
+        String safe = safePresetName(newName);
+        File oldFile = new File(presetDir(), oldName + ".json");
+        if (!oldFile.isFile()) throw new IllegalArgumentException("preset not found");
+        File newFile = new File(presetDir(), safe + ".json");
+        if (!oldName.equals(safe) && newFile.exists()) {
+            throw new IllegalArgumentException("preset exists");
+        }
+        Snapshot s = readFile(oldFile);
+        if (s == null) throw new IllegalArgumentException("preset not found");
+        FileOutputStream out = new FileOutputStream(newFile);
+        out.write(s.toJson(safe).toString().getBytes("UTF-8"));
+        out.close();
+        if (!oldName.equals(safe)) oldFile.delete();
     }
 
     public static void applyPreset(String name) throws Exception {

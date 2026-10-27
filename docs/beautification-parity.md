@@ -26,7 +26,7 @@ requirements.
 | Message line height | yes | yes | yes | **0.15.0** 1.0–1.5× in UI, 0.8–1.8 accepted on import; persisted in presets/`.oxtheme` |
 | UI font / code font separately | theme assets | yes | yes | **0.10.0** separate chat/code fonts + TTF import; **0.11.0** assets in `.oxtheme` |
 | Dynamic color | theme studio | Material You | Material 3 Expressive | **0.13.0** palette derived from background image/gradient (not Material You) |
-| Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete |
+| Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete; **0.25.2** rename with duplicate-name rejection |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
@@ -447,6 +447,18 @@ These confirm the feature directions rather than relying on guesses. Checked
   file was removed. Test-generated agent override was cleaned up.
 - Limits: undo restores an explicit snapshot (the agent file remains), only one
   undo level, no redo and no side-by-side candidate preview.
+
+## 0.25.2 implementation — preset rename
+
+- Long-pressing a named preset now offers 重命名/删除. Rename pre-fills the current
+  name, sanitizes the new file name with the same rules as save, updates the JSON
+  `name`, deletes the old file and refuses a name that already exists.
+- Device QA: RenameQA became RenameQA2 with only the new file left; renaming to
+  an existing BundleQA was rejected and the original stayed intact; cancel made
+  no changes. The temporary preset was removed.
+- Limits: single-preset rename only, no copy/bulk actions, sanitized/truncated
+  names can collide (then rejected), and exported `.oxthemes` files keep their
+  old names.
 
 ## Gaps / next phases
 

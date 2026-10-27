@@ -4,6 +4,15 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.25.2 — 2026-10-28
+
+- Named presets can now be renamed: long-press opens a native rename/delete menu.
+  Rename pre-fills the current name, applies the same file-name sanitization as
+  save, updates the JSON name and deletes the old file. An existing target name is
+  rejected without overwriting it.
+- Verified on device: RenameQA became RenameQA2 with only the new file left;
+  renaming to an existing BundleQA was rejected; cancel changed nothing.
+
 ## 0.25.1 — 2026-10-28
 
 - Persona recommendations now open a native confirmation dialog naming the
