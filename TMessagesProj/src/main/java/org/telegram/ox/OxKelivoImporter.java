@@ -30,6 +30,8 @@ public class OxKelivoImporter {
     public static class Preview {
         public int assistants;
         public int existing;
+        public int skills;
+        public int existingSkills;
         public final List<String> names = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -37,6 +39,7 @@ public class OxKelivoImporter {
     public static class Result {
         public int created;
         public int updated;
+        public int skills;
         public final List<String> ids = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -44,6 +47,7 @@ public class OxKelivoImporter {
     private static class Archive {
         final List<JSONObject> assistants = new ArrayList<>();
         final Map<String, JSONObject> providers = new HashMap<>();
+        final Map<String, byte[]> skills = new HashMap<>();
     }
 
     public static Preview preview(Context context, Uri uri) throws Exception {
@@ -60,9 +64,21 @@ public class OxKelivoImporter {
             if (p.names.size() < 8) p.names.add(name);
             if (existing.contains(id)) p.existing++;
         }
-        p.notes.add("仅导入 Kelivo / Chatbox 备份中的助手与人设；不含对话、Provider 密钥、技能与 MCP。");
+        p.notes.add("仅导入 Kelivo / Chatbox 备份中的助手、人设与技能；不含对话、Provider 密钥与 MCP。");
         if (!archive.providers.isEmpty()) {
             p.notes.add("将使用备份中的 " + archive.providers.size() + " 个 Provider 配置为助手接线。");
+        }
+        Set<String> existingSkills = new HashSet<>();
+        for (OxSkillStore.Skill s : OxSkillStore.list()) {
+            if (s.id != null) existingSkills.add(s.id);
+        }
+        for (String id : archive.skills.keySet()) {
+            String safe = OxSkillStore.skillId(id);
+            p.skills++;
+            if (existingSkills.contains(safe)) p.existingSkills++;
+        }
+        if (!archive.skills.isEmpty()) {
+            p.notes.add("将导入 " + archive.skills.size() + " 个技能；同名技能会更新。");
         }
         return p;
     }
@@ -133,6 +149,15 @@ public class OxKelivoImporter {
         if (providersUsed.isEmpty() && fallback == null) {
             r.notes.add("没有找到可继承的 Provider，导入的助手将按离线模式运行");
         }
+        for (Map.Entry<String, byte[]> e : archive.skills.entrySet()) {
+            try {
+                OxSkillStore.importSkill(e.getKey(), e.getValue());
+                r.skills++;
+            } catch (Throwable t) {
+                r.notes.add("技能「" + e.getKey() + "」导入失败");
+            }
+        }
+        if (r.skills > 0) r.notes.add("导入技能 " + r.skills + " 个");
         return r;
     }
 
@@ -168,6 +193,16 @@ public class OxKelivoImporter {
                         settings = readString(zin);
                     } else if (assistants == null && "assistants.json".equals(n)) {
                         assistants = readString(zin);
+                    } else if (out.skills.size() < 50 && n.startsWith("skills/")
+                            && n.toLowerCase(java.util.Locale.ROOT).endsWith("skill.md")) {
+                        String rel = n.substring("skills/".length());
+                        int slash = rel.lastIndexOf('/');
+                        String id = slash > 0 ? rel.substring(0, slash) : rel;
+                        id = id.replace('/', '_');
+                        if (!id.isEmpty()) {
+                            byte[] body = readBytes(zin);
+                            if (body.length > 0) out.skills.put(id, body);
+                        }
                     }
                 }
                 if (copilots != null) addArray(new JSONArray(copilots), out);
@@ -198,6 +233,16 @@ public class OxKelivoImporter {
             bos.write(buf, 0, Math.min(n, MAX_JSON - bos.size()));
         }
         return bos.toString("UTF-8");
+    }
+
+    private static byte[] readBytes(InputStream in) throws Exception {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] buf = new byte[16384];
+        int n;
+        while ((n = in.read(buf)) > 0 && bos.size() < 512 * 1024) {
+            bos.write(buf, 0, Math.min(n, 512 * 1024 - bos.size()));
+        }
+        return bos.toByteArray();
     }
 
     private static void scan(JSONObject o, Archive out, int depth) {

@@ -2936,6 +2936,24 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `84e5b96cf0b7…`）；debug `dist/OrionekoX-0.27.0-debug-arm64-x64.apk`（sha256
 `bf3de1b56330…`）。详见 `docs/qa-0.27.0.md`。
 
+## 5.144 alpha 0.27.1 —— Kelivo 备份技能导入（2026-10-28 04:28–04:40）
+
+- Kelivo/Chatbox 备份 zip 读取 `skills/**/SKILL.md`（≤50 个、单 512 KB），
+  经 OxSkillStore 写入私有技能库；同名更新，不删除其他技能。
+- 预览/结果增加技能数量；修正“导入助手但不含技能”的旧文案为
+  “助手、人设与技能；不含对话、Provider 密钥与 MCP”，并重建复验。
+- 设备：样例 1 助手 + 1 技能，预览“将导入 1 个技能”；导入“新建 1 / 技能 1”；
+  `files/oxskills/KelivoSkill/SKILL.md` 96 B；重复导入“新建 0 / 更新 1 /
+  技能 1”，仍 1 个技能目录。清理测试对象；无 FATAL/ANR。
+- 边界：仅 zip 的 `skills/`；只导入 SKILL.md 正文；不含对话/Provider 密钥/
+  MCP/工作区；真实备份待复测。
+- 版本规则：仅补既有 Kelivo 导入的技能包，按 patch 从 0.27.0 → 0.27.1，
+  versionCode 2719。
+
+**产物**：`dist/OrionekoX-0.27.1-alpha-arm64-x64.apk`（versionCode 2719，sha256
+`39cb7424a9e8…`）；debug `dist/OrionekoX-0.27.1-debug-arm64-x64.apk`（sha256
+`26769a56fb6a…`）。详见 `docs/qa-0.27.1.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

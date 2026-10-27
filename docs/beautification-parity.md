@@ -482,6 +482,9 @@ These confirm the feature directions rather than relying on guesses. Checked
   map, assistants use their `chatModelProvider` baseUrl/apiKey and the first model
   when `chatModelId` is absent, otherwise they fall back to the local provider.
   OAuth/multi-key/proxy/provider-specific headers are still skipped.
+- **0.27.1** also reads `skills/**/SKILL.md` from the backup zip into the private
+  skill library (up to 50 skills, 512 KB each, same-name update). Only the skill
+  body is imported; scripts/attachments are not.
 
 ## 0.26.2 fix — Operit background blur
 
@@ -512,10 +515,10 @@ These confirm the feature directions rather than relying on guesses. Checked
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping (background blur is now
    mapped by 0.26.2).
-2. Kelivo full backup import beyond assistants (providers/keys, conversations,
-   skills, MCP, avatars/backgrounds); RikkaHub non-selected branches, non-image
-   attachments, per-conversation grouping, skill attachments, standalone
-   providers and image avatars.
+2. Kelivo full backup import beyond assistants/skills (conversations, MCP,
+   avatars/backgrounds; provider keys are now mapped); RikkaHub non-selected
+   branches, non-image attachments, per-conversation grouping, skill attachments,
+   standalone providers and image avatars.
 3. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 4. Per-conversation theme inheritance still copies the parent’s text color; a
