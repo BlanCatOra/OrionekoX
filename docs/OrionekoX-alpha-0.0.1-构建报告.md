@@ -2444,6 +2444,100 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `617cff8bf2c9…`）；debug `dist/OrionekoX-0.9.0-debug-arm64-x64.apk`（sha256
 `456f0ec5315f…`）。
 
+## 5.117 alpha 0.9.1 —— 第二轮 A/B/C 回归修补（2026-10-27 03:30–04:10）
+
+- 归档第二轮 B、C 独立报告与问题汇总：B 5 PASS / 1 PARTIAL / 1 FAIL，C 外观专项 6/7 通过
+  但报告 2 项 P1；主代理对两项 P1 做受控复验，均未复现（图片是相册网格选错项；列表点击
+  用 uiautomator bounds 中心/下缘均正确），按测试/模拟器因素记录。
+- 修复 Agent 会话重开空白：忽略旧 `diditem` 滚动位置；首个 cache pass 为空时 350ms 后
+  有界重试；Agent 会话不再显示“删除此对话”底部遮罩。3 次返回重进均立即显示历史。
+- 文件入口 JPG/PNG 改走图片气泡：实测 `verify-rice.jpg` 有缩略图、双勾，模型准确读出
+  `VERIFYRICE0.9.1`。
+- 主题导入补 snake_case 别名：`in_bubble`/`out_bubble`/`corner_radius`/`font_size` 等
+  六项全部映射（实测 T991 主题）。
+- 另有：工具气泡摘要、`\n` 反转义、SillyTavern `first_mes` 开场白、技能同名覆盖/长按删除、
+  本地 Agent 子串搜索、`.oxagent` 无 Key 提示、预设 toast、MCP 重复标题、成员移除文案、
+  群内 @ 用户名提示、群内“描述上一张图”自动附带最近图片。
+- 产物：`dist/OrionekoX-0.9.1-alpha-arm64-x64.apk`（versionCode 1339，sha256
+  `e22563e1c6e3…`）；debug `dist/OrionekoX-0.9.1-debug-arm64-x64.apk`（sha256
+  `15c1cc7a73eb…`）。详见 `docs/qa-0.9.1.md`。
+
+## 5.118 alpha 0.10.0 —— 按 Agent 主题、边框/字体/渐变与导出预览（2026-10-27 04:00–05:20）
+
+- 外观模型升级为快照（`Snapshot`）：全局 SharedPreferences + 按 Agent 的
+  `files/ox_chat_agents/agent_<tgId>.json`；智能体长按菜单新增「Agent 会话外观」，
+  支持「应用到全部 Agent」，未覆盖时回退全局。实测 C2 浅色/白气泡与 R2C Card 全局
+  深色并存，隔离生效。
+- 背景支持纯色 / 双色渐变（3 方向）/ 图片，独立背景不透明度与暗化；状态栏/导航栏
+  跟随主题。新增 `ThemeDelegate.setOxWallpaperDrawable` 直接替换聊天壁纸 drawable。
+- 气泡支持实心/磨砂、边框颜色与 1–3dp 宽度、独立文字颜色；新增 WCAG 对比度提示。
+- 字体支持聊天/代码字体（系统/衬线/等宽/导入 TTF）与 0.9–1.3× 字号；导入字体校验后
+  存入 `files/oxfonts/`。
+- 导入改为主线程摘要预览，确认后才写入；新增当前主题 JSON 导出（SAF）；原生模式新增
+  「打开 Telegram 聊天主题」入口。
+- 设备验证：按 Agent 隔离、边框/磨砂/衬线、原生入口与重置均通过；`-gpu off` 模拟器
+  下 C2 浅色背景仍隐约透出 emoji 壁纸纹理（合成限制），列入真机复验。
+- 产物：`dist/OrionekoX-0.10.0-alpha-arm64-x64.apk`（versionCode 1409，sha256
+  `4a08b638e9c5…`）；debug `dist/OrionekoX-0.10.0-debug-arm64-x64.apk`（sha256
+  `19faa4252589…`）。详见 `docs/qa-0.10.0.md`。
+
+## 5.119 alpha 0.11.0 —— 主题资产包 `.oxtheme` 导出/导入（2026-10-27 20:00–20:12）
+
+- 背景图的“只导颜色、丢资源”问题：新增 zip 主题包，内含 `theme.json`、
+  `background.img`、`chat-font.ttf`/`code-font.ttf`；导入时先恢复资产到
+  app-private 目录再重写快照路径，支持全局与按 Agent 作用域。
+- 导入预览会显示“含背景图 / 含字体”；非法 JSON/zip 不写入现有主题。
+- 设备实测：导入 Adwaita Sans（`chat_1793102842095.ttf`）、设置
+  `verify-rice.jpg` 背景 → 导出 464623 B 的 `.oxtheme`（theme.json 741 B、
+  background.img 16360 B、chat-font.ttf 879796 B）→ 切回系统字体 → 导入同一包，
+  预览显示资产信息，应用后字体与背景均恢复为包内副本。
+- 产物：`dist/OrionekoX-0.11.0-alpha-arm64-x64.apk`（versionCode 1419，sha256
+  `05b3fd0c6418…`）；debug `dist/OrionekoX-0.11.0-debug-arm64-x64.apk`（sha256
+  `48b3d668860d…`）。详见 `docs/qa-0.11.0.md`。
+
+## 5.120 alpha 0.12.0 —— 内置主题一键套用与文字色修复（2026-10-27 20:15–20:32）
+
+- 外观页新增六款内置主题（午夜墨黑/纸墨/深海/樱花/森林/赛博霓虹），
+  一键写入完整快照到当前作用域；解决竞品“预设市场/一键套用”缺口。
+- 修复自定义文字色无效：`ChatMessageCell` 绘制时用主题色覆盖
+  `chat_msgTextPaint`；现在 `ChatActivity.ThemeDelegate.getColor()` 对
+  `key_chat_messageTextIn/Out` 优先返回 `oxTextColor`，应用/恢复时成对设置/清空。
+- 实测赛博霓虹：渐变 #0A0014→#1B0033、收 #1B0033、发 #7C00FF、文字 #00F0FF、
+  边框 #FF2D95 2dp、圆角 8dp；修复前文字显示黑色，修复后为青色。AMOLED 主题
+  纯黑背景 + 白字 + #333 边框正常。C2 的旧 Agent 覆盖仍优先于全局主题。
+- 产物：`dist/OrionekoX-0.12.0-alpha-arm64-x64.apk`（versionCode 1429，sha256
+  `b26932a9e6a9…`）；debug `dist/OrionekoX-0.12.0-debug-arm64-x64.apk`（sha256
+  `83783c9dd30f…`）。详见 `docs/qa-0.12.0.md`。
+
+## 5.121 alpha 0.13.0 —— 从背景自动配色（2026-10-27 20:38–20:47）
+
+- 新增“壁纸气泡联动/动态取色”：背景图降采样到 ≤64px 求平均 RGB，渐变取两色
+  50% 混合；由平均色生成高饱和发气泡、浅色收气泡、自动对比文字与细边框，
+  暗背景自动加 60/255 暗化。
+- 实测深蓝 `verify-rice.jpg`：生成收 `#DCDDE5`、发 `#A3A6C2`、边框 `#BDBFD3`，
+  文字深色可读，背景图保留；应用至 R2C Card 正常，无 FATAL/ANR。
+- 版本：0.12.0 → 0.13.0（minor，新功能）。
+- 产物：`dist/OrionekoX-0.13.0-alpha-arm64-x64.apk`（versionCode 1439，sha256
+  `08a983b1e39a…`）；debug `dist/OrionekoX-0.13.0-debug-arm64-x64.apk`（sha256
+  `14ba073efeb6…`）。详见 `docs/qa-0.13.0.md`。
+
+## 5.122 alpha 0.14.0 —— Operit 外观偏好 JSON 导入（2026-10-27 20:50–21:02）
+
+- `OxChatTheme.parseJsonObject` 解包 Operit 备份的嵌套 `values`，映射 AI/用户气泡色、
+  AI/用户文字色、`font_scale`、`background_image_opacity`、`theme_mode`、玻璃/模糊
+  开关与 `custom_primary_color`（边框）；沿用预览→确认→写入链路。
+- 设备：`operit-appearance.json` 预览为 `收 #2D2A45 · 发 #7C5CFF · 80% · 16dp ·
+  1.1x · 磨砂 · 边框 #FF2D95 1dp`；应用后外观页逐项一致，Agent 会话显示紫色气泡、
+  白字、洋红细边框，背景图继续沿用。
+- 导入按“当前快照 + 命中字段覆盖”合并，预览会显示继承的背景图/字体；未覆盖 Operit
+  9-patch、头像/字体 URI、内边距与图片裁剪。兼容性上只在命中 Operit 专有键时进入该
+  分支，缺少 `theme_mode` 不改背景基色，避免误伤 Kelivo/RikkaHub JSON。
+- 已知缺口：工具调用状态气泡仍为原生白色，未随自定义气泡着色。无 FATAL/ANR。
+
+**产物**：`dist/OrionekoX-0.14.0-alpha-arm64-x64.apk`（versionCode 1449，sha256
+`5c7a27b98bfa…`）；debug `dist/OrionekoX-0.14.0-debug-arm64-x64.apk`（sha256
+`2807a1dc3197…`）。详见 `docs/qa-0.14.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

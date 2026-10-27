@@ -12044,7 +12044,7 @@
     <string name="OxChatRadius">Bubble corner radius</string>
     <string name="OxChatFontScale">Message font size</string>
     <string name="OxChatImport">Import theme / preset JSON</string>
-    <string name="OxChatImportInfo">Kelivo / RikkaHub / Operit theme JSON or a saved preset</string>
+    <string name="OxChatImportInfo">Kelivo / RikkaHub theme JSON, Operit appearance JSON or a saved preset</string>
     <string name="OxChatSavePreset">Save current as preset</string>
     <string name="OxChatPresets">Presets</string>
     <string name="OxChatNoPresets">No presets yet</string>
