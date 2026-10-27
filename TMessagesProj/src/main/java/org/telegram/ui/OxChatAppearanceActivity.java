@@ -64,6 +64,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final int ID_RESET = 28;
     private static final int ID_NATIVE_THEME = 29;
     private static final int ID_AUTO_PALETTE = 30;
+    private static final int ID_LINE_HEIGHT = 31;
     private static final int PRESET_BASE = 100;
     private static final int BUILTIN_BASE = 200;
 
@@ -88,6 +89,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final int[] ALPHAS = {255, 220, 190, 160, 120};
     private static final int[] RADII = {6, 10, 14, 18, 22};
     private static final float[] FONTS = {0.9f, 1f, 1.1f, 1.2f, 1.3f};
+    private static final float[] LINE_HEIGHTS = {1f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f};
     private static final int[] BG_ALPHAS = {255, 230, 205, 180, 150};
     private static final int[] DIMS = {0, 30, 60, 90, 120};
     private static final int[] BORDER_COLORS = {0, 0xFFFFFFFF, 0xFF111111, 0xFF7C5CFF, 0xFF2AABEE};
@@ -238,6 +240,9 @@ public class OxChatAppearanceActivity extends BaseFragment {
         items.add(SettingsActivity.SettingCell.Factory.of(ID_FONT, accent, dark, R.drawable.msg_theme,
                 LocaleController.getString(R.string.OxChatFontScale),
                 String.format("%.1fx", OxChatTheme.fontScale())));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_LINE_HEIGHT, accent, dark, R.drawable.msg_theme,
+                LocaleController.getString(R.string.OxChatLineHeight),
+                String.format("%.1fx", OxChatTheme.lineHeight())));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_FONT_FAMILY, accent, dark, R.drawable.msg_theme,
                 LocaleController.getString(R.string.OxChatFontFamily), fontLabel(OxChatTheme.fontPath())));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_CODE_FONT, accent, dark, R.drawable.msg_theme,
@@ -353,6 +358,9 @@ public class OxChatAppearanceActivity extends BaseFragment {
             rebuild();
         } else if (item.id == ID_FONT) {
             OxChatTheme.setFloat("font_scale", nextFloat(FONTS, OxChatTheme.fontScale()));
+            rebuild();
+        } else if (item.id == ID_LINE_HEIGHT) {
+            OxChatTheme.setFloat("line_height", nextFloat(LINE_HEIGHTS, OxChatTheme.lineHeight()));
             rebuild();
         } else if (item.id == ID_FONT_FAMILY) {
             OxChatTheme.setString("font_path", nextFont(OxChatTheme.fontPath(), false));

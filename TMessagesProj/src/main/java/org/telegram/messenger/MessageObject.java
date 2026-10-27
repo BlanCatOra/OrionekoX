@@ -9228,9 +9228,11 @@ public class MessageObject {
                 width -= AndroidUtilities.dp(15);
             }
 
+            final float lineMult = messageObject == null ? 1f
+                    : org.telegram.ox.OxChatTheme.lineHeightFor(messageObject.getDialogId());
             int textLayoutOriginalWidth;
             try {
-                textLayout = makeStaticLayout(text, textPaint, textLayoutOriginalWidth = width, 1f, 0f, false);
+                textLayout = makeStaticLayout(text, textPaint, textLayoutOriginalWidth = width, lineMult, 0f, false);
             } catch (Exception e) {
                 FileLog.e(e);
                 return;
@@ -9275,7 +9277,7 @@ public class MessageObject {
 
                     try {
                         textLayoutOriginalWidth = width;
-                        textLayout = makeStaticLayout(text, textPaint, width, 1f, 0f, false);
+                        textLayout = makeStaticLayout(text, textPaint, width, lineMult, 0f, false);
                     } catch (Exception e) {
                         FileLog.e(e);
                         return;
@@ -9395,7 +9397,7 @@ public class MessageObject {
                             sb = new SpannableString(text.subSequence(range.start, range.end));
                         }
                         block.originalWidth = textLayoutOriginalWidth = blockMaxWidth;
-                        textLayout = makeStaticLayout(sb, layoutPaint, blockMaxWidth, 1f, 0f, false);
+                        textLayout = makeStaticLayout(sb, layoutPaint, blockMaxWidth, lineMult, 0f, false);
                     } else {
                         block.originalWidth = textLayoutOriginalWidth;
                     }
@@ -9422,7 +9424,7 @@ public class MessageObject {
                             sb = SpannableString.valueOf(text.subSequence(startCharacter, endCharacter));
                         }
                         block.originalWidth = blockMaxWidth;
-                        block.textLayout = makeStaticLayout(sb, layoutPaint, blockMaxWidth, 1f, 0f, false);
+                        block.textLayout = makeStaticLayout(sb, layoutPaint, blockMaxWidth, lineMult, 0f, false);
 
                         block.height = block.textLayout.getHeight();
                         block.collapsedHeight = (int) Math.min(textPaint.getTextSize() * 1.4f * 3, block.height);

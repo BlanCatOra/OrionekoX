@@ -2555,6 +2555,22 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `9030915746d2…`）；debug `dist/OrionekoX-0.14.1-debug-arm64-x64.apk`（sha256
 `fc0758b06bc9…`）。详见 `docs/qa-0.14.1.md`。
 
+## 5.124 alpha 0.15.0 —— 消息行高（2026-10-27 21:34–21:56）
+
+- `OxChatTheme.Snapshot` 新增 `lineHeight`（默认 1.0，导入允许 0.8–1.8）；外观页
+  字号下方新增“消息行高”，循环 1.0–1.5×；全局、按 Agent、预设、JSON 与 `.oxtheme`
+  全部持久化。
+- 运行期 `lineHeightFor(dialogId)` 仅在当前自定义主题 Agent 会话返回倍率，
+  `MessageObject.TextLayoutBlocks` 的正文/引用/代码块统一使用；退出会话恢复 1.0。
+- 设备：设为 1.4× 后重进 `**Bold** Card`，长 Markdown 段落行距明显增大、气泡变高，
+  工具气泡/发气泡/背景无回归；导出新 `.oxtheme` 的 `theme.json` 含
+  `lineHeight=1.4`，导入预览显示“行高 1.4x · 含背景图”，取消不写入。
+- 版本规则：新增可调外观能力，按 minor 从 0.14.1 → 0.15.0。
+
+**产物**：`dist/OrionekoX-0.15.0-alpha-arm64-x64.apk`（versionCode 1509，sha256
+`c9b84a56eb8b…`）；debug `dist/OrionekoX-0.15.0-debug-arm64-x64.apk`（sha256
+`00619f056f8a…`）。详见 `docs/qa-0.15.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

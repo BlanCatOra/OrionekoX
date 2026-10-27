@@ -11894,6 +11894,7 @@
     <string name="OxChatOpacity">气泡透明度</string>
     <string name="OxChatRadius">气泡圆角</string>
     <string name="OxChatFontScale">消息字号</string>
+    <string name="OxChatLineHeight">消息行高</string>
     <string name="OxChatImport">导入主题 / 预设 JSON</string>
     <string name="OxChatImportInfo">Kelivo / RikkaHub 主题、Operit 外观 JSON 或已保存预设</string>
     <string name="OxChatSavePreset">保存当前为预设</string>
