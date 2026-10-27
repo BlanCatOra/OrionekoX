@@ -49,6 +49,8 @@ public class OxChatTheme {
     private static final String DIR_DIALOGS = "ox_chat_dialogs";
     private static final String DIR_FONTS = "oxfonts";
     private static final String BG_FILE = "ox_chat_bg";
+    private static String blurCacheKey = "";
+    private static android.graphics.Bitmap blurCacheBitmap;
 
     private static boolean applied;
     private static View appliedRoot;
@@ -89,6 +91,7 @@ public class OxChatTheme {
         public int background2 = 0xFFE8E4F0;
         public int backgroundAlpha = 255;
         public int backgroundDim = 0;
+        public int backgroundBlur = 0;
         public int gradientIndex = 0;
         public String backgroundImage = "";
         public int inBubble = 0xFFFFFFFF;
@@ -112,6 +115,7 @@ public class OxChatTheme {
             s.background2 = background2;
             s.backgroundAlpha = backgroundAlpha;
             s.backgroundDim = backgroundDim;
+            s.backgroundBlur = backgroundBlur;
             s.gradientIndex = gradientIndex;
             s.backgroundImage = backgroundImage;
             s.inBubble = inBubble;
@@ -138,6 +142,7 @@ public class OxChatTheme {
             o.put("background2Argb", background2);
             o.put("backgroundAlpha", backgroundAlpha);
             o.put("backgroundDim", backgroundDim);
+            o.put("backgroundBlur", backgroundBlur);
             o.put("gradientIndex", gradientIndex);
             o.put("backgroundImage", backgroundImage == null ? "" : backgroundImage);
             o.put("inBubbleArgb", inBubble);
@@ -161,6 +166,7 @@ public class OxChatTheme {
                     : hex(background) + (BG_GRADIENT.equals(backgroundMode) ? " → " + hex(background2) : ""))
                     + " · 收 " + hex(inBubble) + " · 发 " + hex(outBubble)
                     + " · " + Math.round(bubbleAlpha * 100f / 255f) + "%"
+                    + (backgroundBlur > 0 ? " · 模糊" + blurLabel(backgroundBlur) : "")
                     + " · " + cornerRadius + "dp"
                     + " · " + String.format("%.1fx", fontScale)
                     + (Math.abs(lineHeight - 1f) > 0.001f ? " · 行高 " + String.format("%.1fx", lineHeight) : "")
@@ -175,6 +181,13 @@ public class OxChatTheme {
 
     public static String hex(int color) {
         return String.format("#%06X", color & 0xFFFFFF);
+    }
+
+    public static String blurLabel(int level) {
+        if (level >= 3) return "强";
+        if (level == 2) return "中";
+        if (level == 1) return "轻";
+        return "关";
     }
 
     public static int darken(int color) {
@@ -324,6 +337,7 @@ public class OxChatTheme {
         s.background2 = p.getInt("background2", s.background2);
         s.backgroundAlpha = p.getInt("background_alpha", 255);
         s.backgroundDim = p.getInt("background_dim", 0);
+        s.backgroundBlur = p.getInt("background_blur", 0);
         s.gradientIndex = p.getInt("gradient_index", 0);
         s.backgroundImage = p.getString("background_image", "");
         s.inBubble = p.getInt("in_bubble", s.inBubble);
@@ -349,6 +363,7 @@ public class OxChatTheme {
                 .putInt("background2", s.background2)
                 .putInt("background_alpha", s.backgroundAlpha)
                 .putInt("background_dim", s.backgroundDim)
+                .putInt("background_blur", s.backgroundBlur)
                 .putInt("gradient_index", s.gradientIndex)
                 .putString("background_image", s.backgroundImage == null ? "" : s.backgroundImage)
                 .putInt("in_bubble", s.inBubble)
@@ -383,6 +398,7 @@ public class OxChatTheme {
     public static int background2() { return current().background2; }
     public static int backgroundAlpha() { return current().backgroundAlpha; }
     public static int backgroundDim() { return current().backgroundDim; }
+    public static int backgroundBlur() { return current().backgroundBlur; }
     public static int gradientIndex() { return current().gradientIndex; }
     public static String backgroundImage() { return current().backgroundImage; }
     public static int inBubble() { return current().inBubble; }
@@ -405,6 +421,7 @@ public class OxChatTheme {
             case "background2": s.background2 = value; break;
             case "background_alpha": s.backgroundAlpha = value; break;
             case "background_dim": s.backgroundDim = value; break;
+            case "background_blur": s.backgroundBlur = Math.max(0, Math.min(3, value)); break;
             case "gradient_index": s.gradientIndex = value; break;
             case "in_bubble": s.inBubble = value; break;
             case "out_bubble": s.outBubble = value; break;
@@ -772,6 +789,10 @@ public class OxChatTheme {
         if (has(o, "backgroundDim", "background_dim", "dim")) {
             s.backgroundDim = clamp(intValue(o, s.backgroundDim, "backgroundDim", "background_dim", "dim"), 0, 220);
         }
+        if (has(o, "backgroundBlur", "background_blur", "blur", "blurSigma", "blur_sigma")) {
+            s.backgroundBlur = clamp(intValue(o, s.backgroundBlur,
+                    "backgroundBlur", "background_blur", "blur", "blurSigma", "blur_sigma"), 0, 3);
+        }
         if (has(o, "gradientIndex", "gradient_index")) {
             s.gradientIndex = clamp(intValue(o, s.gradientIndex, "gradientIndex", "gradient_index"), 0, 2);
         }
@@ -1063,12 +1084,37 @@ public class OxChatTheme {
         return readPrefs();
     }
 
+    /** Downscaled + stack-blurred wallpaper; cached because applyToChat builds it repeatedly. */
+    private static android.graphics.Bitmap blurredBackground(File f, int level) {
+        String key = f.getAbsolutePath() + ":" + f.lastModified() + ":" + level;
+        if (key.equals(blurCacheKey) && blurCacheBitmap != null && !blurCacheBitmap.isRecycled()) {
+            return blurCacheBitmap;
+        }
+        android.graphics.Bitmap src = BitmapFactory.decodeFile(f.getAbsolutePath());
+        if (src == null) return null;
+        float scale = level >= 3 ? 8f : level == 2 ? 5f : 3f;
+        android.graphics.Bitmap blurred;
+        try {
+            blurred = org.telegram.messenger.Utilities.stackBlurBitmapWithScaleFactor(src, scale);
+        } catch (Throwable t) {
+            blurred = src;
+        }
+        blurCacheKey = key;
+        blurCacheBitmap = blurred;
+        return blurred;
+    }
+
     private static Drawable makeBackground(Snapshot s, android.content.res.Resources res) {
         Drawable base;
         String mode = s.backgroundMode == null ? BG_SOLID : s.backgroundMode;
         if (BG_IMAGE.equals(mode)) {
             File f = s.backgroundImage == null || s.backgroundImage.isEmpty() ? null : new File(s.backgroundImage);
-            android.graphics.Bitmap bmp = f != null && f.isFile() ? BitmapFactory.decodeFile(f.getAbsolutePath()) : null;
+            android.graphics.Bitmap bmp = null;
+            if (f != null && f.isFile()) {
+                bmp = s.backgroundBlur > 0
+                        ? blurredBackground(f, s.backgroundBlur)
+                        : BitmapFactory.decodeFile(f.getAbsolutePath());
+            }
             if (bmp != null) {
                 BitmapDrawable bd = new BitmapDrawable(res, bmp);
                 bd.setAlpha(clamp(s.backgroundAlpha, 0, 255));
@@ -1109,7 +1155,7 @@ public class OxChatTheme {
 
     public static void applyToChat(ChatActivity activity, long dialogId, View listView) {
         if (activity == null || listView == null) return;
-        if (!OxAgentsBridge.isAgentDialog(dialogId)) return;
+        if (!OxAgentsBridge.isAgentDialog(dialogId) && !org.telegram.ox.OxGroupStore.isLocalGroup(dialogId)) return;
         Snapshot s = forDialog(dialogId);
         if (!MODE_CUSTOM.equals(s.mode)) return;
         try {

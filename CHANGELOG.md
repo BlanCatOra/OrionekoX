@@ -4,6 +4,28 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.17.1 — 2026-10-27
+
+- Fixed per-chat appearance being skipped on the first open after a cold start:
+  the chat activity now re-applies the theme once the message list exists.
+- Local groups now honour per-conversation appearance, including background
+  blur; the group editor and scoped reset were verified on a local test group.
+- Clearing a chat/agent override now reports “已清除覆盖，现跟随上层外观”
+  instead of the global “reset to native” message.
+- QA note: `-gpu off` repeatedly crashed the emulator host renderer when a chat
+  opened; group verification used `-gpu guest`. This is an emulator limitation,
+  not an app FATAL/ANR, and a real-device/GPU pass is still pending.
+
+## 0.17.0 — 2026-10-27
+
+- True image-background blur with three levels (轻/中/强), implemented with a
+  cached stack blur at 3×/5×/8× downscale. The value travels through global
+  preferences, per-agent/per-chat JSON, presets and `.oxtheme`; imports accept
+  `backgroundBlur`, `background_blur`, `blur`, `blurSigma` and `blur_sigma`.
+- Device measurement on an agent chat: the visible wallpaper strip's grayscale
+  standard deviation fell from 29.54 (off) to 0.49–0.54 (strong), and edge
+  energy from 2.1 to 0.03.
+
 ## 0.16.0 — 2026-10-27
 
 - Per-conversation appearance: a new chat menu icon (local agent chats and local

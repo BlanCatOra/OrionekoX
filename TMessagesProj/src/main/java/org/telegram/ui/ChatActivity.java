@@ -29946,6 +29946,13 @@ public class ChatActivity extends BaseFragment implements
         if (getChatListView() != null) {
             org.telegram.ox.OxChatTheme.applyToChat(this, dialog_id, getChatListView());
         }
+        // The first onResume can arrive before the message list is built, which
+        // silently skipped the per-conversation theme. Retry once it exists.
+        AndroidUtilities.runOnUIThread(() -> {
+            if (!isFinishing() && getChatListView() != null) {
+                org.telegram.ox.OxChatTheme.applyToChat(this, dialog_id, getChatListView());
+            }
+        }, 500);
         if (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialog_id) && !agentLoadRetryScheduled) {
             agentLoadRetryScheduled = true;
             AndroidUtilities.runOnUIThread(this::retryAgentHistoryIfEmpty, 600);

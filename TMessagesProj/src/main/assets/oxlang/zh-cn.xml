@@ -11904,6 +11904,7 @@
     <string name="OxChatPresetApplied">已应用预设：%1$s</string>
     <string name="OxChatResetNative">重置为 Telegram 原生</string>
     <string name="OxChatResetScope">清除覆盖并跟随上层</string>
+    <string name="OxChatResetScopeDone">已清除覆盖，现跟随上层外观</string>
     <string name="OxChatResetDone">已恢复 Telegram 原生外观</string>
     <string name="OxChatApplyHint">重新进入 Agent 会话后生效。</string>
     <string name="OxChatImported">已导入外观：%1$s</string>
@@ -11927,6 +11928,7 @@
     <string name="OxChatGradientDiagonal">对角线</string>
     <string name="OxChatBgAlpha">背景不透明度</string>
     <string name="OxChatDim">背景暗化</string>
+    <string name="OxChatBgBlur">背景模糊</string>
     <string name="OxChatBubbleStyle">气泡样式</string>
     <string name="OxChatStyleSolid">实心</string>
     <string name="OxChatStyleFrosted">磨砂</string>

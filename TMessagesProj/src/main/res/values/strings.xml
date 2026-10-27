@@ -12053,6 +12053,7 @@
     <string name="OxChatPresetApplied">Applied preset: %1$s</string>
     <string name="OxChatResetNative">Reset to Telegram native</string>
     <string name="OxChatResetScope">Clear override and follow parent</string>
+    <string name="OxChatResetScopeDone">Override cleared; now following the parent appearance</string>
     <string name="OxChatResetDone">Reset to Telegram native appearance</string>
     <string name="OxChatApplyHint">Applies when you reopen an agent chat.</string>
     <string name="OxChatImported">Imported appearance: %1$s</string>
@@ -12076,6 +12077,7 @@
     <string name="OxChatGradientDiagonal">Diagonal</string>
     <string name="OxChatBgAlpha">Background opacity</string>
     <string name="OxChatDim">Background dimming</string>
+    <string name="OxChatBgBlur">Background blur</string>
     <string name="OxChatBubbleStyle">Bubble style</string>
     <string name="OxChatStyleSolid">Solid</string>
     <string name="OxChatStyleFrosted">Frosted</string>

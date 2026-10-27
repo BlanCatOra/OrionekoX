@@ -68,3 +68,15 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 - 竞品导入：Kelivo `ChatBubbleStyleOverrides` 字段、Kelivo/RikkaHub CustomTheme、Operit 主题备份（best-effort）。
 - 对比度/可读性提示：根据气泡色与文字色计算对比度，低于阈值时警告。
 - 原生模式：一键重置 + 跳转 Telegram 原生聊天外观/壁纸设置。
+
+## 0.17.1 回归与修复记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-22 | 0.17.0 QA | 冷启动后第一次进入本地 Agent 会话，按会话主题/背景模糊不生效，需进一次外观页再返回 | `ChatActivity.onResume` 在列表存在时延迟 500ms 重新 `applyToChat` | 0.17.1 已修复并设备验证 |
+| R2-23 | 0.17.0 QA | 本地群不应用按会话主题（`applyToChat` 只允许 Agent 会话） | 条件加入 `OxGroupStore.isLocalGroup` | 0.17.1 已修复；R2C 群首开消息与主题均正常 |
+| R2-24 | 0.17.1 QA | 会话/Agent 作用域“清除覆盖并跟随上层”实际只删本作用域文件，但提示“已恢复 Telegram 原生外观” | 新增 `OxChatResetScopeDone`，按作用域选择提示 | 0.17.1 已修复并设备验证 |
+| R2-25 | 环境 | `-gpu off` 下打开会话时 qemu `RenderThread` SIGSEGV，非应用 FATAL/ANR；禁用 WebView/Chrome、`-feature -Vulkan` 均无效 | 改用 `-gpu guest` 完成群会话 QA；待真机/GPU 复验 | 未关闭（环境限制） |
+| R2-26 | 0.17.1 QA | 群会话背景细节被气泡覆盖，未能单独做群聊模糊像素对比 | 群会话已确认使用同一 `makeBackground` 路径且 JSON/页面为“强”；补真机空白壁纸截图 | 待复验 |
+
+- 本轮未向真实联系人发送消息，未清理用户数据；测试后恢复 WebView/Chrome 并重新启用无障碍服务。
