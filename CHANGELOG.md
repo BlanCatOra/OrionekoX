@@ -4,6 +4,18 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.15.0 — 2026-10-27
+
+- Configurable message line height for agent chats: a new row below font size
+  cycles 1.0–1.5×, and the value persists in global/per-agent snapshots, named
+  presets, JSON exports and `.oxtheme` packages. Imports (including 0.8–1.8
+  values) recognise `lineHeight`, `line_height`, `lineSpacing` and
+  `line_spacing`.
+- `MessageObject.TextLayoutBlocks` applies the multiplier only to the currently
+  themed agent dialog, covering text, quote and code blocks; other Telegram
+  chats stay at 1.0. Verified at 1.4× on a long Markdown message, and the
+  exported theme's `theme.json` contained `lineHeight=1.4`.
+
 ## 0.14.1 — 2026-10-27
 
 - Theme every agent-chat bubble: the appearance snapshot now overrides all eight

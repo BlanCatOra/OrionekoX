@@ -23,6 +23,7 @@ requirements.
 | Bubble solid/frosted style switch | theme templates | yes | theme | **0.10.0** solid / frosted |
 | Chat font family | theme fonts | system/imported/Google Fonts | Google Sans/code font | **0.10.0** system/serif/mono/imported TTF |
 | Chat font size | yes | yes | yes | **0.9.0** scale, **0.10.0** 0.9–1.3× |
+| Message line height | yes | yes | yes | **0.15.0** 1.0–1.5× in UI, 0.8–1.8 accepted on import; persisted in presets/`.oxtheme` |
 | UI font / code font separately | theme assets | yes | yes | **0.10.0** separate chat/code fonts + TTF import; **0.11.0** assets in `.oxtheme` |
 | Dynamic color | theme studio | Material You | Material 3 Expressive | **0.13.0** palette derived from background image/gradient (not Material You) |
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete |
@@ -201,12 +202,25 @@ These confirm the feature directions rather than relying on guesses. Checked
   and readable white text, without sending new messages. Media bubble regression
   is covered by the same path but still needs an image-message screenshot.
 
+## 0.15.0 implementation — message line height
+
+- Appearance snapshot gains `lineHeight` (default 1.0, import range 0.8–1.8); the
+  page cycles 1.0–1.5× under message font size.
+- Persisted in global prefs, per-agent JSON, named presets, theme JSON and
+  `.oxtheme`; import aliases `lineHeight`/`line_height`/`lineSpacing` are read.
+- Runtime uses `OxChatTheme.lineHeightFor(dialogId)` inside
+  `MessageObject.TextLayoutBlocks`, so text, quote and code blocks all honour the
+  multiplier, only for the currently themed agent chat, and reset on close.
+- Device QA: set 1.4×, reopened `**Bold** Card` and saw wider line spacing without
+  losing bubble colors/tool bubbles; exported `.oxtheme` contained
+  `lineHeight=1.4`, and the import preview displayed `行高 1.4x · 含背景图`.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
-2. Line height, true background blur (current “frosted” is an alpha simulation),
-   and per-conversation (not only per-agent) themes.
+2. True background blur (current “frosted” is an alpha simulation) and
+   per-conversation (not only per-agent) themes.
 3. Kelivo/RikkaHub full backup import and preset-bundle export/import; an online
    preset marketplace remains out of scope.
 4. Persona-based appearance recommendation and live chat preview inside the

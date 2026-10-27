@@ -58,6 +58,7 @@ public class OxChatTheme {
     private static android.view.Window appliedWindow;
     private static int appliedStatusColor, appliedNavColor, appliedUiFlags;
     private static long appliedDialogId;
+    private static float appliedLineHeight = 1f;
     private static org.telegram.ui.ChatActivity.ThemeDelegate activityThemeDelegate;
     private static View appliedScrim;
     private static android.view.ViewGroup appliedScrimParent;
@@ -94,6 +95,7 @@ public class OxChatTheme {
         public int borderWidth = 0;
         public int textColor = 0;
         public float fontScale = 1f;
+        public float lineHeight = 1f;
         public String fontPath = "";
         public String codeFontPath = "";
 
@@ -116,6 +118,7 @@ public class OxChatTheme {
             s.borderWidth = borderWidth;
             s.textColor = textColor;
             s.fontScale = fontScale;
+            s.lineHeight = lineHeight;
             s.fontPath = fontPath;
             s.codeFontPath = codeFontPath;
             return s;
@@ -141,6 +144,7 @@ public class OxChatTheme {
             o.put("borderWidth", borderWidth);
             o.put("textArgb", textColor);
             o.put("fontScale", fontScale);
+            o.put("lineHeight", lineHeight);
             o.put("fontPath", fontPath == null ? "" : fontPath);
             o.put("codeFontPath", codeFontPath == null ? "" : codeFontPath);
             return o;
@@ -154,6 +158,7 @@ public class OxChatTheme {
                     + " · " + Math.round(bubbleAlpha * 100f / 255f) + "%"
                     + " · " + cornerRadius + "dp"
                     + " · " + String.format("%.1fx", fontScale)
+                    + (Math.abs(lineHeight - 1f) > 0.001f ? " · 行高 " + String.format("%.1fx", lineHeight) : "")
                     + (STYLE_FROSTED.equals(bubbleStyle) ? " · 磨砂" : "")
                     + (borderWidth > 0 ? " · 边框 " + borderWidth + "dp" : "");
         }
@@ -271,6 +276,7 @@ public class OxChatTheme {
         s.borderWidth = p.getInt("border_width", 0);
         s.textColor = p.getInt("text_color", 0);
         s.fontScale = p.getFloat("font_scale", 1f);
+        s.lineHeight = p.getFloat("line_height", 1f);
         s.fontPath = p.getString("font_path", "");
         s.codeFontPath = p.getString("code_font_path", "");
         return s;
@@ -295,6 +301,7 @@ public class OxChatTheme {
                 .putInt("border_width", s.borderWidth)
                 .putInt("text_color", s.textColor)
                 .putFloat("font_scale", s.fontScale)
+                .putFloat("line_height", s.lineHeight)
                 .putString("font_path", s.fontPath == null ? "" : s.fontPath)
                 .putString("code_font_path", s.codeFontPath == null ? "" : s.codeFontPath)
                 .apply();
@@ -328,6 +335,7 @@ public class OxChatTheme {
     public static int borderWidth() { return current().borderWidth; }
     public static int textColor() { return current().textColor; }
     public static float fontScale() { return current().fontScale; }
+    public static float lineHeight() { return current().lineHeight; }
     public static String fontPath() { return current().fontPath; }
     public static String codeFontPath() { return current().codeFontPath; }
 
@@ -366,6 +374,9 @@ public class OxChatTheme {
     public static void setFloat(String key, float value) {
         Snapshot s = current();
         if ("font_scale".equals(key)) s.fontScale = value;
+        else if ("line_height".equals(key)) {
+            s.lineHeight = Math.max(0.8f, Math.min(1.8f, value));
+        }
         persist(s);
     }
 
@@ -714,6 +725,8 @@ public class OxChatTheme {
         s.cornerRadius = clamp(intValue(o, s.cornerRadius, "cornerRadius", "bubbleCornerRadius", "corner_radius", "bubble_radius", "radius"), 0, 28);
         s.fontScale = Math.max(0.8f, Math.min(1.5f,
                 floatValue(o, s.fontScale, "fontScale", "font_scale", "fontSizeScale", "font_size", "message_font_scale")));
+        s.lineHeight = Math.max(0.8f, Math.min(1.8f,
+                floatValue(o, s.lineHeight, "lineHeight", "line_height", "lineSpacing", "line_spacing")));
         if (has(o, "bubbleStyle", "bubble_style")) {
             s.bubbleStyle = STYLE_FROSTED.equals(o.optString("bubbleStyle", o.optString("bubble_style")))
                     ? STYLE_FROSTED : STYLE_SOLID;
@@ -1065,6 +1078,7 @@ public class OxChatTheme {
                 appliedUiFlags = appliedWindow.getDecorView().getSystemUiVisibility();
             }
             appliedDialogId = dialogId;
+            appliedLineHeight = s.lineHeight > 0 ? s.lineHeight : 1f;
             final Snapshot fs = s;
             final android.content.res.Resources fres = res;
             applySystemBars(fs);
@@ -1204,6 +1218,14 @@ public class OxChatTheme {
         } catch (Throwable ignored) {
         }
         applied = false;
+        appliedLineHeight = 1f;
+        appliedDialogId = 0;
+    }
+
+    /** Line-height multiplier for message text in the currently themed agent chat. */
+    public static float lineHeightFor(long dialogId) {
+        if (!applied || dialogId == 0 || dialogId != appliedDialogId) return 1f;
+        return appliedLineHeight;
     }
 
     public static void setBackgroundImage(InputStream in) throws Exception {
