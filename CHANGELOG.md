@@ -4,6 +4,19 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.26.1 — 2026-10-28
+
+- Kelivo/Chatbox assistant import now reads `provider_configs_v1` from the backup
+  and wires each assistant through its `chatModelProvider`: base URL, API key and
+  the first model are taken from the referenced provider config, with the
+  assistant's `chatModelId` overriding the model name. Missing configs fall back
+  to a local provider.
+- Preview/result report how many provider configs were used, without showing keys.
+- Verified with a schema sample: the referenced provider's URL/model landed in the
+  imported agent, an unbound copilot fell back locally, and a repeat import
+  updated both existing agents. OAuth, multi-key, proxy and provider-specific
+  headers are not imported.
+
 ## 0.26.0 — 2026-10-28
 
 - Added Kelivo/Chatbox backup import for assistants: pick a zip or JSON and

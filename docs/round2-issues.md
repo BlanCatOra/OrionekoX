@@ -219,3 +219,12 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：样例 zip（1 copilot + 1 assistants_v1）预览 2；导入“新建 2”；Kelivo Assistant 的 prompt/model/0.5/0.9/256/X-Kelivo 正确；重复导入“新建 0，更新 2”，仍 2 个 Agent。
 - 清理测试助手与样例；无 Key 泄漏、无 FATAL/ANR。
+
+## 0.26.1 Kelivo Provider 接线 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-53 | 0.26.1 QA | 0.26.0 只把所有 Kelivo 助手接到本机第一个 Provider，忽略备份中的 provider_configs_v1 | 解析 provider id→配置，按 chatModelProvider 使用 baseUrl/apiKey/models；未命中的助手再回退 | 已修复 |
+
+- 设备：`prov-1` 的 baseUrl `https://kelivo.example/v1`、model `kelivo-test-model` 正确写入 Agent；Copilot 无引用时回退本机 Provider；重复导入仍 2 个 Agent；logcat 无测试 Key、无 FATAL/ANR。
+- 边界：OAuth/多 Key/代理/provider headers/body/Vertex 特殊配置未导入；仅保存被助手引用的 Provider。
