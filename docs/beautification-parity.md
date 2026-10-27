@@ -19,7 +19,7 @@ requirements.
 | Incoming/outgoing bubble colors | theme-v1 | yes (overrides) | theme | **0.9.0** colors + opacity |
 | Bubble border | theme-v1 | width/opacity/color | theme | **0.10.0** color + 1–3 dp width (device-verified) |
 | Bubble corner radius | theme-v1 | yes | Material shapes | **0.9.0** 6–22 dp override |
-| Bubble blur / frosted glass | glass surfaces | frosted style (sigma/opacity) | Material blur | **0.10.0** frosted style via reduced alpha; true background blur not implemented |
+| Bubble blur / frosted glass | glass surfaces | frosted style (sigma/opacity) | Material blur | **0.10.0** frosted style via reduced alpha; **0.17.0** true 3-level background-image blur (cached stack blur) |
 | Bubble solid/frosted style switch | theme templates | yes | theme | **0.10.0** solid / frosted |
 | Chat font family | theme fonts | system/imported/Google Fonts | Google Sans/code font | **0.10.0** system/serif/mono/imported TTF |
 | Chat font size | yes | yes | yes | **0.9.0** scale, **0.10.0** 0.9–1.3× |
@@ -29,7 +29,7 @@ requirements.
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; JSON export |
-| Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified, local-group entry code path only |
+| Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
 | Custom vs native mode | — | — | — | **0.9.0** two-mode switch |
 | Contrast / readability check | — | — | — | **0.10.0** WCAG-style check on device |
@@ -231,16 +231,50 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Inherited text color is not auto-adjusted when a chat-only bubble color is
   changed; the existing contrast row reports low-contrast combinations.
 
+## 0.17.0 implementation — true background blur
+
+- `backgroundBlur` (0–3) is part of the appearance snapshot and travels through
+  global prefs, per-agent/per-dialog JSON, presets, JSON export and `.oxtheme`;
+  imports accept `backgroundBlur` / `background_blur` / `blur` / `blurSigma` /
+  `blur_sigma` and clamp to 0–3.
+- Only image backgrounds blur: `Utilities.stackBlurBitmapWithScaleFactor` at
+  3×/5×/8× downscale, cached by path + mtime + level so repeated `applyToChat`
+  passes do not recompute. Solid and gradient backgrounds are unchanged.
+- Device measurement on the agent chat: the visible wallpaper strip’s grayscale
+  standard deviation dropped from 29.54 (off) to 0.49–0.54 (strong), edge energy
+  from 2.1 to 0.03; the pink wallpaper border became a soft gradient.
+- 0.17.0 exposed two application bugs: the first `onResume` could run before the
+  message list existed, skipping the theme until the editor was opened; and
+  `applyToChat` rejected local groups, so group per-chat themes never applied.
+
+## 0.17.1 fixes — first-open and local groups
+
+- `ChatActivity.onResume` now schedules one 500 ms re-apply, so a cold-start first
+  open renders the per-chat theme (font 1.15×, line height 1.4×, bubbles, border,
+  blurred wallpaper) without visiting the appearance page.
+- `applyToChat` accepts `OxGroupStore.isLocalGroup` as well as local agent
+  dialogs; a local group with a 3-level blurred image background and per-chat
+  colors/messages was opened on device after a cold start.
+- The scoped clear row now reports “已清除覆盖，现跟随上层外观” instead of the
+  global “已恢复 Telegram 原生外观”; it still deletes only the current scope
+  file and falls back to the agent/global snapshot.
+- Emulator note: `-gpu off` repeatedly crashed qemu’s host `RenderThread`
+  (SIGSEGV) when opening a chat. Disabling WebView/Chrome and `-feature -Vulkan`
+  did not help; group verification was completed under `-gpu guest` software
+  rendering. This is an emulator limitation, not an app FATAL/ANR, and still
+  needs a real-device/GPU pass.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
-2. True background blur (current “frosted” is an alpha simulation).
-3. Kelivo/RikkaHub full backup import and preset-bundle export/import; an online
+2. Kelivo/RikkaHub full backup import and preset-bundle export/import; an online
    preset marketplace remains out of scope.
-4. Persona-based appearance recommendation and live chat preview inside the
+3. Persona-based appearance recommendation and live chat preview inside the
    appearance editor.
+4. Per-conversation theme inheritance still copies the parent’s text color; a
+   low-contrast combination is reported by the check row but not auto-corrected.
 5. Re-run the third A/B/C round on current builds once a real-device/GPU pass can
-   confirm background layering; cover per-agent themes, font import/export,
-   preset preview, gradients, group albums, tool bubbles, literal `\n` in old
-   messages, skill dedupe/delete and local-agent search.
+   confirm background layering and blur on local groups; cover per-agent themes,
+   font import/export, preset preview, gradients, group albums, tool bubbles,
+   literal `\n` in old messages, skill dedupe/delete and local-agent search.

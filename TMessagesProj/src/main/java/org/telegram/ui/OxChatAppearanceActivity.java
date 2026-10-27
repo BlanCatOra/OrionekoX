@@ -65,6 +65,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final int ID_NATIVE_THEME = 29;
     private static final int ID_AUTO_PALETTE = 30;
     private static final int ID_LINE_HEIGHT = 31;
+    private static final int ID_BG_BLUR = 32;
     private static final int PRESET_BASE = 100;
     private static final int BUILTIN_BASE = 200;
 
@@ -92,6 +93,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final float[] LINE_HEIGHTS = {1f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f};
     private static final int[] BG_ALPHAS = {255, 230, 205, 180, 150};
     private static final int[] DIMS = {0, 30, 60, 90, 120};
+    private static final int[] BLURS = {0, 1, 2, 3};
     private static final int[] BORDER_COLORS = {0, 0xFFFFFFFF, 0xFF111111, 0xFF7C5CFF, 0xFF2AABEE};
     private static final int[] BORDER_WIDTHS = {0, 1, 2, 3};
     private static final int[] TEXT_COLORS = {0, 0xFFFFFFFF, 0xFF111111, 0xFF7C5CFF};
@@ -214,6 +216,9 @@ public class OxChatAppearanceActivity extends BaseFragment {
         items.add(SettingsActivity.SettingCell.Factory.of(ID_DIM, accent, dark, R.drawable.msg_theme,
                 LocaleController.getString(R.string.OxChatDim),
                 Math.round(OxChatTheme.backgroundDim() * 100f / 255f) + "%"));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_BG_BLUR, accent, dark, R.drawable.msg_theme,
+                LocaleController.getString(R.string.OxChatBgBlur),
+                OxChatTheme.blurLabel(OxChatTheme.backgroundBlur())));
         String image = OxChatTheme.backgroundImage();
         items.add(SettingsActivity.SettingCell.Factory.of(ID_BG_IMAGE, 0xFF2AABEE, 0xFF1488E1,
                 R.drawable.msg_download, LocaleController.getString(R.string.OxChatBackgroundImage),
@@ -322,8 +327,10 @@ public class OxChatAppearanceActivity extends BaseFragment {
         } else if (item.id == ID_NATIVE_THEME) {
             presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC));
         } else if (item.id == ID_RESET) {
+            boolean scoped = scopeDialogId != 0 || agentTgId != 0;
             OxChatTheme.resetNative();
-            toast(LocaleController.getString(R.string.OxChatResetDone));
+            toast(LocaleController.getString(
+                    scoped ? R.string.OxChatResetScopeDone : R.string.OxChatResetDone));
             rebuild();
         } else if (item.id == ID_BG_MODE) {
             String cur = OxChatTheme.backgroundMode();
@@ -344,6 +351,9 @@ public class OxChatAppearanceActivity extends BaseFragment {
             rebuild();
         } else if (item.id == ID_DIM) {
             OxChatTheme.setInt("background_dim", next(DIMS, OxChatTheme.backgroundDim()));
+            rebuild();
+        } else if (item.id == ID_BG_BLUR) {
+            OxChatTheme.setInt("background_blur", nextInt(BLURS, OxChatTheme.backgroundBlur()));
             rebuild();
         } else if (item.id == ID_BG_IMAGE) {
             pickImage();

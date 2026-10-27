@@ -2589,6 +2589,34 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `3e3880ecca14…`）；debug `dist/OrionekoX-0.16.0-debug-arm64-x64.apk`（sha256
 `9ac4028fb6a7…`）。详见 `docs/qa-0.16.0.md`。
 
+## 5.126 alpha 0.17.1 —— 真实背景模糊与按会话应用修正（2026-10-27 22:25–23:20）
+
+- 0.17.0 实现图片背景真实模糊：`backgroundBlur` 0–3，`stackBlurBitmapWithScaleFactor`
+  按 3×/5×/8× 降采样，结果按路径 + mtime + 级别缓存；外观页新增“背景模糊”，
+  JSON/prefs/预设/`.oxtheme` 与导入别名同步；纯色/渐变不受影响。
+- 设备测量：主题会话右侧壁纸条带灰度标准差由 29.54（关）降到 0.49–0.54（强），
+  边缘能量 2.1 → 0.03；见 `docs/screenshots/qa-0.17.0-blur-margin-compare.png`。
+- 0.17.1 修复冷启动首次进入会话时 `getChatListView()` 尚不存在导致主题/模糊
+  被跳过：`onResume` 增加 500 ms 重试；`applyToChat` 放行
+  `OxGroupStore.isLocalGroup`，本地群也可使用按会话外观；会话/Agent 作用域
+  的清除提示改为“已清除覆盖，现跟随上层外观”。
+- 设备：0.17.1 安装后底部为 `v0.17.1 (171)`；冷启动首次打开 R2B Agent 会话
+  立即显示 1.15× 字号、1.4× 行高、深色气泡、洋红边框与模糊背景；首次打开
+  R2C 本地群消息完整渲染并应用会话主题，外观页显示“背景模糊 强”，
+  `dialog_-1800000008.json` 含 `backgroundBlur=3`；群作用域写入/清除后
+  `dialog_-1800000007.json` 被删除，提示文案正确。
+- 环境：本次 QA 期间 `-gpu off` 多次在打开会话时令 qemu `RenderThread`
+  SIGSEGV（非应用 FATAL/ANR）；禁用 WebView/Chrome 与 `-feature -Vulkan`
+  无效，最终用 `-gpu swiftshader_indirect` / `-gpu guest` 完成群会话验证，
+  偏离原因与待复验项已写入 QA。代理曾在应用内被打开导致本地群不加载消息，
+  已通过设置关闭。未向真实联系人发消息，未清理用户数据。
+- 版本规则：0.17.0 新增能力（minor）；0.17.1 仅修复首次应用/群作用域/文案
+  （patch，versionCode 1719）。
+
+**产物**：`dist/OrionekoX-0.17.1-alpha-arm64-x64.apk`（versionCode 1719，sha256
+`ac1f54faaa92…`）；debug `dist/OrionekoX-0.17.1-debug-arm64-x64.apk`（sha256
+`a4630952a316…`）。0.17.0 产物保留在 `dist/`。详见 `docs/qa-0.17.1.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
