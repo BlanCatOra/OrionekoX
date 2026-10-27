@@ -62,8 +62,11 @@
 - 截图：`docs/screenshots/qa-0.28.0-kelivo-conv-preview.jpg`、
   `qa-0.28.0-kelivo-conv-result.jpg`、`qa-0.28.0-kelivo-conv-chat.jpg`、
   `qa-0.28.0-json-preview.jpg`、`qa-0.28.0-json-chat.jpg`。
+- 最终构建复核：用 sha256 `7cff4b8b…` 的 release 重跑 zip 首次导入，
+  预览 `3 段/7 条`、结果 `Imported 3 conversations (7 messages)`、原生
+  “当前话题”三条气泡均与上表一致，对话截图取自该最终构建。
 - 清理：删除 4 个测试 Agent 目录与 Downloads 样例；重启后
-  dialogs/messages_v2 中 555000053–555000056 均为 0 行；无本包 FATAL/ANR
+  dialogs/messages_v2 中 555000053–555000059 均为 0 行；无本包 FATAL/ANR
   （crash buffer 只有 `sh.orioneko.messenger` 的旧 VPN 记录，与本包无关）。
 
 ## 3. 未覆盖 / 已知边界
