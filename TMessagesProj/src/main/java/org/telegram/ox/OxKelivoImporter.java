@@ -10,8 +10,10 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -41,6 +43,7 @@ public class OxKelivoImporter {
 
     private static class Archive {
         final List<JSONObject> assistants = new ArrayList<>();
+        final Map<String, JSONObject> providers = new HashMap<>();
     }
 
     public static Preview preview(Context context, Uri uri) throws Exception {
@@ -58,13 +61,17 @@ public class OxKelivoImporter {
             if (existing.contains(id)) p.existing++;
         }
         p.notes.add("仅导入 Kelivo / Chatbox 备份中的助手与人设；不含对话、Provider 密钥、技能与 MCP。");
+        if (!archive.providers.isEmpty()) {
+            p.notes.add("将使用备份中的 " + archive.providers.size() + " 个 Provider 配置为助手接线。");
+        }
         return p;
     }
 
     public static Result importFrom(Context context, Uri uri) throws Exception {
         Archive archive = read(context, uri);
         Result r = new Result();
-        OxAgent provider = existingProvider();
+        OxAgent fallback = existingProvider();
+        Set<String> providersUsed = new HashSet<>();
         for (JSONObject o : archive.assistants) {
             String name = name(o);
             String id = agentId(o.optString("id", ""), name);
@@ -92,11 +99,20 @@ public class OxKelivoImporter {
             a.maxTokens = o.optInt("maxTokens", 0);
             a.toolChoice = "auto";
             a.parallelToolCalls = true;
-            if (provider != null) {
-                a.baseUrl = provider.baseUrl;
-                a.apiKey = provider.apiKey;
-                a.model = provider.model;
-                a.contextLength = provider.contextLength;
+            String providerKey = o.optString("chatModelProvider", "").trim();
+            JSONObject providerConfig = archive.providers.get(providerKey);
+            String baseUrl = providerConfig == null ? "" : providerConfig.optString("baseUrl", "").trim();
+            if (providerConfig != null && !baseUrl.isEmpty()) {
+                a.baseUrl = baseUrl;
+                a.apiKey = providerConfig.optString("apiKey", "");
+                a.model = firstModel(providerConfig);
+                a.contextLength = 0;
+                providersUsed.add(providerKey);
+            } else if (fallback != null) {
+                a.baseUrl = fallback.baseUrl;
+                a.apiKey = fallback.apiKey;
+                a.model = fallback.model;
+                a.contextLength = fallback.contextLength;
             } else {
                 a.baseUrl = "";
                 a.apiKey = "";
@@ -111,7 +127,10 @@ public class OxKelivoImporter {
             if (update) r.updated++;
             else r.created++;
         }
-        if (provider == null) {
+        if (!providersUsed.isEmpty()) {
+            r.notes.add("使用备份中的 " + providersUsed.size() + " 个 Provider 配置接线");
+        }
+        if (providersUsed.isEmpty() && fallback == null) {
             r.notes.add("没有找到可继承的 Provider，导入的助手将按离线模式运行");
         }
         return r;
@@ -183,6 +202,8 @@ public class OxKelivoImporter {
 
     private static void scan(JSONObject o, Archive out, int depth) {
         if (o == null || depth > 3) return;
+        addProviders(o.opt("provider_configs_v1"), out);
+        addProviders(o.opt("providers"), out);
         JSONArray direct = o.optJSONArray("myCopilots");
         if (direct != null) addArray(direct, out);
         Object assistants = o.opt("assistants_v1");
@@ -193,6 +214,43 @@ public class OxKelivoImporter {
             Object v = o.opt(keys.optString(i));
             if (v instanceof JSONObject) scan((JSONObject) v, out, depth + 1);
         }
+    }
+
+    private static void addProviders(Object value, Archive out) {
+        try {
+            if (value instanceof String) {
+                String s = ((String) value).trim();
+                if (s.startsWith("[")) addProviders(new JSONArray(s), out);
+                else if (s.startsWith("{")) addProviders(new JSONObject(s), out);
+            } else if (value instanceof JSONArray) {
+                JSONArray arr = (JSONArray) value;
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject p = arr.optJSONObject(i);
+                    if (p != null) addProvider(p, "", out);
+                }
+            } else if (value instanceof JSONObject) {
+                JSONObject map = (JSONObject) value;
+                if (!map.optString("baseUrl", "").isEmpty()) {
+                    addProvider(map, "", out);
+                    return;
+                }
+                JSONArray keys = map.names();
+                for (int i = 0; keys != null && i < keys.length(); i++) {
+                    String key = keys.optString(i);
+                    JSONObject p = map.optJSONObject(key);
+                    if (p != null) addProvider(p, key, out);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void addProvider(JSONObject p, String fallbackId, Archive out) {
+        if (p == null) return;
+        String id = p.optString("id", p.optString("name", fallbackId)).trim();
+        String baseUrl = p.optString("baseUrl", "").trim();
+        if (id.isEmpty() || baseUrl.isEmpty()) return;
+        out.providers.put(id, p);
     }
 
     private static void addValue(Object value, Archive out) {
@@ -265,6 +323,23 @@ public class OxKelivoImporter {
             }
         }
         return null;
+    }
+
+    private static String firstModel(JSONObject provider) {
+        JSONArray models = provider.optJSONArray("models");
+        for (int i = 0; models != null && i < models.length(); i++) {
+            Object value = models.opt(i);
+            if (value instanceof String) {
+                String model = ((String) value).trim();
+                if (!model.isEmpty()) return model;
+            } else if (value instanceof JSONObject) {
+                JSONObject model = (JSONObject) value;
+                String id = model.optString("apiModelId", model.optString("id",
+                        model.optString("modelId", ""))).trim();
+                if (!id.isEmpty()) return id;
+            }
+        }
+        return "";
     }
 
     private static JSONArray headers(JSONArray list) {

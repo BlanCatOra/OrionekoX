@@ -2886,6 +2886,24 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `bdf2b2a2d03e…`）；debug `dist/OrionekoX-0.26.0-debug-arm64-x64.apk`（sha256
 `f02f1a18c1ea…`）。详见 `docs/qa-0.26.0.md`。
 
+## 5.141 alpha 0.26.1 —— Kelivo Provider 配置接线（2026-10-28 03:50–04:02）
+
+- 解析 `provider_configs_v1`（JSON 字符串/数组/映射）建立
+  provider id→配置；助手 `chatModelProvider` 命中时使用备份的 baseUrl/apiKey，
+  模型取 `chatModelId` 或 models 首个；未命中回退本机 Provider，再没有则离线。
+- 预览/结果增加“使用备份中的 N 个 Provider 配置”提示；不显示 Key。
+- 设备（schema 样例）：Claude Assistant 关联 `prov-1` 后
+  `base_url=https://kelivo.example/v1`、`model=kelivo-test-model`；Copilot
+  正确回退本机 Provider；重复导入仍 2 个 Agent；logcat 测试 Key 命中 0。
+- 边界：Provider OAuth/多 Key/代理/headers/body/Vertex 特殊配置未导入；
+  仅保存被助手引用的 Provider；models 只取第一个；真实备份待复测。
+- 版本规则：仅补既有导入的 Provider 映射，按 patch 从 0.26.0 → 0.26.1，
+  versionCode 2619。
+
+**产物**：`dist/OrionekoX-0.26.1-alpha-arm64-x64.apk`（versionCode 2619，sha256
+`18cd44f4e3d3…`）；debug `dist/OrionekoX-0.26.1-debug-arm64-x64.apk`（sha256
+`e0e1eb8209ab…`）。详见 `docs/qa-0.26.1.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

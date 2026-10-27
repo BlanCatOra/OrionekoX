@@ -475,9 +475,13 @@ These confirm the feature directions rather than relying on guesses. Checked
   Kelivo assistant kept its prompt/model/0.5/0.9/256/X-Kelivo header, and a repeat
   import reported 0 created/2 updated with exactly two agents. Test objects and
   the sample were removed.
-- Limits: assistants only; Provider keys/configs, conversations, skills, MCP,
-  workspaces, avatars/backgrounds, preset messages and regex rules are not
-  imported. A real Kelivo export still needs a compatibility pass.
+- Limits: assistants only; conversations, skills, MCP, workspaces,
+  avatars/backgrounds, preset messages and regex rules are not imported. A real
+  Kelivo export still needs a compatibility pass.
+- **0.26.1** adds Provider wiring: `provider_configs_v1` becomes an id→config
+  map, assistants use their `chatModelProvider` baseUrl/apiKey and the first model
+  when `chatModelId` is absent, otherwise they fall back to the local provider.
+  OAuth/multi-key/proxy/provider-specific headers are still skipped.
 
 ## Gaps / next phases
 
