@@ -12102,6 +12102,7 @@
     <string name="OxChatPresetRenamed">Renamed preset: %1$s</string>
     <string name="OxChatPresetExists">A preset with that name already exists</string>
     <string name="OxChatRename">Rename</string>
+    <string name="OxChatPreviewPreset">Preview</string>
     <string name="OxChatPresetNameHint">Preset name</string>
     <string name="OxChatDeletePresetMsg">Delete this preset?</string>
     <string name="OxChatBgPicked">Background image applied</string>

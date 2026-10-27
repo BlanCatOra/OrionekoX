@@ -2920,6 +2920,22 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `033b4c544e66…`）；debug `dist/OrionekoX-0.26.2-debug-arm64-x64.apk`（sha256
 `3ed2cc9252bd…`）。详见 `docs/qa-0.26.2.md`。
 
+## 5.143 alpha 0.27.0 —— 命名预设预览（2026-10-28 04:16–04:26）
+
+- 预览逻辑改为接受任意 Snapshot；新增 `currentSnapshot`/`presetSnapshot`/
+  `backgroundDrawableFor`/`typefaceFor`。长按预设菜单改为
+  `预览 / 重命名 / 删除`，预览只读取预设 JSON，不写入当前作用域。
+- 设备：当前为图片背景主题，预览 DarkSea 预设显示其黑色纯色背景与浅绿气泡；
+  关闭后 `ox_chat_theme.xml` mtime 未变，当前主题仍为原图片背景。
+- 边界：预览仍是轻量示例，不含媒体/工具/引用/头像；缺失资产会按回退字段绘制；
+  不支持预览内编辑或并排比较。无 FATAL/ANR。
+- 版本规则：新增可见的预设管理能力，按 minor 从 0.26.2 → 0.27.0，
+  versionCode 2709。
+
+**产物**：`dist/OrionekoX-0.27.0-alpha-arm64-x64.apk`（versionCode 2709，sha256
+`84e5b96cf0b7…`）；debug `dist/OrionekoX-0.27.0-debug-arm64-x64.apk`（sha256
+`bf3de1b56330…`）。详见 `docs/qa-0.27.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

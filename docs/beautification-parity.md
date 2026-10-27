@@ -26,7 +26,7 @@ requirements.
 | Message line height | yes | yes | yes | **0.15.0** 1.0–1.5× in UI, 0.8–1.8 accepted on import; persisted in presets/`.oxtheme` |
 | UI font / code font separately | theme assets | yes | yes | **0.10.0** separate chat/code fonts + TTF import; **0.11.0** assets in `.oxtheme` |
 | Dynamic color | theme studio | Material You | Material 3 Expressive | **0.13.0** palette derived from background image/gradient (not Material You) |
-| Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete; **0.25.2** rename with duplicate-name rejection |
+| Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete; **0.25.2** rename with duplicate-name rejection; **0.27.0** preview a saved preset without applying it |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
 | Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; conversations, provider keys, skills and MCP not imported |
@@ -494,6 +494,18 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: the radius threshold is heuristic; solid/gradient backgrounds show no
   visible blur; 9-patch assets, input styles, avatar shapes, padding/crop/repeat
   and video backgrounds remain unmapped.
+
+## 0.27.0 implementation — preset preview
+
+- The appearance preview now takes any snapshot; `presetSnapshot` reads the stored
+  preset JSON without touching the active scope. Long-press preset menu offers
+  预览 / 重命名 / 删除.
+- Device QA: with an image-background global theme, previewing DarkSea showed its
+  black solid background and light green bubbles, while the current theme's prefs
+  file was unchanged after closing (mtime stayed at 02:20).
+- Limits: the preview is the same lightweight sample (no media/tool bubbles,
+  replies, avatars or real wrapping); missing preset assets fall back to inherited
+  fields; no editing or side-by-side comparison.
 
 ## Gaps / next phases
 
