@@ -28,6 +28,7 @@ requirements.
 | Dynamic color | theme studio | Material You | Material 3 Expressive | **0.13.0** palette derived from background image/gradient (not Material You) |
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
+| RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP from `settings.json` with preview and idempotent update; DB, attachments, skills, OAuth and SSE MCP not imported |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -284,12 +285,30 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: font assets were not exercised by the test presets, assets over 8 MB are
   skipped on export, and the mid-write rollback path is code-reviewed only.
 
+## 0.19.0 implementation — RikkaHub settings import
+
+- Ox Settings now accepts a RikkaHub backup zip or its `settings.json` through the
+  system picker and previews assistant/provider/MCP counts before writing.
+- Providers (`openai`/`google`/`claude`) supply base URL, key and per-model context;
+  assistants map name, system prompt, emoji avatar, temperature, topP, maxTokens and
+  reasoning level; streamable-HTTP MCP servers map URL, name, enabled state and
+  headers. SSE MCP and OAuth tokens are skipped.
+- Agent ids are `rikka_<assistant UUID>`, so a repeated import updates the same
+  agents and preserves `tg_id`/custom avatars; MCP servers are deduplicated by URL.
+  A schema-derived sample verified preview, creation, idempotent update, headers and
+  rejection of a non-RikkaHub JSON without any writes; no app FATAL/ANR and no test
+  key appeared in previews or logcat.
+- Not covered: the RikkaHub database/conversations, attachments, skills, workspaces,
+  lorebooks, quick messages, custom assistant headers, image avatars, opening
+  messages, enabled skills, OAuth and SSE transports. A real RikkaHub export still
+  needs to be used for a compatibility pass.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
-2. Kelivo/RikkaHub full backup import; an online preset marketplace remains out
-   of scope. Preset-bundle export/import is covered by 0.18.0.
+2. Kelivo full backup import; RikkaHub chat database/attachments/skills and
+   standalone providers. Preset-bundle export/import is covered by 0.18.0.
 3. Persona-based appearance recommendation and live chat preview inside the
    appearance editor.
 4. Per-conversation theme inheritance still copies the parent’s text color; a

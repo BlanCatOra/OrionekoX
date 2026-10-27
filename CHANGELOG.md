@@ -4,6 +4,21 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.19.0 — 2026-10-28
+
+- Added RikkaHub backup import: pick a backup zip or `settings.json` and preview
+  the assistants, referenced providers and streamable-HTTP MCP servers before
+  writing.
+- Assistants map their system prompt, model wiring, emoji avatar, temperature,
+  topP, max tokens and reasoning level. Repeat imports update agents with ids
+  `rikka_<assistant UUID>` while preserving `tg_id` and custom avatars; MCP
+  servers are deduplicated by URL.
+- The chat database, attachments, skills, OAuth tokens and SSE MCP servers are
+  intentionally skipped. Preview and result dialogs never show API keys.
+- A schema-derived sample verified preview, create, idempotent update, headers
+  and rejection of a non-RikkaHub file; the test agents and MCP entry were
+  removed afterwards. A real RikkaHub export is still needed for a full pass.
+
 ## 0.18.0 — 2026-10-27
 
 - Added portable preset bundles (`.oxthemes`): a zip with `bundle.json` and the
