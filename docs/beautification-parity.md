@@ -12,30 +12,30 @@ requirements.
 | Feature | Operit/Operit2 | Kelivo | RikkaHub | OrionekoX |
 |---|---|---|---|---|
 | Accent / seed color | yes | yes (primary/secondary/tertiary) | yes (CustomTheme) | **0.8.107** import + presets, Ox-owned surfaces |
-| Light/dark | yes | yes | yes (Material 3) | Telegram native |
+| Light/dark | yes | yes | yes (Material 3) | Telegram native; Operit `theme_mode` maps the background base color |
 | Chat background color | theme-v1 background | yes | theme surfaces | **0.9.0** custom background color |
-| Chat background image | theme-v1 media (PNG/JPEG/9-patch) | yes + gradient | wallpaper support | **0.9.0** image picker/import, alpha |
-| Background gradient / dimming | theme-v1 | yes | yes | planned |
+| Chat background image | theme-v1 media (PNG/JPEG/9-patch) | yes + gradient | wallpaper support | **0.9.0** picker/import, opacity; **0.11.0** travels in `.oxtheme` |
+| Background gradient / dimming | theme-v1 | yes | yes | **0.10.0** two-color gradients (3 directions), opacity, dim; gradient directions only spot-checked |
 | Incoming/outgoing bubble colors | theme-v1 | yes (overrides) | theme | **0.9.0** colors + opacity |
-| Bubble border | theme-v1 | width/opacity/color | theme | planned |
+| Bubble border | theme-v1 | width/opacity/color | theme | **0.10.0** color + 1–3 dp width (device-verified) |
 | Bubble corner radius | theme-v1 | yes | Material shapes | **0.9.0** 6–22 dp override |
-| Bubble blur / frosted glass | glass surfaces | frosted style (sigma/opacity) | Material blur | planned |
-| Bubble solid/frosted style switch | theme templates | yes | theme | planned |
-| Chat font family | theme fonts | system/imported/Google Fonts | Google Sans/code font | planned |
-| Chat font size | yes | yes | yes | **0.9.0** scale 0.9–1.2 |
-| UI font / code font separately | theme assets | yes | yes | planned |
-| Dynamic color | theme studio | Material You | Material 3 Expressive | planned |
+| Bubble blur / frosted glass | glass surfaces | frosted style (sigma/opacity) | Material blur | **0.10.0** frosted style via reduced alpha; true background blur not implemented |
+| Bubble solid/frosted style switch | theme templates | yes | theme | **0.10.0** solid / frosted |
+| Chat font family | theme fonts | system/imported/Google Fonts | Google Sans/code font | **0.10.0** system/serif/mono/imported TTF |
+| Chat font size | yes | yes | yes | **0.9.0** scale, **0.10.0** 0.9–1.3× |
+| UI font / code font separately | theme assets | yes | yes | **0.10.0** separate chat/code fonts + TTF import; **0.11.0** assets in `.oxtheme` |
+| Dynamic color | theme studio | Material You | Material 3 Expressive | **0.13.0** palette derived from background image/gradient (not Material You) |
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete |
-| Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON import (color keys) |
-| Theme export / share | ToolPkg | copy JSON | export presets | planned |
-| Per-chat / per-agent theme | theme configs | chat themes | per-assistant | custom mode is per-agent-chat runtime; **not persisted per agent yet** |
+| Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
+| Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; JSON export |
+| Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** persisted per Agent (`files/ox_chat_agents/`), fallback to global; not per single chat |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
 | Custom vs native mode | — | — | — | **0.9.0** two-mode switch |
-| Contrast / readability check | — | — | — | planned (innovation) |
-| Preset marketplace / one-tap apply | ToolPkg catalog | — | preset list | planned (innovation) |
-| Wallpaper ↔ bubble coordination | — | — | — | planned (innovation) |
-| AMOLED / pure black | theme | yes | yes | via Telegram themes |
-| Import preview / rollback | ToolPkg validation | preview? | — | **0.8.112** preview for MCP; appearance import needs preview |
+| Contrast / readability check | — | — | — | **0.10.0** WCAG-style check on device |
+| Preset marketplace / one-tap apply | ToolPkg catalog | — | preset list | **0.12.0** six built-in themes + one-tap apply; no online marketplace |
+| Wallpaper ↔ bubble coordination | — | — | — | **0.13.0** auto palette from current background (device-verified) |
+| AMOLED / pure black | theme | yes | yes | **0.12.0** built-in AMOLED theme; Telegram themes also native |
+| Import preview / rollback | ToolPkg validation | preview? | — | **0.10.0** appearance preview before write; invalid input leaves state unchanged |
 
 ## Community pain points (to validate next research pass)
 
@@ -170,14 +170,37 @@ These confirm the feature directions rather than relying on guesses. Checked
 - This closes the “wallpaper ↔ bubble coordination / dynamic color” innovation
   gap and complements the manual per-agent colors.
 
+## 0.14.0 implementation — Operit preference JSON import
+
+- The appearance parser now unwraps Operit’s nested `values` object and maps
+  `bubble_ai_bubble_color`, `bubble_user_bubble_color`, AI/user text colors,
+  `font_scale`, `background_image_opacity`, `theme_mode`, glass/blur flags and
+  `custom_primary_color` (border).
+- The existing preview → confirm → write path is reused, so an Operit backup is
+  shown as a summary before it touches the current scope and invalid input does
+  not change state.
+- Device QA: preview `收 #2D2A45 · 发 #7C5CFF · 80% · 16dp · 1.1x · 磨砂 · 边框
+  #FF2D95 1dp`; the applied page matched every row and the agent chat rendered
+  purple bubbles, white text and the pink border over the existing wallpaper.
+- Import merges onto the current snapshot: fields absent from the Operit file
+  (background image, fonts) are inherited, and the preview shows those inherited
+  values. This is deliberate for “restore my colors onto my current wallpaper”,
+  but users wanting a clean slate should reset first.
+- Not covered: Operit 9-patch bubble bitmaps, avatar/font URIs, per-bubble padding
+  and image crop rectangles.
+
 ## Gaps / next phases
 
-1. Full Operit theme-v1 mapping (background images, 9-patch, fonts, input styles,
-   bubble borders) and preview/rollback.
-2. Bubble border, frosted/solid switch, gradient backgrounds, separate chat/code fonts
-  and sizes, line height, AMOLED/contrast.
-3. Persist per-agent themes, add “apply to all agents”, and export presets with their
-   wallpaper/font assets.
-4. Contrast/readability check and live preview before applying.
-5. Re-run multi-round QA after the 0.10.0 batch, including background-image import,
-   preset export/import round-trip, and per-agent isolation.
+1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
+   input styles, per-bubble padding and image cropping.
+2. Line height, true background blur (current “frosted” is an alpha simulation),
+   per-conversation (not only per-agent) themes, and theming the Agent tool-call
+   status bubbles (still native white).
+3. Kelivo/RikkaHub full backup import and preset-bundle export/import; an online
+   preset marketplace remains out of scope.
+4. Persona-based appearance recommendation and live chat preview inside the
+   appearance editor.
+5. Re-run the third A/B/C round on current builds once a real-device/GPU pass can
+   confirm background layering; cover per-agent themes, font import/export,
+   preset preview, gradients, group albums, tool bubbles, literal `\n` in old
+   messages, skill dedupe/delete and local-agent search.

@@ -632,6 +632,56 @@ public class OxChatTheme {
     }
 
     private static Snapshot parseJsonObject(JSONObject o, Snapshot s) throws Exception {
+        JSONObject nested = o.optJSONObject("values");
+        if (nested != null) {
+            JSONObject merged = new JSONObject();
+            java.util.Iterator<String> keys = nested.keys();
+            while (keys.hasNext()) {
+                String k = keys.next();
+                merged.put(k, nested.opt(k));
+            }
+            if (o.has("name")) merged.put("name", o.optString("name", ""));
+            o = merged;
+        }
+        // Operit / Operit2 appearance snapshot keys.
+        boolean operit = o.has("bubble_ai_bubble_color") || o.has("bubble_user_bubble_color")
+                || o.has("bubble_ai_text_color") || o.has("bubble_user_text_color")
+                || o.has("bubble_ai_bubble_liquid_glass") || o.has("bubble_ai_bubble_water_glass")
+                || o.has("bubble_user_bubble_liquid_glass") || o.has("bubble_user_bubble_water_glass");
+        if (operit) {
+            int ai = color(o, "bubble_ai_bubble_color", "bubble_ai_color");
+            int user = color(o, "bubble_user_bubble_color", "bubble_user_color");
+            if (ai != 0) s.inBubble = ai;
+            if (user != 0) s.outBubble = user;
+            int aiText = color(o, "bubble_ai_text_color");
+            int userText = color(o, "bubble_user_text_color");
+            if (aiText != 0 && userText != 0 && aiText == userText) s.textColor = aiText;
+            else if (aiText != 0) s.textColor = aiText;
+            else if (userText != 0) s.textColor = userText;
+            if (o.has("font_scale")) {
+                s.fontScale = Math.max(0.8f, Math.min(1.5f, (float) o.optDouble("font_scale", s.fontScale)));
+            }
+            if (o.has("background_image_opacity")) {
+                float op = (float) o.optDouble("background_image_opacity", 1.0);
+                s.backgroundAlpha = Math.max(0, Math.min(255, Math.round(op * 255f)));
+            }
+            String themeMode = o.optString("theme_mode", "");
+            if (!themeMode.isEmpty()) {
+                s.background = "dark".equalsIgnoreCase(themeMode) ? 0xFF101114 : 0xFFF3F1F7;
+            }
+            if (o.optBoolean("use_background_blur", false)
+                    || o.optBoolean("bubble_ai_bubble_liquid_glass", false)
+                    || o.optBoolean("bubble_ai_bubble_water_glass", false)
+                    || o.optBoolean("bubble_user_bubble_liquid_glass", false)
+                    || o.optBoolean("bubble_user_bubble_water_glass", false)) {
+                s.bubbleStyle = STYLE_FROSTED;
+            }
+            int primary = color(o, "custom_primary_color", "custom_secondary_color");
+            if (primary != 0) {
+                s.borderColor = primary;
+                s.borderWidth = 1;
+            }
+        }
         if (o.has("mode")) s.mode = MODE_CUSTOM.equals(o.optString("mode")) ? MODE_CUSTOM : s.mode;
         if (o.has("backgroundMode")) s.backgroundMode = o.optString("backgroundMode", s.backgroundMode);
         int bg = color(o, "backgroundArgb", "backgroundColorArgb", "background", "background_color",

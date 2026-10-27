@@ -4,6 +4,18 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.14.0 — 2026-10-27
+
+- Import Operit / Operit2 appearance backups: unwraps the nested `values`
+  object and maps AI/user bubble and text colors, font scale, background
+  opacity, theme mode, glass flags and the primary color (border). The same
+  preview → confirm → write path is used, so invalid or unrelated JSON leaves
+  the current theme untouched. Operit detection requires Operit-specific keys,
+  so Kelivo/RikkaHub files are not misread as Operit.
+- Verified on device with an Operit preference file: preview and applied rows
+  matched, and an agent chat rendered the mapped purple bubbles, white text and
+  pink 1dp border over the retained wallpaper.
+
 ## 0.13.0 — 2026-10-27
 
 - “Auto palette from background”: samples the wallpaper (or averages the

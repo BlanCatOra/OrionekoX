@@ -2521,6 +2521,23 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
   `08a983b1e39a…`）；debug `dist/OrionekoX-0.13.0-debug-arm64-x64.apk`（sha256
   `14ba073efeb6…`）。详见 `docs/qa-0.13.0.md`。
 
+## 5.122 alpha 0.14.0 —— Operit 外观偏好 JSON 导入（2026-10-27 20:50–21:02）
+
+- `OxChatTheme.parseJsonObject` 解包 Operit 备份的嵌套 `values`，映射 AI/用户气泡色、
+  AI/用户文字色、`font_scale`、`background_image_opacity`、`theme_mode`、玻璃/模糊
+  开关与 `custom_primary_color`（边框）；沿用预览→确认→写入链路。
+- 设备：`operit-appearance.json` 预览为 `收 #2D2A45 · 发 #7C5CFF · 80% · 16dp ·
+  1.1x · 磨砂 · 边框 #FF2D95 1dp`；应用后外观页逐项一致，Agent 会话显示紫色气泡、
+  白字、洋红细边框，背景图继续沿用。
+- 导入按“当前快照 + 命中字段覆盖”合并，预览会显示继承的背景图/字体；未覆盖 Operit
+  9-patch、头像/字体 URI、内边距与图片裁剪。兼容性上只在命中 Operit 专有键时进入该
+  分支，缺少 `theme_mode` 不改背景基色，避免误伤 Kelivo/RikkaHub JSON。
+- 已知缺口：工具调用状态气泡仍为原生白色，未随自定义气泡着色。无 FATAL/ANR。
+
+**产物**：`dist/OrionekoX-0.14.0-alpha-arm64-x64.apk`（versionCode 1449，sha256
+`5c7a27b98bfa…`）；debug `dist/OrionekoX-0.14.0-debug-arm64-x64.apk`（sha256
+`2807a1dc3197…`）。详见 `docs/qa-0.14.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
