@@ -75,6 +75,7 @@ public class OxChatAppearanceActivity extends BaseFragment {
     private static final int ID_IMPORT_BUNDLE = 33;
     private static final int ID_EXPORT_BUNDLE = 34;
     private static final int ID_PREVIEW = 35;
+    private static final int ID_RECOMMEND = 36;
     private static final int PRESET_BASE = 100;
     private static final int BUILTIN_BASE = 200;
 
@@ -212,6 +213,11 @@ public class OxChatAppearanceActivity extends BaseFragment {
         items.add(SettingsActivity.SettingCell.Factory.of(ID_PREVIEW, accent, dark, R.drawable.msg_theme,
                 LocaleController.getString(R.string.OxChatPreview),
                 LocaleController.getString(R.string.OxChatPreviewInfo)));
+        if (agentTgId != 0) {
+            items.add(SettingsActivity.SettingCell.Factory.of(ID_RECOMMEND, 0xFF7C5CFF, 0xFF5B3FE0,
+                    R.drawable.msg_theme, LocaleController.getString(R.string.OxChatRecommend),
+                    LocaleController.getString(R.string.OxChatRecommendInfo)));
+        }
         items.add(SettingsActivity.SettingCell.Factory.of(ID_BG_MODE, accent, dark, R.drawable.msg_colors,
                 LocaleController.getString(R.string.OxChatBgMode), bgModeLabel(bgMode)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_BG, OxChatTheme.background(),
@@ -348,6 +354,14 @@ public class OxChatAppearanceActivity extends BaseFragment {
             rebuild();
         } else if (item.id == ID_PREVIEW) {
             showPreview();
+        } else if (item.id == ID_RECOMMEND) {
+            OxAgent agent = OxAgentsBridge.agentByTgId(agentTgId);
+            String text = agent == null ? "" : (agent.name + "\n" + (agent.agentsMd == null ? "" : agent.agentsMd));
+            int index = OxChatTheme.recommendBuiltIn(text);
+            OxChatTheme.applyBuiltIn(index);
+            toast(LocaleController.formatString("OxChatRecommendApplied",
+                    R.string.OxChatRecommendApplied, OxChatTheme.builtInName(index)));
+            rebuild();
         } else if (item.id == ID_NATIVE_THEME) {
             presentFragment(new ThemeActivity(ThemeActivity.THEME_TYPE_BASIC));
         } else if (item.id == ID_RESET) {

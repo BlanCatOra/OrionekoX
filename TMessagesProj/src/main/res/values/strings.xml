@@ -12049,6 +12049,9 @@
     <string name="OxChatPreviewTitle">Appearance preview</string>
     <string name="OxChatPreviewInText">Good evening — this is an incoming message preview.</string>
     <string name="OxChatPreviewOutText">This is an outgoing message preview.</string>
+    <string name="OxChatRecommend">Recommend from persona</string>
+    <string name="OxChatRecommendInfo">Pick a built-in theme from the agent name and AGENTS.md keywords</string>
+    <string name="OxChatRecommendApplied">Applied recommended look: %1$s</string>
     <string name="OxChatModeNative">Telegram native</string>
     <string name="OxChatModeCustom">Custom</string>
     <string name="OxChatNativeHint">Telegram native appearance is active. Switch to Custom to edit background, bubbles, opacity, radius and font size.</string>

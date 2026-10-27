@@ -36,6 +36,7 @@ requirements.
 | Contrast / readability check | — | — | — | **0.10.0** WCAG-style check on device |
 | Preset marketplace / one-tap apply | ToolPkg catalog | — | preset list | **0.12.0** six built-in themes + one-tap apply; no online marketplace |
 | Live appearance preview | theme studio | preview | preview | **0.21.0** editor dialog with current-scope wallpaper (image/blur/dim), bubbles, border, font and line height |
+| Persona-based recommendation | theme studio | — | — | **0.22.0** local keyword scoring over agent name + AGENTS.md picks one of six built-in themes |
 | Wallpaper ↔ bubble coordination | — | — | — | **0.13.0** auto palette from current background (device-verified) |
 | AMOLED / pure black | theme | yes | yes | **0.12.0** built-in AMOLED theme; Telegram themes also native |
 | Import preview / rollback | ToolPkg validation | preview? | — | **0.10.0** appearance preview before write; invalid input leaves state unchanged |
@@ -368,14 +369,28 @@ These confirm the feature directions rather than relying on guesses. Checked
   `headers=[["X-Rikka-Provider","p"],["X-Rikka-Assistant","1"]]` and the existing
   skill mapping survived a repeat import. Test objects were removed.
 
+## 0.22.0 implementation — persona-based recommendation
+
+- Agent appearance pages expose “从人设推荐外观”. `recommendBuiltIn` scores the
+  agent name and AGENTS.md against local keyword sets for the six built-in
+  themes and applies the winner to that agent's snapshot; no model or network
+  call is involved, and the result is deterministic.
+- Device QA: `barB-nokey` (深夜/酒吧 persona) recommended 赛博霓虹, showing the
+  gradient `#0A0014 → #1B0033`, purple outgoing bubble, cyan text and pink 2 dp
+  border; the generated agent JSON matched the built-in. The test override was
+  removed to restore the agent's parent theme.
+- Limits: keyword heuristics rather than semantic understanding, default 深海
+  when nothing matches, whole-snapshot replacement (including wallpaper/fonts),
+  agent scope only, and no candidate preview or undo.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping.
 2. Kelivo full backup import; RikkaHub chat database/attachments, skill
    attachments, standalone providers and image avatars.
-3. Persona-based appearance recommendation (the live preview itself is now
-   covered by 0.21.0).
+3. Semantic/persona recommendation with candidate preview and undo (the 0.22.0
+   keyword version is deterministic and offline).
 4. Per-conversation theme inheritance still copies the parent’s text color; a
    low-contrast combination is reported by the check row but not auto-corrected.
 5. Re-run the third A/B/C round on current builds once a real-device/GPU pass can

@@ -141,3 +141,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：Provider `X-Rikka-Provider: p` + 助手 `X-Rikka-Assistant: 1` 合并为两条 headers；`presetMessages` 的首条 assistant 文本进入 `first_mes`；重复导入保持 2 个 Agent、字段不变。
 - 清理测试助手/MCP/TestSkill/样例；无 Key 泄漏、无 FATAL/ANR。
+
+## 0.22.0 人设推荐外观 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-39 | 0.22.0 QA | 关键词启发式不理解语义；无命中统一落到“深海” | 记录规则；本地、确定性、无网络；后续可加候选预览与语义推荐 | 部分完成 |
+| R2-40 | 0.22.0 QA | `applyBuiltIn` 覆盖整份快照，会替换用户已有背景图/字体/行高；无撤销按钮 | 依赖“清除覆盖并跟随上层”恢复；入口仅 Agent 作用域 | 待改进 |
+
+- 设备：`barB-nokey`（人设含深夜/酒吧）推荐“赛博霓虹”，toast 与 `agent_555000016.json` 的渐变/气泡/文字/边框一致。
+- 测试后删除该 Agent 覆盖文件，恢复跟随全局；未修改其他 Agent；无 FATAL/ANR。
