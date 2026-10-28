@@ -382,3 +382,12 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：BG38 背景样例预览 1 个背景；导入 note“已套用 1 个聊天背景”，background.png 14,884 B、agent_555000078.json 指向该文件；原生聊天显示 BG38 壁纸；将背景改为 custom-bg.png 后重复导入，note“已套用 0 个；其余保留已有自定义背景”，原路径未变；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：仅图片背景、仅按 Agent；导出备份暂不含该背景；真实备份待复测。
+
+## 0.39.0 Chatbox 导出包含 Agent 背景 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-79 | 0.39.0 QA | 0.38.0 导入的 Agent 背景不会进入 Chatbox 导出包，往返丢失壁纸 | `OxChatTheme.backgroundForAgent` 暴露路径；导出器写 `kind=background`，有聊天写 session background、无聊天写 copilot background | 已修复 |
+
+- 设备：BG38 Agent 单 Agent 导出 15,580 B，manifest 1 session/1 background 资源、session background.storageKey 正确、2 条消息保留；删除原 Agent/主题后回环导入得到 background.png 14,884 B、backgroundMode=image，原生聊天 BG38 壁纸恢复；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：仅 Agent 图片背景；全局/按会话/视频背景不导出；导出不单独统计背景；外部 Chatbox 未实测。

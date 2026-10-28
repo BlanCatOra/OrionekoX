@@ -512,6 +512,13 @@ public class OxChatTheme {
         }
     }
 
+    /** Current agent-scope background file, or "" when unset/global. */
+    public static String backgroundForAgent(long tgId) {
+        if (tgId == 0) return "";
+        Snapshot s = readFile(agentFile(agentKey(tgId)));
+        return s == null || s.backgroundImage == null ? "" : s.backgroundImage;
+    }
+
     public static void enableCustom() {
         Snapshot s = current();
         if (!MODE_CUSTOM.equals(s.mode)) {

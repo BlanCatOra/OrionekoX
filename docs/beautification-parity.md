@@ -730,6 +730,21 @@ These confirm the feature directions rather than relying on guesses. Checked
   Chatbox export does not include this background yet, and real backups still
   need a compatibility pass.
 
+## 0.39.0 implementation — backgrounds in Chatbox export
+
+- `OxChatTheme.backgroundForAgent` exposes the agent's background file; the
+  exporter writes it as a `kind=background` resource. Agents with chat get a
+  session-scoped resource plus `session.background`; chatless agents get a global
+  resource plus `copilot.background`.
+- Background resources use the same data-URL payload, SHA-256/size descriptors
+  and 2 MB/total caps as other assets; headers and keys are still excluded.
+- Device QA: a BG38 agent exported to a 15,580 B zip with one session, one
+  background resource and the correct storage key. After deleting the original
+  agent/theme, re-importing restored background.png (14,884 B) and the agent
+  theme, and the native chat showed the BG38 wallpaper again.
+- Limits: only agent-scope image backgrounds (not global/per-dialog/video), no
+  separate background count in the result toast, and no real Chatbox client test.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -739,7 +754,7 @@ These confirm the feature directions rather than relying on guesses. Checked
    images/attachments: video backgrounds and workspaces; SSE/stdio MCP with their tool
    allowlists; RikkaHub non-selected branches, non-image attachments,
    per-conversation grouping, skill attachments and standalone providers.
-3. Bidirectional export still lacks workspaces, memory, themes, imported chat
+3. Bidirectional export still lacks workspaces, memory, themes, global/per-dialog
    backgrounds, MCP headers/OAuth and server selection, plus validation against
    real external clients.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
