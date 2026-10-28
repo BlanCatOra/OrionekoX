@@ -713,17 +713,35 @@ These confirm the feature directions rather than relying on guesses. Checked
   Kelivo preview reads “对话 1 段（2 条消息）/项目：Multi B” with no
   `Conversations:`/`Items:` fallback. Preview was cancelled without writing.
 
+## 0.38.0 implementation — backup chat backgrounds
+
+- Chatbox v2 `kind=background` resources and session/copilot `background`/
+  `backgroundImage` references (storageKey, URL or string) are parsed and copied
+  to the agent's `background.<ext>`; syncAgents then calls
+  `OxChatTheme.applyImportedBackground` to persist an agent-scope image theme.
+- An existing different background on the agent is preserved and the result notes
+  “其余保留已有自定义背景”; applying the same path again is safe.
+- Device QA: a 300×500 BG38 PNG was previewed as one background, imported into
+  the conversation agent (14,884 B file plus agent_555000078.json with
+  backgroundMode=image), and rendered as the native chat wallpaper. After
+  changing the agent background to custom-bg.png, a repeat import applied zero
+  backgrounds and left the custom path untouched.
+- Limits: images only (no video), agent scope only (no per-dialog background),
+  Chatbox export does not include this background yet, and real backups still
+  need a compatibility pass.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping (background blur is now
    mapped by 0.26.2).
 2. Kelivo full backup import beyond assistants/skills/conversations/MCP/avatars/
-   images/attachments: backgrounds and workspaces; SSE/stdio MCP with their tool
+   images/attachments: video backgrounds and workspaces; SSE/stdio MCP with their tool
    allowlists; RikkaHub non-selected branches, non-image attachments,
    per-conversation grouping, skill attachments and standalone providers.
-3. Bidirectional export still lacks workspaces, memory, themes, MCP headers/
-   OAuth and server selection, plus validation against real external clients.
+3. Bidirectional export still lacks workspaces, memory, themes, imported chat
+   backgrounds, MCP headers/OAuth and server selection, plus validation against
+   real external clients.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 5. Per-conversation theme inheritance still copies the parent’s text color; a

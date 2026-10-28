@@ -372,3 +372,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：Ox 设置、技能库、MCP 导出入口均为中文；Kelivo 预览显示“对话 1 段（2 条消息）/项目：Multi B”，无 Conversations/Items；仅预览后取消，未写数据；无本包 FATAL/ANR。
 - 边界：仅审计 Ox 自有字符串；其他语言包未补；无功能/格式变化。
+
+## 0.38.0 备份聊天背景导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-77 | 0.38.0 QA | Kelivo/Chatbox 的 background 资源与会话背景未导入，聊天壁纸仍用全局/默认 | 解析 kind=background 与 session/copilot background 引用，写 Agent 目录 background.<ext>；sync 后 applyImportedBackground 写入按 Agent 主题 | 已修复 |
+| R2-78 | 0.38.0 QA | 重复导入可能覆盖用户已设置的 Agent 自定义背景 | applyImportedBackground 检测到不同非空 backgroundImage 时跳过，结果 note 说明“其余保留已有自定义背景” | 已修复 |
+
+- 设备：BG38 背景样例预览 1 个背景；导入 note“已套用 1 个聊天背景”，background.png 14,884 B、agent_555000078.json 指向该文件；原生聊天显示 BG38 壁纸；将背景改为 custom-bg.png 后重复导入，note“已套用 0 个；其余保留已有自定义背景”，原路径未变；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：仅图片背景、仅按 Agent；导出备份暂不含该背景；真实备份待复测。
