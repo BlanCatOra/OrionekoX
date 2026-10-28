@@ -3311,6 +3311,29 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `c6ebf364723a…`）；debug `dist/OrionekoX-0.42.0-debug-arm64-x64.apk`（sha256
 `0a1307066d15…`）。详见 `docs/qa-0.42.0.md`。
 
+## 5.162 alpha 0.43.0 —— Kelivo/Chatbox 多附件与图文混合导入（2026-10-28 11:24–11:33）
+
+- `OxKelivoImporter.convertMessages` 改为按 `contentParts` 顺序收集全部可用
+  媒体，不再只取第一张图片/第一个文件，也不再“有图就丢文件”。首条媒体与
+  正文组成主气泡，其余媒体按顺序拆成独立条目；每段对话仍限制 40 张图片 /
+  20 个文件。
+- 图片写入 Agent `media/img_<n>.<ext>`，文件写入 `media/<n>_<name>`；成功匹配
+  媒体后移除正文中的 `[图片]`/`[文件] name` 占位符；预览新增拆分说明并按
+  实际条目统计图片/附件数。
+- 设备：2,392 B 样例（文字 + 2 PNG，其中一张 data URL 编码 + notes.txt +
+  data.json）导入为 5 条消息、2 张图片、2 个附件；原生聊天显示绿色照片
+  （正文“混合附件测试”）、橙色照片、19 B TXT 与 29 B JSON 文件气泡，助手
+  回复正常。再次导入提示替换历史，仍 5 条/5 行无重复；清理后
+  dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：沿用 40 图/20 文件、64 资源文件限制；拆分媒体共享原时间戳；
+  不解析 info part；远程 URL 不下载；导出回环未复验。
+- 版本规则：新增可见的“单消息多附件/图文混合拆分”能力，按 minor 从
+  0.42.0 → 0.43.0，versionCode 4309。
+
+**产物**：`dist/OrionekoX-0.43.0-alpha-arm64-x64.apk`（versionCode 4309，sha256
+`420018ff5ba6…`）；debug `dist/OrionekoX-0.43.0-debug-arm64-x64.apk`（sha256
+`afb28a66240c…`）。详见 `docs/qa-0.43.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

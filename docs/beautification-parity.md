@@ -801,16 +801,38 @@ These confirm the feature directions rather than relying on guesses. Checked
   no thumbnail, inline player or duration; only `upload/` matches; no export
   roundtrip was re-tested this round.
 
+## 0.43.0 implementation — Kelivo/Chatbox multi and mixed attachments
+
+- `OxKelivoImporter.convertMessages` now walks `contentParts` in order and keeps
+  every available image/file, instead of only the first image and first file
+  (and no longer drops files when an image is present). The first media shares
+  the message text; the rest become extra entries with empty captions.
+- Per-conversation caps remain 40 images / 20 files; images are saved as
+  `media/img_<n>`, files as `media/<n>_<name>` with the part `fileName`.
+  `[图片]` / `[文件] name` placeholders are stripped after a successful match.
+- The preview explains that multi/mixed attachments are split and counts the
+  resulting image/file entries.
+- Device QA: a 2,392 B backup with text + two PNGs (one data-URL encoded) +
+  `notes.txt` + `data.json` produced five messages, two images and two files;
+  the native chat showed a green photo with the text caption, an orange photo,
+  `notes.txt` (19 B · TXT) and `data.json` (29 B · JSON), then the assistant
+  reply. A repeat import replaced the history and left five entries/five rows;
+  cleanup returned dialogs/messages to zero with no app FATAL/ANR.
+- Limits: 40 images/20 files per conversation and 64 resource files; split
+  entries share the source timestamp; `info` parts are ignored; remote URLs are
+  not downloaded; no export roundtrip was re-tested.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping (background blur is now
    mapped by 0.26.2).
-2. Kelivo full backup import beyond assistants/skills/conversations/MCP/avatars/
-   images/attachments: video backgrounds and workspaces; SSE/stdio MCP with their tool
-   allowlists; RikkaHub non-selected branches, per-conversation grouping, skill
-   attachments and standalone providers; native RikkaHub audio/video playback
-   bubbles, more than 20 media per message and remote attachments.
+2. Kelivo full backup import beyond the now-supported assistants/skills/
+   conversations/MCP/avatars/images/attachments: video backgrounds and
+   workspaces; SSE/stdio MCP with their tool allowlists; RikkaHub non-selected
+   branches, per-conversation grouping, skill attachments and standalone
+   providers; native RikkaHub audio/video playback bubbles, more than 20 media
+   per message and remote attachments.
 3. Bidirectional export still lacks workspaces, memory, themes, global/video
    backgrounds, MCP headers/OAuth and server selection, plus validation against
    real external clients.
