@@ -11672,10 +11672,12 @@
     <string name="OxSettingsTitle">Ox Settings</string>
     <string name="OxImportOperit">Import from Operit / Operit2</string>
     <string name="OxImportOperitInfo">Operit / Operit2 backups</string>
-    <string name="OxRikkaImport">Import from RikkaHub backup</string>
-    <string name="OxRikkaImportInfo">settings.json or backup zip · preview before writing</string>
-    <string name="OxRikkaPreviewTitle">Import this RikkaHub backup?</string>
+    <string name="OxRikkaImport">Import RikkaHub backup or character card</string>
+    <string name="OxRikkaImportInfo">settings.json, backup zip, or PNG/JSON character card · preview before writing</string>
+    <string name="OxRikkaPreviewTitle">Import this RikkaHub backup or character card?</string>
     <string name="OxRikkaPreview">Assistants %1$d · Providers %2$d · MCP %3$d · Skills %4$d</string>
+    <string name="OxRikkaCardPreview">1 character card</string>
+    <string name="OxRikkaCardExisting">This character card already exists and will be updated</string>
     <string name="OxRikkaNames">Assistants: %1$s</string>
     <string name="OxRikkaSkillNames">Skills: %1$s</string>
     <string name="OxRikkaHistory">History: %1$d conversations · %2$d message nodes</string>
@@ -11711,6 +11713,7 @@
     <string name="OxKelivoExportSelectedInfo">Choose agents to write into one Chatbox v2 zip</string>
     <string name="OxKelivoExportSelectNone">Select at least one agent</string>
     <string name="OxRikkaInvalid">Not a valid RikkaHub backup</string>
+    <string name="OxRikkaInvalidCard">No character data found in this PNG or JSON</string>
     <string name="OxRikkaMissingSettings">settings.json is missing from the backup</string>
     <string name="OxRikkaOpenFailed">Cannot open the backup file</string>
     <string name="OxImportStorageTitle">File access needed</string>

@@ -456,3 +456,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：单 Agent 记忆导出 1,626 B，字段 73 字符、无敏感信息；删除后回导恢复 157 B / sha256 `a7744d01…`，重复导入 hash 不变、25 个 Agent 目录不变；最终全量导出 482,642 B，12 个 session 中 10 个、9 个 copilot 中 4 个带记忆，共 14 个，与 Toast 一致；主 Tab 与 Ox 设置切换无本包 FATAL/ANR；清理注入记忆与测试 zip，未执行 `pm clear`。
 - 边界：`orionekoMemory` 仅 OrionekoX 识别；无聊天 copilot 的记忆导入未单独回环；导入覆盖而非合并记忆；未与真实 Chatbox/Kelivo 客户端互导。
+
+## 0.45.0 RikkaHub / SillyTavern 角色卡导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-89 | 0.45.0 QA | “从 RikkaHub 备份导入”只接受 settings.json 或备份 zip，SillyTavern/RikkaHub 常见的 PNG/JSON 角色卡无法导入 | 按文件签名分流：PNG 解析 `tEXt`/`iTXt` 的 `ccv3`/`chara`，JSON 解析 V2/V3 wrapper 或扁平 V1；人设写 AGENTS.md，first_mes 生成开场白，PNG 存为 avatar.png；稳定 id 保证重复导入更新同一 Agent | 已实现并设备验证 |
+| R2-90 | 0.45.0 QA | 角色卡预览沿用 RikkaHub 的“助手/Provider/MCP/技能”统计，出现 MCP 0、技能 0 和“将导入头像”等与卡片无关或与“已有头像保留”矛盾的文案 | 角色卡使用独立摘要“角色卡 1 张”、已有卡提示和卡片说明；头像提示改为“检测到 N 个（已有则保留）”；确认框标题加入“角色卡”；中文包 100→103 | 已修复 |
+
+- 设备：689 B JSON 卡创建 `rikka_card_df478b83`（tgId 555000092），六节人设与开场白正确；同一卡 8,810 B PNG 更新该 Agent，`avatar.png` sha256 `4482184d…` 与源图一致，重复导入仍 1 个目录、hash 不变、1 条开场白；JSON-only 卡创建 `rikka_card_1ac480d6` 且无头像；无 `chara` 的 69 B PNG 正确报错。全程无本包 FATAL/ANR；删除测试 Agent 后对应 dialogs/messages 均为 0，Download 测试卡已清理。
+- 边界：不支持压缩 `zTXt`；只导入 `first_mes`，未导入 alternate greetings、character_book、tags、正则；角色卡只导入不导出；导入后离线；未与真实 SillyTavern/RikkaHub 导出卡互测。
