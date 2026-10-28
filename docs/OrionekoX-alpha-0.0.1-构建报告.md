@@ -4079,6 +4079,39 @@ debug `dist/OrionekoX-0.62.0-debug-arm64-x64.apk`（sha256
 `b563e6c62d40b12c72e2b0aa859604e83299913359a6f5796563eb7f9cf3b6cf`）。
 详见 `docs/qa-0.62.0.md`。
 
+## 5.185 alpha 0.63.0 —— New Group 离线分支：本地群端到端（2026-10-29 00:20–01:10）
+
+- 0.62.0 遗留：createLocalGroup 无调用方，New Group 流程在离线本地账号
+  停在服务器请求。本轮在 `MessagesController.createChat`（CHAT_TYPE_CHAT
+  且非 import）的 `syncAgents` 之后新增 agent-only 分支：selectedContacts
+  映射为本地 agent（真实联系人跳过——离线无法邀请），非空则调用
+  `OxAgentsBridge.createLocalGroup`（改 public；打 markLocallyCreated、
+  persist chat/full、service message、refreshDialogRow），`runOnUIThread`
+  发布 chatDidCreated/chatDidFailCreate；空 agent 集或异常都让创建页可
+  恢复。agent-only 下绝不 fall through 到 sendRequest（ConnectionsManager
+  会静默丢弃请求且不回调）。
+- 后台子代理代码评审 HIGH 发现已吸收：agent-only 不 fall through、混合
+  选择干净失败、通知经 runOnUIThread 发布、分支 try/catch；头像离线上传
+  死锁列为下轮（本轮 QA 未选头像）。
+- 设备端到端：New Group → 勾选 Studio Test → 命名 OxUI QA 630 → ✓ →
+  `createLocalGroup id=1800000000`、`created_1800000000=true`、
+  ChatActivity 呈现；OxUI Agents 面板 Groups 区列出该群（冷启动标题经
+  getChatSync 回填）；OxUI 选中群（rail ink 群 chip）发送 GROUP-TEST-630
+  → `runRound dialog=-1800000000`、用户消息 + echo 回复（id=100076/77）
+  在 OxUI 与 Telegram chats 列表同步可见。
+- 0.62→0.63 期间修复三处回归：renderGroupList 的 removeAllViews 清掉
+  agent 行；冷启动群标题缺 getChatSync 回退；rail 群 chip/agent chip
+  目标重置丢失。
+- 测试 Agent/QA 群（chats blob、dialogs、messages、ox_groups 键）清理为
+  0；interface_mode 恢复 telegram；release 6309 无 FATAL/ANR。
+- 版本规则：按 minor 从 0.62.0 → **0.63.0**（6309），patch 清零。
+
+**产物**：`dist/OrionekoX-0.63.0-alpha-arm64-x64.apk`（versionCode 6309，
+sha256 `1160c2ed6b62df5c824fefd2aff7f1128f0bebdb4b7fe1e230d227d04d250cb4`）；
+debug `dist/OrionekoX-0.63.0-debug-arm64-x64.apk`（sha256
+`25a4179a82fd20f1cf41c911845beca968919a0cabe416767e6ee342c8455d28`）。
+详见 `docs/qa-0.63.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
