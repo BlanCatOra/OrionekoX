@@ -558,3 +558,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：自建 60 条消息 fixture（生日 3/14→3/15、blue→green、姓名/咖啡/杭州），mock OpenAI 触发工具。最终有效事实 name/coffee/Hangzhou/birthday 3/15/green，旧 3/14 与 blue 的 `invalid_at` 非 0 且不进入默认召回；摘要旧值被清理。`memory_search` 首条为 3/15 有效事实，`memory_verify("birthday")` 只返回 3/15，`memory_verify("favorite color")` 只返回 green；向量模式 coffee 相关度 0.83，召回后 stability 略升、difficulty 从 4.0 降到 3.6。全程无 FATAL/ANR；测试 Agent/记忆行/chats 清理为 0，恢复代理与无障碍。
 - 边界：仍是本地哈希向量非语义 embedding；摘要抽取式；未做图记忆、token 压力预警和模型蒸馏；Provider 当前无 embedding 模型；旧 turn 在历史查询中仍可能出现（已由事实优先和提示词约束）。
+
+## 0.54.0 异步模型蒸馏 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-111 | 0.54.0 功能 | 压缩摘要与事实全由规则抽取，容易被 filler 淹没，缺少模型级抽象摘要与事实抽取 | 新增 `OxMemoryDistiller`：压缩批次 ≥8 条时后台调用 Agent 自己的模型，严格 JSON 返回 summary + facts；不阻塞聊天、失败保留抽取式；模型摘要 importance 0.9，digest 最多注入 1 条摘要且优先模型摘要 | 已实现并设备验证 |
+| R2-112 | 0.54.0 QA | 第三人称模型事实 `Lin Zhou's birthday…` 与 `…favorite color…` 的 subject 都回退成 `lin zhou s`，互相失效并连带清空模型摘要 | 新增 possessive `[a-z]+'s` 规则，主题在 is/are/like/live/work/and 等词截断；复验 birthday/favorite color 分开、模型事实与摘要有效、颜色合并进绿色事实 | 已修复并设备验证 |
+
+- 设备：60 条 fixture + mock `[MEMORY_DISTILLER]` 返回固定摘要与两条事实。首轮压缩后后台请求到达 mock，聊天回复不等待；库内模型生日事实有效（subject=birthday），颜色事实合并进现有绿色事实，模型摘要 `source=model`、importance 0.9 有效；下一轮 system 只含 5 条有效事实 + 1 条模型摘要，旧 3/14/blue 与抽取摘要不再注入。无重复蒸馏请求、无 FATAL/ANR；清理测试 Agent/记忆行/chats 为 0，恢复代理与无障碍。
+- 边界：仅压缩批次触发并消耗 Agent token；模型输出只做结构/长度校验，未做事实核查；Provider 需支持 JSON 响应；仍无真正语义 embedding；失败路径仅代码审查、未用坏端点回放。

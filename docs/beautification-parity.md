@@ -31,7 +31,7 @@ requirements.
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
 | Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; **0.47.1** exports per-agent workspaces (200 files / 2 MiB each / 8 MiB total); **0.48.1** exports/restores per-agent preferences (tool policies, pin, remark, greeting, reasoning/context/sampling settings); **0.50.0** exports/restores per-agent appearance overrides and custom chat/code fonts (colors, bubbles, corner, border, text, scale, line height, background image; 8 MiB per font, 16 MiB total); **0.51.0** exports/restores the global appearance theme, global background and global chat/code fonts via `settings.json`, preserving a local custom global theme; provider keys, base URLs, headers and `extra_body` never exported |
 | SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0–0.45.1** PNG `tEXt`/`iTXt` + JSON via the agent-list entry, six persona sections, first message and PNG avatar, idempotent ids; **0.49.0** exports V2 JSON and PNG cards (avatar re-encoded, Base64 `chara` chunk, generated placeholder when no avatar) with six-section persona roundtrip; no alternate greetings, character book, tags or real-client validation |
-| Local agent memory library | — | — | — | **0.52.0** per-agent SQLite with normal keyword and experimental local-hash-vector recall, 45-message compression threshold, readable turn/fact/summary entries, `memory_search` and strict `memory_verify`; **0.53.0** BM25 + vector + retention/importance/access fusion, MMR, power forgetting curve with stability/difficulty updates, fact consolidation/invalidation with temporal history and summary scrubbing; no external embeddings and not yet exported in backups |
+| Local agent memory library | — | — | — | **0.52.0** per-agent SQLite with normal keyword and experimental local-hash-vector recall, 45-message compression threshold, readable turn/fact/summary entries, `memory_search` and strict `memory_verify`; **0.53.0** BM25 + vector + retention/importance/access fusion, MMR, power forgetting curve with stability/difficulty updates, fact consolidation/invalidation with temporal history and summary scrubbing; **0.54.0** asynchronous agent-model distillation of abstractive summaries and atomic facts with extractive fallback; no external embeddings and not yet exported in backups |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -1238,6 +1238,40 @@ These confirm the feature directions rather than relying on guesses. Checked
   rounds add embedding-provider abstraction, asynchronous LLM extraction/
   summaries and a recall@k benchmark before claiming semantic superiority.
 
+## 0.54.0 implementation — asynchronous model distillation
+
+- Compression still writes deterministic turn/fact/summary entries immediately,
+  then a background `OxMemoryDistiller` calls the agent's own chat model for a
+  batch of at least eight messages. It asks for strict JSON: one abstractive
+  summary (<=1200 chars) and up to 12 atomic facts (<=300 chars, importance
+  0.3–0.95), resolving relative dates and preserving corrections without
+  invention.
+- The call uses the agent's existing base URL, key and headers; no new
+  credential is stored and keys are never logged. It runs with
+  `stream=false`, a 14k-character transcript cap, 2 MiB response cap and
+  connect/read timeouts. Any HTTP/parse failure leaves the extractive memory in
+  place and never blocks the chat turn.
+- Model facts pass through the same subject consolidation/invalidation logic;
+  model summaries are stored with `source=model` and importance 0.9. The digest
+  injects at most one summary, preferring the model summary, with facts shown
+  first. A per-batch key prevents duplicate distillation.
+- QA exposed a subject-key bug for third-person facts: "Lin Zhou's birthday…"
+  and "Lin Zhou's favorite color…" both fell back to `lin zhou s`, invalidated
+  each other and scrubbed the model summary. A possessive rule plus stopping
+  the subject at is/are/like/and now yields `birthday` and `favorite color`.
+- Device QA with the 60-message fixture and a mock `[MEMORY_DISTILLER]`
+  response: the async request arrived after compression without delaying the
+  reply, the model birthday fact and model summary became active, the color
+  fact merged into the existing green fact, and the next system prompt held
+  five active facts plus only the model summary. Old 3/14/blue values and the
+  extractive summary were absent from the prompt. No duplicate request or app
+  FATAL/ANR; test data was removed.
+- Limits: distillation runs only on compression batches and consumes the
+  agent's tokens; output is schema/length-validated but not fact-checked;
+  providers must return JSON-compatible content; there is still no semantic
+  embedding provider; the failure path is code-reviewed rather than exercised
+  with a dead endpoint.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -1269,6 +1303,7 @@ These confirm the feature directions rather than relying on guesses. Checked
    font import/export, preset preview, gradients, group albums, tool bubbles,
    literal `\n` in old messages, skill dedupe/delete and local-agent search.
 7. Memory library next: export/import it through Chatbox/.oxagent, optional
-   offline embedding models, model-written (not only extractive) summaries,
-   migration of existing memory.txt, per-group scoping and a recall-quality
-   benchmark on real conversations.
+   offline/remote embedding providers with dimension and model validation,
+   fact-checking of model-distilled memories, migration of existing memory.txt,
+   per-group scoping and a recall@k/MRR benchmark on real conversations.
+   Abstractive summaries and atomic-fact distillation now exist (0.54.0).
