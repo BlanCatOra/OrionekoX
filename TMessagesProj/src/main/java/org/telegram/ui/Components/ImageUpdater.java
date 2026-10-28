@@ -866,6 +866,19 @@ public class ImageUpdater implements NotificationCenter.NotificationCenterDelega
         if (bigPhoto != null) {
             UserConfig.getInstance(currentAccount).saveConfig(false);
             uploadingImage = FileLoader.getDirectory(FileLoader.MEDIA_DIR_CACHE) + "/" + bigPhoto.location.volume_id + "_" + bigPhoto.location.local_id + ".jpg";
+            if (uploadAfterSelect && org.telegram.ox.OxMode.isAgentOnly()) {
+                // Agent-only builds have no server connection: the avatar upload
+                // RPC would be dropped without ever invoking the callback. The
+                // big/small PhotoSizes are already local files, so hand them to
+                // the delegate now (no InputFile) and stop; the caller attaches
+                // them to the local chat/file path.
+                uploadingImage = null;
+                if (delegate != null) {
+                    delegate.didUploadPhoto(null, null, 0, null, bigPhoto, smallPhoto, false, vectorMarkup);
+                }
+                cleanup();
+                return;
+            }
             if (uploadAfterSelect) {
                 if (avatarObject != null && avatarObject.videoEditedInfo != null) {
                     if (supportEmojiMarkup && !MessagesController.getInstance(currentAccount).uploadMarkupVideo) {

@@ -115,10 +115,17 @@ public class OxGroupStore {
     }
 
     public static synchronized void appendChat(long chatId, String role, String content, String imagePath) {
+        appendChat(chatId, role, content, imagePath, null);
+    }
+
+    public static synchronized void appendChat(long chatId, String role, String content,
+            String imagePath, String sender) {
         if (content == null || content.trim().isEmpty()) return;
         try {
             List<OxChatEntry> chat = loadChat(chatId);
-            chat.add(new OxChatEntry(role, content, System.currentTimeMillis(), imagePath));
+            OxChatEntry entry = new OxChatEntry(role, content, System.currentTimeMillis(), imagePath);
+            entry.sender = sender;
+            chat.add(entry);
             while (chat.size() > 40) chat.remove(0);
             prefs().edit().putString("log_" + key(chatId),
                     OxChatEntry.toJsonArray(chat).toString()).apply();

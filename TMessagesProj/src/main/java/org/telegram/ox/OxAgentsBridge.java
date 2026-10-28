@@ -927,6 +927,67 @@ public class OxAgentsBridge {
         }
     }
 
+    /** Offline group avatar: copies the already-local big/small PhotoSizes from
+     *  ImageUpdater's cache into the durable TL_chatPhoto round-trip names, then
+     *  updates the in-memory chat + storage so chat headers render it. Must run
+     *  on the UI thread after chatDidCreated. */
+    public static void attachLocalChatAvatar(long chatId, TLRPC.FileLocation smallSrc,
+            TLRPC.FileLocation bigSrc) {
+        try {
+            TLRPC.Chat chat = MessagesController.getInstance(0).getChat(chatId);
+            if (chat == null || !OxGroupStore.isLocallyCreated(chatId)) return;
+            if (smallSrc == null || bigSrc == null) return;
+
+            long photoId = Math.abs(chatId) * 31 + 13;
+            TLRPC.TL_chatPhoto photo = new TLRPC.TL_chatPhoto();
+            photo.photo_id = photoId;
+            photo.dc_id = 1;
+            photo.photo_small = new TLRPC.TL_fileLocationToBeDeprecated();
+            photo.photo_small.dc_id = 1;
+            photo.photo_small.volume_id = -photoId;
+            photo.photo_small.local_id = 97;
+            photo.photo_big = new TLRPC.TL_fileLocationToBeDeprecated();
+            photo.photo_big.dc_id = 1;
+            photo.photo_big.volume_id = -photoId;
+            photo.photo_big.local_id = 99;
+
+            org.telegram.messenger.FileLoader fl = org.telegram.messenger.FileLoader.getInstance(0);
+            java.io.File smallCache = fl.getPathToAttach(smallSrc, true);
+            java.io.File bigCache = fl.getPathToAttach(bigSrc, true);
+            if (smallCache == null || !smallCache.exists() || bigCache == null || !bigCache.exists()) {
+                log("attachLocalChatAvatar source files missing for " + chatId);
+                return;
+            }
+            java.util.LinkedHashSet<java.io.File> smallPaths = new java.util.LinkedHashSet<>();
+            java.util.LinkedHashSet<java.io.File> bigPaths = new java.util.LinkedHashSet<>();
+            for (java.io.File f : new java.io.File[]{fl.getPathToAttach(photo.photo_small), fl.getPathToAttach(photo.photo_small, true), fl.getPathToAttach(photo.photo_small, "jpg", true), fl.getPathToAttach(photo.photo_small, "jpg", false)}) {
+                if (f != null && f.getParentFile() != null) smallPaths.add(f);
+            }
+            for (java.io.File f : new java.io.File[]{fl.getPathToAttach(photo.photo_big), fl.getPathToAttach(photo.photo_big, true), fl.getPathToAttach(photo.photo_big, "jpg", true), fl.getPathToAttach(photo.photo_big, "jpg", false)}) {
+                if (f != null && f.getParentFile() != null) bigPaths.add(f);
+            }
+            for (java.io.File f : smallPaths) {
+                f.getParentFile().mkdirs();
+                java.nio.file.Files.copy(smallCache.toPath(), f.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            for (java.io.File f : bigPaths) {
+                f.getParentFile().mkdirs();
+                java.nio.file.Files.copy(bigCache.toPath(), f.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            chat.photo = photo;
+            MessagesController.getInstance(0).putChat(chat, false);
+            ArrayList<TLRPC.Chat> chats = new ArrayList<>();
+            chats.add(chat);
+            MessagesStorage.getInstance(0).putUsersAndChats(null, chats, true, true);
+            NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_AVATAR);
+            log("attachLocalChatAvatar attached chatId=" + chatId + " photoId=" + photoId);
+        } catch (Throwable t) {
+            logErr("attachLocalChatAvatar failed for " + chatId, t);
+        }
+    }
+
     private static android.graphics.Bitmap circleCrop(android.graphics.Bitmap src, int side) {
         try {
             android.graphics.Bitmap out = android.graphics.Bitmap.createBitmap(side, side, android.graphics.Bitmap.Config.ARGB_8888);
@@ -1846,7 +1907,21 @@ public class OxAgentsBridge {
 
     /** Persists an outgoing text in a locally created group and triggers its agent. */
     public static void sendLocalGroupText(long dialogId, String text, MessageObject replyTo) {
+        sendLocalGroupText(dialogId, text, replyTo, null);
+    }
+
+    /** Same as {@link #sendLocalGroupText} but forces the reply to a specific
+     *  member agent (OxUI reply targeting). agentId may be null. */
+    public static void sendLocalGroupTextTo(long dialogId, String agentId, String text) {
+        sendLocalGroupText(dialogId, text, null, agentId);
+    }
+
+    private static void sendLocalGroupText(long dialogId, String text, MessageObject replyTo,
+            String agentId) {
         if (dialogId >= 0 || text == null || text.trim().isEmpty()) return;
+        if (agentId != null) {
+            log("groupReply forced agentId=" + agentId + " dialog=" + dialogId);
+        }
         String clean = text.trim();
         try {
             TLRPC.TL_message msg = new TLRPC.TL_message();
@@ -1873,6 +1948,13 @@ public class OxAgentsBridge {
             persistAndShow(dialogId, msg);
         } catch (Throwable t) {
             logErr("sendLocalGroupText persist failed", t);
+        }
+        if (agentId != null) {
+            OxAgent forced = OxAgentStore.loadAgent(agentId);
+            if (forced != null && forced.tgId != 0) {
+                startGroupTurn(forced, dialogId, clean, null);
+                return;
+            }
         }
         onGroupMessage(dialogId, clean, replyTo);
     }
@@ -2785,7 +2867,8 @@ public class OxAgentsBridge {
         // into the agent's one-to-one history
         try {
             if (s.group) {
-                OxGroupStore.appendChat(s.dialogId, "assistant", finalText);
+                OxGroupStore.appendChat(s.dialogId, "assistant", finalText, null,
+                        s.agent == null ? null : s.agent.id);
             } else {
                 List<OxChatEntry> chat = OxAgentStore.loadChat(s.agent.id);
                 chat.add(new OxChatEntry("user", s.userText, System.currentTimeMillis(), s.imagePath));

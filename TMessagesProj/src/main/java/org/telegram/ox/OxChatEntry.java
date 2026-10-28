@@ -16,6 +16,7 @@ public class OxChatEntry {
     public String imagePath;   // optional: local image attached to this entry (vision)
     public String filePath;    // optional: local document attached to this entry
     public String fileName;    // display name for filePath
+    public String sender;      // optional: agent id that produced this entry (group chats)
 
     public OxChatEntry(String role, String content, long ts) {
         this.role = role;
@@ -35,6 +36,8 @@ public class OxChatEntry {
         for (int i = 0; i < a.length(); i++) {
             JSONObject o = a.getJSONObject(i);
             OxChatEntry e = new OxChatEntry(o.optString("role", "user"), o.optString("content"), o.optLong("ts"));
+            String sender = o.optString("sender", "");
+            if (!sender.isEmpty()) e.sender = sender;
             String img = o.optString("image_path", "");
             if (!img.isEmpty()) e.imagePath = img;
             String file = o.optString("file_path", "");
@@ -59,6 +62,7 @@ public class OxChatEntry {
                 o.put("file_path", e.filePath);
                 if (e.fileName != null && !e.fileName.isEmpty()) o.put("file_name", e.fileName);
             }
+            if (e.sender != null && !e.sender.isEmpty()) o.put("sender", e.sender);
             a.put(o);
         }
         return a;

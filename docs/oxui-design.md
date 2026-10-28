@@ -63,7 +63,7 @@ The only entrance animation is the conversation fade/rise on first render.
 - Copy is plain and action-oriented ("Write something…", "Open Telegram UI"),
   with the model's Markdown converted to native spans rather than shown raw.
 
-## What is wired now (0.61.0)
+## What is wired now (0.64.0)
 
 - Entry points: Ox Settings → Interface (Telegram UI / OxUI preview) and the
   onboarding final page. Both persist `interface_mode`.
@@ -72,24 +72,36 @@ The only entrance animation is the conversation fade/rise on first render.
   task and switches back; back in root mode sends the task to the background.
 - OxUI reads real local agent history from `OxAgentStore` and lists real agents.
 - Sending calls `OxAgentsBridge.sendFromOxUi`, the same local path used by the
-  Telegram UI, so the user turn and agent reply appear in both. This was
-  verified with the Echo agent: "OxUI test 0600" appeared in OxUI and in the
-  Telegram Echo chat.
+  Telegram UI, so the user turn and agent reply appear in both.
 - Agents panel: name/remark search, Harness + recent-message subtitle, tap to
   chat, long-press for detail; detail shows harness/model, remark, memory stats
   and recent memory; message long-press copies.
 - Markdown (`**bold**`, `` `code` ``, `#` headings) is rendered with native
   spans inside message bubbles.
+- Groups (0.62–0.64): Telegram UI New Group with only local agents creates a
+  local group offline (`createLocalGroup`), listed in OxUI's Groups panel and
+  messageable from the same composer (rail group chip). 0.64.0 adds the offline
+  avatar branch — ImageUpdater returns local PhotoSizes instead of FileUploader
+  and `attachLocalChatAvatar` copies the crop cache into TL_chatPhoto
+  volume/local-id names so the avatar survives restarts — plus per-agent
+  attribution on replies (`OxChatEntry.sender` → "Name · time" meta) and
+  targeted `Reply <agent>` from the long-press menu (chip + forced member turn).
+- Attachments (0.62): SAF image picker → `files/oxui_media` → real photo
+  message; image bubbles with a 16 MB import cap and a coral retry row when a
+  send never lands (120 s).
 
 ## Not done yet / next
 
 - Root switch only applies to plain launcher starts; deep links/shares keep the
   Telegram path.
-- Groups, attachments, media, chat search, settings, agent editing and full
-  memory pages are Telegram UI only.
+- Editing the avatar of an existing local group, video/GIF/file attachments,
+  chat search, settings, agent editing and full memory pages are still
+  Telegram-UI-only (or absent) in OxUI.
+- Targeted replies have no quote semantics yet (the chip forces the member, but
+  the quoted message is not embedded in the turn context).
 - The preview is phone-first; no tablet two-pane layout yet.
 - Dynamic theme variants, reduced-motion handling and accessibility sweep are
   still to do.
-- Next round: group chats, attachments/media, chat/session search, settings and
-  agent editing inside OxUI, plus a third visual pass driven by device
-  screenshots.
+- Next round: a third visual pass over groups/media polish from the subagent
+  review list, chat/session search inside OxUI, then settings and agent
+  editing.

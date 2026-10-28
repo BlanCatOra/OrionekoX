@@ -1390,9 +1390,15 @@ These confirm the feature directions rather than relying on guesses. Checked
    locally-created-group groundwork with a Groups panel, contrast/breathing/
    auto-scroll/retry fixes from a subagent visual review. 0.63.0 wires New Group
    creation to the offline local-chat path, so groups are now listed in the
-   Groups panel and messageable from OxUI with Telegram UI sync. Still open:
-   offline avatar upload on group creation, video/GIF/file attachments, chat
-   search, settings, agent editing, per-agent attribution in group replies,
-   tablet layout, dark variant, reduced-motion/accessibility sweep,
-   token-level streaming. It is not yet a complete replacement for Telegram
-   UI.
+   Groups panel and messageable from OxUI with Telegram UI sync. 0.64.0 adds
+   the offline avatar branch on group creation (ImageUpdater returns local
+   PhotoSizes instead of FileUploader; attachLocalChatAvatar round-trips a
+   TL_chatPhoto with volume/local-id file copies, verified to survive
+   force-stop restart), per-agent attribution on group replies
+   (OxChatEntry.sender rendered as "Name · time" meta) and targeted
+   "Reply <agent>" from the long-press menu (forces that member's turn).
+   Still open: avatar editing on an existing local group, video/GIF/file
+   attachments, chat search, settings, agent editing, quoted semantics for
+   targeted replies, tablet layout, dark variant,
+   reduced-motion/accessibility sweep, token-level streaming. It is not yet
+   a complete replacement for Telegram UI.

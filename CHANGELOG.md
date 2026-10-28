@@ -4,6 +4,22 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.64.0 — 2026-10-29
+
+- Offline group avatar on creation: in agent-only mode ImageUpdater returns
+  the local big/small PhotoSizes instead of entering FileUploader (whose
+  requests are dropped without callbacks offline and deadlocked the create
+  screen), and attachLocalChatAvatar builds a TL_chatPhoto with a derived
+  photo id and copies the crop cache files under the volume/local-id names
+  the deserializer expects — the avatar survives force-stop restarts.
+- Group replies now carry per-agent attribution: OxChatEntry gains a
+  backwards-compatible sender field written by finishTurn and rendered as
+  "Name · time" meta in OxUI. Legacy entries without a sender keep the
+  group-name meta (no migration).
+- Targeted replies in OxUI: long-pressing an assistant row offers
+  Copy / Reply <name>; Reply shows a chip above the composer and forces that
+  member's group turn via OxAgentsBridge.sendLocalGroupTextTo.
+
 ## 0.63.0 — 2026-10-29
 
 - Wires the New Group flow to offline local chat creation: in agent-only

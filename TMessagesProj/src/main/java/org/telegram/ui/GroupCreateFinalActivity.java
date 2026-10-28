@@ -678,7 +678,7 @@ public class GroupCreateFinalActivity extends BaseFragment implements Notificati
             AndroidUtilities.hideKeyboard(editText);
             editText.setEnabled(false);
 
-            if (imageUpdater.isUploadingImage()) {
+            if (imageUpdater.isUploadingImage() && !org.telegram.ox.OxMode.isAgentOnly()) {
                 createAfterUpload = true;
             } else {
                 showEditDoneProgress(true);
@@ -729,7 +729,7 @@ public class GroupCreateFinalActivity extends BaseFragment implements Notificati
                 avatar = smallSize.location;
                 avatarBig = bigSize.location;
                 avatarImage.setImage(ImageLocation.getForLocal(avatar), "50_50", avatarDrawable, null);
-                showAvatarProgress(true, false);
+                showAvatarProgress(!org.telegram.ox.OxMode.isAgentOnly(), false);
             }
         });
     }
@@ -880,6 +880,10 @@ public class GroupCreateFinalActivity extends BaseFragment implements Notificati
             }
             if (inputPhoto != null || inputVideo != null || inputEmojiMarkup != null) {
                 getMessagesController().changeChatAvatar(chatId, null, inputPhoto, inputVideo, inputEmojiMarkup, videoTimestamp, inputVideoPath, avatar, avatarBig, null);
+            } else if (org.telegram.ox.OxMode.isAgentOnly() && avatar != null) {
+                // Offline local chat: attach the already-local PhotoSizes to the
+                // chat directly instead of issuing a dropped avatar RPC.
+                org.telegram.ox.OxAgentsBridge.attachLocalChatAvatar(chatId, avatar, avatarBig);
             }
         }
     }
