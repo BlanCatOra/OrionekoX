@@ -106,6 +106,8 @@ public class OxOnboardingActivity extends BaseFragment {
     private TextView versionRow;
     private final List<TextView> componentRows = new ArrayList<>();
     private TextView containerNote;
+    private String selectedInterface = OxMode.IFACE_TELEGRAM;
+    private final TextView[] interfaceChecks = new TextView[2];
 
     @Override
     public boolean onFragmentCreate() {
@@ -114,6 +116,7 @@ public class OxOnboardingActivity extends BaseFragment {
         if (getArguments() != null) {
             startPage = getArguments().getInt("start_page", 0);
         }
+        selectedInterface = OxMode.getInterfaceMode();
         int saved = OxMode.getOnboardingMode();
         if (OxMode.isAgentOnly()) {
             selectedMode = MODE_OX;
@@ -604,6 +607,9 @@ public class OxOnboardingActivity extends BaseFragment {
         LinearLayout extra6 = new LinearLayout(context);
         extra6.setOrientation(LinearLayout.VERTICAL);
 
+        extra6.addView(buildInterfaceCard(context),
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
         LinearLayout enableCard = sectionList(context);
         LinearLayout enableRow = new LinearLayout(context);
         enableRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -633,7 +639,10 @@ public class OxOnboardingActivity extends BaseFragment {
         enableRow.addView(containerSwitch, LayoutHelper.createLinear(48, 32, Gravity.CENTER_VERTICAL));
         enableRow.setOnClickListener(v -> containerSwitch.setChecked(!containerSwitch.isChecked(), true));
         enableCard.addView(enableRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        extra6.addView(enableCard, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        LinearLayout.LayoutParams enableLp = LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT);
+        enableLp.topMargin = AndroidUtilities.dp(12);
+        extra6.addView(enableCard, enableLp);
 
         LinearLayout configCard = sectionList(context);
         mirrorRow = settingRow(context, LocaleController.getString(R.string.OxObContainerMirror), mirrorName(), () -> {
@@ -708,6 +717,73 @@ public class OxOnboardingActivity extends BaseFragment {
 
         updateContainerState();
         updateAgentSummary();
+    }
+
+    private LinearLayout buildInterfaceCard(Context context) {
+        LinearLayout card = sectionList(context);
+        TextView title = new TextView(context);
+        title.setText(LocaleController.getString(R.string.OxObInterfaceTitle));
+        title.setTextSize(12);
+        title.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        title.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(12),
+                AndroidUtilities.dp(16), AndroidUtilities.dp(4));
+        card.addView(title, LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        String[] modes = {OxMode.IFACE_TELEGRAM, OxMode.IFACE_OXUI};
+        int[] titles = {R.string.OxUiTelegram, R.string.OxUiPreviewName};
+        int[] subs = {R.string.OxObInterfaceTelegramSub, R.string.OxObInterfaceOxuiSub};
+        for (int i = 0; i < modes.length; i++) {
+            final String mode = modes[i];
+            LinearLayout row = new LinearLayout(context);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(11),
+                    AndroidUtilities.dp(16), AndroidUtilities.dp(11));
+            row.setBackground(Theme.getSelectorDrawable(false));
+            LinearLayout text = new LinearLayout(context);
+            text.setOrientation(LinearLayout.VERTICAL);
+            TextView name = new TextView(context);
+            name.setText(LocaleController.getString(titles[i]));
+            name.setTextSize(15.5f);
+            name.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+            text.addView(name);
+            TextView sub = new TextView(context);
+            sub.setText(LocaleController.getString(subs[i]));
+            sub.setTextSize(12.5f);
+            sub.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+            sub.setLineSpacing(AndroidUtilities.dp(2), 1f);
+            text.addView(sub);
+            row.addView(text, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+            TextView check = makeCheck(context);
+            row.addView(check, LayoutHelper.createLinear(22, 22, Gravity.CENTER_VERTICAL));
+            interfaceChecks[i] = check;
+            setCheck(check, mode.equals(selectedInterface), false);
+            row.setOnClickListener(v -> {
+                selectedInterface = mode;
+                OxMode.setInterfaceMode(mode);
+                for (int j = 0; j < modes.length; j++) {
+                    setCheck(interfaceChecks[j], modes[j].equals(selectedInterface), true);
+                }
+            });
+            card.addView(row, LayoutHelper.createLinear(
+                    LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        }
+        TextView preview = new TextView(context);
+        preview.setText(LocaleController.getString(R.string.OxUiOpenPreview));
+        preview.setTextSize(13.5f);
+        preview.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+        preview.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(10),
+                AndroidUtilities.dp(16), AndroidUtilities.dp(12));
+        preview.setOnClickListener(v -> {
+            if (getParentActivity() != null) {
+                getParentActivity().startActivity(new Intent(
+                        getParentActivity(), OxUiPreviewActivity.class));
+            }
+        });
+        card.addView(preview, LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        return card;
     }
 
     private String mirrorName() {

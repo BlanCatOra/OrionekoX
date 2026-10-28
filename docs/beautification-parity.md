@@ -1381,3 +1381,12 @@ These confirm the feature directions rather than relying on guesses. Checked
    a real `should_compact=true` device trigger, per-harness thresholds, full
    tool-schema repair, native multimodal/non-text messages, and
    OpenClaw tool-result visibility.
+
+9. OxUI(preview) is the first independent front end: Claude-inspired serif
+   editorial conversation, chartreuse signal accent, agent rail and a shared
+   local send path. It is selectable in onboarding and Ox Settings, but the app
+   root remains Telegram UI. Still open: full navigation (groups, search,
+   settings, memory, agent detail), attachments/media, tablet layout, dynamic
+   theme/reduced-motion/accessibility, token-level streaming, and a second
+   visual pass from device screenshots. Do not present it as a complete
+   replacement for Telegram UI yet.

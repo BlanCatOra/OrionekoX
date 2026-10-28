@@ -631,3 +631,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：debug 0.59.0 的 `mirror_test_590`（tgId 555000015，OpenClaw，mirror=true）两次相同文本，SQLite 3 行（1 user 去重 + 2 assistant），重启后保持；记忆页 `3 条 · 长期 0 · 短期 3 · 事实 0 · 镜像 3`，library 对话框 3 条“镜像对话”。切回 API + 本机 mock 后 system prompt 召回三条镜像（0.89/0.81/0.80）。15 个桥接测试通过，无本包 FATAL/ANR；测试 Agent/memory 行/tgId dialogs/messages 清零，桥接/mock 停止、token 删除，代理/无障碍恢复。
 - 边界：OpenClaw `--json` 无工具结果；镜像只写本地 SQLite 明文；镜像不反注入 Harness；未构造真实 `should_compact=true`；Claude 403、OxLinux exec 限制未变。
+
+## 0.60.0 OxUI preview QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-123 | 0.60.0 功能 | 前端只有 Telegram 原生 UI/既有美化；用户要求增加 OxUI(preview)，入口放引导页与 Ox 设置，OxUI 不套用 Telegram UI 但功能要同步 | 新增 `interface_mode` 偏好、Ox Settings Interface 行、引导页第 6 步 Interface 卡；新增独立 `OxUiPreviewActivity`（serif 编辑式对话、Agent rail、ink/ chartreuse 设计 token），读真实 Agent/历史，发送复用 `OxAgentsBridge.sendFromOxUi`；Markdown 转 native spans | 已实现并设备验证（preview） |
+| R2-124 | 0.60.0 QA | 第一版助手竖线用 match_parent 高度，被 ScrollView 拉成整屏长线；Markdown 的 `**` 原样显示；字符串只硬编码中文 | 竖线改固定 46dp 短标记；Markdown 经 `Html.fromHtml` 转粗体/代码/标题；所有 OxUI 文案走中英文资源，中文包 119→121；截图复查 | 已修复并设备验证 |
+
+- 设备：debug 6009 的 `Studio Test`（tgId 555000016，合成历史）打开 OxUI；Ox Settings 与引导页入口均可用；内置 Echo 发送 `OxUI test 0600`，OxUI 与 Telegram Echo 会话同时出现用户消息和回复（id 100067/100068）。release 6009 覆盖启动无 FATAL/ANR；测试 Agent/chat/dialog/messages/memory 清零，代理/无障碍保持。
+- 边界：OxUI 仍是 preview，应用根未切换；只有单聊，缺群聊/附件/媒体/搜索/设置/记忆页/Agent 详情/平板双栏/动态主题/reduced-motion；外部 Harness 回合结束才落盘，非 token 级流式。下一轮做第二轮视觉评审与 root 切换/导航。
