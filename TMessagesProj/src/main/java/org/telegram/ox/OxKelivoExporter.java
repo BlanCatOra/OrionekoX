@@ -153,6 +153,7 @@ public class OxKelivoExporter {
             session.put("id", sid);
             session.put("name", a.name == null ? a.id : a.name);
             session.put("threadName", a.name == null ? a.id : a.name);
+            session.put("orionekoAgentId", a.id);
             String bgPath = OxChatTheme.backgroundForDialog(a.tgId);
             if (bgPath.isEmpty()) bgPath = OxChatTheme.backgroundForAgent(a.tgId);
             if (!bgPath.isEmpty() && resources.size() < MAX_RESOURCES) {

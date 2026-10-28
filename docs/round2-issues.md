@@ -437,3 +437,12 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：单 Agent 导出 3,578 B，含 5 条消息、2 个 image、2 个 raw-attachment；解码后图片/`notes.txt`/`data.json` 的 sha256 与源文件一致，敏感字符串扫描 0 命中；修复前回环预览“2 图/1 附件”，修复后同一 zip 为“2 图/2 附件”，回环后 5 条 chat 记录与原生两张照片、两个文件气泡完整恢复；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：回环 Agent id 追加 `_current`，保留原 Agent 时会新增副本而非替换；未与真实 Chatbox 客户端互导。
+
+## 0.43.2 Chatbox 回环保持 Agent 身份 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-86 | 0.43.2 QA | 导出 session 的完整 Agent id 在导入时被再次加 `kelivo_chat_` 前缀并追加 `_current`，保留原 Agent 再导入会生成 `kelivo_chat_kelivo_chat_s1_current` 副本 | 导出 session 写 `orionekoAgentId`；导入器用 `Conversation.agentIdOverride` 直接使用该 id，并做 `[a-zA-Z0-9._-]` 清洗、去前导点和 80 字符截断；无字段的外部备份保持原逻辑 | 已修复 |
+
+- 设备：导入样例得到 `kelivo_chat_s1_current`（tgId 555000091）；导出 3,593 B，session id 与 `orionekoAgentId` 均为该 id；保留原 Agent 回环，预览“已存在 1 段对话”，结果替换历史；Agent 目录仍只有 1 个，tgId 不变，chat.json 与原生消息均 5 条；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：`orionekoAgentId` 是 OrionekoX 扩展，真实 Chatbox 客户端会忽略；无聊天 copilot 未验证；非法/超长 id 会清洗或截断。

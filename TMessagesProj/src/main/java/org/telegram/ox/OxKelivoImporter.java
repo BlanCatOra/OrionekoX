@@ -86,6 +86,7 @@ public class OxKelivoImporter {
         double topP = 1.0;
         int maxTokens = 0;
         final List<OxChatEntry> entries = new ArrayList<>();
+        String agentIdOverride = "";
         final List<String> imageRefs = new ArrayList<>();
         final List<String> fileRefs = new ArrayList<>();
         final List<String> fileNames = new ArrayList<>();
@@ -137,7 +138,7 @@ public class OxKelivoImporter {
             p.conversations++;
             p.messages += c.entries.size();
             if (p.names.size() < 8) p.names.add(c.title);
-            if (existing.contains(conversationAgentId(c.id))) p.existingConversations++;
+            if (existing.contains(agentIdFor(c))) p.existingConversations++;
         }
         p.notes.add("仅导入 Kelivo / Chatbox 备份中的助手、人设、技能、HTTP MCP 与对话；不含 Provider 密钥。");
         if (!archive.providers.isEmpty()) {
@@ -270,7 +271,7 @@ public class OxKelivoImporter {
         // that carry no provider of their own (full backups often split the two).
         fallback = existingProvider();
         for (Conversation c : archive.conversations) {
-            String id = conversationAgentId(c.id);
+            String id = agentIdFor(c);
             OxAgent a = findById(id);
             boolean update = a != null;
             long oldTgId = a == null ? 0 : a.tgId;
@@ -883,6 +884,7 @@ public class OxKelivoImporter {
         JSONArray current = session.optJSONArray("messages");
         String prompt = firstSystemPrompt(current);
         if (prompt.isEmpty()) prompt = out.defaultPrompt;
+        String roundtripId = session.optString("orionekoAgentId", "").trim();
 
         JSONArray threads = session.optJSONArray("threads");
         for (int i = 0; threads != null && i < threads.length(); i++) {
@@ -900,13 +902,21 @@ public class OxKelivoImporter {
         if (current != null && current.length() > 0 && !currentDuplicated(current, threads)) {
             String threadName = session.optString("threadName", "").trim();
             addConversation(out, id + "_current", threadName.isEmpty() ? title : threadName,
-                    providerId, model, avatar, background, temperature, topP, maxTokens, prompt, current);
+                    providerId, model, avatar, background, temperature, topP, maxTokens, prompt,
+                    current, roundtripId);
         }
     }
 
     private static void addConversation(Archive out, String rawId, String title, String providerId,
             String model, String avatarRef, String backgroundRef, double temperature, double topP,
             int maxTokens, String prompt, JSONArray messages) {
+        addConversation(out, rawId, title, providerId, model, avatarRef, backgroundRef,
+                temperature, topP, maxTokens, prompt, messages, "");
+    }
+
+    private static void addConversation(Archive out, String rawId, String title, String providerId,
+            String model, String avatarRef, String backgroundRef, double temperature, double topP,
+            int maxTokens, String prompt, JSONArray messages, String agentIdOverride) {
         if (out.conversations.size() >= MAX_CONVERSATIONS) return;
         String safeId = rawId == null ? "" : rawId.replaceAll("[^a-zA-Z0-9_-]", "_");
         while (safeId.startsWith("_")) safeId = safeId.substring(1);
@@ -922,6 +932,7 @@ public class OxKelivoImporter {
         if (entries.isEmpty()) return;
         Conversation c = new Conversation();
         c.id = safeId;
+        c.agentIdOverride = safeAgentId(agentIdOverride);
         c.title = title == null || title.trim().isEmpty() ? "Kelivo 对话" : title.trim();
         c.systemPrompt = prompt == null ? "" : prompt;
         c.providerId = providerId == null ? "" : providerId;
@@ -1151,6 +1162,19 @@ public class OxKelivoImporter {
         String safe = id == null ? "" : id.replaceAll("[^a-zA-Z0-9_-]", "");
         if (safe.isEmpty()) safe = "conversation";
         return "kelivo_chat_" + safe;
+    }
+
+    private static String agentIdFor(Conversation c) {
+        return c.agentIdOverride == null || c.agentIdOverride.isEmpty()
+                ? conversationAgentId(c.id) : c.agentIdOverride;
+    }
+
+    private static String safeAgentId(String id) {
+        String safe = id == null ? "" : id.trim().replaceAll("[^a-zA-Z0-9._-]", "_");
+        while (safe.startsWith(".")) safe = safe.substring(1);
+        if (safe.isEmpty() || "..".equals(safe)) return "";
+        if (safe.length() > 80) safe = safe.substring(0, 80);
+        return safe;
     }
 
     private static void scan(JSONObject o, Archive out, int depth) {

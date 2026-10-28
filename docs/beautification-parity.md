@@ -840,6 +840,25 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: the roundtrip agent id gains a `_current` suffix, so a kept original
   would not be replaced; no real Chatbox client test yet.
 
+## 0.43.2 fix — stable Agent identity across Chatbox roundtrip
+
+- The exporter now writes the original Agent id into the session as
+  `orionekoAgentId`. The importer keeps it in `Conversation.agentIdOverride`
+  and uses it for both preview counts and actual import, instead of prefixing
+  and suffixing the id again.
+- Override ids are sanitized to `[a-zA-Z0-9._-]`, stripped of leading dots and
+  truncated to 80 characters; external backups without the field still follow
+  the old `kelivo_chat_<session>_current` path.
+- Device QA: importing the mixed sample created `kelivo_chat_s1_current`
+  (tgId 555000091); the exported 3,593 B zip carried the same id and override.
+  Re-importing while the original was kept showed “已存在 1 段对话” and replaced
+  the history. The agent directory count stayed at one, the tgId was unchanged,
+  and both `chat.json` and the native chat still had five messages. Cleanup
+  returned dialogs/messages to zero with no app FATAL/ANR.
+- Limits: `orionekoAgentId` is an OrionekoX extension ignored by real Chatbox
+  clients; chatless copilot exports were not validated; invalid or overlong ids
+  are sanitized/truncated.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -853,8 +872,8 @@ These confirm the feature directions rather than relying on guesses. Checked
    per message and remote attachments.
 3. Bidirectional export still lacks workspaces, memory, themes, global/video
    backgrounds, MCP headers/OAuth and server selection, plus validation against
-   real external clients; multi-attachment self-roundtrip now passes, but Agent
-   ids gain `_current` and are not stable when the original is kept.
+   real external clients; agent identity now survives self-roundtrip, but
+   chatless copilot exports and external Chatbox clients remain unverified.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 5. Per-conversation theme inheritance still copies the parent’s text color; a
