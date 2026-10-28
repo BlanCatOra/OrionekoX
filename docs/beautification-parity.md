@@ -30,7 +30,7 @@ requirements.
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
 | Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills, HTTP MCP and long-term memory; provider keys never imported |
-| SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0** PNG `tEXt`/`iTXt` + JSON, six persona sections, first message and PNG avatar, idempotent ids; no alternate greetings, character book, card export or real-client validation |
+| SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0–0.45.1** PNG `tEXt`/`iTXt` + JSON via the agent-list entry, six persona sections, first message and PNG avatar, idempotent ids; no alternate greetings, character book, card export or real-client validation |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -890,6 +890,12 @@ These confirm the feature directions rather than relying on guesses. Checked
 
 ## 0.45.0 implementation — SillyTavern / RikkaHub character cards
 
+> Correction (0.45.1): the agent list already imported SillyTavern JSON
+> cards since 0.8.114 and uncompressed PNG `tEXt` cards since 0.8.115.
+> 0.45.0 duplicated the entry point under RikkaHub settings; 0.45.1 folds the
+> enhancements back into the agent-list entry and restores the RikkaHub row
+> to backup-only.
+
 - The RikkaHub import entry now also accepts standalone PNG or JSON character
   cards. PNG files are routed through their `tEXt`/`iTXt` chunks, preferring
   `ccv3` and falling back to `chara`; the payload may be base64 or raw JSON.
@@ -916,6 +922,26 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: only `first_mes` is imported; alternate greetings, character books,
   tags and regex scripts are ignored, cards cannot be exported, imported cards
   start offline, and a real SillyTavern/RikkaHub export was not tested.
+
+## 0.45.1 fix — one character-card importer
+
+- The agent-list “Import character card (SillyTavern PNG/JSON)” entry now
+  delegates to `OxRikkaImporter`: it verifies the file is a card, imports the
+  six persona sections and `first_mes`, saves a PNG as `avatar.png`, supports
+  `iTXt`, keeps a stable `rikka_card_<hash>` id, and greets through
+  `syncAgents(true)`. The old random-id + name “· copy” path is gone.
+- RikkaHub settings is backup-only again. Selecting a card there shows a
+  pointer to the agent-list entry and writes nothing; `settings.json` and zip
+  imports are unchanged.
+- Device QA: an 8,285 B PNG created `rikka_card_b303c8ed` (tg id 555000094)
+  with `avatar.png` SHA-256 `33f7346e…` equal to the source and the expected
+  native greeting. Re-importing the same card as 346 B JSON updated that one
+  directory, kept the avatar hash and did not duplicate messages. A card
+  selected through RikkaHub settings produced the pointer error, while a
+  297 B minimal RikkaHub backup still imported one offline assistant. Cleanup
+  removed both test agents and their dialogs/messages; no app FATAL/ANR.
+- Limits: same as 0.45.0 (`zTXt`, alternate greetings, character books, tags,
+  export and real-client validation are still missing).
 
 ## Gaps / next phases
 

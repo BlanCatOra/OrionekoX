@@ -26,6 +26,7 @@ import org.telegram.ox.OxAgentStore;
 import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxKelivoExporter;
 import org.telegram.ox.OxMode;
+import org.telegram.ox.OxRikkaImporter;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
 import org.telegram.ui.ActionBar.AlertDialog;
@@ -357,54 +358,6 @@ public class OxAgentsActivity extends BaseFragment {
         }
     }
 
-    /**
-     * SillyTavern PNG cards store the JSON in a tEXt chunk named "chara" (base64).
-     * Returns the decoded JSON, or the original bytes as UTF-8 for plain JSON cards.
-     */
-    private static String extractCardJson(byte[] data) {
-        if (data == null) return "";
-        if (data.length > 8
-                && (data[0] & 0xff) == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G') {
-            int off = 8;
-            while (off + 8 <= data.length) {
-                long len = ((long) (data[off] & 0xff) << 24) | ((data[off + 1] & 0xff) << 16)
-                        | ((data[off + 2] & 0xff) << 8) | (data[off + 3] & 0xff);
-                off += 4;
-                String type = new String(data, off, 4, java.nio.charset.StandardCharsets.ISO_8859_1);
-                off += 4;
-                if (len < 0 || off + len + 4 > data.length) break;
-                if ("tEXt".equals(type)) {
-                    int nul = -1;
-                    for (int i = off; i < off + len; i++) {
-                        if (data[i] == 0) { nul = i; break; }
-                    }
-                    if (nul > off) {
-                        String key = new String(data, off, nul - off, java.nio.charset.StandardCharsets.ISO_8859_1);
-                        if ("chara".equalsIgnoreCase(key) || "ccv3".equalsIgnoreCase(key)) {
-                            try {
-                                String b64 = new String(data, nul + 1, (int) (off + len - nul - 1),
-                                        java.nio.charset.StandardCharsets.ISO_8859_1);
-                                byte[] decoded = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
-                                return new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
-                            } catch (Throwable ignored) {
-                            }
-                        }
-                    }
-                }
-                off += (int) len + 4;
-            }
-        }
-        return new String(data, java.nio.charset.StandardCharsets.UTF_8);
-    }
-
-    private static void appendCardField(StringBuilder sb, String title, String value) {
-        if (value == null) return;
-        value = value.trim();
-        if (value.isEmpty()) return;
-        if (sb.length() > 0) sb.append("\n\n");
-        sb.append("# ").append(title).append("\n").append(value);
-    }
-
     private void importFromOxAgent() {
         try {
             android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
@@ -522,76 +475,28 @@ public class OxAgentsActivity extends BaseFragment {
                 String msg;
                 try {
                     if (uri == null) throw new IllegalStateException("no file");
-                    java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
-                    java.io.InputStream in = ctx.getContentResolver().openInputStream(uri);
-                    byte[] buf = new byte[8192];
-                    int n;
-                    while ((n = in.read(buf)) > 0 && bos.size() < 4 * 1024 * 1024) {
-                        bos.write(buf, 0, Math.min(n, 4 * 1024 * 1024 - bos.size()));
+                    OxRikkaImporter.Preview preview = OxRikkaImporter.preview(ctx, uri);
+                    if (!preview.characterCard) throw new IllegalArgumentException("not a card");
+                    OxRikkaImporter.Result result = OxRikkaImporter.importFrom(ctx, uri);
+                    if (result.importedAgentIds.isEmpty()) {
+                        throw new IllegalStateException("no agent");
                     }
-                    in.close();
-                    JSONObject root = new JSONObject(extractCardJson(bos.toByteArray()));
-                    JSONObject card = root.optJSONObject("data");
-                    if (card == null) card = root;
-                    String name = card.optString("name", "").trim();
-                    if (name.isEmpty()) throw new IllegalArgumentException("name missing");
-                    StringBuilder md = new StringBuilder();
-                    appendCardField(md, "Description", card.optString("description", ""));
-                    appendCardField(md, "Personality", card.optString("personality", ""));
-                    appendCardField(md, "Scenario", card.optString("scenario", ""));
-                    appendCardField(md, "System prompt", card.optString("system_prompt", ""));
-                    appendCardField(md, "Post-history instructions", card.optString("post_history_instructions", ""));
-                    appendCardField(md, "Example dialogue", card.optString("mes_example", ""));
-                    appendCardField(md, "First message", card.optString("first_mes", ""));
-                    OxAgent donor = null;
-                    for (OxAgent existing : OxAgentStore.listAgents()) {
-                        if (existing.baseUrl != null && !existing.baseUrl.isEmpty()
-                                && existing.apiKey != null && !existing.apiKey.isEmpty()) {
-                            donor = existing;
-                            break;
-                        }
-                    }
-                    if (donor == null) {
-                        for (OxAgent existing : OxAgentStore.listAgents()) {
-                            if (existing.baseUrl != null && !existing.baseUrl.isEmpty()) { donor = existing; break; }
-                        }
-                    }
-                    OxAgent a = new OxAgent();
-                    a.id = "card" + UUID.randomUUID().toString().substring(0, 6);
-                    a.name = name;
-                    a.emoji = "🤖";
-                    a.agentsMd = md.toString();
-                    a.firstMes = card.optString("first_mes", "").trim();
-                    String desc = card.optString("description", "").trim();
-                    if (!desc.isEmpty()) {
-                        a.remark = desc.length() > 40 ? desc.substring(0, 40) : desc;
-                    }
-                    a.builtIn = false;
-                    a.tgId = 0;
-                    if (donor != null) {
-                        a.baseUrl = donor.baseUrl;
-                        a.apiKey = donor.apiKey;
-                        a.model = donor.model;
-                        a.providerId = donor.providerId;
-                        a.temperature = donor.temperature;
-                        a.topP = donor.topP;
-                        a.maxTokens = donor.maxTokens;
-                    }
-                    for (OxAgent existing : OxAgentStore.listAgents()) {
-                        if (existing.name != null && existing.name.equals(a.name)) {
-                            a.name = a.name + " · " + LocaleController.getString(R.string.OxAgentCopySuffix);
-                            break;
-                        }
-                    }
-                    OxAgentStore.saveAgent(a);
-                    msg = LocaleController.formatString("OxAgentCardImported", R.string.OxAgentCardImported, a.name);
+                    OxAgent imported = OxAgentStore.loadAgent(result.importedAgentIds.get(0));
+                    String name = imported == null ? "" : imported.name;
+                    msg = LocaleController.formatString(
+                            "OxAgentCardImported", R.string.OxAgentCardImported, name);
                 } catch (Throwable t) {
-                    msg = LocaleController.formatString("OxAgentCardFailed", R.string.OxAgentCardFailed, t.getMessage());
+                    String detail = t.getMessage();
+                    if ("not a card".equals(detail)) {
+                        detail = LocaleController.getString(R.string.OxRikkaInvalidCard);
+                    }
+                    msg = LocaleController.formatString("OxAgentCardFailed",
+                            R.string.OxAgentCardFailed, detail == null ? "" : detail);
                 }
                 final String m = msg;
                 AndroidUtilities.runOnUIThread(() -> {
                     toast(m);
-                    OxAgentsBridge.syncAgents(false);
+                    OxAgentsBridge.syncAgents(true);
                     rebuild();
                 });
             }, "ox-card-import").start();

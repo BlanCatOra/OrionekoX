@@ -466,3 +466,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：689 B JSON 卡创建 `rikka_card_df478b83`（tgId 555000092），六节人设与开场白正确；同一卡 8,810 B PNG 更新该 Agent，`avatar.png` sha256 `4482184d…` 与源图一致，重复导入仍 1 个目录、hash 不变、1 条开场白；JSON-only 卡创建 `rikka_card_1ac480d6` 且无头像；无 `chara` 的 69 B PNG 正确报错。全程无本包 FATAL/ANR；删除测试 Agent 后对应 dialogs/messages 均为 0，Download 测试卡已清理。
 - 边界：不支持压缩 `zTXt`；只导入 `first_mes`，未导入 alternate greetings、character_book、tags、正则；角色卡只导入不导出；导入后离线；未与真实 SillyTavern/RikkaHub 导出卡互测。
+
+## 0.45.1 角色卡导入收拢 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-91 | 0.45.1 QA | Agent 列表自 0.8.114/0.8.115 已有 JSON/PNG 角色卡导入，0.45.0 又在 RikkaHub 设置页重复实现一套，出现两个入口与两份解析逻辑 | Agent 列表卡片入口改为复用 `OxRikkaImporter`，获得 `iTXt`、PNG 头像、稳定 id 与原生开场白；删除旧的随机 id/“· 副本”/本地解析；RikkaHub 行恢复备份专用，选到卡片时提示改用 Agent 列表入口 | 已修复并设备验证 |
+| R2-92 | 0.45.1 构建 | 新增英文提示含 `agent list's card entry`，单引号触发 AAPT2 `Invalid unicode escape sequence`，release/debug 资源合并均失败 | 改写为不带所有格的 `agent list card entry`，重新构建 `BUILD SUCCESSFUL in 1m 57s` | 已修复 |
+
+- 设备：Agent 列表导入 8,285 B PNG 生成 `rikka_card_b303c8ed`（tgId 555000094），`avatar.png` sha256 `33f7346e…` 与源图一致，原生开场白正确；同卡 346 B JSON 再导入只更新同一目录、头像 hash 不变、无 `· 副本` 和重复消息；RikkaHub 行选择卡片得到指向 Agent 列表的错误提示；297 B 最小备份 zip 仍能导入 1 个离线助手。全程无本包 FATAL/ANR；删除测试 Agent 后 555000094/555000095 的 dialogs/messages 均为 0，Download 测试文件已清理。
+- 边界：同 0.45.0；Agent 列表卡片导入仍无独立预览对话框。
