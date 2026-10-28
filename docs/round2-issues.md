@@ -497,3 +497,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：自建 session/copilot 两个 Agent（tgId 555000102/555000101）与 4 个工作区文件（20 B 文本、16 B 二进制、33 B 中文嵌套路径、23 B md）。选中导出 2,215 B、4 个 `workspace/` 条目，逐文件 sha256 与源一致，敏感字段扫描 0 命中；0.47.1 加 `keep.txt` 后导出 2,414 B、5 条，Toast 完整显示“工作区 5”；单 Agent 导出 2,055 B、4 条且只含该 Agent 文件。删除 3 个文件并保留 `keep.txt` 后回导，预览/结果均为 4，4 个文件逐字节恢复，`keep.txt` 保留；重复导入仍 4 条、2 个 Agent 目录、无 `kelivo_` 副本、tgId 不变。含 `../../evil0470.txt` 的 zip 被整包拒绝（`Invalid zip entry path`），未写出文件；含 2 MiB+1 B 文件的 zip 预览/结果为 5 而非 6，`big.bin` 未写入。最终重建再验：`酒吧炒饭A`（2 个工作区文件）+ 无工作区的 `PNG Card` 导出 14,893 B，只有前者的 2 条且逐字节一致，`PNG Card` 的工作区目录未被创建。全程无本包 FATAL/ANR；删除测试 Agent 后两个 tgId 的 dialogs/messages 均为 0，Download 测试 zip 已清理。
 - 边界：`workspace/` 为扩展布局，真实 Chatbox/Kelivo 未实测；不保留空目录、权限、时间戳或符号链接；导出端上限只做代码审查，未造 2 MiB 源文件；删除 Agent 不自动删除工作区；联系人页缓存需重启刷新。
+
+## 0.48.1 Chatbox 备份携带 Agent 偏好 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-98 | 0.48.0 功能 | Chatbox/Kelivo 备份只带人设、模型、技能、记忆和工作区，Agent 的工具权限、置顶、备注、开场白、推理参数、上下文长度与采样设置换机后全部丢失 | 导出在 session 和 copilot 写私有 `orionekoAgent`，仅在该 Agent 有非默认偏好时写入；导入时在 Provider/模型/技能接线完成后应用，预览与结果报告恢复数量；`headers`/`extra_body`/Provider 地址/密钥结构性排除 | 已实现并设备验证 |
+| R2-99 | 0.48.0 QA | 首次回导后 `context_length` 从 32000/64000 变成 0：导入先应用偏好，随后 Provider 回退再用本机 `contextLength` 覆盖 | 0.48.1 把 `applyAgentPrefs` 移到 Provider、模型覆盖、请求头和技能关联之后，复验两个 Agent 的 32000/64000 正确恢复且其余字段无回归 | 已修复并设备验证 |
+
+- 设备：自建 session Agent（tgId 555000110，2 条消息）与 chatless copilot（tgId 555000111），覆盖置顶、备注、开场白、high/required/32k、low/none/64k、penalties、top_k、seed、stop 与 `get_time`/`device_info` 的 deny/ask/auto。多选导出 1,881 B，`copilots.json` 与 session 均含完整 `orionekoAgent`；全文扫描 `api_key`、`baseUrl`、`base_url`、`headers`、`extra_body`、`Authorization`、`Bearer `、`sk-`、`ox1:` 均 0 命中，Toast 显示“智能体 2、工作区 0、对话 1、消息 2…”。重置偏好后回导：预览与结果均为“2 个智能体的偏好设置”，回读 `agent.json` 全部字段一致（含 32000/64000），tgId 与 2 个 Agent 目录不变、无 `kelivo_` 副本；重复导入幂等。原生工具权限页显示 `get_time=禁止`、`device_info=询问`，置顶 session 在列表中排首位。全程无本包 FATAL/ANR；删除两个测试 Agent 后 dialogs/messages 均为 0，Download 测试 zip 已清理，未执行 `pm clear`。
+- 边界：`orionekoAgent` 为 OrionekoX 扩展，真实 Chatbox/Kelivo 会忽略且未互测；不导出 `headers`、`extra_body`、Provider 地址与密钥，换机后认证信息需重填；emoji、备注、开场白通过 `agent.json` 回读验证，未逐项截图欢迎语；temperature/topP/maxTokens 继续走原有 session/copilot 字段，不在私有对象中重复。

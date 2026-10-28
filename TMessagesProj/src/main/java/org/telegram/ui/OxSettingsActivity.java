@@ -479,7 +479,8 @@ public class OxSettingsActivity extends BaseFragment {
 
     private String kelivoResultText(OxKelivoImporter.Result r) {
         if (r.created == 0 && r.updated == 0 && r.skills == 0 && r.mcpAdded == 0
-                && r.conversations == 0 && r.memories == 0) {
+                && r.conversations == 0 && r.memories == 0 && r.preferences == 0
+                && r.workspaceFiles == 0) {
             return LocaleController.getString(R.string.OxKelivoNothing);
         }
         StringBuilder sb = new StringBuilder();

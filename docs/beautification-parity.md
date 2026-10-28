@@ -29,7 +29,7 @@ requirements.
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete; **0.25.2** rename with duplicate-name rejection; **0.27.0** preview a saved preset without applying it |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
-| Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; **0.47.1** exports per-agent workspaces (200 files / 2 MiB each / 8 MiB total); provider keys never imported |
+| Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; **0.47.1** exports per-agent workspaces (200 files / 2 MiB each / 8 MiB total); **0.48.1** exports/restores per-agent preferences (tool policies, pin, remark, greeting, reasoning/context/sampling settings); provider keys, base URLs, headers and `extra_body` never exported |
 | SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0–0.45.1** PNG `tEXt`/`iTXt` + JSON via the agent-list entry, six persona sections, first message and PNG avatar, idempotent ids; no alternate greetings, character book, card export or real-client validation |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
@@ -1006,6 +1006,47 @@ These confirm the feature directions rather than relying on guesses. Checked
   so exporting no longer creates empty workspace dirs and cannot emit orphan
   workspace entries.
 
+## 0.48.1 implementation — agent preferences in Chatbox backups
+
+- Session and copilot objects now carry a private `orionekoAgent` object, but
+  only when the agent has at least one non-default preference, so ordinary
+  agents do not gain noise. Fields: emoji, pinned, remark, first message,
+  reasoning effort, tool choice, parallel tool calls, context length,
+  presence/frequency penalties, top-k, seed, stop sequences and the per-tool
+  `auto`/`ask`/`deny` policy map.
+- Credentials are structurally excluded: no API key, base URL, provider id,
+  headers or `extra_body` is written. Headers and `extra_body` can carry
+  authentication even when they are not keys, so they stay out of the backup
+  entirely. On import, provider wiring runs first and preferences are applied
+  last, so a provider fallback cannot reset `context_length` (the 0.48.0 bug
+  fixed in 0.48.1).
+- Bounds mirror the UI: emoji 16 chars, remark/stop 2 KiB, greeting 16 KiB,
+  policy map at most 256 entries restricted to `auto`/`ask`/`deny`, numeric
+  values clamped to their allowed ranges. The preview reports how many agents
+  will regain preferences, and the import never overwrites name, persona,
+  avatar, memory, skills or chats.
+- The export description and both confirmation dialogs list agent preferences
+  and state that API keys, provider URLs and headers are omitted; the Chinese
+  pack moved 107 → 108.
+- Device QA: two self-created agents (one session with two messages, one
+  chatless copilot) with pinned/high/required/32k versus low/none/64k and
+  per-tool policies exported to a 1,881 B zip whose session and copilot both
+  carried the full object. A full-text scan for `api_key`, `baseUrl`,
+  `base_url`, `headers`, `extra_body`, `Authorization`, `Bearer`, `sk-` and
+  `ox1:` returned zero. After resetting both agents to defaults and importing,
+  the preview and result both reported two preference agents, every field
+  matched the source including 32k/64k context, tg ids and the two directories
+  were unchanged, and a repeat import stayed idempotent. The native tool page
+  showed `get_time` denied and `device_info` ask, the pinned session led the
+  agent list, and no app FATAL/ANR occurred. Cleanup removed both agents and
+  the test zip, and their dialogs/messages were zero.
+- Limits: `orionekoAgent` is an OrionekoX extension ignored by real
+  Chatbox/Kelivo clients (not tested against them); headers, `extra_body`,
+  provider URLs and keys must be re-entered after moving machines; emoji,
+  remark and greeting were verified by `agent.json` readback rather than a
+  chat-welcome screenshot; temperature/top-p/max-tokens still travel in the
+  standard session/copilot fields.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -1023,8 +1064,9 @@ These confirm the feature directions rather than relying on guesses. Checked
 3. Bidirectional export still lacks themes, global/video backgrounds, MCP
    headers/OAuth and server selection, plus validation against real external
    clients; agent identity (including chatless copilots), skills and their
-   per-agent links, long-term memory and per-agent workspaces now survive
-   self-roundtrip, but external Chatbox clients remain unverified.
+   per-agent links, long-term memory, per-agent workspaces and per-agent
+   preferences (tool policies, pin/remark/greeting, reasoning/context/sampling)
+   now survive self-roundtrip, but external Chatbox clients remain unverified.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 5. Per-conversation theme inheritance still copies the parent’s text color; a

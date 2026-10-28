@@ -4,6 +4,39 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.48.1 — 2026-10-28
+
+- Chatbox / Kelivo backups now carry a private `orionekoAgent` object for each
+  session and chatless copilot when that agent has non-default preferences:
+  emoji, pin, remark, first message, reasoning effort, tool choice, parallel
+  tool calls, context length, presence/frequency penalties, top-k, seed, stop
+  sequences and the per-tool `auto`/`ask`/`deny` policy map.
+- Credentials are structurally excluded. No API key, base URL, provider id,
+  request headers or `extra_body` is exported, because headers and bodies can
+  carry authentication even when they are not keys. Bounds mirror the UI:
+  emoji 16 characters, remark/stop 2 KiB, greeting 16 KiB, at most 256 policy
+  entries restricted to `auto`/`ask`/`deny`, and clamped numeric ranges.
+- The importer applies preferences only after provider wiring, model override,
+  headers and skill links, so a provider fallback cannot reset
+  `context_length`; that ordering bug appeared in 0.48.0 and is fixed in
+  0.48.1. Preview and result report how many agents regain preferences, and
+  name, persona, avatar, memory, skills and chats are never overwritten.
+- Verified with two self-created agents (one session with two messages, one
+  chatless copilot): a 1,881 B export carried the full object in both entries,
+  and a scan for keys, provider URLs, headers and `extra_body` returned zero.
+  After resetting both agents to defaults, the import restored every field
+  including 32k/64k context lengths, kept both agent ids and tg ids, created no
+  duplicate directories, and stayed idempotent on a second import. The native
+  tool page showed the restored `deny`/`ask` policies and the pinned session
+  led the agent list. No app FATAL/ANR; test agents and the zip were removed
+  and their dialogs/messages were zero.
+- Limits: `orionekoAgent` is an OrionekoX extension that real Chatbox/Kelivo
+  clients have not been tested with; headers, `extra_body`, provider URLs and
+  keys must be re-entered after moving machines; emoji, remark and greeting
+  were verified by `agent.json` readback rather than a welcome-message
+  screenshot; temperature/top-p/max-tokens continue to travel in the standard
+  session/copilot fields.
+
 ## 0.47.1 — 2026-10-28
 
 - Chatbox / Kelivo backups now carry each agent's workspace files as
