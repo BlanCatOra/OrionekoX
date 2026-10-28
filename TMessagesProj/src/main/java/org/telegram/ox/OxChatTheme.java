@@ -519,6 +519,13 @@ public class OxChatTheme {
         return s == null || s.backgroundImage == null ? "" : s.backgroundImage;
     }
 
+    /** Current per-dialog background file, or "" when the dialog has no override. */
+    public static String backgroundForDialog(long dialogId) {
+        if (dialogId == 0) return "";
+        Snapshot s = readFile(dialogFile(dialogKey(dialogId)));
+        return s == null || s.backgroundImage == null ? "" : s.backgroundImage;
+    }
+
     public static void enableCustom() {
         Snapshot s = current();
         if (!MODE_CUSTOM.equals(s.mode)) {

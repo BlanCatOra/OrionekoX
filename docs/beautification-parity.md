@@ -745,6 +745,21 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: only agent-scope image backgrounds (not global/per-dialog/video), no
   separate background count in the result toast, and no real Chatbox client test.
 
+## 0.40.0 implementation — per-dialog backgrounds in export
+
+- `OxChatTheme.backgroundForDialog` reads a conversation override; the exporter
+  now prefers it over the agent background for agents with chat history, so the
+  exported session background matches what the user actually sees.
+- Chatless copilots still export the agent background. Resource format, caps and
+  header/key exclusions are unchanged.
+- Device QA: an agent with BG38 plus a dialog override to BG40 rendered BG40 in
+  the native chat; the 14,441 B export's background resource decoded to the BG40
+  sha256 (not BG38). After deleting the agent/theme/dialog files, re-importing
+  restored background.png with the same BG40 hash and the BG40 wallpaper.
+- Limits: the dialog-specificity is flattened to agent scope on re-import; only
+  image backgrounds are exported (not global or video), and no real Chatbox
+  client test yet.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -754,7 +769,7 @@ These confirm the feature directions rather than relying on guesses. Checked
    images/attachments: video backgrounds and workspaces; SSE/stdio MCP with their tool
    allowlists; RikkaHub non-selected branches, non-image attachments,
    per-conversation grouping, skill attachments and standalone providers.
-3. Bidirectional export still lacks workspaces, memory, themes, global/per-dialog
+3. Bidirectional export still lacks workspaces, memory, themes, global/video
    backgrounds, MCP headers/OAuth and server selection, plus validation against
    real external clients.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1

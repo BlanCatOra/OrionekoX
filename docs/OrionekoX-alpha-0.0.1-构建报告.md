@@ -3249,6 +3249,23 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `e06f40bbe691…`）；debug `dist/OrionekoX-0.39.0-debug-arm64-x64.apk`（sha256
 `56f4494076be…`）。详见 `docs/qa-0.39.0.md`。
 
+## 5.159 alpha 0.40.0 —— 导出按会话背景（2026-10-28 10:20–10:36）
+
+- `OxChatTheme.backgroundForDialog` 读取会话覆盖背景；导出有聊天的 Agent 时
+  优先会话背景，空则回退 Agent 背景；copilot 仍用 Agent 背景。
+- 设备：Agent 背景 BG38 + 会话覆盖 BG40；原生聊天显示 BG40；单 Agent 导出
+  14,441 B，资源解码 sha256 与 BG40 一致（非 BG38）；删除原 Agent/主题/
+  会话文件后回环导入，background.png hash 仍为 BG40，原生聊天 BG40 恢复；
+  清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：回环后会话背景映射为 Agent 背景，不保留会话 specificity；仅图片；
+  外部 Chatbox 未实测。
+- 版本规则：新增可见的“导出实际会话背景”能力，按 minor 从 0.39.0 →
+  0.40.0，versionCode 4009。
+
+**产物**：`dist/OrionekoX-0.40.0-alpha-arm64-x64.apk`（versionCode 4009，sha256
+`e4805cf78f54…`）；debug `dist/OrionekoX-0.40.0-debug-arm64-x64.apk`（sha256
+`4334c6285c4f…`）。详见 `docs/qa-0.40.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
