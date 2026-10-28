@@ -3498,6 +3498,53 @@ debug `dist/OrionekoX-0.46.0-debug-arm64-x64.apk`（sha256
 `df097cf624ec220dcbac0d8e453c02e13e54c95848de478a1ab7739a6c768530`）。
 详见 `docs/qa-0.46.0.md`。
 
+## 5.169 alpha 0.47.1 —— Chatbox 备份携带 Agent 工作区（2026-10-28 14:08–14:44）
+
+- 0.46.0 的 Chatbox 备份已带记忆、技能和技能关联，但仍不含
+  `files/oxworkspace/<agentId>/`；换机或重装后工作区文件全部丢失，
+  而 `.oxagent` 只能单 Agent 导出。
+- 0.47.0 在导出 zip 增加 `workspace/<agentId>/<相对路径>`：嵌套目录、
+  二进制和中文文件名按原字节写入。上限 200 个文件、单个 2 MiB、合计
+  8 MiB、深度 6；空文件/超限文件跳过，路径做 canonical containment
+  与 `..` 校验。
+- 导入器预览统计“将恢复 N 个工作区文件（覆盖同名文件）”，只在 Agent
+  仍存在时恢复；同名覆盖、其他文件保留。导入端同样限制 200 个文件、
+  单文件 2 MiB、合计 8 MiB，并拒绝绝对路径、反斜杠、`.`/`..` 段。
+- 0.47.0 设备 QA 发现完成 Toast 过长，系统两行截断，工作区计数不可见。
+  0.47.1 把文案压缩为“已导出：智能体 N、工作区 N、对话 N、消息 N、
+  记忆 N、技能 N、文件 N”，工作区前置；单 Agent 文案同样前置工作区。
+  中文包 106→107。
+- 设备：自建 session/copilot 两个 Agent（tgId 555000102/555000101）和
+  4 个工作区文件（20 B 文本、16 B 二进制、33 B 中文嵌套路径、23 B md）。
+  选中导出 2,215 B、4 个工作区条目，逐文件 sha256 与源一致，敏感字段
+  扫描 0 命中；0.47.1 加 `keep.txt` 后导出 2,414 B、5 条，Toast 完整
+  显示“工作区 5”。单 Agent 导出 2,055 B、4 条，只含该 Agent 文件。
+  删除 3 个文件并保留 `keep.txt` 后回导：预览/结果均为 4，4 个文件
+  逐字节恢复，`keep.txt` 保留；重复导入仍 4 条、2 个 Agent 目录、无
+  `kelivo_` 副本。含 `../../evil0470.txt` 的 zip 被整包拒绝
+  （`Invalid zip entry path`），未写出文件；含 2 MiB+1 B 文件的 zip
+  预览/结果为 5 而非 6，`big.bin` 未写入。全程无本包 FATAL/ANR；
+  删除测试 Agent 后两个 tgId 的 dialogs/messages 均为 0。
+- 0.47.1 首版功能 QA 后又发现：导出会对所有选中 Agent 调用
+  `workspaceDir()`，无工作区也会建空目录；且无聊天/无人设 Agent 的
+  工作区会进 zip 却没有对应助手，导入端无法恢复。最终重建改为只对
+  实际写入备份的 Agent 收集工作区，并使用只读 `workspaceDirIfExists`。
+  复验：`酒吧炒饭A`（2 个工作区文件）+ 无工作区的 `PNG Card` 一起导出
+  14,893 B，只有该 Agent 的 2 条 `workspace/` 条目且逐字节一致，
+  `PNG Card` 的工作区目录导出前后均不存在；Toast 仍完整显示工作区 2。
+- 边界：`workspace/` 是扩展布局，真实 Chatbox/Kelivo 未实测；不保留
+  空目录、权限、时间戳或符号链接；导出端上限只做代码审查；删除 Agent
+  不自动删除工作区，联系人页缓存需重启刷新。
+- 版本规则：新增用户可见的备份内容与恢复行为，按 minor 从 0.46.0 →
+  0.47.0（4709）；Toast 文案与导出收集范围修复按 patch 从 0.47.0 →
+  0.47.1（4719）。
+
+**产物**：`dist/OrionekoX-0.47.1-alpha-arm64-x64.apk`（versionCode 4719，
+sha256 `b5fb5ac1936aab80c0601a1c60d1802f6749ea26f20c664681e14d91ed23cea6`）；
+debug `dist/OrionekoX-0.47.1-debug-arm64-x64.apk`（sha256
+`f66b459a7d5497a97c85741e5f91eba473daa80c54ee6015177df949413ad2d8`）。
+详见 `docs/qa-0.47.1.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

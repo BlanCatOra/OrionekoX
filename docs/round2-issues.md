@@ -486,3 +486,14 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：自建 90 B 技能 + 1 个 session Agent + 1 个 copilot Agent，多选导出 1,762 B；zip 内技能 sha256 `6cf9bd70…` 与源一致，copilot/session 均含原 id 与技能关联，`apiKey`/`baseUrl`/`Authorization`/`sk-`/`Bearer`/`ox1:` 扫描 0 命中。删除技能并清空两个 `skill_ids` 后回导：结果“更新 1 / 恢复 2 个技能关联 / 导入技能 1”，两个原 Agent 目录与 tgId 不变、无 `kelivo_` 副本、技能 hash 一致；重复导入仍 2 个目录、同 hash。全程无 FATAL/ANR；删除测试 Agent/技能后 555000098/555000100 的 dialogs/messages 均为 0。
 - 边界：`skills/` 与私有字段为扩展，真实 Chatbox/Kelivo 未实测；只传 SKILL.md 正文；全量导出会带未引用技能；单 Agent 导出 Toast 未单独截图。
+
+## 0.47.1 Chatbox 工作区导出/回导 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-95 | 0.47.0 QA | 导出完成 Toast 过长，系统只显示两行并在“0 个文件，…”处截断，工作区计数完全不可见 | 0.47.1 将文案压缩为“已导出：智能体 N、工作区 N、对话 N、消息 N、记忆 N、技能 N、文件 N”，工作区放在第二位；单 Agent 文案同样前置工作区；中文包 106→107 | 已修复并设备验证 |
+| R2-96 | 0.47.1 QA | 删除 Agent 只清 `oxagents/<id>`，`oxworkspace/<id>` 文件保留；联系人页在本次进程内短暂残留该本地 Agent，重启后消失 | 不自动删除工作区，避免把用户文件当聊天记录一起删掉；本轮测试目录手工清理，联系人缓存问题记录为边界，待产品决策是否在删除对话框提供“同时删除工作区” | 已记录 |
+| R2-97 | 0.47.1 实现 | 导出对每个选中 Agent 调用会 `mkdirs` 的 `workspaceDir()`，没有工作区也会生成空目录；无聊天/无人设的 Agent 工作区会写进 zip 却没有对应助手，回导时被静默跳过 | 新增只读 `workspaceDirIfExists()`；工作区收集移到“有聊天或人设才导出”的判断之后，只收集实际写入备份的 Agent。重建后复验：有/无工作区两个 Agent 一起导出，只出现有工作区 Agent 的 2 条，另一个目录没被创建 | 已修复并设备验证 |
+
+- 设备：自建 session/copilot 两个 Agent（tgId 555000102/555000101）与 4 个工作区文件（20 B 文本、16 B 二进制、33 B 中文嵌套路径、23 B md）。选中导出 2,215 B、4 个 `workspace/` 条目，逐文件 sha256 与源一致，敏感字段扫描 0 命中；0.47.1 加 `keep.txt` 后导出 2,414 B、5 条，Toast 完整显示“工作区 5”；单 Agent 导出 2,055 B、4 条且只含该 Agent 文件。删除 3 个文件并保留 `keep.txt` 后回导，预览/结果均为 4，4 个文件逐字节恢复，`keep.txt` 保留；重复导入仍 4 条、2 个 Agent 目录、无 `kelivo_` 副本、tgId 不变。含 `../../evil0470.txt` 的 zip 被整包拒绝（`Invalid zip entry path`），未写出文件；含 2 MiB+1 B 文件的 zip 预览/结果为 5 而非 6，`big.bin` 未写入。最终重建再验：`酒吧炒饭A`（2 个工作区文件）+ 无工作区的 `PNG Card` 导出 14,893 B，只有前者的 2 条且逐字节一致，`PNG Card` 的工作区目录未被创建。全程无本包 FATAL/ANR；删除测试 Agent 后两个 tgId 的 dialogs/messages 均为 0，Download 测试 zip 已清理。
+- 边界：`workspace/` 为扩展布局，真实 Chatbox/Kelivo 未实测；不保留空目录、权限、时间戳或符号链接；导出端上限只做代码审查，未造 2 MiB 源文件；删除 Agent 不自动删除工作区；联系人页缓存需重启刷新。

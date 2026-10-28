@@ -29,7 +29,7 @@ requirements.
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete; **0.25.2** rename with duplicate-name rejection; **0.27.0** preview a saved preset without applying it |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
-| Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; provider keys never imported |
+| Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; **0.47.1** exports per-agent workspaces (200 files / 2 MiB each / 8 MiB total); provider keys never imported |
 | SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0–0.45.1** PNG `tEXt`/`iTXt` + JSON via the agent-list entry, six persona sections, first message and PNG avatar, idempotent ids; no alternate greetings, character book, card export or real-client validation |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
@@ -968,6 +968,44 @@ These confirm the feature directions rather than relying on guesses. Checked
   only SKILL.md bodies travel (no scripts/attachments); full exports include
   unreferenced skills; real Chatbox/Kelivo clients were not tested.
 
+## 0.47.1 implementation — per-agent workspaces in Chatbox backups
+
+- Exports now write `workspace/<agentId>/<rel>` for each selected agent,
+  recursively, preserving nested directories, binary content and non-ASCII
+  names byte-for-byte. Caps: 200 files, 2 MiB per file, 8 MiB total, depth 6;
+  empty or oversized files are skipped and canonical containment rejects `..`.
+- The importer counts workspace entries in the preview (“restore N workspace
+  files, overwriting same names”), restores only for agents that still exist,
+  preserves unrelated files, and reports the restored count. It applies the
+  same file/count/total caps and rejects absolute paths, backslashes, `.`/`..`
+  and paths deeper than eight segments.
+- 0.47.0 device QA exposed a long completion toast that Android truncated to
+  two lines, hiding the workspace count. 0.47.1 compresses the toast to
+  “agents, workspaces, chats, messages, memories, skills, files” and moves the
+  workspace count to second place; the Chinese pack moved 106 → 107.
+- Device QA: two self-created agents (one session, one chatless copilot) and
+  four workspace files (20 B text, 16 B binary, 33 B nested Chinese path,
+  23 B Markdown). Selected export was 2,215 B with four workspace entries;
+  every restored byte matched and the secret scan was empty. After adding
+  `keep.txt`, 0.47.1 exported 2,414 B / five entries and the toast showed
+  “workspace 5”. A per-agent export was 2,055 B / four entries and included
+  only that agent's files. Deleting three files while keeping `keep.txt`,
+  then importing, restored four files, preserved `keep.txt`, kept both agent
+  ids and tg ids, and a repeat import stayed idempotent. A zip containing
+  `../../evil0470.txt` was rejected wholesale (`Invalid zip entry path`); a
+  2 MiB + 1 B file was skipped (five restored, not six) and never written.
+  No app FATAL/ANR; cleanup removed both test agents, their workspaces and
+  six test zips, and their dialogs/messages were zero.
+- Limits: `workspace/` is an OrionekoX extension ignored by real Chatbox/Kelivo
+  clients (not tested with them); empty directories, permissions, timestamps
+  and symlinks are not preserved; export-side caps were code-reviewed rather
+  than exercised with a 2 MiB source file; deleting an agent leaves its
+  workspace on disk; the contacts page needs a restart to drop a deleted local
+  agent from its cache. A late 0.47.1 fix made the exporter use a read-only
+  workspace lookup and collect only agents that actually appear in the backup,
+  so exporting no longer creates empty workspace dirs and cannot emit orphan
+  workspace entries.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -975,17 +1013,18 @@ These confirm the feature directions rather than relying on guesses. Checked
    mapped by 0.26.2).
 2. Kelivo full backup import beyond the now-supported assistants/skills/
    conversations/MCP/avatars/images/attachments/long-term memory: video
-   backgrounds and workspaces; SSE/stdio MCP with their tool allowlists;
-   RikkaHub non-selected branches, per-conversation grouping, skill attachments
-   and standalone providers; native RikkaHub audio/video playback bubbles, more
-   than 20 media per message and remote attachments. SillyTavern cards now
-   import, but alternate greetings, character books/lorebooks, tag filters and
-   card export remain.
-3. Bidirectional export still lacks workspaces, themes, global/video
-   backgrounds, MCP headers/OAuth and server selection, plus validation against
-   real external clients; agent identity (including chatless copilots), skills
-   and their per-agent links, and long-term memory now survive self-roundtrip,
-   but external Chatbox clients remain unverified.
+   backgrounds and external Kelivo workspace layouts (OrionekoX's own
+   workspaces now self-roundtrip through Chatbox); SSE/stdio MCP with their
+   tool allowlists; RikkaHub non-selected branches, per-conversation grouping,
+   skill attachments and standalone providers; native RikkaHub audio/video
+   playback bubbles, more than 20 media per message and remote attachments.
+   SillyTavern cards now import, but alternate greetings, character
+   books/lorebooks, tag filters and card export remain.
+3. Bidirectional export still lacks themes, global/video backgrounds, MCP
+   headers/OAuth and server selection, plus validation against real external
+   clients; agent identity (including chatless copilots), skills and their
+   per-agent links, long-term memory and per-agent workspaces now survive
+   self-roundtrip, but external Chatbox clients remain unverified.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 5. Per-conversation theme inheritance still copies the parent’s text color; a

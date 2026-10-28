@@ -41,6 +41,10 @@ public class OxKelivoExporter {
     private static final int MAX_SKILLS = 50;
     private static final int MAX_SKILL_BYTES = 512 * 1024;
     private static final long MAX_TOTAL_SKILL_BYTES = 8L * 1024 * 1024;
+    private static final int MAX_WORKSPACE_FILES = 200;
+    private static final int MAX_WORKSPACE_FILE_BYTES = 2 * 1024 * 1024;
+    private static final long MAX_TOTAL_WORKSPACE_BYTES = 8L * 1024 * 1024;
+    private static final int MAX_WORKSPACE_DEPTH = 6;
 
     public static class Result {
         public int assistants;
@@ -50,6 +54,7 @@ public class OxKelivoExporter {
         public int memories;
         public int skills;
         public int skillLinks;
+        public int workspaceFiles;
         public final List<String> notes = new ArrayList<>();
     }
 
@@ -128,6 +133,10 @@ public class OxKelivoExporter {
         }
         result.skills = skillBodies.size();
 
+        Map<String, byte[]> workspaceEntries = new LinkedHashMap<>();
+        long[] workspaceBytes = new long[]{0};
+        int[] workspaceCount = new int[]{0};
+
         for (OxAgent a : agents) {
             List<OxChatEntry> chat;
             try {
@@ -137,6 +146,14 @@ public class OxKelivoExporter {
             }
             boolean hasPrompt = a.agentsMd != null && !a.agentsMd.trim().isEmpty();
             if (chat.isEmpty() && !hasPrompt) continue;
+            if (a.id != null && a.id.matches("[a-zA-Z0-9._-]+")) {
+                File dir = OxAgentStore.workspaceDirIfExists(a.id);
+                if (dir != null) {
+                    collectWorkspace(dir, dir, a.id, 0, workspaceEntries,
+                            workspaceBytes, workspaceCount, result);
+                }
+            }
+            result.workspaceFiles = workspaceCount[0];
             result.assistants++;
             boolean sessionOnly = !chat.isEmpty();
             String memory = OxAgentStore.loadMemory(a.id, MAX_MEMORY_CHARS + 1);
@@ -399,6 +416,9 @@ public class OxKelivoExporter {
             for (Map.Entry<String, byte[]> skill : skillBodies.entrySet()) {
                 put(zip, "skills/" + skill.getKey() + "/SKILL.md", skill.getValue());
             }
+            for (Map.Entry<String, byte[]> file : workspaceEntries.entrySet()) {
+                put(zip, file.getKey(), file.getValue());
+            }
             zip.finish();
         } finally {
             zip.close();
@@ -419,6 +439,58 @@ public class OxKelivoExporter {
         }
         m.put("contentParts", out);
         return m;
+    }
+
+    /** Walks an agent workspace without following symlinks out of it. Entry
+     *  names are workspace/&lt;agentId&gt;/&lt;relative path&gt;. */
+    private static void collectWorkspace(File base, File dir, String agentId,
+            int depth, Map<String, byte[]> out, long[] totalBytes,
+            int[] count, Result result) {
+        if (dir == null || depth > MAX_WORKSPACE_DEPTH || count[0] >= MAX_WORKSPACE_FILES) return;
+        File[] children = dir.listFiles();
+        if (children == null) return;
+        String basePath;
+        try {
+            basePath = base.getCanonicalPath();
+        } catch (Throwable t) {
+            return;
+        }
+        for (File child : children) {
+            if (child == null || count[0] >= MAX_WORKSPACE_FILES) return;
+            File canonical;
+            try {
+                canonical = child.getCanonicalFile();
+            } catch (Throwable t) {
+                continue;
+            }
+            if (!canonical.getPath().startsWith(basePath + File.separator)) continue;
+            String rel = canonical.getPath().substring(basePath.length() + 1)
+                    .replace(File.separatorChar, '/');
+            if (rel.isEmpty() || rel.contains("..")) continue;
+            if (canonical.isDirectory()) {
+                collectWorkspace(base, canonical, agentId, depth + 1, out,
+                        totalBytes, count, result);
+                continue;
+            }
+            if (!canonical.isFile()) continue;
+            long size = canonical.length();
+            if (size <= 0) continue;
+            if (size > MAX_WORKSPACE_FILE_BYTES) {
+                result.notes.add("工作区文件过大，已跳过 " + rel);
+                continue;
+            }
+            if (totalBytes[0] + size > MAX_TOTAL_WORKSPACE_BYTES) {
+                result.notes.add("工作区总量超出上限，已跳过后续文件");
+                return;
+            }
+            byte[] body = readFile(canonical);
+            if (body == null || body.length == 0) continue;
+            String key = "workspace/" + agentId + "/" + rel;
+            if (out.containsKey(key)) continue;
+            out.put(key, body);
+            totalBytes[0] += body.length;
+            count[0]++;
+        }
     }
 
     private static JSONObject descriptor(String path, byte[] bytes) throws Exception {
