@@ -4,6 +4,20 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.35.0 — 2026-10-28
+
+- RikkaHub `Avatar.Image` avatars are now imported: the URL basename is matched
+  against the backup's `upload/` folder and the image is copied into the agent
+  directory. Network URLs are never fetched, and repeat imports keep an existing
+  avatar.
+- `Avatar.Emoji` is recognized by type-name substring, so RikkaHub's FQN
+  serialization keeps its emoji.
+- Preview reports image-avatar counts and the overview mentions assistant image
+  avatars; the result notes how many avatars were imported.
+- Verified with two assistants (upload/RA image and FQN 🦊 emoji): import
+  created both, stored a 2,519 B avatar.png, showed the RA header and kept 🦊;
+  a repeat import updated both with the avatar hash unchanged.
+
 ## 0.34.0 — 2026-10-28
 
 - The skill library can export all visible skills as an SAF-created zip with
