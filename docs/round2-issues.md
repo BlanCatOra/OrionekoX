@@ -428,3 +428,12 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：2,392 B 样例（文字 + 2 PNG，其中一张 data URL 编码 + `notes.txt` + `data.json`）导入为 5 条消息、2 张图片、2 个附件；原生聊天显示带正文的绿色照片、橙色照片、`notes.txt`（19 B · TXT）、`data.json`（29 B · JSON）文件气泡和助手回复；重复导入替换历史后仍为 5 条/5 行、无重复；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：每段对话 40 图/20 文件、64 资源文件；拆分媒体共享原时间戳；`info` part 忽略；远程 URL 不下载；导出回环未复验。
+
+## 0.43.1 多附件 Chatbox 导出回环 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-85 | 0.43.1 QA | 导出包里的 `resources/*.json` 附件被导入器的 zip 读取条件 `!n.endsWith(".json")` 排除，回环时 2 个附件只剩 1 个 | 只排除 `resources/` 之外的 JSON 元数据，允许资源目录中的 JSON 作为普通附件读取 | 已修复 |
+
+- 设备：单 Agent 导出 3,578 B，含 5 条消息、2 个 image、2 个 raw-attachment；解码后图片/`notes.txt`/`data.json` 的 sha256 与源文件一致，敏感字符串扫描 0 命中；修复前回环预览“2 图/1 附件”，修复后同一 zip 为“2 图/2 附件”，回环后 5 条 chat 记录与原生两张照片、两个文件气泡完整恢复；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：回环 Agent id 追加 `_current`，保留原 Agent 时会新增副本而非替换；未与真实 Chatbox 客户端互导。

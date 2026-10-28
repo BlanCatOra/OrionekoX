@@ -3334,6 +3334,25 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `420018ff5ba6…`）；debug `dist/OrionekoX-0.43.0-debug-arm64-x64.apk`（sha256
 `afb28a66240c…`）。详见 `docs/qa-0.43.0.md`。
 
+## 5.163 alpha 0.43.1 —— 多附件 Chatbox 导出回环修复（2026-10-28 11:36–11:46）
+
+- 导出包 3,578 B，含 5 条消息、2 个 image 与 2 个 raw-attachment；解码后的
+  2 张图片、`notes.txt`、`data.json` sha256 与源文件逐一一致，且未包含
+  API Key/Provider 地址。
+- 回环时发现 JSON 附件丢失：`OxKelivoImporter` 的 zip 读取条件排除了所有
+  `.json` 条目，导致 `resources/orioneko-*.json` 不进入资源表。改为仅排除
+  `resources/` 之外的 JSON 元数据，允许资源目录里的 JSON 附件。
+- 修复前预览“2 张图片 / 1 个附件”，修复后同一 zip 为“2 张图片 / 2 个附件”；
+  回环后 5 条 chat 记录与原生照片/文件气泡完整恢复。
+- 边界：回环 Agent id 会追加 `_current`，本轮先删除原 Agent 再导入，
+  未验证保留原 Agent 时是否新增副本；未与真实 Chatbox 客户端互导。
+- 版本规则：单点解析 bug 修复与回环 QA，按 patch 从 0.43.0 → 0.43.1，
+  versionCode 4319。
+
+**产物**：`dist/OrionekoX-0.43.1-alpha-arm64-x64.apk`（versionCode 4319，sha256
+`9f50bd9b7089…`）；debug `dist/OrionekoX-0.43.1-debug-arm64-x64.apk`（sha256
+`5aeeb564141f…`）。详见 `docs/qa-0.43.1.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

@@ -429,7 +429,7 @@ public class OxKelivoImporter {
                         }
                     } else if (resourceFiles.size() < MAX_RESOURCE_FILES
                             && resourceBytes < MAX_RESOURCE_TOTAL
-                            && !n.endsWith(".json")
+                            && (!n.endsWith(".json") || n.startsWith("resources/"))
                             && !n.toLowerCase(java.util.Locale.ROOT).endsWith("skill.md")) {
                         byte[] body = readBytes(zin, MAX_RESOURCE_BYTES);
                         if (body != null && body.length > 0) {

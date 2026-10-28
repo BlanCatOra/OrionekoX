@@ -822,6 +822,24 @@ These confirm the feature directions rather than relying on guesses. Checked
   entries share the source timestamp; `info` parts are ignored; remote URLs are
   not downloaded; no export roundtrip was re-tested.
 
+## 0.43.1 fix — JSON attachments survive Chatbox roundtrip
+
+- A multi-attachment export (3,578 B) contained five messages, two image
+  resources and two `raw-attachment` resources; decoded payloads matched the
+  source images/`notes.txt`/`data.json` hashes and no API-key/provider strings
+  were present.
+- Re-importing that export exposed a bug: the zip reader skipped every `.json`
+  entry, so an exported `resources/orioneko-*.json` attachment never reached
+  the resource map. The condition now only excludes JSON metadata outside
+  `resources/`; `manifest.json`, `settings.json` and session JSON keep their
+  existing read paths.
+- Device QA: the same export previewed as “2 images / 1 attachment” before the
+  fix and “2 images / 2 attachments” after it. The roundtrip produced five
+  `chat.json` entries and the native chat rendered both photos, `notes.txt`
+  (19 B · TXT), `data.json` (29 B · JSON) and the assistant reply.
+- Limits: the roundtrip agent id gains a `_current` suffix, so a kept original
+  would not be replaced; no real Chatbox client test yet.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -835,7 +853,8 @@ These confirm the feature directions rather than relying on guesses. Checked
    per message and remote attachments.
 3. Bidirectional export still lacks workspaces, memory, themes, global/video
    backgrounds, MCP headers/OAuth and server selection, plus validation against
-   real external clients.
+   real external clients; multi-attachment self-roundtrip now passes, but Agent
+   ids gain `_current` and are not stable when the original is kept.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 5. Per-conversation theme inheritance still copies the parent’s text color; a
