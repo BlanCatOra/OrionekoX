@@ -4,6 +4,27 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.43.0 — 2026-10-28
+
+- Kelivo/Chatbox backups now import every image and file in a message, in
+  `contentParts` order, instead of only the first image and first file. The old
+  behaviour that discarded files whenever an image was present is gone.
+- The first media shares the message text; remaining media become extra
+  entries with empty captions. Images are stored under `media/img_<n>`, files
+  under `media/<n>_<name>` using the part `fileName`. Existing per-conversation
+  caps (40 images / 20 files) still apply.
+- The preview explains that multi/mixed attachments are split and reports the
+  resulting image/file counts.
+- Verified with a 2,392 B backup (text + two PNGs, one data-URL encoded +
+  `notes.txt` + `data.json`): five messages, two images and two files. The
+  native chat showed a green photo with the text caption, an orange photo,
+  `notes.txt` (19 B · TXT), `data.json` (29 B · JSON), and the assistant reply.
+  A repeat import replaced the history and left five entries/five rows;
+  cleanup returned dialogs/messages to zero with no app FATAL/ANR.
+- Limits: 40 images/20 files per conversation and 64 resource files; split
+  entries share the source timestamp; `info` parts are ignored; remote URLs are
+  not downloaded; no export roundtrip was re-tested.
+
 ## 0.42.0 — 2026-10-28
 
 - RikkaHub messages can now import every media part (up to 20): images become

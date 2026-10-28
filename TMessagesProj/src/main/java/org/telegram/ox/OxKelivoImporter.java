@@ -91,6 +91,12 @@ public class OxKelivoImporter {
         final List<String> fileNames = new ArrayList<>();
     }
 
+    private static class ChatMedia {
+        boolean image;
+        String ref;
+        String name;
+    }
+
     private static class Resource {
         String mime;
         byte[] bytes;
@@ -178,6 +184,9 @@ public class OxKelivoImporter {
         }
         if (p.files > 0) {
             p.notes.add("将导入 " + p.files + " 个聊天附件；原生聊天中显示为文件气泡。");
+        }
+        if (p.images > 0 || p.files > 0) {
+            p.notes.add("单条消息的多个/混合附件会按顺序拆成多条气泡。");
         }
         p.backgrounds = archive.backgroundCount;
         if (p.backgrounds > 0) {
@@ -988,26 +997,30 @@ public class OxKelivoImporter {
             if (msg == null) continue;
             String role = msg.optString("role", "").trim();
             String text = messageText(msg);
-            String ref = imageRef(msg, archive);
-            String fref = fileRef(msg, archive);
-            String fname = fileNameFor(msg);
-            if (!ref.isEmpty()) fref = "";
-            if (!ref.isEmpty() && imageCount >= MAX_IMAGES_PER_CONVERSATION) ref = "";
-            if (!fref.isEmpty() && fileCount >= MAX_FILES_PER_CONVERSATION) fref = "";
-            if (!ref.isEmpty()) {
-                imageCount++;
-                text = text.replaceFirst("\\[图片\\]", "").trim();
+            List<ChatMedia> accepted = new ArrayList<>();
+            int addImages = 0;
+            int addFiles = 0;
+            for (ChatMedia media : mediaFor(msg, archive)) {
+                if (media.image) {
+                    if (imageCount + addImages >= MAX_IMAGES_PER_CONVERSATION) continue;
+                    addImages++;
+                } else {
+                    if (fileCount + addFiles >= MAX_FILES_PER_CONVERSATION) continue;
+                    addFiles++;
+                }
+                accepted.add(media);
             }
-            if (!fref.isEmpty()) {
-                fileCount++;
-                text = text.replaceFirst("\\[文件\\](?: [^\\n]*)?", "").trim();
+            if (!accepted.isEmpty()) {
+                text = text.replace("[图片]", "");
+                text = text.replaceAll("\\[文件\\](?: [^\\n]*)?", "");
+                text = text.trim();
             }
             if ("system".equals(role)) {
                 if (!consumedSystem && !text.isEmpty()) {
                     consumedSystem = true;
                     continue;
                 }
-                if (text.isEmpty() && ref.isEmpty() && fref.isEmpty()) continue;
+                if (text.isEmpty() && accepted.isEmpty()) continue;
                 role = "assistant";
                 if (!text.isEmpty()) text = "[系统] " + text;
             } else if ("tool".equals(role)) {
@@ -1016,54 +1029,60 @@ public class OxKelivoImporter {
             } else if (!"user".equals(role) && !"assistant".equals(role)) {
                 role = "assistant";
             }
-            if (text.isEmpty() && ref.isEmpty() && fref.isEmpty()) continue;
+            if (text.isEmpty() && accepted.isEmpty()) continue;
             long ts = msg.optLong("timestamp", 0L);
             if (ts <= 0L) ts = now + i;
             if (text.length() > MAX_MESSAGE_CHARS) text = text.substring(0, MAX_MESSAGE_CHARS);
-            out.add(new OxChatEntry(role, text, ts));
-            imageRefs.add(ref);
-            fileRefs.add(fref);
-            fileNames.add(fref.isEmpty() ? "" : fname);
+            if (accepted.isEmpty()) {
+                out.add(new OxChatEntry(role, text, ts));
+                imageRefs.add("");
+                fileRefs.add("");
+                fileNames.add("");
+                continue;
+            }
+            int written = 0;
+            for (ChatMedia media : accepted) {
+                if (out.size() >= MAX_MESSAGES_PER_CONVERSATION) break;
+                String entryText = written == 0 ? text : "";
+                out.add(new OxChatEntry(role, entryText, ts));
+                imageRefs.add(media.image ? media.ref : "");
+                fileRefs.add(media.image ? "" : media.ref);
+                fileNames.add(media.image ? "" : media.name);
+                if (media.image) imageCount++;
+                else fileCount++;
+                written++;
+            }
         }
         return out;
     }
 
-    private static String imageRef(JSONObject msg, Archive archive) {
+    private static List<ChatMedia> mediaFor(JSONObject msg, Archive archive) {
+        List<ChatMedia> out = new ArrayList<>();
         JSONArray parts = msg.optJSONArray("contentParts");
         for (int i = 0; parts != null && i < parts.length(); i++) {
             JSONObject part = parts.optJSONObject(i);
-            if (part == null || !"image".equals(part.optString("type", ""))) continue;
-            String key = part.optString("storageKey", "").trim();
-            if (!key.isEmpty() && archive.images.containsKey(key)) return key;
-            String url = part.optString("url", "").trim();
-            if (!url.isEmpty() && archive.images.containsKey(url)) return url;
+            if (part == null) continue;
+            String type = part.optString("type", "");
+            if ("image".equals(type)) {
+                String key = part.optString("storageKey", "").trim();
+                if (key.isEmpty()) key = part.optString("url", "").trim();
+                if (key.isEmpty() || !archive.images.containsKey(key)) continue;
+                ChatMedia media = new ChatMedia();
+                media.image = true;
+                media.ref = key;
+                out.add(media);
+            } else if ("file".equals(type)) {
+                String key = part.optString("storageKey", "").trim();
+                if (key.isEmpty()) key = part.optString("rawStorageKey", "").trim();
+                if (key.isEmpty()) key = part.optString("url", "").trim();
+                if (key.isEmpty() || !archive.files.containsKey(key)) continue;
+                ChatMedia media = new ChatMedia();
+                media.ref = key;
+                media.name = part.optString("fileName", part.optString("name", "")).trim();
+                out.add(media);
+            }
         }
-        return "";
-    }
-
-    private static String fileRef(JSONObject msg, Archive archive) {
-        JSONArray parts = msg.optJSONArray("contentParts");
-        for (int i = 0; parts != null && i < parts.length(); i++) {
-            JSONObject part = parts.optJSONObject(i);
-            if (part == null || !"file".equals(part.optString("type", ""))) continue;
-            String key = part.optString("storageKey", "").trim();
-            if (key.isEmpty()) key = part.optString("rawStorageKey", "").trim();
-            if (!key.isEmpty() && archive.files.containsKey(key)) return key;
-            String url = part.optString("url", "").trim();
-            if (!url.isEmpty() && archive.files.containsKey(url)) return url;
-        }
-        return "";
-    }
-
-    private static String fileNameFor(JSONObject msg) {
-        JSONArray parts = msg.optJSONArray("contentParts");
-        for (int i = 0; parts != null && i < parts.length(); i++) {
-            JSONObject part = parts.optJSONObject(i);
-            if (part == null || !"file".equals(part.optString("type", ""))) continue;
-            String name = part.optString("fileName", part.optString("name", "")).trim();
-            if (!name.isEmpty()) return name;
-        }
-        return "";
+        return out;
     }
 
     private static String messageText(JSONObject msg) {
