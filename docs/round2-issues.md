@@ -672,3 +672,22 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：debug 6309，Telegram UI 创建 `OxUI QA 630`（logcat `createLocalGroup id=1800000000 agents=1`、`created_1800000000=true`），OxUI Groups 区列出、rail ink 群 chip、发送 GROUP-TEST-630（id=100076）+ echo 回复（id=100077），Telegram chats 列表同步显示。15 桥接测试通过；测试 Agent/群数据清理 0，interface_mode 恢复 telegram，无 FATAL/ANR。
 - 边界：头像离线上传死锁未解（New Group 选头像会卡，QA 未选头像）；群回复 meta 用群名（无 sender 字段）；“Reply to <agent>” 定向、视觉评审 P1/P2 清单未做；Claude 403、OxLinux exec 限制未变。
+
+## 0.64.0 群头像离线分支与定向回复 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-132 | 0.63.0 遗留/评审 HIGH | New Group 选头像走 FileUploader，agent-only 下上传请求被 ConnectionsManager 丢弃且无回调，创建页转圈死锁 | ImageUpdater.processBitmap agent-only 分支直接回调 didUploadPhoto(null,…,big,small)+cleanup；GroupCreateFinalActivity 上传进度/门槛按 agentOnly 跳过；chatDidCreated → attachLocalChatAvatar：构造 TL_chatPhoto（photo_id=\|chatId\|*31+13、volume_id=-photoId、local 97/99），把 ImageUpdater cache 文件按 getPathToAttach 变体拷贝成反序列化同名文件 | 已实现并设备验证（含 force-stop 重启后头像仍在） |
+| R2-133 | 0.63.0 遗留 | 群回复 meta 只有群名，看不出哪位 agent 在说话 | OxChatEntry 新增 sender（JSON，向后兼容缺失）；OxGroupStore.appendChat sender 重载；finishTurn 群分支写 s.agent.id；OxUI meta resolveAgentName 显示 "Name · time" | 已实现并设备验证（Translator · 01:38）；0.64 前历史条目无 sender，不显示归属 |
+| R2-134 | 视觉评审 item 11 | 群里无法指定某位 agent 回复 | OxUI 助手行长按菜单 Copy / Reply <name>，回复 chip；OxAgentsBridge.sendLocalGroupTextTo 强制 startGroupTurn(forced)，log groupReply forced agentId=… | 已实现并设备验证（TARGET-640 由 Translator 回复，未触发其他成员） |
+
+- 设备：debug 6409，`OxUI AVA 640`（id=1800000002）创建链路 logcat
+  `createLocalGroup id=1800000002 agents=1` →
+  `attachLocalChatAvatar attached chatId=1800000002 photoId=55800000075` →
+  `persistAndShow shown did=-1800000002`；群聊头部渲染橙色头像，
+  force-stop 重启后 chats 列表仍渲染。sender/定向在同一 QA 群验证。
+- 坑：软键盘把 ✓ FAB 顶到 (964,1411)（原 (964,2300)），按旧坐标点到键盘；
+  根级 `assembleAfatStandalone` 会构建从未使用的 `:TMessagesProj_App` 并在
+  media3 variant 解析 1 秒失败，必须模块级调用。
+- 边界：改已有群头像仍走服务器路径；定向回复无引用语义；旧群历史无
+  sender 不迁移；视觉评审 P1/P2 其余项未做。

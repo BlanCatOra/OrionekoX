@@ -11869,6 +11869,9 @@
     <string name="OxUiGroups">Groups</string>
     <string name="OxUiGroupMembers">Agents in chat: %d</string>
     <string name="OxUiNotSent">Message not sent · tap to retry</string>
+    <string name="OxUiCopy">Copy</string>
+    <string name="OxUiReply">Reply</string>
+    <string name="OxUiReplyChip">Reply →</string>
     <string name="OxObInterfaceTitle">Interface</string>
     <string name="OxObInterfaceTelegramSub">Native chat, contacts and settings</string>
     <string name="OxObInterfaceOxuiSub">Claude-inspired independent front end; feature parity is still in progress</string>

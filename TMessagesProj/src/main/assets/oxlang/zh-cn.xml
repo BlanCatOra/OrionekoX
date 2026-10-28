@@ -6778,6 +6778,9 @@
     <string name="OxUiGroups">群组</string>
     <string name="OxUiGroupMembers">群内 Agent：%d</string>
     <string name="OxUiNotSent">消息未发送 · 点按重试</string>
+    <string name="OxUiCopy">复制</string>
+    <string name="OxUiReply">回复</string>
+    <string name="OxUiReplyChip">回复 →</string>
     <string name="OxObInterfaceTitle">界面</string>
     <string name="OxObInterfaceTelegramSub">原生聊天、联系人与设置</string>
     <string name="OxObInterfaceOxuiSub">Claude 风格的独立前端；功能同步仍在完善</string>

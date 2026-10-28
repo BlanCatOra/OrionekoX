@@ -108,6 +108,10 @@ public class OxUiPreviewActivity extends Activity {
     private LinearLayout attachRow;
     private ImageView attachPreview;
     private TextView attachName;
+    private LinearLayout replyRow;
+    private TextView replyLabel;
+    private String replyAgentId;
+    private String replyAgentName;
 
     private static class GroupItem {
         long chatId;
@@ -298,6 +302,36 @@ public class OxUiPreviewActivity extends Activity {
         LinearLayout composerWrap = new LinearLayout(this);
         composerWrap.setOrientation(LinearLayout.VERTICAL);
         composerWrap.setPadding(dp(16), dp(6), dp(16), dp(10));
+
+        replyRow = new LinearLayout(this);
+        replyRow.setOrientation(LinearLayout.HORIZONTAL);
+        replyRow.setGravity(Gravity.CENTER_VERTICAL);
+        replyRow.setPadding(dp(6), dp(4), dp(6), dp(2));
+        replyRow.setVisibility(View.GONE);
+        TextView replyArrow = new TextView(this);
+        replyArrow.setText("↳");
+        replyArrow.setTextSize(14);
+        replyArrow.setTypeface(mono());
+        replyArrow.setTextColor(MUTED);
+        replyRow.addView(replyArrow);
+        replyLabel = new TextView(this);
+        replyLabel.setTextSize(12);
+        replyLabel.setTypeface(sans());
+        replyLabel.setTextColor(INK);
+        replyLabel.setPadding(dp(8), 0, dp(8), 0);
+        replyLabel.setSingleLine(true);
+        replyLabel.setEllipsize(TextUtils.TruncateAt.END);
+        replyRow.addView(replyLabel, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView replyCancel = new TextView(this);
+        replyCancel.setText("×");
+        replyCancel.setTextSize(20);
+        replyCancel.setTextColor(MUTED);
+        replyCancel.setGravity(Gravity.CENTER);
+        replyCancel.setOnClickListener(v -> clearReplyTarget());
+        replyRow.addView(replyCancel, new LinearLayout.LayoutParams(dp(36), dp(36)));
+        composerWrap.addView(replyRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         attachRow = new LinearLayout(this);
         attachRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -575,6 +609,8 @@ public class OxUiPreviewActivity extends Activity {
                 info.caption = text == null ? "" : text;
                 infos.add(info);
                 OxAgentsBridge.handleOutgoingGroupMedia(targetDialogId(), infos);
+            } else if (replyAgentId != null) {
+                OxAgentsBridge.sendLocalGroupTextTo(targetDialogId(), replyAgentId, text);
             } else {
                 OxAgentsBridge.sendLocalGroupText(targetDialogId(), text, null);
             }
@@ -591,6 +627,51 @@ public class OxUiPreviewActivity extends Activity {
         } else {
             OxAgentsBridge.sendFromOxUi(selected, text);
         }
+    }
+
+    private String resolveAgentName(String agentId) {
+        if (agentId == null) return null;
+        for (OxAgent a : agents) {
+            if (a.id.equals(agentId)) return a.name;
+        }
+        OxAgent stored = OxAgentStore.loadAgent(agentId);
+        return stored == null ? null : stored.name;
+    }
+
+    private void showAssistantActions(String text, String senderId) {
+        if (isGroupTarget() && senderId != null) {
+            String resolved = resolveAgentName(senderId);
+            final String name = resolved == null ? senderId : resolved;
+            new android.app.AlertDialog.Builder(this)
+                    .setItems(new CharSequence[]{
+                            LocaleController.getString(R.string.OxUiCopy),
+                            LocaleController.getString(R.string.OxUiReply) + " " + name
+                    }, (d, which) -> {
+                        if (which == 0) {
+                            copy(text);
+                        } else {
+                            replyAgentId = senderId;
+                            replyAgentName = name;
+                            showReplyRow();
+                        }
+                    })
+                    .show();
+            return;
+        }
+        copy(text);
+    }
+
+    private void showReplyRow() {
+        if (replyRow == null) return;
+        replyLabel.setText(LocaleController.getString(R.string.OxUiReplyChip) + " "
+                + replyAgentName);
+        replyRow.setVisibility(View.VISIBLE);
+    }
+
+    private void clearReplyTarget() {
+        replyAgentId = null;
+        replyAgentName = null;
+        if (replyRow != null) replyRow.setVisibility(View.GONE);
     }
 
     private void openTelegramUi() {
@@ -800,6 +881,7 @@ public class OxUiPreviewActivity extends Activity {
                 selected = a;
                 selectedChatId = 0;
                 selectedGroupTitle = "";
+                clearReplyTarget();
                 pendingText = null;
                 pendingAgentId = null;
                 lastSignature = "";
@@ -998,6 +1080,7 @@ public class OxUiPreviewActivity extends Activity {
     }
 
     private void selectGroup(GroupItem item) {
+        clearReplyTarget();
         selected = null;
         selectedChatId = item.chatId;
         selectedGroupTitle = item.title;
@@ -1240,7 +1323,7 @@ public class OxUiPreviewActivity extends Activity {
             if ("user".equals(e.role)) {
                 addUser(e.content, e.ts, false, hasImage ? e.imagePath : null);
             } else if ("assistant".equals(e.role)) {
-                addAssistant(e.content, e.ts);
+                addAssistant(e.content, e.ts, e.sender);
             } else if ("tool".equals(e.role)) {
                 addTool(e.content);
             }
@@ -1299,7 +1382,7 @@ public class OxUiPreviewActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
-    private void addAssistant(String text, long ts) {
+    private void addAssistant(String text, long ts, String senderId) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.TOP);
@@ -1312,8 +1395,10 @@ public class OxUiPreviewActivity extends Activity {
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
         body.setPadding(dp(13), 0, dp(8), 0);
+        String senderName = senderId == null ? null : resolveAgentName(senderId);
         TextView meta = new TextView(this);
-        meta.setText(targetName() + "  ·  " + time(ts));
+        meta.setText((isGroupTarget() && senderName != null ? senderName : targetName())
+                + "  ·  " + time(ts));
         meta.setTextSize(10.5f);
         meta.setTypeface(mono());
         meta.setTextColor(MUTED);
@@ -1328,7 +1413,7 @@ public class OxUiPreviewActivity extends Activity {
         t.setPadding(0, dp(3), 0, 0);
         t.setTextIsSelectable(false);
         t.setOnLongClickListener(v -> {
-            copy(text);
+            showAssistantActions(text, senderId);
             return true;
         });
         body.addView(t);
@@ -1418,6 +1503,7 @@ public class OxUiPreviewActivity extends Activity {
         lastSignature = "";
         input.setText("");
         attachRow.setVisibility(View.GONE);
+        clearReplyTarget();
         refresh(true);
         dispatchSend(pendingText, pendingImagePath);
         pendingImagePath = null;

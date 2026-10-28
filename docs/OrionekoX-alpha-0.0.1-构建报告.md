@@ -4117,3 +4117,48 @@ debug `dist/OrionekoX-0.63.0-debug-arm64-x64.apk`（sha256
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
 - 尚未开始的 M0 项：pelegram 隧道复现（libbox AAR）、PRoot 容器 PoC、MCP SDK on Android PoC、GPLv2/GPLv3 组合法务结论。
 - alpha-0.0.2 候选：自有 APP_ID 注入机制、品牌图标、官方 12.x→13.0.3 基线的 rebase 演练已顺带完成（首次即基于最新 master）。
+## 5.186 alpha 0.64.0 —— 群头像离线分支 + sender 归属 + 定向回复（2026-10-29 01:10–02:30）
+
+- 0.63.0 遗留三项一次收口：① New Group 选头像走 FileUploader，agent-only
+  下请求被静默丢弃、创建页转圈死锁；② 群回复 meta 只有群名；③ 群里无法
+  指定某位 agent 回复。
+- 头像离线分支：`ImageUpdater.processBitmap` 在生成 big/small PhotoSize 后
+  agent-only 直接回调 `didUploadPhoto(null,null,0,null,big,small)` +
+  cleanup（不进 FileUploader）；`GroupCreateFinalActivity` 的 Done 门槛与
+  进度条按 `OxMode.isAgentOnly()` 跳过上传态；`chatDidCreated` 调
+  `OxAgentsBridge.attachLocalChatAvatar`：构造 `TL_chatPhoto`
+  （photo_id=|chatId|*31+13、volume_id=-photoId、local_id 97/99，与
+  readParams 反序列化约定一致），把 ImageUpdater cache 文件按
+  `getPathToAttach` 各变体拷贝成对应磁盘名——重启后从 MessagesStorage
+  反序列化即可按 volume/local id 命中文件。
+- sender 归属：`OxChatEntry` 新增 `sender`（JSON 向后兼容）、
+  `OxGroupStore.appendChat` 重载、`finishTurn` 群分支写 `s.agent.id`、
+  OxUI meta `resolveAgentName` 显示 “Name · time”。
+- 定向回复：OxUI 助手行长按菜单 `Copy / Reply <name>` → 回复 chip →
+  `OxAgentsBridge.sendLocalGroupTextTo` 强制 `startGroupTurn(forced)`（log
+  `groupReply forced agentId=…`）；换群/点 chip/发送后清除。
+- 设备端到端（真实 UI 流）：相册选图 → 裁剪 ✓ 返回即显示头像缩略图、
+  **无死锁**；创建 `OxUI AVA 640`（id=1800000002）→
+  `createLocalGroup id=1800000002 agents=1`、
+  `attachLocalChatAvatar attached chatId=1800000002 photoId=55800000075`、
+  群聊头部渲染橙色头像；**force-stop 重启后 chats 列表头像仍在**。sender
+  （`Translator · 01:38`）与定向（TARGET-640 由 Translator 回复、其他成员
+  未触发）在 QA 群 1800000001 验证。
+- 坑：软键盘把 ✓ FAB 顶到 (964,1411)（原 (964,2300)）；根级
+  `assembleAfatStandalone` 首次在 `:TMessagesProj_App` 的 media3 variant
+  解析 1 秒失败，模块级 `:TMessagesProj_AppStandalone:assemble*` 为历轮
+  成功调用（2m18s，643 tasks）；旧群历史无 sender 字段不显示归属（不迁移）。
+- 清理：QA 群 1800000001/1800000002 与测试 agent oxui_grp_630 的
+  chats/dialogs/messages/users/contacts/ox_groups 键全部为 0；
+  `/sdcard/Pictures/oxui-640.png` 删除；interface_mode=telegram；无障碍与
+  代理恢复；release 6409 启动无 FATAL。
+- 版本规则：按 minor 从 0.63.0 → **0.64.0**（6409），patch 清零；中文包
+  OX_ZH_PACK_VERSION 124（OxUiAttach/Groups/GroupMembers/NotSent/Copy/
+  Reply/ReplyChip 等）。
+
+**产物**：`dist/OrionekoX-0.64.0-alpha-arm64-x64.apk`（versionCode 6409，
+sha256 `905a3d545d3ab91cc4aba3bf81908d01eef6364c5cba5e1035320fa4df9cb005`）；
+debug `dist/OrionekoX-0.64.0-debug-arm64-x64.apk`（sha256
+`703a202334becc03138e602db7cf2e817374fa022380d92afefc4dd95470ae2a`）；
+构建日志 `/tmp/ox-build-0640-final.log`；QA 详见
+[docs/qa-0.64.0.md](qa-0.64.0.md)。
