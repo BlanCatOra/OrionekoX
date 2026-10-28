@@ -4,6 +4,19 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.40.0 — 2026-10-28
+
+- Chatbox export now prefers the active conversation background over the agent
+  background when an agent has chat history, so the exported session matches the
+  wallpaper the user actually sees. Chatless copilots still export the agent
+  background; resource format and caps are unchanged.
+- Verified with an agent whose agent background was BG38 but whose conversation
+  override was BG40: the native chat rendered BG40, and the exported background
+  resource decoded to the BG40 SHA-256 (not BG38). Deleting the original
+  agent/theme/dialog and re-importing restored BG40 and the wallpaper.
+- The conversation specificity is flattened to agent scope on re-import; only
+  image backgrounds are exported (not global or video).
+
 ## 0.39.0 — 2026-10-28
 
 - Chatbox exports now include the agent-scope chat background. Agents with chat

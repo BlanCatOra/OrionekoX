@@ -391,3 +391,12 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：BG38 Agent 单 Agent 导出 15,580 B，manifest 1 session/1 background 资源、session background.storageKey 正确、2 条消息保留；删除原 Agent/主题后回环导入得到 background.png 14,884 B、backgroundMode=image，原生聊天 BG38 壁纸恢复；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：仅 Agent 图片背景；全局/按会话/视频背景不导出；导出不单独统计背景；外部 Chatbox 未实测。
+
+## 0.40.0 导出按会话背景 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-80 | 0.40.0 QA | 0.39.0 导出只取 Agent 背景，用户给会话单独设置的壁纸不会进入备份 | `OxChatTheme.backgroundForDialog` 读取会话覆盖；导出有聊天的 Agent 时优先会话背景，空则回退 Agent 背景 | 已修复 |
+
+- 设备：Agent 背景 BG38 + 会话覆盖 BG40；原生聊天显示 BG40；导出 14,441 B，资源解码 sha256 与 BG40 一致（非 BG38）；删除原 Agent/主题/会话文件后回环导入，background.png hash 仍为 BG40，原生聊天 BG40 恢复；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：回环后会话背景映射为 Agent 背景，不保留会话 specificity；仅图片；外部 Chatbox 未实测。
