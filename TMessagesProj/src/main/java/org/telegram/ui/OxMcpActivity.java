@@ -33,7 +33,9 @@ public class OxMcpActivity extends BaseFragment {
     private static final int ID_MARKET = 1;
     private static final int ID_ADD = 2;
     private static final int ID_IMPORT = 3;
+    private static final int ID_EXPORT = 4;
     private static final int REQ_IMPORT_FILE = 302;
+    private static final int REQ_EXPORT_FILE = 303;
     private static final int SERVER_BASE = 100;
 
     private UniversalRecyclerView listView;
@@ -108,6 +110,9 @@ public class OxMcpActivity extends BaseFragment {
         items.add(SettingsActivity.SettingCell.Factory.of(ID_IMPORT, 0xFF34C759, 0xFF2AA84A,
                 R.drawable.msg_download, LocaleController.getString(R.string.OxMcpImport),
                 LocaleController.getString(R.string.OxMcpImportHint)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_EXPORT, 0xFF7C5CFF, 0xFF5B3FE0,
+                R.drawable.msg_filehq, LocaleController.getString(R.string.OxMcpExport),
+                LocaleController.getString(R.string.OxMcpExportHint)));
         items.add(UItem.asShadow(null));
     }
 
@@ -118,6 +123,8 @@ public class OxMcpActivity extends BaseFragment {
             showAddDialog();
         } else if (item.id == ID_IMPORT) {
             showImportDialog();
+        } else if (item.id == ID_EXPORT) {
+            pickExportFile();
         } else if (item.id >= SERVER_BASE) {
             int index = item.id - SERVER_BASE;
             List<OxMcpManager.McpServer> servers = OxMcpManager.getServers();
@@ -205,12 +212,47 @@ public class OxMcpActivity extends BaseFragment {
         }
     }
 
+    private void pickExportFile() {
+        if (getParentActivity() == null) return;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        intent.putExtra(Intent.EXTRA_TITLE, "orioneko-mcp.json");
+        try {
+            startActivityForResult(intent, REQ_EXPORT_FILE);
+        } catch (Throwable t) {
+            toast("⚠ " + t.getMessage());
+        }
+    }
+
     @Override
     public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
-        if (requestCode != REQ_IMPORT_FILE || resultCode != android.app.Activity.RESULT_OK || data == null) return;
+        if (resultCode != android.app.Activity.RESULT_OK || data == null) return;
         android.net.Uri uri = data.getData();
         android.content.Context ctx = getParentActivity();
         if (uri == null || ctx == null) return;
+        if (requestCode == REQ_EXPORT_FILE) {
+            new Thread(() -> {
+                String msg;
+                try {
+                    int count = OxMcpManager.exportJson(ctx, uri);
+                    msg = LocaleController.formatString("OxMcpExported",
+                            R.string.OxMcpExported, count);
+                } catch (Throwable t) {
+                    String detail = t.getMessage();
+                    if ("no servers to export".equals(detail)) {
+                        msg = LocaleController.getString(R.string.OxMcpExportEmpty);
+                    } else {
+                        msg = LocaleController.formatString("OxMcpExportFailed",
+                                R.string.OxMcpExportFailed, detail == null ? "" : detail);
+                    }
+                }
+                final String m = msg;
+                AndroidUtilities.runOnUIThread(() -> toast(m));
+            }, "ox-mcp-file-export").start();
+            return;
+        }
+        if (requestCode != REQ_IMPORT_FILE) return;
         new Thread(() -> {
             try {
                 java.io.InputStream in = ctx.getContentResolver().openInputStream(uri);

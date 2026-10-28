@@ -1,6 +1,7 @@
 package org.telegram.ox;
 
 import android.content.Context;
+import android.net.Uri;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -111,6 +112,40 @@ public class OxMcpManager {
     public static synchronized List<McpServer> getServers() {
         loadIfNeeded();
         return servers;
+    }
+
+    /** Writes {mcpServers:{name:{type,url,isActive}}} without headers or secrets. */
+    public static int exportJson(Context ctx, Uri uri) throws Exception {
+        if (ctx == null || uri == null) throw new IllegalArgumentException("missing uri");
+        List<McpServer> list = getServers();
+        JSONObject map = new JSONObject();
+        java.util.HashSet<String> used = new java.util.HashSet<>();
+        int count = 0;
+        for (McpServer s : list) {
+            if (s == null || s.url == null || !s.url.startsWith("http")) continue;
+            String base = s.name == null ? "" : s.name.trim();
+            if (base.isEmpty()) base = "MCP";
+            String key = base;
+            int n = 2;
+            while (!used.add(key)) key = base + " " + (n++);
+            JSONObject c = new JSONObject();
+            c.put("type", "streamableHttp");
+            c.put("url", s.url);
+            c.put("isActive", s.enabled);
+            map.put(key, c);
+            count++;
+        }
+        if (count == 0) throw new IllegalStateException("no servers to export");
+        JSONObject root = new JSONObject();
+        root.put("mcpServers", map);
+        java.io.OutputStream out = ctx.getContentResolver().openOutputStream(uri);
+        if (out == null) throw new IllegalStateException("cannot open output");
+        try {
+            out.write(root.toString().getBytes(StandardCharsets.UTF_8));
+        } finally {
+            out.close();
+        }
+        return count;
     }
 
     private static void loadIfNeeded() {

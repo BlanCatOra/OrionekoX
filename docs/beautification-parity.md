@@ -687,6 +687,21 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: no search/select-all in the list; still no workspaces, memory, MCP or
   themes, and no external-client validation.
 
+## 0.37.0 implementation — MCP JSON export
+
+- The MCP page now offers “Export MCP JSON”: SAF creates `orioneko-mcp.json`
+  with an `mcpServers` map of HTTP servers (`type=streamableHttp`, `url`,
+  `isActive`), plus a result count.
+- Headers (including Authorization/API keys), OAuth, SSE/stdio entries and tool
+  allowlists are never written; duplicate names get suffixes.
+- Device QA: a test server containing `Authorization: Bearer QA_SECRET_0370`
+  exported as a 390 B JSON with four HTTP servers and no headers field; the
+  secret appeared zero times while the internal servers.json still kept it.
+  After deleting the test server, re-importing the export restored its URL with
+  empty headers and left the other three servers untouched.
+- Limits: HTTP-only, no server selection, auth headers require manual re-entry,
+  no connectivity test, and external clients have not imported the JSON yet.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -696,8 +711,8 @@ These confirm the feature directions rather than relying on guesses. Checked
    images/attachments: backgrounds and workspaces; SSE/stdio MCP with their tool
    allowlists; RikkaHub non-selected branches, non-image attachments,
    per-conversation grouping, skill attachments and standalone providers.
-3. Bidirectional export still lacks workspaces, memory, MCP and themes, plus
-   validation against real external clients.
+3. Bidirectional export still lacks workspaces, memory, themes, MCP headers/
+   OAuth and server selection, plus validation against real external clients.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 5. Per-conversation theme inheritance still copies the parent’s text color; a
