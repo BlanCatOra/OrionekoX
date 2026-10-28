@@ -63,27 +63,33 @@ The only entrance animation is the conversation fade/rise on first render.
 - Copy is plain and action-oriented ("Write something…", "Open Telegram UI"),
   with the model's Markdown converted to native spans rather than shown raw.
 
-## What is wired now (0.60.0)
+## What is wired now (0.61.0)
 
 - Entry points: Ox Settings → Interface (Telegram UI / OxUI preview) and the
   onboarding final page. Both persist `interface_mode`.
+- Root switch: a plain launcher start with `interface_mode=oxui` opens OxUI
+  directly; deep links stay on Telegram UI. OxUI's Telegram UI button clears the
+  task and switches back; back in root mode sends the task to the background.
 - OxUI reads real local agent history from `OxAgentStore` and lists real agents.
 - Sending calls `OxAgentsBridge.sendFromOxUi`, the same local path used by the
   Telegram UI, so the user turn and agent reply appear in both. This was
   verified with the Echo agent: "OxUI test 0600" appeared in OxUI and in the
   Telegram Echo chat.
+- Agents panel: name/remark search, Harness + recent-message subtitle, tap to
+  chat, long-press for detail; detail shows harness/model, remark, memory stats
+  and recent memory; message long-press copies.
 - Markdown (`**bold**`, `` `code` ``, `#` headings) is rendered with native
   spans inside message bubbles.
 
 ## Not done yet / next
 
-- The app root still launches Telegram UI; selecting OxUI preview opens the
-  preview activity but does not replace MainTabs.
-- Groups, attachments, media, search, settings, memory pages and per-agent
-  profiles are Telegram UI only.
+- Root switch only applies to plain launcher starts; deep links/shares keep the
+  Telegram path.
+- Groups, attachments, media, chat search, settings, agent editing and full
+  memory pages are Telegram UI only.
 - The preview is phone-first; no tablet two-pane layout yet.
 - Dynamic theme variants, reduced-motion handling and accessibility sweep are
   still to do.
-- Next round: make OxUI a real root option with synced navigation, then add
-  agent list/detail, group chats, attachments and a second visual pass driven
-  by device screenshots.
+- Next round: group chats, attachments/media, chat/session search, settings and
+  agent editing inside OxUI, plus a third visual pass driven by device
+  screenshots.

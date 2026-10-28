@@ -216,8 +216,12 @@ public class OxSettingsActivity extends BaseFragment {
                                     ? OxMode.IFACE_OXUI : OxMode.IFACE_TELEGRAM);
                             if (listView != null) listView.adapter.update(true);
                             if (which == 1 && getParentActivity() != null) {
-                                getParentActivity().startActivity(new Intent(
-                                        getParentActivity(), OxUiPreviewActivity.class));
+                                // Root switch: restart into LaunchActivity, which
+                                // redirects a plain launch to OxUI.
+                                Intent restart = new Intent(getParentActivity(), LaunchActivity.class);
+                                restart.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                                        | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                getParentActivity().startActivity(restart);
                             }
                         })
                         .setNegativeButton(LocaleController.getString(R.string.Cancel), null)

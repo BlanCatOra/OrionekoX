@@ -641,3 +641,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：debug 6009 的 `Studio Test`（tgId 555000016，合成历史）打开 OxUI；Ox Settings 与引导页入口均可用；内置 Echo 发送 `OxUI test 0600`，OxUI 与 Telegram Echo 会话同时出现用户消息和回复（id 100067/100068）。release 6009 覆盖启动无 FATAL/ANR；测试 Agent/chat/dialog/messages/memory 清零，代理/无障碍保持。
 - 边界：OxUI 仍是 preview，应用根未切换；只有单聊，缺群聊/附件/媒体/搜索/设置/记忆页/Agent 详情/平板双栏/动态主题/reduced-motion；外部 Harness 回合结束才落盘，非 token 级流式。下一轮做第二轮视觉评审与 root 切换/导航。
+
+## 0.61.0 OxUI root 与导航 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-125 | 0.61.0 功能 | 0.60 OxUI 只是从设置打开的预览，应用根仍是 Telegram UI；用户要求 root 切换、可切回、Agent 列表/搜索/详情/记忆 | LaunchActivity 对普通 launcher 启动按 `interface_mode` 重定向 OxUI；OxUI root 的 Telegram UI 清任务切回；设置/引导页选择 OxUI 后重启进入 root；新增 Agents 面板/搜索/详情/记忆/长按复制 | 已实现并设备验证 |
+| R2-126 | 0.61.0 QA | 详情页 header 被 LinearLayout 拉满并垂直居中；搜索自动键盘导致详情 resize 错位；列表摘要残留 `**`；消息 selectable 抢走长按复制 | 详情 header 显式 44dp + TOP；打开详情前隐藏键盘；摘要剥离 Markdown；消息改非 selectable 由 OnLongClick 复制；root 返回键改为 moveTaskToBack | 已修复并设备验证（复制未做剪贴板回读） |
+
+- 设备：debug 6109，`interface_mode=oxui` 普通启动直接进 OxUI；Telegram UI 按钮把偏好改回 telegram 并进 LaunchActivity；设置再选 OxUI 后清任务重启回 OxUI。合成 `Studio Test`（tgId 555000017）搜索只剩自身，长按详情显示 1 条事实记忆，Chat 返回；截图 root/search/detail 归档。release 6109 无本包 FATAL/ANR；测试 Agent/chat/dialog/messages/memory 清零，偏好恢复 telegram，代理/无障碍保持。
+- 边界：root 只对普通 launcher 启动；搜索仅 Agent 名称/备注；详情记忆只读；群聊/附件/媒体/会话搜索/设置/Agent 编辑/平板/动态主题/reduced-motion/无障碍未做；长按复制未做剪贴板自动回读。
