@@ -353,3 +353,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：Multi B（2 消息）+ Single Export（4 消息/头像/图片/附件）勾选导出 6,697 B；manifest 2 sessions/0 copilot/3 资源，仅这两个 Agent；回环导入生成 2 个会话，B 消息/B 回复、图片、notes.txt 与 4 条消息均正确；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：无搜索/全选；不导出 Key/provider URL/工作区/记忆/技能/MCP/主题；外部 Chatbox 未实测。
+
+## 0.37.0 MCP 服务器 JSON 导出 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-74 | 0.37.0 QA | MCP 服务只有导入，无法把本机服务器列表交给 Kelivo/RikkaHub/Claude Desktop | 新增 “Export MCP JSON” 与 `OxMcpManager.exportJson`，写 `mcpServers`（type/url/isActive） | 已修复 |
+| R2-75 | 0.37.0 QA | 服务器 headers 可能含 Authorization/token，直接导出会泄露密钥 | 导出层完全不写 headers/OAuth；内部 servers.json 保留原 header，导出文件无 secret | 已修复 |
+
+- 设备：带 `Authorization: Bearer QA_SECRET_0370` 的测试服务器导出 390 B，4 个 HTTP 服务器、无 headers 字段、secret 出现 0 次；内部 servers.json 仍保留 header；删除测试服务器后回环导入恢复 URL、headers 为空，原有 3 个服务器未变；清理后无本包 FATAL/ANR。
+- 边界：仅 HTTP、无多选、headers/OAuth 不导出、不做连通性测试；外部客户端未实测。

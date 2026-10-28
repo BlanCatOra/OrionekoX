@@ -3173,6 +3173,25 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `3f4b52ac9866…`）；debug `dist/OrionekoX-0.36.0-debug-arm64-x64.apk`（sha256
 `2a6607834fa3…`）。详见 `docs/qa-0.36.0.md`。
 
+## 5.155 alpha 0.37.0 —— MCP 服务器 JSON 导出（2026-10-28 08:48–09:02）
+
+- MCP 服务页新增 “Export MCP JSON”，SAF 创建 `orioneko-mcp.json`；输出
+  `mcpServers` 映射（type=streamableHttp、url、isActive），只含 http/https。
+- 明确不导出 headers/Authorization/API Key、OAuth、stdio/SSE 与工具白名单；
+  同名 key 加后缀；结果 toast 计数，无服务器时不写文件。
+- 设备：带 `Authorization: Bearer QA_SECRET_0370` 的测试服务器导出 390 B，
+  含 4 个服务器但无 headers，文件中 secret 出现 0 次；内部 servers.json
+  仍保留 header，证明是导出剔除；删除后回环导入恢复 URL、headers 为空，
+  原有 3 个服务器未变；清理测试服务器与 JSON，无本包 FATAL/ANR。
+- 边界：仅 HTTP、无多选、不导出认证 header、不做连通性测试；外部客户端
+  未实测。
+- 版本规则：新增可见的 MCP JSON 导出能力，按 minor 从 0.36.0 → 0.37.0，
+  versionCode 3709。
+
+**产物**：`dist/OrionekoX-0.37.0-alpha-arm64-x64.apk`（versionCode 3709，sha256
+`7b1b8ebd7528…`）；debug `dist/OrionekoX-0.37.0-debug-arm64-x64.apk`（sha256
+`e6d3b625262a…`）。详见 `docs/qa-0.37.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

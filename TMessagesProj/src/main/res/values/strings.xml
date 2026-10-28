@@ -12040,6 +12040,11 @@
     <string name="OxWorkflowInexactHint">Exact alarms are off in system settings, so scheduled runs may start late. The workflow still runs.</string>
     <string name="OxMcpImport">Import from JSON</string>
     <string name="OxMcpImportHint">Paste mcpServers JSON (Kelivo / RikkaHub / Claude Desktop)</string>
+    <string name="OxMcpExport">Export MCP JSON</string>
+    <string name="OxMcpExportHint">Write mcpServers JSON without headers or API keys</string>
+    <string name="OxMcpExported">Exported %1$d MCP server(s)</string>
+    <string name="OxMcpExportEmpty">No HTTP MCP servers to export</string>
+    <string name="OxMcpExportFailed">MCP export failed: %1$s</string>
     <string name="OxMcpImportDone">Imported %1$d server(s), skipped %2$d</string>
     <string name="OxMcpImportStdio">%1$d stdio server(s) are not supported yet</string>
     <string name="OxSkillsImport">Import SKILL.md / zip</string>

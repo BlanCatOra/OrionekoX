@@ -4,6 +4,20 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.37.0 — 2026-10-28
+
+- The MCP page now offers “Export MCP JSON”: SAF creates `orioneko-mcp.json`
+  with an `mcpServers` map of HTTP servers (`type=streamableHttp`, `url`,
+  `isActive`).
+- Headers (including Authorization/API keys), OAuth, SSE/stdio entries and tool
+  allowlists are never written, so tokens cannot leak through this export.
+  Duplicate names get suffixes; an empty list does not create a file.
+- Verified with a test server carrying `Authorization: Bearer QA_SECRET_0370`:
+  the 390 B export contained four HTTP servers without any headers field and
+  zero occurrences of the secret, while the internal store kept its header.
+  Deleting and re-importing the export restored the URL with empty headers and
+  left the other three servers untouched.
+
 ## 0.36.0 — 2026-10-28
 
 - Added “Export selected agents” in Ox settings: a native scrollable checkbox
