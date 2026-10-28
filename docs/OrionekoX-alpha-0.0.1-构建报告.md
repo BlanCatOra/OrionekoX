@@ -3666,6 +3666,44 @@ debug `dist/OrionekoX-0.50.0-debug-arm64-x64.apk`（sha256
 `e6b7f10b4393e31a459a615f73584964e9b5900ebd5f1200b722ea9fa441285e`）。
 详见 `docs/qa-0.50.0.md`。
 
+## 5.173 alpha 0.51.0 —— Chatbox 备份携带全局外观主题（2026-10-28 16:03–16:14）
+
+- 0.50.0 已让 Chatbox 备份携带按 Agent 外观，但全局外观（所有 Agent
+  的默认主题、全局背景与字体）仍不能往返；换机后需重新配置。
+- 0.51.0 在 Chatbox `settings.json` 写私有 `orionekoGlobalTheme`
+  （仅全局自定义模式），绝对路径清空；全局背景写成 scope=global 的
+  `background` 资源并用 `storageKey` 引用，全局字体写成
+  `fonts/global/chat.ttf`、`code.ttf`，沿用 8 MiB/文件、16 MiB 总量。
+- 导入读取 settings 的全局主题与背景引用，预览/结果新增全局主题提示；
+  背景与字体落地后校验，`applyImportedGlobalTheme` 仅在本地全局外观
+  非自定义时写入；已有自定义全局主题则保留并删除临时资产。
+- 首轮构建后 Ox 设置导出说明行只显示两行，末尾“不含 API Key”被截断；
+  缩短为“助手、聊天、记忆、技能、工作区、偏好、主题、字体、头像、
+  附件；无 API Key”，中文包 111→112，重建后完整显示。
+- 设备：自建 `QA Global 0510`（tgId 555000108）；原有全局主题先备份
+  （sha256 `e070ff70…`）。临时加入 2,371,712 B 聊天字体与 108,128 B
+  代码字体。单 Agent 备份 1,457,238 B，`settings.json` 含全局主题与
+  背景引用；主题路径为空，背景 sha256 `88a527c8…`、字体
+  `9ca9debb…`/`db19a1fd…` 均与源一致，敏感字段 0 命中、无绝对路径。
+- 删除 prefs 与字体后回导：结果“已恢复全局外观主题（含字体 2 个）”，
+  prefs 颜色/圆角/边框/字号/行高与备份一致，新背景与字体哈希一致；
+  打开会话可见原全局深蓝背景、磨砂气泡、粉色边框与白字。重复导入为
+  “全局外观已有自定义，保留本地主题”，prefs hash 不变、无孤儿字体/
+  背景。全程无 FATAL/ANR。
+- 清理测试 Agent、导入资产与 zip，555000108 的 dialogs/messages 为 0；
+  恢复原全局 prefs 并复核 sha256 `e070ff70…`，未执行 `pm clear`。
+- 边界：全局主题/背景/字体为扩展，真实 Kelivo/Chatbox 未互测；仍不
+  携带按会话覆盖；本地已有自定义全局外观优先；字体必须可解析；视频
+  背景不携带。
+- 版本规则：新增用户可见的备份内容与恢复行为，属于功能迭代，
+  按 minor 从 0.50.0 → **0.51.0**（5109），patch 清零。
+
+**产物**：`dist/OrionekoX-0.51.0-alpha-arm64-x64.apk`（versionCode 5109，
+sha256 `8281fc3d3d0c4c2aee82f7703c7e8776293a5d58bcf8ac96c4e84cf7c7bfa1f1`）；
+debug `dist/OrionekoX-0.51.0-debug-arm64-x64.apk`（sha256
+`a6bba2603e4c18b0d964349a4dd1a2c6ba026317bdb77c064d2af8aa4f358d77`）。
+详见 `docs/qa-0.51.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

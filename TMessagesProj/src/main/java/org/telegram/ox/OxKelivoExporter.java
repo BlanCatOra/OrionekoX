@@ -147,6 +147,35 @@ public class OxKelivoExporter {
         Map<String, byte[]> themeFonts = new LinkedHashMap<>();
         long[] themeFontBytes = new long[]{0};
 
+        JSONObject globalSettings = new JSONObject();
+        OxChatTheme.Snapshot globalTheme = OxChatTheme.globalSnapshot();
+        if (globalTheme != null && OxChatTheme.MODE_CUSTOM.equals(globalTheme.mode)) {
+            JSONObject themeJson = globalTheme.toJson("");
+            themeJson.put("backgroundImage", "");
+            themeJson.put("fontPath", "");
+            themeJson.put("codeFontPath", "");
+            addThemeFont(themeFonts, themeFontBytes, "global", "chat",
+                    globalTheme.fontPath, result);
+            addThemeFont(themeFonts, themeFontBytes, "global", "code",
+                    globalTheme.codeFontPath, result);
+            String bgPath = globalTheme.backgroundImage;
+            if (bgPath != null && !bgPath.isEmpty() && resources.size() < MAX_RESOURCES) {
+                Resource bg = buildResource("res" + (resourceIndex++),
+                        "orioneko-" + UUID.randomUUID(), "background",
+                        mimeForName(bgPath), "global", null, new File(bgPath),
+                        MAX_RESOURCE_BYTES, result);
+                if (bg != null && totalBytes + bg.bytes.length <= MAX_TOTAL_BYTES) {
+                    resources.add(bg);
+                    totalBytes += bg.bytes.length;
+                    globalSettings.put("background", new JSONObject()
+                            .put("type", "storage-key").put("storageKey", bg.key));
+                } else if (bg != null) {
+                    result.notes.add("全局背景超出总量上限，已跳过");
+                }
+            }
+            globalSettings.put("orionekoGlobalTheme", themeJson);
+        }
+
         for (OxAgent a : agents) {
             List<OxChatEntry> chat;
             try {
@@ -367,7 +396,7 @@ public class OxKelivoExporter {
             }
         }
 
-        byte[] settingsBytes = "{}".getBytes("UTF-8");
+        byte[] settingsBytes = globalSettings.toString().getBytes("UTF-8");
         byte[] copilotsBytes = new JSONArray(copilots).toString().getBytes("UTF-8");
 
         JSONObject manifest = new JSONObject();

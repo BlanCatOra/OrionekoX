@@ -526,3 +526,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：自建 chatless copilot `QA Theme 0500`（tgId 555000106，深蓝背景/dim 40/blur 2/收 #263238/发 #7C4DFF/230 透明度/20dp 圆角/#00E5FF 2dp 边框/1.12× 字号/1.3× 行高/2.37 MB 聊天字体/108 KB 代码字体）与 session Agent `QA Theme Session 0500`（tgId 555000107，1 条消息，绿色系主题、14dp 圆角、1 个字体）。导出分别为 1,453,353 B 与 1,383,082 B；`orionekoTheme` 在 copilot/session 中均存在，三个路径字段为空，背景解码哈希与字体哈希均与源一致，全文扫描 `api_key`/`base_url`/`baseUrl`/`headers`/`Authorization`/`Bearer `/`sk-`/`ox1:` 0 命中且无 `/data/data/` 绝对路径。删除主题/字体/背景后回导：copilot 恢复 1 主题/2 字体/1 背景，session 恢复 1 主题/1 字体/1 背景，颜色、圆角、边框、字号、行高（float 精度内）与全部哈希一致；原生会话可见深色气泡与青色边框。重复导入 copilot 备份为 0 主题并保留本地主题，字体文件数不增加。全程无 FATAL/ANR；清理两个测试 Agent、主题、字体与 zip 后 555000106/555000107 的 dialogs/messages 均为 0，未执行 `pm clear`。
 - 边界：`orionekoTheme`/`fonts/` 为 OrionekoX 扩展，真实 Kelivo/Chatbox 未互测；只带按 Agent 覆盖，不带全局主题与按会话覆盖；已有本地主题优先；字体必须可被平台解析；视频背景不携带。
+
+## 0.51.0 Chatbox 备份携带全局外观主题 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-103 | 0.51.0 功能 | 0.50.0 只让 Chatbox 备份携带按 Agent 主题，全局外观（所有 Agent 的默认颜色、气泡、全局背景与字体）仍不能往返，换机后需重配 | 全局自定义时在 `settings.json` 写私有 `orionekoGlobalTheme`，路径清空；全局背景写 scope=global 的 `background` 资源并用 storageKey 引用，全局字体写 `fonts/global/*.ttf`；导入在本地全局非自定义时恢复，已有自定义则保留并删除临时资产 | 已实现并设备验证 |
+| R2-104 | 0.51.0 QA | 首次构建把“全局与按 Agent 外观主题、字体”加入 Ox 设置导出说明后，SettingCell 只显示两行，末尾“不含 API Key”被截断 | 缩短中英文 `OxKelivoExportInfo` 为“助手、聊天、记忆、技能、工作区、偏好、主题、字体、头像、附件；无 API Key”，中文包 111→112，重建后两行完整显示 | 已修复并设备验证 |
+
+- 设备：自建 `QA Global 0510`（tgId 555000108）。设备原有全局主题先备份（sha256 `e070ff70…`），临时加入 2,371,712 B 聊天字体与 108,128 B 代码字体、16,360 B 背景。单 Agent 备份 1,457,238 B，`settings.json` 含 `orionekoGlobalTheme` 与背景引用；主题三个路径为空，背景 sha256 `88a527c8…`、字体 `9ca9debb…`/`db19a1fd…` 均与源一致，敏感字段 0 命中、无 `/data/` 绝对路径。删除 prefs 与字体后回导：结果“已恢复全局外观主题（含字体 2 个）”，颜色/圆角/边框/字号/行高与源一致，新背景与字体哈希一致，原生会话显示原全局深蓝背景/磨砂气泡/粉色边框/白字。重复导入为“全局外观已有自定义，保留本地主题”，prefs sha256 `29cba250…` 前后不变、无孤儿字体/背景。全程无 FATAL/ANR；清理测试 Agent、导入资产与 zip 后 555000108 的 dialogs/messages 为 0，恢复原 prefs 并复核 `e070ff70…`，未执行 `pm clear`。
+- 边界：全局主题/背景/字体为扩展，真实 Kelivo/Chatbox 未互测；仍不携带按会话覆盖；本地已有自定义全局外观优先；字体必须可解析；视频背景不携带。

@@ -412,6 +412,28 @@ public class OxSettingsActivity extends BaseFragment {
                 final OxKelivoImporter.Result result = OxKelivoImporter.importFrom(ctx, uri);
                 AndroidUtilities.runOnUIThread(() -> {
                     OxAgentsBridge.syncAgents(true);
+                    if (result.globalThemeJson != null) {
+                        boolean ok = OxChatTheme.applyImportedGlobalTheme(
+                                result.globalThemeJson, result.globalBackgroundPath,
+                                result.globalFontPath, result.globalCodeFontPath);
+                        result.globalThemes = ok ? 1 : 0;
+                        if (ok) {
+                            result.notes.add("已恢复全局外观主题"
+                                    + (result.globalFonts > 0
+                                    ? "（含字体 " + result.globalFonts + " 个）" : ""));
+                        } else {
+                            if (!result.globalBackgroundPath.isEmpty()) {
+                                new File(result.globalBackgroundPath).delete();
+                            }
+                            if (!result.globalFontPath.isEmpty()) {
+                                new File(result.globalFontPath).delete();
+                            }
+                            if (!result.globalCodeFontPath.isEmpty()) {
+                                new File(result.globalCodeFontPath).delete();
+                            }
+                            result.notes.add("全局外观已有自定义，保留本地主题");
+                        }
+                    }
                     int themesApplied = 0;
                     int fontsKept = 0;
                     for (Map.Entry<String, OxKelivoImporter.ImportedTheme> e
@@ -508,7 +530,7 @@ public class OxSettingsActivity extends BaseFragment {
     private String kelivoResultText(OxKelivoImporter.Result r) {
         if (r.created == 0 && r.updated == 0 && r.skills == 0 && r.mcpAdded == 0
                 && r.conversations == 0 && r.memories == 0 && r.preferences == 0
-                && r.workspaceFiles == 0 && r.themes == 0) {
+                && r.workspaceFiles == 0 && r.themes == 0 && r.globalThemes == 0) {
             return LocaleController.getString(R.string.OxKelivoNothing);
         }
         StringBuilder sb = new StringBuilder();

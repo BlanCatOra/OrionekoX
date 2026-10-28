@@ -12032,8 +12032,8 @@
     <string name="OxKelivoNothing">备份里没有可导入的助手或对话</string>
     <string name="OxKelivoFailed">Kelivo 导入失败：%1$s</string>
     <string name="OxKelivoExport">导出为 Kelivo / Chatbox 备份</string>
-    <string name="OxKelivoExportInfo">zip · 助手、聊天、长期记忆、技能、工作区、助手偏好、外观主题、字体、头像、附件；不含 API Key</string>
-    <string name="OxKelivoExportConfirm">将所有非内置智能体及其聊天、长期记忆、技能、工作区、助手偏好（工具权限、置顶、备注、开场白、推理参数）、外观主题（颜色、气泡、字体、背景）、头像、附件导出为 Chatbox v2 zip？\n\n不包含 API Key、Provider 地址与请求头。</string>
+    <string name="OxKelivoExportInfo">zip · 助手、聊天、记忆、技能、工作区、偏好、主题、字体、头像、附件；无 API Key</string>
+    <string name="OxKelivoExportConfirm">将所有非内置智能体及其聊天、长期记忆、技能、工作区、助手偏好（工具权限、置顶、备注、开场白、推理参数）、全局与按 Agent 外观主题（颜色、气泡、字体、背景）、头像、附件导出为 Chatbox v2 zip？\n\n不包含 API Key、Provider 地址与请求头。</string>
     <string name="OxKelivoExportAction">导出</string>
     <string name="OxKelivoExportDone">已导出：智能体 %1$d、工作区 %7$d、对话 %4$d、消息 %5$d、记忆 %2$d、技能 %3$d、文件 %6$d</string>
     <string name="OxKelivoExportNothing">没有可导出的非内置智能体</string>

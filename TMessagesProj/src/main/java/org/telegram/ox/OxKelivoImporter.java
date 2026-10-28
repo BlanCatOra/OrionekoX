@@ -5,6 +5,7 @@ import android.net.Uri;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.telegram.messenger.ApplicationLoader;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -64,6 +65,7 @@ public class OxKelivoImporter {
         public int workspaceFiles;
         public int preferences;
         public int themes;
+        public int globalThemes;
         public final List<String> names = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -87,6 +89,12 @@ public class OxKelivoImporter {
         public int preferences;
         public int themes;
         public int fonts;
+        public int globalThemes;
+        public int globalFonts;
+        public JSONObject globalThemeJson;
+        public String globalBackgroundPath = "";
+        public String globalFontPath = "";
+        public String globalCodeFontPath = "";
         public final Map<String, String> backgroundPaths = new HashMap<>();
         public final Map<String, ImportedTheme> importedThemes = new HashMap<>();
         public final List<String> ids = new ArrayList<>();
@@ -147,6 +155,8 @@ public class OxKelivoImporter {
         final Map<String, Resource> files = new HashMap<>();
         final Map<String, Resource> backgrounds = new HashMap<>();
         final Map<String, byte[]> fonts = new HashMap<>();
+        JSONObject globalTheme;
+        String globalBackgroundRef = "";
         int avatarCount;
         int imageCount;
         int fileCount;
@@ -196,6 +206,7 @@ public class OxKelivoImporter {
         p.skillLinks = linkedAgents.size();
         p.preferences = preferenceAgents.size();
         p.themes = themeAgents.size();
+        p.globalThemes = archive.globalTheme != null ? 1 : 0;
         p.notes.add("仅导入 Kelivo / Chatbox 备份中的助手、人设、技能、助手偏好、外观主题、HTTP MCP 与对话；不含 Provider 密钥。");
         if (p.memories > 0) {
             p.notes.add("将恢复 " + p.memories + " 个智能体的长期记忆（覆盖现有记忆）。");
@@ -210,6 +221,9 @@ public class OxKelivoImporter {
         if (p.themes > 0) {
             p.notes.add("将恢复 " + p.themes
                     + " 个智能体的外观主题（颜色、气泡、字体与背景；已有主题则保留）。");
+        }
+        if (p.globalThemes > 0) {
+            p.notes.add("将恢复全局外观主题（颜色、气泡、字体与背景；已有自定义全局外观则保留）。");
         }
         if (!archive.providers.isEmpty()) {
             p.notes.add("将使用备份中的 " + archive.providers.size() + " 个 Provider 配置为助手接线。");
@@ -256,7 +270,7 @@ public class OxKelivoImporter {
         }
         p.backgrounds = archive.backgroundCount;
         if (p.backgrounds > 0) {
-            p.notes.add("备份含 " + p.backgrounds + " 个聊天背景；将套用到对应智能体。");
+            p.notes.add("备份含 " + p.backgrounds + " 个聊天背景；将套用到全局或对应智能体。");
         }
         for (Map<String, byte[]> files : archive.workspace.values()) {
             p.workspaceFiles += files.size();
@@ -270,6 +284,30 @@ public class OxKelivoImporter {
     public static Result importFrom(Context context, Uri uri) throws Exception {
         Archive archive = read(context, uri);
         Result r = new Result();
+        if (archive.globalTheme != null) {
+            r.globalThemeJson = archive.globalTheme;
+            r.globalThemes = 1;
+            if (!archive.globalBackgroundRef.isEmpty()) {
+                String path = saveGlobalBackground(archive);
+                if (path != null) r.globalBackgroundPath = path;
+            }
+            byte[] chatFont = archive.fonts.get("fonts/global/chat.ttf");
+            if (chatFont != null) {
+                String path = OxChatTheme.saveImportedFont(chatFont, "global_chat");
+                if (!path.isEmpty()) {
+                    r.globalFontPath = path;
+                    r.globalFonts++;
+                }
+            }
+            byte[] codeFont = archive.fonts.get("fonts/global/code.ttf");
+            if (codeFont != null) {
+                String path = OxChatTheme.saveImportedFont(codeFont, "global_code");
+                if (!path.isEmpty()) {
+                    r.globalCodeFontPath = path;
+                    r.globalFonts++;
+                }
+            }
+        }
         OxAgent fallback = existingProvider();
         Set<String> providersUsed = new HashSet<>();
         Set<String> memoriesRestored = new HashSet<>();
@@ -603,7 +641,12 @@ public class OxKelivoImporter {
                         }
                     }
                 }
-                if (settings != null) scan(new JSONObject(settings), out, 0);
+                if (settings != null) {
+                    JSONObject st = new JSONObject(settings);
+                    out.globalTheme = st.optJSONObject("orionekoGlobalTheme");
+                    out.globalBackgroundRef = backgroundRef(st);
+                    scan(st, out, 0);
+                }
                 if (copilots != null) addArray(new JSONArray(copilots), out);
                 if (assistants != null) addArray(new JSONArray(assistants), out);
                 if (manifest != null) {
@@ -832,6 +875,17 @@ public class OxKelivoImporter {
         if (dir == null) return null;
         dir.mkdirs();
         return writeResource(new File(dir, "background" + extensionForMime(resource.mime)), resource);
+    }
+
+    private static String saveGlobalBackground(Archive archive) {
+        if (archive.globalBackgroundRef == null || archive.globalBackgroundRef.trim().isEmpty()) {
+            return null;
+        }
+        Resource resource = archive.backgrounds.get(archive.globalBackgroundRef.trim());
+        if (resource == null) return null;
+        File out = new File(ApplicationLoader.applicationContext.getFilesDir(),
+                "ox_chat_bg_imported_" + System.currentTimeMillis() + ".img");
+        return writeResource(out, resource);
     }
 
     private static int saveChatImages(String agentId, Conversation conversation,

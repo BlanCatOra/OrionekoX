@@ -4,6 +4,41 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.51.0 — 2026-10-28
+
+- Chatbox / Kelivo backups now carry the global appearance when it is in custom
+  mode, as a private `orionekoGlobalTheme` object in `settings.json`: mode,
+  background mode/colors/alpha/dim/blur/AMOLED/gradient, bubble colors and
+  opacity, corner radius, style, border, text color, font scale and line height.
+  Native global appearance is not written as a fake custom theme.
+- Local absolute paths are stripped. The global wallpaper travels as a
+  `background` resource with `scope=global` and a storage-key reference; global
+  chat and code fonts travel as `fonts/global/chat.ttf` and `code.ttf`, sharing
+  the 8 MiB per-file and 16 MiB total budget with per-agent fonts.
+- Import validates fonts with `Typeface.createFromFile`, writes the global
+  background into app-private storage and applies the snapshot only when the
+  local global appearance is not already custom. A local custom global theme
+  wins, and assets written for the skipped import are deleted. Preview and
+  result report global theme and font counts.
+- Verified with a self-created agent and the existing custom global theme
+  (deep blue image, frosted bubble, pink border) plus a 2.37 MB chat font and
+  108 KB code font. The 1,457,238 B export carried the global theme with empty
+  paths, a 16,360 B background whose SHA-256 matched, and both fonts with
+  matching hashes; secret and absolute-path scans were clean. After deleting the
+  prefs and fonts, the import restored the exact colors, radius, border, scale
+  and line height, new background and font hashes, and the native chat showed
+  the global look. Re-importing kept the local custom theme, left the prefs hash
+  unchanged and created no orphan assets. The user's original prefs were backed
+  up and restored byte-for-byte after QA. No app FATAL/ANR; the test agent,
+  imported assets and zip were removed and the test dialogs/messages were zero.
+- Also shortened the export info line after the native SettingCell truncated it
+  to two lines; the Chinese pack moved 111 → 112 and the full line was verified
+  on device.
+- Limits: `orionekoGlobalTheme` and the global assets are OrionekoX extensions
+  ignored by real Chatbox/Kelivo clients (not tested); per-dialog overrides are
+  still not carried; a local custom global theme wins; fonts must parse; video
+  backgrounds are not carried.
+
 ## 0.50.0 — 2026-10-28
 
 - Chatbox / Kelivo backups now carry each agent's per-agent appearance
