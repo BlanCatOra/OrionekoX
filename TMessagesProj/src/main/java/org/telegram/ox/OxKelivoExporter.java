@@ -17,6 +17,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -55,6 +56,7 @@ public class OxKelivoExporter {
         public int skills;
         public int skillLinks;
         public int workspaceFiles;
+        public int preferences;
         public final List<String> notes = new ArrayList<>();
     }
 
@@ -174,6 +176,8 @@ public class OxKelivoExporter {
             } else {
                 memory = "";
             }
+            JSONObject preferences = agentPreferences(a);
+            if (preferences != null) result.preferences++;
             JSONObject copilot = new JSONObject();
             copilot.put("id", a.id);
             copilot.put("orionekoAgentId", a.id);
@@ -225,6 +229,7 @@ public class OxKelivoExporter {
                 }
                 if (!memory.isEmpty()) copilot.put("orionekoMemory", memory);
                 putSkillIds(copilot, a, exportedSkillIds, result);
+                if (preferences != null) copilot.put("orionekoAgent", preferences);
                 copilots.add(copilot);
                 continue;
             }
@@ -238,6 +243,7 @@ public class OxKelivoExporter {
             session.put("orionekoAgentId", a.id);
             if (!memory.isEmpty()) session.put("orionekoMemory", memory);
             putSkillIds(session, a, exportedSkillIds, result);
+            if (preferences != null) session.put("orionekoAgent", preferences);
             String bgPath = OxChatTheme.backgroundForDialog(a.tgId);
             if (bgPath.isEmpty()) bgPath = OxChatTheme.backgroundForAgent(a.tgId);
             if (!bgPath.isEmpty() && resources.size() < MAX_RESOURCES) {
@@ -439,6 +445,81 @@ public class OxKelivoExporter {
         }
         m.put("contentParts", out);
         return m;
+    }
+
+    /** Safe per-agent preferences. Credentials, provider wiring, request headers
+     *  and extra_body are deliberately excluded; only agent behavior is carried. */
+    private static JSONObject agentPreferences(OxAgent a) {
+        if (a == null) return null;
+        String reasoning = a.reasoningEffort == null ? "auto" : a.reasoningEffort;
+        String choice = a.toolChoice == null ? "auto" : a.toolChoice;
+        boolean custom = a.pinned
+                || nonEmpty(a.remark)
+                || nonEmpty(a.firstMes)
+                || customEmoji(a.emoji)
+                || (a.toolsPolicy != null && a.toolsPolicy.length() > 0)
+                || !"auto".equals(reasoning)
+                || !"auto".equals(choice)
+                || !a.parallelToolCalls
+                || a.contextLength != 0
+                || a.presencePenalty != 0
+                || a.frequencyPenalty != 0
+                || a.topK != 0
+                || a.seed != -1
+                || nonEmpty(a.stop);
+        if (!custom) return null;
+        try {
+            JSONObject o = new JSONObject();
+            o.put("emoji", clip(a.emoji, 16));
+            o.put("pinned", a.pinned);
+            o.put("remark", clip(a.remark, 2048));
+            o.put("first_mes", clip(a.firstMes, 16384));
+            o.put("reasoning_effort", clip(reasoning, 16));
+            o.put("tool_choice", clip(choice, 16));
+            o.put("parallel_tool_calls", a.parallelToolCalls);
+            o.put("context_length", Math.max(0, Math.min(1_000_000, a.contextLength)));
+            o.put("presence_penalty", Math.max(-2d, Math.min(2d, a.presencePenalty)));
+            o.put("frequency_penalty", Math.max(-2d, Math.min(2d, a.frequencyPenalty)));
+            o.put("top_k", Math.max(0, Math.min(1000, a.topK)));
+            o.put("seed", Math.max(-1, a.seed));
+            o.put("stop", clip(a.stop, 2048));
+            JSONObject policy = new JSONObject();
+            if (a.toolsPolicy != null) {
+                Iterator<String> keys = a.toolsPolicy.keys();
+                int n = 0;
+                while (keys.hasNext() && n < 256) {
+                    String key = keys.next();
+                    if (key == null || key.isEmpty() || key.length() > 128) continue;
+                    String value = a.toolsPolicy.optString(key, "");
+                    if ("auto".equals(value) || "ask".equals(value) || "deny".equals(value)) {
+                        policy.put(key, value);
+                        n++;
+                    }
+                }
+            }
+            o.put("tools_policy", policy);
+            return o;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static boolean nonEmpty(String s) {
+        return s != null && !s.trim().isEmpty();
+    }
+
+    private static boolean customEmoji(String s) {
+        if (!nonEmpty(s)) return false;
+        String v = s.trim();
+        return !"🤖".equals(v) && !"💬".equals(v);
+    }
+
+    private static String clip(String s, int max) {
+        if (s == null) return "";
+        if (s.length() <= max) return s;
+        int end = max;
+        if (end > 0 && Character.isHighSurrogate(s.charAt(end - 1))) end--;
+        return s.substring(0, end);
     }
 
     /** Walks an agent workspace without following symlinks out of it. Entry

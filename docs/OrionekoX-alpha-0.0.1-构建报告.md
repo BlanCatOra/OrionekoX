@@ -3545,6 +3545,48 @@ debug `dist/OrionekoX-0.47.1-debug-arm64-x64.apk`（sha256
 `f66b459a7d5497a97c85741e5f91eba473daa80c54ee6015177df949413ad2d8`）。
 详见 `docs/qa-0.47.1.md`。
 
+## 5.170 alpha 0.48.1 —— Chatbox 备份携带 Agent 偏好（2026-10-28 14:50–15:08）
+
+- 0.47.1 的 Chatbox 备份已带人设、聊天、记忆、技能、工作区和头像，
+  但每个 Agent 的工具权限、置顶、备注、开场白、推理/工具调用参数仍会
+  在换机后丢失。
+- 0.48.0 在 session/copilot 写私有 `orionekoAgent`（仅当存在非默认偏好）：
+  `emoji`、`pinned`、`remark`、`first_mes`、`reasoning_effort`、
+  `tool_choice`、`parallel_tool_calls`、`context_length`、
+  `presence_penalty`、`frequency_penalty`、`top_k`、`seed`、`stop`、
+  `tools_policy`。字符串/集合有上限，`tools_policy` 只接受
+  auto/ask/deny。
+- 明确不导出 `api_key`、`base_url`、`provider_id`、`headers`、
+  `extra_body`；其中 headers/extra_body 也可能含认证信息，统一排除。
+- 导入在 Provider、模型和技能处理之后应用偏好，避免被 Provider 回退值
+  覆盖；预览/结果新增“偏好设置”计数。导出说明加入“助手偏好”，确认框
+  注明不含密钥、Provider 地址与请求头；中文包 107→108。
+- 设备：自建 session/copilot 两个 Agent（tgId 555000110/555000111），
+  session 置顶、备注/开场白、reasoning=high、toolChoice=required、
+  并行关闭、context 32000、presence 0.5、frequency -0.25、topK 40、
+  seed 4242、stop END、get_time=deny/device_info=ask；copilot 使用
+  reasoning=low、toolChoice=none、context 64000、get_time=auto。
+  多选导出 1,881 B，两个对象均含完整 `orionekoAgent`，敏感字段扫描
+  0 命中。
+- 重置偏好后回导：预览/结果均为“恢复 2 个智能体的偏好设置”，字段全部
+  恢复、tgId 不变、无副本；原生工具权限页显示 get_time 禁止、
+  device_info 询问；置顶 session 在列表首位；重复导入幂等。
+- QA 发现 0.48.0 回导后 `context_length` 为 0：偏好先写入、随后
+  Provider 回退覆盖。0.48.1 把应用时机移到 Provider/模型/技能之后，
+  复验 32000/64000 均正确，其余字段无回归。
+- 边界：`orionekoAgent` 为私有扩展，真实 Chatbox/Kelivo 未实测；不导出
+  请求头/extra_body/Provider/密钥；备注与开场白仅做 agent.json 回读，
+  未逐项截图欢迎语。
+- 版本规则：新增用户可见的备份内容与恢复行为，按 minor 从 0.47.1 →
+  0.48.0（4809）；Provider 覆盖修复按 patch 从 0.48.0 → 0.48.1
+  （4819）。
+
+**产物**：`dist/OrionekoX-0.48.1-alpha-arm64-x64.apk`（versionCode 4819，
+sha256 `7c454852b0a80955ff7560b57ea14acd74b5a2c9d62eacc33a8d5568af880d42`）；
+debug `dist/OrionekoX-0.48.1-debug-arm64-x64.apk`（sha256
+`f14282ef15194991f7e65db17aa67b6763fe612a4013a3e47631226dcce526f6`）。
+详见 `docs/qa-0.48.1.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
