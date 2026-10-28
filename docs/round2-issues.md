@@ -363,3 +363,12 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：带 `Authorization: Bearer QA_SECRET_0370` 的测试服务器导出 390 B，4 个 HTTP 服务器、无 headers 字段、secret 出现 0 次；内部 servers.json 仍保留 header；删除测试服务器后回环导入恢复 URL、headers 为空，原有 3 个服务器未变；清理后无本包 FATAL/ANR。
 - 边界：仅 HTTP、无多选、headers/OAuth 不导出、不做连通性测试；外部客户端未实测。
+
+## 0.37.1 导出功能中文化 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-76 | 0.37.1 QA | 0.30–0.37 新增的对话/导出/多选/MCP/技能导出入口与预览在中文界面仍显示英文 | 中文包新增 27 条译文，更新空备份文案，`OX_ZH_PACK_VERSION` 98→99；审计 `R.string.Ox*` 缺失 0 | 已修复 |
+
+- 设备：Ox 设置、技能库、MCP 导出入口均为中文；Kelivo 预览显示“对话 1 段（2 条消息）/项目：Multi B”，无 Conversations/Items；仅预览后取消，未写数据；无本包 FATAL/ANR。
+- 边界：仅审计 Ox 自有字符串；其他语言包未补；无功能/格式变化。

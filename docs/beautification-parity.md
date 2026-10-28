@@ -702,6 +702,17 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: HTTP-only, no server selection, auth headers require manual re-entry,
   no connectivity test, and external clients have not imported the JSON yet.
 
+## 0.37.1 i18n pass
+
+- Added 27 Chinese strings covering the Kelivo/Chatbox conversation and export
+  flow, MCP export, and skill-library export, and bumped the Chinese pack from
+  98 to 99 so devices pick them up.
+- Audit: every `R.string.Ox*` reference in `ui/Ox*.java` and `ox/*.java` now has
+  a zh-cn entry (missing count 0).
+- Device QA: Ox settings, skill library and MCP export rows are Chinese; the
+  Kelivo preview reads “对话 1 段（2 条消息）/项目：Multi B” with no
+  `Conversations:`/`Items:` fallback. Preview was cancelled without writing.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,

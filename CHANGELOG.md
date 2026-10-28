@@ -4,6 +4,19 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.37.1 — 2026-10-28
+
+- Finished the Chinese copy for the newer export flows: the Kelivo/Chatbox
+  conversation and export previews, MCP JSON export, and skill-library export
+  now have Chinese strings (27 new entries), and the empty-backup copy mentions
+  conversations.
+- Bumped the Chinese pack from 98 to 99 so installed devices reload it.
+- Audited every `R.string.Ox*` reference in the Ox UI/import code against the
+  pack: zero missing entries.
+- Verified on device: Ox settings, skill library and MCP export rows are
+  Chinese, and the Kelivo preview reads “对话 1 段（2 条消息）/项目：Multi B”
+  instead of `Conversations:` / `Items:`. No functional changes.
+
 ## 0.37.0 — 2026-10-28
 
 - The MCP page now offers “Export MCP JSON”: SAF creates `orioneko-mcp.json`

@@ -3192,6 +3192,23 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `7b1b8ebd7528…`）；debug `dist/OrionekoX-0.37.0-debug-arm64-x64.apk`（sha256
 `e6d3b625262a…`）。详见 `docs/qa-0.37.0.md`。
 
+## 5.156 alpha 0.37.1 —— 导出功能中文化补漏（2026-10-28 09:10–09:20）
+
+- 中文包新增 27 条译文：Kelivo/Chatbox 对话/导出/单选/多选 17 条、MCP
+  导出 5 条、技能导出 5 条；`OxKelivoNothing` 改为“助手或对话”；中文包
+  98 → 99。
+- 文案审计：`ui/Ox*.java` 与 `ox/*.java` 的全部 `R.string.Ox*` 引用对
+  zh-cn.xml 求差，缺失 0。
+- 设备：Ox 设置、技能库、MCP 页导出入口均为中文；Kelivo 预览显示“对话
+  1 段（2 条消息）/项目：Multi B”，不再有 Conversations/Items 英文；
+  仅预览后取消，未写数据；无本包 FATAL/ANR。
+- 边界：仅审计 Ox 自有字符串；其他语言包未补；无功能/格式变化。
+- 版本规则：仅文案与 QA，按 patch 从 0.37.0 → 0.37.1，versionCode 3719。
+
+**产物**：`dist/OrionekoX-0.37.1-alpha-arm64-x64.apk`（versionCode 3719，sha256
+`8876b1ce2a07…`）；debug `dist/OrionekoX-0.37.1-debug-arm64-x64.apk`（sha256
+`b21e0412ad0d…`）。详见 `docs/qa-0.37.1.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
