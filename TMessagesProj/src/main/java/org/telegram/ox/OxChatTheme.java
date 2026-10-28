@@ -519,6 +519,40 @@ public class OxChatTheme {
         return readFile(agentFile(agentKey(tgId)));
     }
 
+    /** Global appearance snapshot used by Chatbox backup export. */
+    public static Snapshot globalSnapshot() {
+        return readPrefs().copy();
+    }
+
+    public static boolean isGlobalCustom() {
+        return MODE_CUSTOM.equals(readPrefs().mode);
+    }
+
+    /** Restores the global appearance from a Chatbox backup. A local custom
+     *  global theme wins, so importing never silently replaces it. */
+    public static boolean applyImportedGlobalTheme(JSONObject theme,
+            String backgroundPath, String fontPath, String codeFontPath) {
+        if (theme == null || isGlobalCustom()) return false;
+        Snapshot s;
+        try {
+            s = parseJsonObject(theme, new Snapshot());
+        } catch (Throwable t) {
+            return false;
+        }
+        s.mode = MODE_CUSTOM;
+        if (backgroundPath != null && !backgroundPath.isEmpty()) {
+            s.backgroundImage = backgroundPath;
+            s.backgroundMode = BG_IMAGE;
+        } else {
+            s.backgroundImage = "";
+            if (BG_IMAGE.equals(s.backgroundMode)) s.backgroundMode = BG_SOLID;
+        }
+        s.fontPath = fontPath == null ? "" : fontPath;
+        s.codeFontPath = codeFontPath == null ? "" : codeFontPath;
+        writePrefs(s);
+        return true;
+    }
+
     /** Restores a per-agent appearance from a Chatbox backup. An existing local
      *  override wins, matching the background import rule. Absolute paths from
      *  the backup are replaced by the assets extracted alongside it. */

@@ -29,7 +29,7 @@ requirements.
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete; **0.25.2** rename with duplicate-name rejection; **0.27.0** preview a saved preset without applying it |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
-| Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; **0.47.1** exports per-agent workspaces (200 files / 2 MiB each / 8 MiB total); **0.48.1** exports/restores per-agent preferences (tool policies, pin, remark, greeting, reasoning/context/sampling settings); **0.50.0** exports/restores per-agent appearance overrides and custom chat/code fonts (colors, bubbles, corner, border, text, scale, line height, background image; 8 MiB per font, 16 MiB total); provider keys, base URLs, headers and `extra_body` never exported |
+| Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; **0.47.1** exports per-agent workspaces (200 files / 2 MiB each / 8 MiB total); **0.48.1** exports/restores per-agent preferences (tool policies, pin, remark, greeting, reasoning/context/sampling settings); **0.50.0** exports/restores per-agent appearance overrides and custom chat/code fonts (colors, bubbles, corner, border, text, scale, line height, background image; 8 MiB per font, 16 MiB total); **0.51.0** exports/restores the global appearance theme, global background and global chat/code fonts via `settings.json`, preserving a local custom global theme; provider keys, base URLs, headers and `extra_body` never exported |
 | SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0–0.45.1** PNG `tEXt`/`iTXt` + JSON via the agent-list entry, six persona sections, first message and PNG avatar, idempotent ids; **0.49.0** exports V2 JSON and PNG cards (avatar re-encoded, Base64 `chara` chunk, generated placeholder when no avatar) with six-section persona roundtrip; no alternate greetings, character book, tags or real-client validation |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
@@ -1119,6 +1119,43 @@ These confirm the feature directions rather than relying on guesses. Checked
   global theme or per-dialog overrides; an existing local override wins;
   fonts must parse on the device; video backgrounds are not carried.
 
+## 0.51.0 implementation — global appearance in Chatbox backups
+
+- When the global appearance is in custom mode, `settings.json` now carries a
+  private `orionekoGlobalTheme` with the same fields as the per-agent snapshot:
+  colors, bubble opacity, corner radius, style, border, text, scale, line
+  height, background mode/dim/blur/AMOLED/gradient. Native global appearance is
+  not written as a fake custom theme.
+- Absolute paths are stripped. The global wallpaper travels as a
+  `background` resource with `scope=global` and a storage-key reference;
+  global chat/code fonts travel as `fonts/global/chat.ttf` and `code.ttf`,
+  sharing the 8 MiB per-file and 16 MiB total budget with per-agent fonts.
+- Import reads the global theme and background reference, writes the wallpaper
+  to `files/ox_chat_bg_imported_<timestamp>.img`, validates fonts with
+  `Typeface.createFromFile`, and applies the snapshot only when the local
+  global appearance is not already custom. A local custom global theme wins,
+  and assets written for the skipped import are deleted. Preview/result report
+  the global theme and font counts.
+- Device QA used the existing custom global theme (deep blue image, frosted
+  bubble, pink border) plus a 2.37 MB chat font and 108 KB code font. The
+  1,457,238 B export carried the theme with empty paths, a 16,360 B global
+  background whose SHA-256 matched, and both fonts with matching hashes; the
+  secret scan and absolute-path check were clean. After deleting the prefs and
+  fonts, the import restored the exact colors/radius/border/scale/line height,
+  new background and font hashes, and the native chat showed the global look.
+- Re-importing the same zip left the prefs hash unchanged, reported that the
+  local custom global theme was kept, and left the font/background counts
+  unchanged. The user's original prefs were backed up and restored byte-for-byte
+  after QA. No app FATAL/ANR; the test agent, imported assets and zip were
+  removed and the test dialogs/messages were zero.
+- A late copy check showed the longer export info line was truncated to two
+  lines by SettingCell; the info line was shortened and the Chinese pack moved
+  111 → 112, with the full line verified on device.
+- Limits: `orionekoGlobalTheme` and the global assets are OrionekoX extensions
+  ignored by real Chatbox/Kelivo clients (not tested); per-dialog overrides are
+  still not carried; a local custom global theme wins; fonts must parse; video
+  backgrounds are not carried.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -1133,12 +1170,12 @@ These confirm the feature directions rather than relying on guesses. Checked
    playback bubbles, more than 20 media per message and remote attachments.
    SillyTavern cards now import and export (V2 JSON/PNG), but alternate
    greetings, character books/lorebooks and tag filters remain.
-3. Bidirectional export still lacks global themes, per-dialog overrides,
-   global/video backgrounds, MCP headers/OAuth and server selection, plus
-   validation against real external clients; agent identity (including
-   chatless copilots), skills and their per-agent links, long-term memory,
-   per-agent workspaces, per-agent preferences (tool policies,
-   pin/remark/greeting, reasoning/context/sampling) and per-agent appearance
+3. Bidirectional export still lacks per-dialog overrides, video backgrounds,
+   MCP headers/OAuth and server selection, plus validation against real
+   external clients; agent identity (including chatless copilots), skills and
+   their per-agent links, long-term memory, per-agent workspaces, per-agent
+   preferences (tool policies, pin/remark/greeting,
+   reasoning/context/sampling), per-agent appearance and the global appearance
    (colors, bubbles, fonts, background) now survive self-roundtrip, but
    external Chatbox clients remain unverified.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
