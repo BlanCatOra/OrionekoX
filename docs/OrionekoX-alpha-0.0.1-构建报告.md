@@ -3404,8 +3404,12 @@ debug `dist/OrionekoX-0.44.0-debug-arm64-x64.apk`（sha256
 
 ## 5.166 alpha 0.45.0 —— RikkaHub / SillyTavern 角色卡导入（2026-10-28 12:50–13:18）
 
+> 修正（0.45.1）：Agent 列表自 0.8.114/0.8.115 已有角色卡导入。0.45.0 在
+> RikkaHub 设置页重复提供了入口；0.45.1 已把增强合并回 Agent 列表并将
+> RikkaHub 行恢复为备份专用。
+
 - “从 RikkaHub 备份导入”此前只接受 `settings.json` 或备份 zip；SillyTavern
-  与 RikkaHub 常见的 PNG/JSON 角色卡无法进入 OrionekoX。
+  与 RikkaHub 常见的 PNG/JSON 角色卡无法从这个入口进入。
 - `OxRikkaImporter` 现在按文件签名分流：PNG 解析 `tEXt`/`iTXt` 的
   `ccv3`/`chara`（base64 或原始 JSON），JSON 在非 settings 结构时按
   V2/V3 wrapper 或扁平 V1 卡解析。人设字段写入 `AGENTS.md`，`first_mes`
@@ -3431,6 +3435,38 @@ sha256 `6e3e9d4905490d566e775e0d3c6215d61002e918ad818149a7112d669892e4b2`）；
 debug `dist/OrionekoX-0.45.0-debug-arm64-x64.apk`（sha256
 `f6da9de9957057cd4c2a61716839726e9b75c48cfbd65b3272171a133b1ddf08`）。
 详见 `docs/qa-0.45.0.md`。
+
+## 5.167 alpha 0.45.1 —— 角色卡导入收拢到 Agent 列表（2026-10-28 13:24–13:39）
+
+- 0.8.114/0.8.115 已在 Agent 列表提供 SillyTavern JSON/PNG 角色卡导入；
+  0.45.0 又在 RikkaHub 设置页实现了一套，造成两个入口与两份解析逻辑。
+- 0.45.1 把 Agent 列表卡片入口改为复用 `OxRikkaImporter`：先校验确为
+  角色卡，再导入稳定 id、六节人设、`first_mes`、`iTXt` 与 PNG 头像，最后
+  `syncAgents(true)` 生成原生欢迎消息；删除旧的随机 id、名称“· 副本”和
+  本地解析辅助方法。
+- RikkaHub 设置页恢复“从 RikkaHub 备份导入 / settings.json 或备份 zip”，
+  选中角色卡时提示改用 Agent 列表入口，不写入数据；备份 zip 路径不变。
+  中文包 103→104。
+- 构建：首次因英文提示中的单引号触发 AAPT2
+  `Invalid unicode escape sequence`；改写为不带所有格的文案后
+  `BUILD SUCCESSFUL in 1m 57s`。
+- 设备：Agent 列表导入 8,285 B PNG 生成 `rikka_card_b303c8ed`
+  （tgId 555000094），`avatar.png` sha256 `33f7346e…` 与源图一致，原生
+  开场白“0.45.1 卡片开场白。”正确；同卡 JSON 再导入只更新同一目录，
+  头像 hash 不变、无 `· 副本`、无重复消息。RikkaHub 行选择角色卡得到
+  指向 Agent 列表的提示；297 B 最小备份 zip 仍能导入
+  `rikka_regress451`。全程无 FATAL/ANR；删除两个测试 Agent 后
+  dialogs/messages 对 555000094/555000095 均为 0。
+- 边界：同 0.45.0；不支持 `zTXt`、alternate greetings、character_book；
+  卡片只导入不导出；导入后离线；未与真实客户端互测。
+- 版本规则：入口与实现收拢的小范围修复，按 patch 从 0.45.0 → 0.45.1，
+  versionCode 4519。
+
+**产物**：`dist/OrionekoX-0.45.1-alpha-arm64-x64.apk`（versionCode 4519，
+sha256 `8b68ee503af36cc03e483834126a6b77e4d2b2022f6a73af4d709cb4e4a91757`）；
+debug `dist/OrionekoX-0.45.1-debug-arm64-x64.apk`（sha256
+`8b6d9760270e5fcdda028f81c7ef42ec819db441eb587f717c04fb3386f4381d`）。
+详见 `docs/qa-0.45.1.md`。
 
 ## 6. 与开发报告路线图的对应关系
 

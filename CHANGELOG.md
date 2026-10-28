@@ -4,6 +4,31 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.45.1 — 2026-10-28
+
+- Consolidated character-card import. The agent list has imported SillyTavern
+  JSON cards since 0.8.114 and uncompressed PNG `tEXt` cards since 0.8.115;
+  0.45.0 added a second implementation under RikkaHub settings. This patch
+  makes the agent-list “Import character card (SillyTavern PNG/JSON)” entry use
+  the richer `OxRikkaImporter` path, so it now also supports `iTXt`, saves the
+  card PNG as `avatar.png`, keeps a stable id on re-import, and greets through
+  `syncAgents(true)`. The old random-id and name “· copy” behavior is gone.
+- The RikkaHub settings entry is backup-only again. Selecting a character card
+  there shows a pointer to the agent-list entry and writes nothing; backup zip
+  imports are unchanged.
+- Verified on the emulator: an 8,285 B PNG created `rikka_card_b303c8ed`
+  (tg id 555000094) with `avatar.png` SHA-256 `33f7346e…` matching the source
+  and the expected native greeting. Re-importing the same card as 346 B JSON
+  updated that single directory, kept the avatar hash and added no duplicate
+  message. A card chosen through RikkaHub settings produced the pointer error,
+  while a 297 B minimal backup still imported one offline assistant. Cleanup
+  removed both test agents and their dialogs/messages; no app FATAL/ANR.
+- Build note: the first build failed because an English string contained an
+  apostrophe (`agent list's card entry`), which AAPT2 rejects as an invalid
+  unicode escape; rephrasing it fixed the build.
+- Limits: same as 0.45.0 — no compressed `zTXt`, alternate greetings,
+  character books, tags, card export or real-client validation.
+
 ## 0.45.0 — 2026-10-28
 
 - The RikkaHub import entry now also accepts SillyTavern / RikkaHub character

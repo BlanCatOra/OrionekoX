@@ -1,5 +1,9 @@
 # QA — alpha 0.45.0（RikkaHub / SillyTavern PNG/JSON 角色卡导入）
 
+> 修正说明（0.45.1）：Agent 列表自 0.8.114/0.8.115 起已有角色卡导入。
+> 0.45.0 在 RikkaHub 设置页重复提供了入口；0.45.1 已把增强合并回 Agent
+> 列表并把 RikkaHub 行恢复为备份专用。详见 `docs/qa-0.45.1.md`。
+
 - 版本：`0.45.0`，versionCode **4509**（`0.44.0` 为 4409）
 - 设备：emulator-5554（1080×2400，Android 14/34，`-gpu off` 软件渲染）
 - 时间：2026-10-28 12:50–13:18（CST）

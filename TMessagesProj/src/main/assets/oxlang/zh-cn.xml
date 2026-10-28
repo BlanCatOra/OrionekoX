@@ -11885,7 +11885,7 @@
     <string name="OxMcpImportPreview">将导入 %1$d 个服务器，跳过 %2$d 个</string>
     <string name="OxToolsPolicyHint">点击切换 自动/询问/禁止；长按恢复默认。</string>
     <string name="OxToolsPolicyResetDone">已恢复默认策略</string>
-    <string name="OxImportCard">导入角色卡（SillyTavern JSON）</string>
+    <string name="OxImportCard">导入角色卡（SillyTavern PNG/JSON）</string>
     <string name="OxAgentCardImported">已导入角色卡：%1$s</string>
     <string name="OxAgentCardFailed">角色卡导入失败：%1$s</string>
     <string name="OxChatAppearance">Agent 会话外观</string>
@@ -12006,12 +12006,10 @@
     <string name="OxChatBundlePreviewTitle">导入这个预设包？</string>
     <string name="OxChatBundleApply">导入</string>
     <string name="OxChatAgentEntry">Agent 会话外观</string>
-    <string name="OxRikkaImport">从 RikkaHub 备份 / 角色卡导入</string>
-    <string name="OxRikkaImportInfo">settings.json、备份 zip 或 PNG/JSON 角色卡 · 预览后写入</string>
-    <string name="OxRikkaPreviewTitle">导入这个 RikkaHub 备份 / 角色卡？</string>
+    <string name="OxRikkaImport">从 RikkaHub 备份导入</string>
+    <string name="OxRikkaImportInfo">settings.json 或备份 zip · 预览后写入</string>
+    <string name="OxRikkaPreviewTitle">导入这个 RikkaHub 备份？</string>
     <string name="OxRikkaPreview">助手 %1$d 个 · Provider %2$d 个 · MCP %3$d 个 · 技能 %4$d 个</string>
-    <string name="OxRikkaCardPreview">角色卡 1 张</string>
-    <string name="OxRikkaCardExisting">已存在这张角色卡，将更新</string>
     <string name="OxRikkaNames">助手：%1$s</string>
     <string name="OxRikkaSkillNames">技能：%1$s</string>
     <string name="OxRikkaHistory">历史：会话 %1$d 个 · 消息节点 %2$d 条</string>
@@ -12048,6 +12046,7 @@
     <string name="OxKelivoExportSelectNone">至少选择一个智能体</string>
     <string name="OxRikkaInvalid">不是有效的 RikkaHub 备份</string>
     <string name="OxRikkaInvalidCard">这个 PNG/JSON 里没有可用的角色卡数据</string>
+    <string name="OxRikkaUseCardImporter">角色卡请从智能体列表的“导入角色卡”进入</string>
     <string name="OxRikkaMissingSettings">备份里缺少 settings.json</string>
     <string name="OxRikkaOpenFailed">无法读取备份文件</string>
     <string name="OxImportDone">导入完成</string>
