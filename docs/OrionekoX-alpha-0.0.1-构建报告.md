@@ -3279,14 +3279,37 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
   （37 B · TXT，正文“看附件”）和助手“收到附件”。重复导入无历史 note、
   `chat.json` 仍 2 条、无重复消息；清理后 dialogs/messages 归零，无本包
   FATAL/ANR。
-- 边界：每条消息只取第一个 document；仅图片与 document；video/audio 跳过；
-  仅匹配 `upload/`，不下载远程/data URL；附件暂不进入 Chatbox 导出。
+- 边界：0.41.0 每条消息只取第一个 document；仅图片与 document；
+  video/audio 跳过；仅匹配 `upload/`，不下载远程/data URL；文件条目由现有
+  Chatbox 导出逻辑携带，但本轮未做导出回环复验。
 - 版本规则：新增可见的“RikkaHub 文件附件导入”能力，按 minor 从 0.40.0 →
   0.41.0，versionCode 4109。
 
 **产物**：`dist/OrionekoX-0.41.0-alpha-arm64-x64.apk`（versionCode 4109，sha256
 `aff7743a17de…`）；debug `dist/OrionekoX-0.41.0-debug-arm64-x64.apk`（sha256
 `0eca64a72f54…`）。详见 `docs/qa-0.41.0.md`。
+
+## 5.161 alpha 0.42.0 —— RikkaHub 多附件与音视频导入（2026-10-28 11:09–11:20）
+
+- `OxRikkaImporter` 改为解析单条消息的全部媒体 part（每条最多 20 个）：
+  图片成为照片气泡；document/video/audio 成为文件气泡。首条媒体与正文组成
+  主气泡，其余媒体按顺序拆成独立气泡；纯媒体允许空正文。
+- 视频/音频文件名取 `url` basename，不再显示 `rikka_upload_` 前缀；结果新增
+  “导入图片 N 张”，附件计数包含文件/视频/音频。
+- 去重键加入图片/文件 basename，同一节点的多附件不会互相覆盖；多附件共享
+  节点时间戳，避免后续节点整体错位，并兼容 0.41.0 已有的单附件记录。
+- 设备：2,016 B 样例（1 会话 / 2 节点；文字 + 2 PNG + report.txt + mp4 +
+  mp3）导入为 6 条消息、2 张图片、3 个附件；原生聊天显示两张照片气泡与
+  `report.txt`/`clip.mp4`/`clip.mp3` 文件气泡，助手回复正常。重复导入仍为
+  6 条、无重复；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：单条最多 20 个媒体；视频/音频无缩略图/内嵌播放器与时长；仅匹配
+  `upload/`；远程/data URL 不下载；导出回环未复验。
+- 版本规则：新增可见的“多附件拆分”和“视频/音频导入”能力，按 minor 从
+  0.41.0 → 0.42.0，versionCode 4209。
+
+**产物**：`dist/OrionekoX-0.42.0-alpha-arm64-x64.apk`（versionCode 4209，sha256
+`c6ebf364723a…`）；debug `dist/OrionekoX-0.42.0-debug-arm64-x64.apk`（sha256
+`0a1307066d15…`）。详见 `docs/qa-0.42.0.md`。
 
 ## 6. 与开发报告路线图的对应关系
 

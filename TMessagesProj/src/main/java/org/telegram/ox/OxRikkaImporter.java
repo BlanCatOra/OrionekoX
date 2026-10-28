@@ -59,10 +59,17 @@ public class OxRikkaImporter {
         public int skills;
         public int messages;
         public int avatars;
+        public int images;
         public int files;
         public final List<String> importedAgentIds = new ArrayList<>();
         public final List<String> conversationIds = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
+    }
+
+    private static class ImportMedia {
+        boolean image;
+        String path;
+        String name;
     }
 
     private static class Archive {
@@ -140,12 +147,12 @@ public class OxRikkaImporter {
             p.conversations = history[0];
             p.messageNodes = history[1];
         }
-        p.notes.add("仅导入 settings.json、skills/ 技能、助手图像头像、聊天文本历史与匹配的图片/文件附件；不含其他附件和 OAuth token。");
+        p.notes.add("仅导入 settings.json、skills/ 技能、助手图像头像、聊天历史与匹配的图片/文件/视频/音频附件；不含 OAuth token。");
         if (p.avatars > 0) {
             p.notes.add("将导入 " + p.avatars + " 个助手图像头像。");
         }
         if (archive.database != null && archive.database.length > 0) {
-            p.notes.add("历史中的 document 附件会匹配 upload/ 后作为文件气泡导入。");
+            p.notes.add("历史中的多附件会按顺序拆成多条气泡；视频/音频按文件气泡导入。");
         }
         if (p.conversations > 0) {
             p.notes.add("历史按每个消息节点的当前分支导入；工具与未匹配附件的消息会跳过。");
@@ -283,6 +290,7 @@ public class OxRikkaImporter {
             r.mcpAdded++;
         }
         importConversations(archive.database, archive.uploads, r);
+        if (r.images > 0) r.notes.add("导入图片 " + r.images + " 张");
         if (r.files > 0) r.notes.add("导入附件 " + r.files + " 个");
         return r;
     }
@@ -578,7 +586,9 @@ public class OxRikkaImporter {
                     chat = OxAgentStore.loadChat(agentId);
                     chats.put(agentId, chat);
                     Set<String> keys = new HashSet<>();
-                    for (OxChatEntry e : chat) keys.add(e.role + "\u0000" + e.content + "\u0000" + e.ts);
+                    for (OxChatEntry e : chat) {
+                        keys.add(entryKey(e.role, e.content, e.ts, e.imagePath, e.filePath, e.fileName));
+                    }
                     seen.put(agentId, keys);
                 }
                 long base = created.get(i) == null || created.get(i) <= 0
@@ -602,9 +612,7 @@ public class OxRikkaImporter {
                         String role = message.optString("role", "").toLowerCase(java.util.Locale.ROOT);
                         if (!"user".equals(role) && !"assistant".equals(role)) continue;
                         StringBuilder text = new StringBuilder();
-                        String imagePath = null;
-                        String filePath = null;
-                        String fileName = "";
+                        List<ImportMedia> media = new ArrayList<>();
                         JSONArray parts = message.optJSONArray("parts");
                         if (parts != null) {
                             for (int p = 0; p < parts.length(); p++) {
@@ -612,17 +620,35 @@ public class OxRikkaImporter {
                                 if (part == null) continue;
                                 String type = part.optString("type", "text");
                                 if ("image".equals(type)) {
-                                    if (imagePath == null) {
-                                        imagePath = materializeUpload(part.optString("url", ""), uploads, uploaded);
+                                    if (media.size() < 20) {
+                                        String path = materializeUpload(part.optString("url", ""), uploads, uploaded);
+                                        if (path != null) {
+                                            ImportMedia m = new ImportMedia();
+                                            m.image = true;
+                                            m.path = path;
+                                            m.name = new File(path).getName();
+                                            media.add(m);
+                                        }
                                     }
                                     continue;
                                 }
-                                if ("document".equals(type)) {
-                                    if (filePath == null) {
-                                        filePath = materializeUpload(part.optString("url", ""), uploads, uploaded);
-                                        fileName = part.optString("fileName", "").trim();
-                                        if (fileName.isEmpty() && filePath != null) {
-                                            fileName = new File(filePath).getName();
+                                if ("document".equals(type) || "video".equals(type) || "audio".equals(type)) {
+                                    if (media.size() < 20) {
+                                        String url = part.optString("url", "");
+                                        String path = materializeUpload(url, uploads, uploaded);
+                                        if (path != null) {
+                                            String name = part.optString("fileName", "").trim();
+                                            if (name.isEmpty()) {
+                                                name = url;
+                                                int query = name.indexOf('?');
+                                                if (query >= 0) name = name.substring(0, query);
+                                                name = name.substring(name.lastIndexOf('/') + 1);
+                                                if (name.isEmpty()) name = new File(path).getName();
+                                            }
+                                            ImportMedia m = new ImportMedia();
+                                            m.path = path;
+                                            m.name = name;
+                                            media.add(m);
                                         }
                                     }
                                     continue;
@@ -637,25 +663,46 @@ public class OxRikkaImporter {
                             text.append(message.optString("content", "").trim());
                         }
                         String content = text.toString().trim();
-                        if (content.isEmpty() && imagePath != null) content = "[图片]";
-                        if (content.isEmpty() && imagePath == null && filePath == null) continue;
                         if (content.length() > 100_000) content = content.substring(0, 100_000);
+                        Set<String> keys = seen.get(agentId);
+                        if (keys == null) continue;
                         long ts = base + order * 1000L;
                         order++;
-                        String key = role + "\u0000" + content + "\u0000" + ts;
-                        Set<String> keys = seen.get(agentId);
-                        if (keys != null && !keys.add(key)) continue;
-                        OxChatEntry entry = imagePath == null
-                                ? new OxChatEntry(role, content, ts)
-                                : new OxChatEntry(role, content, ts, imagePath);
-                        if (filePath != null) {
-                            entry.filePath = filePath;
-                            entry.fileName = fileName;
-                            r.files++;
+                        boolean added = false;
+                        if (media.isEmpty()) {
+                            if (content.isEmpty()) continue;
+                            String key = entryKey(role, content, ts, null, null, null);
+                            if (keys.add(key)) {
+                                chat.add(new OxChatEntry(role, content, ts));
+                                total++;
+                                added = true;
+                            }
+                        } else {
+                            for (int m = 0; m < media.size() && total < 5000; m++) {
+                                ImportMedia item = media.get(m);
+                                String entryContent = m == 0 ? content : "";
+                                if (m == 0 && entryContent.isEmpty() && item.image) entryContent = "[图片]";
+                                String key = entryKey(role, entryContent, ts,
+                                        item.image ? item.path : null,
+                                        item.image ? null : item.path,
+                                        item.image ? null : item.name);
+                                if (!keys.add(key)) continue;
+                                OxChatEntry entry = item.image
+                                        ? new OxChatEntry(role, entryContent, ts, item.path)
+                                        : new OxChatEntry(role, entryContent, ts);
+                                if (!item.image) {
+                                    entry.filePath = item.path;
+                                    entry.fileName = item.name;
+                                    r.files++;
+                                } else {
+                                    r.images++;
+                                }
+                                chat.add(entry);
+                                total++;
+                                added = true;
+                            }
                         }
-                        chat.add(entry);
-                        total++;
-                        if (!r.conversationIds.contains(agentId)) {
+                        if (added && !r.conversationIds.contains(agentId)) {
                             r.conversationIds.add(agentId);
                         }
                     }
@@ -677,6 +724,17 @@ public class OxRikkaImporter {
             if (db != null) try { db.close(); } catch (Throwable ignored) {}
             if (file != null) file.delete();
         }
+    }
+
+    private static String entryKey(String role, String content, long ts,
+                                   String imagePath, String filePath, String fileName) {
+        String image = imagePath == null ? "" : new File(imagePath).getName();
+        String file = "";
+        if (filePath != null) {
+            file = fileName == null || fileName.isEmpty()
+                    ? new File(filePath).getName() : fileName;
+        }
+        return role + "\u0000" + content + "\u0000" + ts + "\u0000" + image + "\u0000" + file;
     }
 
     private static String materializeUpload(String url, Map<String, byte[]> uploads,

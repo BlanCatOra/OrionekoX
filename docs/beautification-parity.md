@@ -776,7 +776,30 @@ These confirm the feature directions rather than relying on guesses. Checked
   dialogs/messages returned to zero with no app FATAL/ANR.
 - Limits: only the first document per message; images and documents only
   (video/audio skipped); only `upload/` matches (no remote/data-URL download);
-  imported files are not yet included in Chatbox export.
+  file entries are carried by the existing Chatbox exporter, but no export
+  roundtrip was re-tested.
+
+## 0.42.0 implementation — RikkaHub multi-attachment messages
+
+- Every media part in a message is parsed (up to 20): images become photo
+  entries; `document`, `video` and `audio` become file entries with the URL
+  basename as fallback name. The first media shares the message text in the
+  primary bubble; the rest are emitted as extra bubbles in part order.
+- The dedupe key includes the image/file basename, so multiple attachments in
+  the same node no longer collapse into one; all extra bubbles share the node
+  timestamp, keeping later nodes in order and preserving 0.41.0 single-file
+  history without duplicates.
+- The result reports “导入图片 N 张” and an attachment count covering
+  files/video/audio; the preview explains that multi-attachments are split.
+- Device QA: a 2,016 B backup (text + two PNGs + report.txt + mp4 + mp3)
+  imported as six messages with two photo bubbles and three file bubbles
+  (`report.txt` 24 B · TXT, `clip.mp4` 24 B · MP4, `clip.mp3` 10 B · MP3),
+  followed by the assistant reply. A repeat import left six entries and six
+  native rows; cleanup returned dialogs/messages to zero with no app
+  FATAL/ANR.
+- Limits: max 20 media per message; video/audio are generic file bubbles with
+  no thumbnail, inline player or duration; only `upload/` matches; no export
+  roundtrip was re-tested this round.
 
 ## Gaps / next phases
 
@@ -786,8 +809,8 @@ These confirm the feature directions rather than relying on guesses. Checked
 2. Kelivo full backup import beyond assistants/skills/conversations/MCP/avatars/
    images/attachments: video backgrounds and workspaces; SSE/stdio MCP with their tool
    allowlists; RikkaHub non-selected branches, per-conversation grouping, skill
-   attachments and standalone providers; RikkaHub video/audio parts and multiple
-   documents per message.
+   attachments and standalone providers; native RikkaHub audio/video playback
+   bubbles, more than 20 media per message and remote attachments.
 3. Bidirectional export still lacks workspaces, memory, themes, global/video
    backgrounds, MCP headers/OAuth and server selection, plus validation against
    real external clients.
