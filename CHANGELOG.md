@@ -4,6 +4,22 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.43.1 — 2026-10-28
+
+- Fixed Chatbox roundtrip loss of JSON attachments. The zip reader used to skip
+  every `.json` entry, so an exported `resources/orioneko-*.json` attachment
+  never entered the resource map. It now only excludes JSON metadata outside
+  `resources/`; manifests, settings and session JSON keep their existing paths.
+- Verified with a 3,578 B single-agent export containing five messages, two
+  images and two raw attachments. Decoded payload hashes matched the source
+  images, `notes.txt` and `data.json`; no API-key/provider strings were present.
+  The same export previewed as two images / one attachment before the fix and
+  two images / two attachments after it, and the roundtrip restored both photos,
+  both file bubbles and the assistant reply in the native chat.
+- Limits: the roundtrip Agent id gains a `_current` suffix, so keeping the
+  original agent would add a copy rather than replace it; no real Chatbox client
+  import was tested.
+
 ## 0.43.0 — 2026-10-28
 
 - Kelivo/Chatbox backups now import every image and file in a message, in
