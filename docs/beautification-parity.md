@@ -30,7 +30,7 @@ requirements.
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
 | Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; **0.47.1** exports per-agent workspaces (200 files / 2 MiB each / 8 MiB total); **0.48.1** exports/restores per-agent preferences (tool policies, pin, remark, greeting, reasoning/context/sampling settings); provider keys, base URLs, headers and `extra_body` never exported |
-| SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0–0.45.1** PNG `tEXt`/`iTXt` + JSON via the agent-list entry, six persona sections, first message and PNG avatar, idempotent ids; no alternate greetings, character book, card export or real-client validation |
+| SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0–0.45.1** PNG `tEXt`/`iTXt` + JSON via the agent-list entry, six persona sections, first message and PNG avatar, idempotent ids; **0.49.0** exports V2 JSON and PNG cards (avatar re-encoded, Base64 `chara` chunk, generated placeholder when no avatar) with six-section persona roundtrip; no alternate greetings, character book, tags or real-client validation |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -1047,6 +1047,39 @@ These confirm the feature directions rather than relying on guesses. Checked
   chat-welcome screenshot; temperature/top-p/max-tokens still travel in the
   standard session/copilot fields.
 
+## 0.49.0 implementation — character card export
+
+- The agent long-press menu now offers “Export character card” for non-built-in
+  agents. A native dialog chooses PNG (with avatar) or plain JSON; both go
+  through the system document picker and explicitly exclude API keys, provider
+  URLs and request headers.
+- JSON is a `chara_card_v2` / `2.0` wrapper. The six sections written by the
+  importer (`Description`, `Personality`, `Scenario`, `System prompt`,
+  `Post-history instructions`, `Example dialogue`) are mapped back into their
+  own fields; any other AGENTS.md goes into `description`. First message becomes
+  `first_mes`. Flat top-level aliases keep older V1 readers working. Bounds are
+  32 KiB per field and 16 KiB for the greeting.
+- PNG uses the avatar as its base, scaled to at most 1024 px and 1.6 MP, with
+  the card JSON embedded as Base64 in a `tEXt` chunk named `chara` after IHDR
+  and a spec-correct CRC32. Agents without a usable avatar get a generated
+  512×640 name card with their emoji, so export never depends on a remote
+  image.
+- Device QA used a self-created 256×256-avatar agent with six persona sections.
+  The 2,420 B PNG had valid IHDR/tEXt/sRGB/sBIT/IDAT/IEND chunks, decoded to the
+  same six sections and greeting, and its pixels matched the source avatar
+  exactly. The 790 B JSON matched field by field. Both scanned clean for keys,
+  provider URLs, headers and `extra_body`.
+- Re-importing the PNG created one `rikka_card_…` agent with the right name,
+  greeting, normalized section spacing and pixel-identical avatar; importing
+  the JSON next updated that same directory without a duplicate and kept the
+  avatar. A no-avatar agent exported a 20,888 B placeholder PNG (512×640) with
+  valid embedded data. No app FATAL/ANR; test agents, cards and old test zips
+  were removed and the test dialogs/messages were zero.
+- Limits: real SillyTavern/RikkaHub clients were not tested; alternate
+  greetings, character books, tags and regex are not exported; native agents
+  keep their whole AGENTS.md in `description`; emoji is not a V2 field and
+  returns as the default 🤖; avatar re-encoding drops EXIF/ICC/animation.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -1059,8 +1092,8 @@ These confirm the feature directions rather than relying on guesses. Checked
    tool allowlists; RikkaHub non-selected branches, per-conversation grouping,
    skill attachments and standalone providers; native RikkaHub audio/video
    playback bubbles, more than 20 media per message and remote attachments.
-   SillyTavern cards now import, but alternate greetings, character
-   books/lorebooks, tag filters and card export remain.
+   SillyTavern cards now import and export (V2 JSON/PNG), but alternate
+   greetings, character books/lorebooks and tag filters remain.
 3. Bidirectional export still lacks themes, global/video backgrounds, MCP
    headers/OAuth and server selection, plus validation against real external
    clients; agent identity (including chatless copilots), skills and their

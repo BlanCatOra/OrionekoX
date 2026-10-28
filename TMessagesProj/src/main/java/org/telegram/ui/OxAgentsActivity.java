@@ -24,6 +24,7 @@ import org.telegram.ox.OxAgent;
 import org.telegram.ox.OxAgentArchive;
 import org.telegram.ox.OxAgentStore;
 import org.telegram.ox.OxAgentsBridge;
+import org.telegram.ox.OxCardExporter;
 import org.telegram.ox.OxKelivoExporter;
 import org.telegram.ox.OxMode;
 import org.telegram.ox.OxRikkaImporter;
@@ -47,6 +48,7 @@ public class OxAgentsActivity extends BaseFragment {
     private static final int REQ_IMPORT = 1002;
     private static final int REQ_CARD = 1003;
     private static final int REQ_EXPORT_KELIVO = 1004;
+    private static final int REQ_EXPORT_CARD = 1005;
     private static final int MENU_MCP = 1;
     private static final int MENU_SETTINGS = 2;
     private static final int MENU_LOGIN = 3;
@@ -54,6 +56,8 @@ public class OxAgentsActivity extends BaseFragment {
     private LinearLayout listContainer;
     private String pendingExportId;
     private String pendingExportKelivoId;
+    private String pendingExportCardId;
+    private boolean pendingExportCardPng;
 
     @Override
     public View createView(Context context) {
@@ -323,6 +327,8 @@ public class OxAgentsActivity extends BaseFragment {
         if (!agent.builtIn) {
             items.add(LocaleController.getString(R.string.OxKelivoExportAgent));
             actions.add(() -> exportAgentToChatbox(agent));
+            items.add(LocaleController.getString(R.string.OxExportCard));
+            actions.add(() -> exportCharacterCard(agent));
             items.add(LocaleController.getString(R.string.Delete));
             actions.add(() -> showDeleteDialog(agent));
         }
@@ -411,11 +417,43 @@ public class OxAgentsActivity extends BaseFragment {
         }
     }
 
+    private void exportCharacterCard(OxAgent agent) {
+        if (getParentActivity() == null) return;
+        CharSequence[] formats = new CharSequence[]{
+                LocaleController.getString(R.string.OxExportCardPng),
+                LocaleController.getString(R.string.OxExportCardJson)
+        };
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxExportCard))
+                .setMessage(LocaleController.getString(R.string.OxExportCardMessage))
+                .setItems(formats, (d, which) -> pickCardTarget(agent, which == 0))
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
+    }
+
+    private void pickCardTarget(OxAgent agent, boolean png) {
+        if (getParentActivity() == null) return;
+        pendingExportCardId = agent.id;
+        pendingExportCardPng = png;
+        try {
+            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT);
+            i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+            i.setType(png ? "image/png" : "application/json");
+            i.putExtra(android.content.Intent.EXTRA_TITLE,
+                    sanitizeFileName(agent.name) + (png ? ".png" : ".json"));
+            startActivityForResult(i, REQ_EXPORT_CARD);
+        } catch (Exception e) {
+            pendingExportCardId = null;
+            toast("⚠ " + e);
+        }
+    }
+
     @Override
     public void onActivityResultFragment(int requestCode, int resultCode, android.content.Intent data) {
         if (resultCode != android.app.Activity.RESULT_OK || data == null) {
             pendingExportId = null;
             pendingExportKelivoId = null;
+            pendingExportCardId = null;
             return;
         }
         android.content.Context ctx = getParentActivity();
@@ -469,6 +507,27 @@ public class OxAgentsActivity extends BaseFragment {
                 final String m = msg;
                 AndroidUtilities.runOnUIThread(() -> toast(m));
             }, "ox-kelivo-agent-export").start();
+        } else if (requestCode == REQ_EXPORT_CARD && pendingExportCardId != null) {
+            final String id = pendingExportCardId;
+            final boolean png = pendingExportCardPng;
+            pendingExportCardId = null;
+            final android.net.Uri uri = data.getData();
+            new Thread(() -> {
+                String msg;
+                try {
+                    OxAgent a = OxAgentStore.loadAgent(id);
+                    if (a == null || uri == null) throw new IllegalStateException("agent or uri gone");
+                    OxCardExporter.export(ctx, uri, a, png);
+                    msg = LocaleController.formatString("OxExportCardDone",
+                            R.string.OxExportCardDone, a.name);
+                } catch (Throwable t) {
+                    msg = LocaleController.formatString("OxExportCardFailed",
+                            R.string.OxExportCardFailed,
+                            t.getMessage() == null ? "" : t.getMessage());
+                }
+                final String m = msg;
+                AndroidUtilities.runOnUIThread(() -> toast(m));
+            }, "ox-card-export").start();
         } else if (requestCode == REQ_CARD) {
             final android.net.Uri uri = data.getData();
             new Thread(() -> {

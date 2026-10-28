@@ -11705,6 +11705,12 @@
     <string name="OxKelivoExportNothing">No non-built-in agents to export</string>
     <string name="OxKelivoExportFailed">Export failed: %1$s</string>
     <string name="OxKelivoExportAgent">Export Chatbox backup</string>
+    <string name="OxExportCard">Export character card</string>
+    <string name="OxExportCardMessage">Choose a format. PNG embeds the avatar and card data; JSON is text only. Neither contains API keys, provider URLs or request headers.</string>
+    <string name="OxExportCardPng">PNG (with avatar)</string>
+    <string name="OxExportCardJson">JSON (text only)</string>
+    <string name="OxExportCardDone">Exported character card: %1$s</string>
+    <string name="OxExportCardFailed">Character card export failed: %1$s</string>
     <string name="OxKelivoExportAgentConfirm">Export this agent with its chat, long-term memory, skills, workspace, preferences, avatar, images and attachments as a Chatbox v2 zip?\n\nAPI keys, provider URLs and request headers are not included.</string>
     <string name="OxKelivoExportAgentDone">Exported %1$s: %6$d workspace files, %3$d skills, %2$d memories, %4$d messages, %5$d files</string>
     <string name="OxKelivoExportSelected">Export selected agents</string>
