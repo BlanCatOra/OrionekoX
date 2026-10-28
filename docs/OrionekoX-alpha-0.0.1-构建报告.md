@@ -3498,7 +3498,7 @@ debug `dist/OrionekoX-0.46.0-debug-arm64-x64.apk`（sha256
 `df097cf624ec220dcbac0d8e453c02e13e54c95848de478a1ab7739a6c768530`）。
 详见 `docs/qa-0.46.0.md`。
 
-## 5.169 alpha 0.47.1 —— Chatbox 备份携带 Agent 工作区（2026-10-28 14:08–14:36）
+## 5.169 alpha 0.47.1 —— Chatbox 备份携带 Agent 工作区（2026-10-28 14:08–14:44）
 
 - 0.46.0 的 Chatbox 备份已带记忆、技能和技能关联，但仍不含
   `files/oxworkspace/<agentId>/`；换机或重装后工作区文件全部丢失，
