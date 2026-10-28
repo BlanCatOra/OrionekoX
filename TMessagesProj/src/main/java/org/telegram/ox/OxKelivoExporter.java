@@ -34,12 +34,15 @@ public class OxKelivoExporter {
     private static final int MAX_RESOURCE_BYTES = 2 * 1024 * 1024;
     private static final long MAX_TOTAL_BYTES = 24L * 1024 * 1024;
     private static final int MAX_RESOURCES = 64;
+    private static final int MAX_MEMORY_CHARS = 64 * 1024;
+    private static final int MAX_TOTAL_MEMORY_CHARS = 256 * 1024;
 
     public static class Result {
         public int assistants;
         public int conversations;
         public int messages;
         public int resources;
+        public int memories;
         public final List<String> notes = new ArrayList<>();
     }
 
@@ -83,6 +86,7 @@ public class OxKelivoExporter {
         long totalBytes = 0;
         Set<String> usedSessionIds = new HashSet<>();
         int resourceIndex = 0;
+        int memoryChars = 0;
 
         for (OxAgent a : agents) {
             List<OxChatEntry> chat;
@@ -95,6 +99,24 @@ public class OxKelivoExporter {
             if (chat.isEmpty() && !hasPrompt) continue;
             result.assistants++;
             boolean sessionOnly = !chat.isEmpty();
+            String memory = OxAgentStore.loadMemory(a.id, MAX_MEMORY_CHARS + 1);
+            if (memory.length() > MAX_MEMORY_CHARS) {
+                memory = memory.substring(memory.length() - MAX_MEMORY_CHARS);
+                result.notes.add("长期记忆过长，已保留最近部分 " + a.id);
+            }
+            if (!memory.trim().isEmpty()) {
+                int room = MAX_TOTAL_MEMORY_CHARS - memoryChars;
+                if (memory.length() > room) {
+                    memory = room > 0 ? memory.substring(memory.length() - room) : "";
+                    result.notes.add("长期记忆超出备份总量上限，已截断 " + a.id);
+                }
+                if (!memory.trim().isEmpty()) {
+                    memoryChars += memory.length();
+                    result.memories++;
+                }
+            } else {
+                memory = "";
+            }
             JSONObject copilot = new JSONObject();
             copilot.put("id", a.id);
             copilot.put("name", a.name == null ? a.id : a.name);
@@ -143,6 +165,7 @@ public class OxKelivoExporter {
                         result.notes.add("背景超出总量上限，已跳过 " + a.id);
                     }
                 }
+                if (!memory.isEmpty()) copilot.put("orionekoMemory", memory);
                 copilots.add(copilot);
                 continue;
             }
@@ -154,6 +177,7 @@ public class OxKelivoExporter {
             session.put("name", a.name == null ? a.id : a.name);
             session.put("threadName", a.name == null ? a.id : a.name);
             session.put("orionekoAgentId", a.id);
+            if (!memory.isEmpty()) session.put("orionekoMemory", memory);
             String bgPath = OxChatTheme.backgroundForDialog(a.tgId);
             if (bgPath.isEmpty()) bgPath = OxChatTheme.backgroundForAgent(a.tgId);
             if (!bgPath.isEmpty() && resources.size() < MAX_RESOURCES) {

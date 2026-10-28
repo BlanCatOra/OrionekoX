@@ -381,7 +381,7 @@ public class OxSettingsActivity extends BaseFragment {
                 OxKelivoExporter.Result r = OxKelivoExporter.exportTo(ctx, uri, onlyIds);
                 StringBuilder sb = new StringBuilder(LocaleController.formatString(
                         "OxKelivoExportDone", R.string.OxKelivoExportDone,
-                        r.assistants, r.conversations, r.messages, r.resources));
+                        r.assistants, r.memories, r.conversations, r.messages, r.resources));
                 int shown = Math.min(3, r.notes.size());
                 for (int i = 0; i < shown; i++) sb.append("\n• ").append(r.notes.get(i));
                 message = sb.toString();
@@ -478,7 +478,7 @@ public class OxSettingsActivity extends BaseFragment {
 
     private String kelivoResultText(OxKelivoImporter.Result r) {
         if (r.created == 0 && r.updated == 0 && r.skills == 0 && r.mcpAdded == 0
-                && r.conversations == 0) {
+                && r.conversations == 0 && r.memories == 0) {
             return LocaleController.getString(R.string.OxKelivoNothing);
         }
         StringBuilder sb = new StringBuilder();

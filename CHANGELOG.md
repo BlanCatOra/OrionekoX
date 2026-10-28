@@ -4,6 +4,30 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.44.0 — 2026-10-28
+
+- Chatbox / Kelivo backups now carry an agent's long-term memory. Exports write
+  a private `orionekoMemory` field into the session (agents with chat) or the
+  copilot (chatless agents); imports restore it for both. Without the field,
+  third-party backups keep their previous behavior.
+- Memory is capped at 64 KiB per agent and 256 KiB per export, keeping the
+  newest tail; the importer accepts up to 200,000 characters. The import
+  preview warns that existing memory will be replaced and the result reports
+  how many agents were restored.
+- The export result line now includes the memory count, so the Toast no longer
+  truncates a separate memory line. The bundled Chinese pack version moved
+  from 99 to 100; previously an app update kept the cached
+  `files/ox_zh-cn.xml`, so new Chinese strings did not appear.
+- Verified on the emulator: a 157 B memory exported into a 1,626 B single-agent
+  zip and restored byte-for-byte (SHA-256 `a7744d01…`) after deletion; a repeat
+  import kept the same hash and 25 agent directories. A full export was
+  482,642 B and reported 21 agents (14 with memory), 12 conversations and 245
+  messages; 10/12 sessions and 4/9 copilots carried memory, matching the count.
+  No API-key/provider fields appeared, and the app logged no FATAL/ANR.
+- Limits: `orionekoMemory` is an OrionekoX extension ignored by real
+  Chatbox/Kelivo clients; chatless copilot memory import was not round-tripped;
+  imports overwrite rather than merge memory.
+
 ## 0.43.2 — 2026-10-28
 
 - A Chatbox export now keeps the original Agent identity when imported back

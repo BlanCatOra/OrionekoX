@@ -446,3 +446,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：导入样例得到 `kelivo_chat_s1_current`（tgId 555000091）；导出 3,593 B，session id 与 `orionekoAgentId` 均为该 id；保留原 Agent 回环，预览“已存在 1 段对话”，结果替换历史；Agent 目录仍只有 1 个，tgId 不变，chat.json 与原生消息均 5 条；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：`orionekoAgentId` 是 OrionekoX 扩展，真实 Chatbox 客户端会忽略；无聊天 copilot 未验证；非法/超长 id 会清洗或截断。
+
+## 0.44.0 Chatbox 长期记忆与中文包刷新 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-87 | 0.44.0 QA | 导出 Toast 新增记忆行后，第二行被系统截断，用户只能看到主行而看不到记忆数量 | 把记忆数并入 `OxKelivoExportDone` / `OxKelivoExportAgentDone` 主行，删除独立记忆行；最终 Toast 完整显示“21 个智能体（含记忆 14 个）…” | 已修复 |
+| R2-88 | 0.44.0 QA | `OX_ZH_PACK_VERSION` 停留在 99，升级安装后 `files/ox_zh-cn.xml` 不会从 APK 覆盖，新的中文说明/确认框/Toast 仍显示旧文案 | 将语言包版本提升到 100；设备确认 `ox_zh_version=100`，设置说明行与导出确认框均显示“长期记忆” | 已修复 |
+
+- 设备：单 Agent 记忆导出 1,626 B，字段 73 字符、无敏感信息；删除后回导恢复 157 B / sha256 `a7744d01…`，重复导入 hash 不变、25 个 Agent 目录不变；最终全量导出 482,642 B，12 个 session 中 10 个、9 个 copilot 中 4 个带记忆，共 14 个，与 Toast 一致；主 Tab 与 Ox 设置切换无本包 FATAL/ANR；清理注入记忆与测试 zip，未执行 `pm clear`。
+- 边界：`orionekoMemory` 仅 OrionekoX 识别；无聊天 copilot 的记忆导入未单独回环；导入覆盖而非合并记忆；未与真实 Chatbox/Kelivo 客户端互导。

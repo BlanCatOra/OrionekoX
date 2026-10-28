@@ -3373,6 +3373,35 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `7e8d41863a03…`）；debug `dist/OrionekoX-0.43.2-debug-arm64-x64.apk`（sha256
 `a359796b9c27…`）。详见 `docs/qa-0.43.2.md`。
 
+## 5.165 alpha 0.44.0 —— Chatbox / Kelivo 备份携带长期记忆（2026-10-28 12:20–12:43）
+
+- Chatbox 导出此前完全不包含 Agent 长期记忆，换机或回环后记忆丢失。
+  导出器现在在 session（有聊天）和 copilot（无聊天）写入
+  `orionekoMemory`，单 Agent 上限 64 KiB、合计 256 KiB，超出保留尾部并
+  在结果中提示；`Result.memories` 统计带记忆的 Agent 数。
+- 导入器按同一字段恢复记忆（上限 200,000 字符），预览新增覆盖警告，
+  结果新增恢复数量；无字段的外部备份保持原行为。
+- 导出 Toast 把记忆数并入主行，避免第二行被截断；同时发现中文语言包
+  版本仍为 99，升级不会覆盖 `files/ox_zh-cn.xml`，导致 APK 内新文案
+  不显示。将 `OX_ZH_PACK_VERSION` 提升到 100。
+- 设备：单 Agent 导出 1,626 B，`orionekoMemory` 73 字符且无敏感字段；
+  删除记忆后导入恢复 157 B，sha256 `a7744d01…`，重复导入 hash 不变、
+  Agent 目录数保持 25。最终构建全量导出 482,642 B，Toast 为“21 个智能体
+  （含记忆 14 个）、12 段对话、245 条消息”；12 个 session 中 10 个、
+  9 个 copilot 中 4 个带记忆，合计 14 个，与 Toast 一致。设置说明行、
+  确认框均显示“长期记忆”；无本包 FATAL/ANR；清理注入记忆与测试 zip，
+  未执行 `pm clear`，无障碍服务已恢复。
+- 边界：`orionekoMemory` 为 OrionekoX 扩展，真实 Chatbox/Kelivo 客户端
+  会忽略；无聊天 copilot 记忆导入未单独回环；导入覆盖而非合并记忆。
+- 版本规则：新增用户可见的备份字段与恢复行为，并调整本地化包版本，
+  按 minor 从 0.43.2 → 0.44.0，versionCode 4409。
+
+**产物**：`dist/OrionekoX-0.44.0-alpha-arm64-x64.apk`（versionCode 4409，
+sha256 `6acdb24b00fb8b61f2ed93931341ba5217a676b7ab4433d4a01310fe0359a880`）；
+debug `dist/OrionekoX-0.44.0-debug-arm64-x64.apk`（sha256
+`855e454aa2092fd747be7453b980fc83a620e6d5fe4aeae86a9946c4cd176ef6`）。
+详见 `docs/qa-0.44.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

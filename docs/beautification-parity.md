@@ -29,7 +29,7 @@ requirements.
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete; **0.25.2** rename with duplicate-name rejection; **0.27.0** preview a saved preset without applying it |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
-| Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; conversations, provider keys, skills and MCP not imported |
+| Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills, HTTP MCP and long-term memory; provider keys never imported |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -859,21 +859,50 @@ These confirm the feature directions rather than relying on guesses. Checked
   clients; chatless copilot exports were not validated; invalid or overlong ids
   are sanitized/truncated.
 
+## 0.44.0 implementation — long-term memory in Chatbox backups
+
+- Agents with chat history write `orionekoMemory` into their session; chatless
+  agents write it into their copilot. Empty memory emits no field.
+- Export caps memory at 64 KiB per agent and 256 KiB total, keeping the newest
+  tail and adding a note when truncated. `Result.memories` counts agents that
+  actually carried memory.
+- The importer restores `orionekoMemory` for both copilots and conversations
+  (200,000-character tail cap), replaces the existing memory file, and reports
+  the count. The preview warns “将恢复 N 个智能体的长期记忆（覆盖现有记忆）。”.
+  Backups without the field keep their previous behavior.
+- The export result main line now includes the memory count, so the system
+  Toast does not truncate a second line.
+- Localization pack version 99 → 100: the cached `files/ox_zh-cn.xml` was
+  reused after app updates, so new Chinese strings (including this dialog and
+  Toast) stayed stale even though the APK asset had changed.
+- Device QA: a 157 B / 73-character memory exported into a 1,626 B single-agent
+  zip, with no `apiKey`/`baseUrl`/`Authorization`/`sk-` matches; deleting then
+  importing restored 157 B with SHA-256 `a7744d01…`, and a repeat import kept
+  the same hash and 25 agent directories. The final full export was 482,642 B;
+  its Toast read “21 个智能体（含记忆 14 个）、12 段对话、245 条消息”, and
+  the zip held 10/12 sessions and 4/9 copilots with memory (14 total). The
+  settings row and confirmation dialog both showed “长期记忆”; no app
+  FATAL/ANR.
+- Limits: `orionekoMemory` is an OrionekoX extension ignored by real
+  Chatbox/Kelivo clients; chatless copilot memory import was not round-tripped;
+  import overwrites instead of merging memory.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
    input styles, per-bubble padding and image cropping (background blur is now
    mapped by 0.26.2).
 2. Kelivo full backup import beyond the now-supported assistants/skills/
-   conversations/MCP/avatars/images/attachments: video backgrounds and
-   workspaces; SSE/stdio MCP with their tool allowlists; RikkaHub non-selected
-   branches, per-conversation grouping, skill attachments and standalone
-   providers; native RikkaHub audio/video playback bubbles, more than 20 media
-   per message and remote attachments.
-3. Bidirectional export still lacks workspaces, memory, themes, global/video
+   conversations/MCP/avatars/images/attachments/long-term memory: video
+   backgrounds and workspaces; SSE/stdio MCP with their tool allowlists;
+   RikkaHub non-selected branches, per-conversation grouping, skill attachments
+   and standalone providers; native RikkaHub audio/video playback bubbles, more
+   than 20 media per message and remote attachments.
+3. Bidirectional export still lacks workspaces, themes, global/video
    backgrounds, MCP headers/OAuth and server selection, plus validation against
-   real external clients; agent identity now survives self-roundtrip, but
-   chatless copilot exports and external Chatbox clients remain unverified.
+   real external clients; agent identity and long-term memory now survive
+   self-roundtrip, but chatless copilot memory imports and external Chatbox
+   clients remain unverified.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 5. Per-conversation theme inheritance still copies the parent’s text color; a
