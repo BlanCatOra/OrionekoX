@@ -4,6 +4,36 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.45.0 — 2026-10-28
+
+- The RikkaHub import entry now also accepts SillyTavern / RikkaHub character
+  cards as PNG or JSON. PNG cards are read from their `tEXt`/`iTXt` chunks
+  (`ccv3` first, then `chara`, base64 or raw JSON); JSON cards are accepted as
+  V2/V3 wrappers or flat V1 objects.
+- Description, personality, scenario, system prompt, post-history instructions
+  and example dialogue become labeled `AGENTS.md` sections. The first message
+  becomes the agent greeting, and a PNG card itself is saved as `avatar.png`
+  and shown as the native profile photo.
+- Stable ids keep repeated imports on one agent: the same card as JSON, PNG or
+  both updates a single directory instead of creating copies, and an existing
+  avatar is preserved. The preview uses card-specific wording in Chinese and
+  English.
+- Safety caps: PNG 8 MiB, card text 4 MiB, each field 32 KiB, prompt 64 KiB,
+  and IHDR dimensions at most 4096 × 4096 / 16M pixels to reject decompression
+  bombs.
+- Verified on the emulator: a 689 B JSON card created `rikka_card_df478b83`
+  (tg id 555000092) with six persona sections and the expected greeting. The
+  same card's 8,810 B PNG updated that agent and wrote a byte-identical
+  `avatar.png` (SHA-256 `4482184d…`); a repeat import kept one directory, the
+  same avatar hash and one greeting. A second JSON-only card created
+  `rikka_card_1ac480d6` without an avatar, and a PNG with no `chara` chunk
+  produced the card-specific error. Cleanup removed both test agents and all
+  dialogs/messages for their tg ids; no app FATAL/ANR.
+- Limits: compressed `zTXt` is not read; only `first_mes` is imported, so
+  alternate greetings, character books/lorebooks, tags and regex scripts are
+  skipped; cards cannot be exported; imported cards start offline until a
+  provider is wired; a real SillyTavern/RikkaHub export was not tested.
+
 ## 0.44.0 — 2026-10-28
 
 - Chatbox / Kelivo backups now carry an agent's long-term memory. Exports write

@@ -623,9 +623,14 @@ public class OxSettingsActivity extends BaseFragment {
     }
 
     private String rikkaPreviewText(OxRikkaImporter.Preview p) {
-        StringBuilder sb = new StringBuilder(LocaleController.formatString(
-                "OxRikkaPreview", R.string.OxRikkaPreview,
-                p.assistants, p.providers, p.mcp, p.skills));
+        StringBuilder sb = new StringBuilder();
+        if (p.characterCard) {
+            sb.append(LocaleController.getString(R.string.OxRikkaCardPreview));
+        } else {
+            sb.append(LocaleController.formatString(
+                    "OxRikkaPreview", R.string.OxRikkaPreview,
+                    p.assistants, p.providers, p.mcp, p.skills));
+        }
         if (!p.names.isEmpty()) {
             StringBuilder names = new StringBuilder();
             for (int i = 0; i < p.names.size(); i++) {
@@ -648,7 +653,11 @@ public class OxSettingsActivity extends BaseFragment {
             sb.append("\n").append(LocaleController.formatString(
                     "OxRikkaHistory", R.string.OxRikkaHistory, p.conversations, p.messageNodes));
         }
-        if (p.existingAssistants > 0 || p.existingMcp > 0 || p.existingSkills > 0) {
+        if (p.characterCard) {
+            if (p.existingAssistants > 0) {
+                sb.append("\n").append(LocaleController.getString(R.string.OxRikkaCardExisting));
+            }
+        } else if (p.existingAssistants > 0 || p.existingMcp > 0 || p.existingSkills > 0) {
             sb.append("\n").append(LocaleController.formatString(
                     "OxRikkaExisting", R.string.OxRikkaExisting,
                     p.existingAssistants, p.existingMcp, p.existingSkills));
@@ -673,6 +682,8 @@ public class OxSettingsActivity extends BaseFragment {
         String m = message == null ? "" : message;
         if ("not a RikkaHub settings file".equals(m)) {
             m = LocaleController.getString(R.string.OxRikkaInvalid);
+        } else if ("not a character card".equals(m)) {
+            m = LocaleController.getString(R.string.OxRikkaInvalidCard);
         } else if ("settings.json missing".equals(m)) {
             m = LocaleController.getString(R.string.OxRikkaMissingSettings);
         } else if ("cannot open backup".equals(m)) {

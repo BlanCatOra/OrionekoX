@@ -3402,6 +3402,36 @@ debug `dist/OrionekoX-0.44.0-debug-arm64-x64.apk`（sha256
 `855e454aa2092fd747be7453b980fc83a620e6d5fe4aeae86a9946c4cd176ef6`）。
 详见 `docs/qa-0.44.0.md`。
 
+## 5.166 alpha 0.45.0 —— RikkaHub / SillyTavern 角色卡导入（2026-10-28 12:50–13:18）
+
+- “从 RikkaHub 备份导入”此前只接受 `settings.json` 或备份 zip；SillyTavern
+  与 RikkaHub 常见的 PNG/JSON 角色卡无法进入 OrionekoX。
+- `OxRikkaImporter` 现在按文件签名分流：PNG 解析 `tEXt`/`iTXt` 的
+  `ccv3`/`chara`（base64 或原始 JSON），JSON 在非 settings 结构时按
+  V2/V3 wrapper 或扁平 V1 卡解析。人设字段写入 `AGENTS.md`，`first_mes`
+  生成开场白，PNG 原图保存为 `avatar.png` 并接入原生头像缓存。
+- 稳定 id 为 `rikka_card_<hash>`，重复导入更新同一 Agent；PNG ≤8 MiB、
+  文本 ≤4 MiB、单字段 32 KiB、提示词 64 KiB，IHDR 宽高 ≤4096 且总像素
+  ≤16M，防止解码炸弹。预览改为角色卡专用文案，中文包 100→103。
+- 设备：JSON 卡生成 `rikka_card_df478b83`（tgId 555000092），六节人设、
+  开场白与原生欢迎消息正确；同一卡的 8,810 B PNG 更新该 Agent，
+  `avatar.png` sha256 `4482184d…` 与源图一致；再次导入仍只有 1 个目录、
+  头像 hash 不变、无重复消息。JSON-only 卡生成
+  `rikka_card_1ac480d6`，无头像、开场白正常；69 B 无 `chara` 的 PNG
+  正确报“没有可用的角色卡数据”。全程无 FATAL/ANR；删除两个测试 Agent
+  后对应 dialogs/messages 均为 0，Download 测试卡已清理。
+- 边界：不支持压缩 `zTXt`；只取 `first_mes`，未导入 alternate greetings、
+  character_book、tags 或正则；角色卡只导入不导出；导入后离线，需接
+  Provider；未与真实 SillyTavern/RikkaHub 导出卡互测。
+- 版本规则：新增外部格式导入与 UI 行为，按 minor 从 0.44.0 → 0.45.0，
+  versionCode 4509。
+
+**产物**：`dist/OrionekoX-0.45.0-alpha-arm64-x64.apk`（versionCode 4509，
+sha256 `6e3e9d4905490d566e775e0d3c6215d61002e918ad818149a7112d669892e4b2`）；
+debug `dist/OrionekoX-0.45.0-debug-arm64-x64.apk`（sha256
+`f6da9de9957057cd4c2a61716839726e9b75c48cfbd65b3272171a133b1ddf08`）。
+详见 `docs/qa-0.45.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

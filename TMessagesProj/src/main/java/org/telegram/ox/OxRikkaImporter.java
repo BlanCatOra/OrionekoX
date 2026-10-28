@@ -33,9 +33,14 @@ import java.util.zip.ZipInputStream;
 public class OxRikkaImporter {
 
     private static final int MAX_SETTINGS = 4 * 1024 * 1024;
+    private static final int MAX_CARD_BYTES = 8 * 1024 * 1024;
+    private static final int MAX_CARD_TEXT = 4 * 1024 * 1024;
+    private static final int MAX_CARD_FIELD = 32 * 1024;
+    private static final int MAX_CARD_PROMPT = 64 * 1024;
 
     public static class Preview {
         public int assistants;
+        public boolean characterCard;
         public int providers;
         public int mcp;
         public int skippedSse;
@@ -75,6 +80,7 @@ public class OxRikkaImporter {
     private static class Archive {
         JSONObject settings;
         byte[] database;
+        boolean characterCard;
         final Map<String, byte[]> skills = new java.util.LinkedHashMap<>();
         final Map<String, byte[]> uploads = new java.util.LinkedHashMap<>();
     }
@@ -94,6 +100,7 @@ public class OxRikkaImporter {
         Archive archive = readArchive(context, uri);
         JSONObject settings = archive.settings;
         Preview p = new Preview();
+        p.characterCard = archive.characterCard;
         Map<String, ProviderRef> models = providers(settings);
         Set<String> existingIds = new HashSet<>();
         for (OxAgent a : OxAgentStore.listAgents()) {
@@ -147,9 +154,15 @@ public class OxRikkaImporter {
             p.conversations = history[0];
             p.messageNodes = history[1];
         }
-        p.notes.add("仅导入 settings.json、skills/ 技能、助手图像头像、聊天历史与匹配的图片/文件/视频/音频附件；不含 OAuth token。");
+        if (archive.characterCard) {
+            p.notes.add(p.avatars > 0
+                    ? "角色卡将导入为本地智能体；头像（已有则保留）、人设与开场白一并保存，Provider 可在编辑器中接线。"
+                    : "角色卡将导入为本地智能体；人设与开场白一并保存，Provider 可在编辑器中接线。");
+        } else {
+            p.notes.add("仅导入 settings.json、skills/ 技能、助手图像头像、聊天历史与匹配的图片/文件/视频/音频附件；不含 OAuth token。");
+        }
         if (p.avatars > 0) {
-            p.notes.add("将导入 " + p.avatars + " 个助手图像头像。");
+            p.notes.add("检测到 " + p.avatars + " 个助手图像头像（已有则保留）。");
         }
         if (archive.database != null && archive.database.length > 0) {
             p.notes.add("历史中的多附件会按顺序拆成多条气泡；视频/音频按文件气泡导入。");
@@ -157,7 +170,7 @@ public class OxRikkaImporter {
         if (p.conversations > 0) {
             p.notes.add("历史按每个消息节点的当前分支导入；工具与未匹配附件的消息会跳过。");
         }
-        if (!archive.uploads.isEmpty()) {
+        if (!archive.characterCard && !archive.uploads.isEmpty()) {
             p.notes.add("备份中的聊天图片附件会随文本历史一起导入（最多 40 个）。");
         }
         if (archive.skills.size() > 0) {
@@ -292,6 +305,11 @@ public class OxRikkaImporter {
         importConversations(archive.database, archive.uploads, r);
         if (r.images > 0) r.notes.add("导入图片 " + r.images + " 张");
         if (r.files > 0) r.notes.add("导入附件 " + r.files + " 个");
+        if (archive.characterCard) {
+            r.notes.add(archive.uploads.containsKey("card.png")
+                    ? "角色卡已导入为本地智能体，头像与开场白随卡片保存"
+                    : "角色卡已导入为本地智能体，人设与开场白随卡片保存");
+        }
         return r;
     }
 
@@ -305,13 +323,23 @@ public class OxRikkaImporter {
         if (raw == null) throw new IllegalArgumentException("cannot open backup");
         BufferedInputStream in = new BufferedInputStream(raw);
         try {
-            in.mark(2);
-            int a = in.read();
-            int b = in.read();
+            in.mark(8);
+            byte[] signature = new byte[8];
+            int signatureLength = in.read(signature, 0, signature.length);
             in.reset();
             Archive out = new Archive();
+            if (signatureLength == 8 && isPng(signature)) {
+                byte[] png = readBytes(in, MAX_CARD_BYTES);
+                if (!isPng(png)) throw new IllegalArgumentException("not a character card");
+                JSONObject card = cardFromPng(png);
+                if (card == null) throw new IllegalArgumentException("not a character card");
+                out.characterCard = true;
+                out.uploads.put("card.png", png);
+                out.settings = cardSettings(card, true);
+                return out;
+            }
             String json = null;
-            if (a == 'P' && b == 'K') {
+            if (signatureLength >= 2 && signature[0] == 'P' && signature[1] == 'K') {
                 ZipInputStream zin = new ZipInputStream(in);
                 ZipEntry e;
                 int entries = 0;
@@ -348,7 +376,11 @@ public class OxRikkaImporter {
             if (json == null) throw new IllegalArgumentException("settings.json missing");
             JSONObject root = new JSONObject(json);
             if (!root.has("assistants") && !root.has("providers") && !root.has("mcpServers")) {
-                throw new IllegalArgumentException("not a RikkaHub settings file");
+                JSONObject card = cardFromJson(root);
+                if (card == null) throw new IllegalArgumentException("not a RikkaHub settings file");
+                out.characterCard = true;
+                out.settings = cardSettings(card, false);
+                return out;
             }
             out.settings = root;
             return out;
@@ -358,6 +390,160 @@ public class OxRikkaImporter {
             } catch (Throwable ignored) {
             }
         }
+    }
+
+    private static boolean isPng(byte[] data) {
+        return data != null && data.length >= 8
+                && (data[0] & 0xFF) == 0x89 && data[1] == 'P' && data[2] == 'N'
+                && data[3] == 'G' && data[4] == 0x0D && data[5] == 0x0A
+                && data[6] == 0x1A && data[7] == 0x0A;
+    }
+
+    /** Rejects oversized PNG dimensions so a card cannot become a decompression bomb. */
+    private static boolean pngDimensionsSafe(byte[] png) {
+        if (png == null || png.length < 33) return false;
+        if (png[12] != 'I' || png[13] != 'H' || png[14] != 'D' || png[15] != 'R') return false;
+        long width = ((png[16] & 0xFFL) << 24) | ((png[17] & 0xFFL) << 16)
+                | ((png[18] & 0xFFL) << 8) | (png[19] & 0xFFL);
+        long height = ((png[20] & 0xFFL) << 24) | ((png[21] & 0xFFL) << 16)
+                | ((png[22] & 0xFFL) << 8) | (png[23] & 0xFFL);
+        return width > 0 && height > 0 && width <= 4096 && height <= 4096
+                && width * height <= 16_000_000L;
+    }
+
+    /** Reads the SillyTavern card JSON from a PNG tEXt/iTXt chunk ("chara" or "ccv3"). */
+    private static JSONObject cardFromPng(byte[] png) {
+        if (!pngDimensionsSafe(png)) return null;
+        String ccv3 = pngText(png, "ccv3");
+        String chara = pngText(png, "chara");
+        String payload = ccv3 != null && !ccv3.trim().isEmpty() ? ccv3 : chara;
+        if (payload == null || payload.trim().isEmpty()) return null;
+        try {
+            String json;
+            if (payload.trim().startsWith("{")) {
+                json = payload.trim();
+            } else {
+                byte[] decoded = android.util.Base64.decode(
+                        payload.replaceAll("\\s+", ""), android.util.Base64.DEFAULT);
+                if (decoded == null || decoded.length == 0
+                        || decoded.length > MAX_CARD_TEXT) return null;
+                json = new String(decoded, StandardCharsets.UTF_8);
+            }
+            return cardFromJson(new JSONObject(json));
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static String pngText(byte[] png, String wanted) {
+        int pos = 8;
+        while (pos >= 0 && pos + 12 <= png.length) {
+            int length = ((png[pos] & 0xFF) << 24) | ((png[pos + 1] & 0xFF) << 16)
+                    | ((png[pos + 2] & 0xFF) << 8) | (png[pos + 3] & 0xFF);
+            if (length < 0 || length > MAX_CARD_TEXT || pos + 12L + length > png.length) break;
+            String type = new String(png, pos + 4, 4, StandardCharsets.US_ASCII);
+            int data = pos + 8;
+            int end = data + length;
+            if ("tEXt".equals(type)) {
+                int zero = data;
+                while (zero < end && png[zero] != 0) zero++;
+                if (zero < end) {
+                    String key = new String(png, data, zero - data, StandardCharsets.ISO_8859_1);
+                    if (wanted.equals(key)) {
+                        return new String(png, zero + 1, end - zero - 1, StandardCharsets.ISO_8859_1);
+                    }
+                }
+            } else if ("iTXt".equals(type)) {
+                int zero = data;
+                while (zero < end && png[zero] != 0) zero++;
+                if (zero + 2 < end) {
+                    String key = new String(png, data, zero - data, StandardCharsets.ISO_8859_1);
+                    int compressed = png[zero + 1] & 0xFF;
+                    int lang = zero + 3;
+                    while (lang < end && png[lang] != 0) lang++;
+                    int translated = lang + 1;
+                    while (translated < end && png[translated] != 0) translated++;
+                    if (wanted.equals(key) && compressed == 0 && translated + 1 < end) {
+                        return new String(png, translated + 1, end - translated - 1,
+                                StandardCharsets.UTF_8);
+                    }
+                }
+            }
+            pos = end + 4;
+        }
+        return null;
+    }
+
+    /** Accepts a V2/V3 wrapper or a flat V1 card; returns the inner data object. */
+    private static JSONObject cardFromJson(JSONObject root) {
+        if (root == null) return null;
+        JSONObject data = root.optJSONObject("data");
+        String spec = root.optString("spec", "");
+        if (data != null && (spec.contains("chara_card") || data.has("name")
+                || data.has("description") || data.has("first_mes"))) {
+            return data;
+        }
+        if (root.has("name") || root.has("description") || root.has("first_mes")
+                || root.has("char_name") || root.has("char_persona")) {
+            return root;
+        }
+        return null;
+    }
+
+    private static JSONObject cardSettings(JSONObject card, boolean withAvatar) throws Exception {
+        String name = cardText(card, "name", "char_name");
+        if (name.isEmpty()) name = "Character Card";
+        String description = cardText(card, "description", "char_persona");
+        String personality = cardText(card, "personality");
+        String scenario = cardText(card, "scenario", "world_scenario");
+        String systemPrompt = cardText(card, "system_prompt");
+        String postHistory = cardText(card, "post_history_instructions");
+        String example = cardText(card, "mes_example", "example_dialogue");
+        String firstMes = cardText(card, "first_mes", "char_greeting");
+
+        StringBuilder prompt = new StringBuilder();
+        appendCardSection(prompt, "Description", description);
+        appendCardSection(prompt, "Personality", personality);
+        appendCardSection(prompt, "Scenario", scenario);
+        appendCardSection(prompt, "System prompt", systemPrompt);
+        appendCardSection(prompt, "Post-history instructions", postHistory);
+        appendCardSection(prompt, "Example dialogue", example);
+        if (prompt.length() > MAX_CARD_PROMPT) prompt.setLength(MAX_CARD_PROMPT);
+
+        JSONObject assistant = new JSONObject();
+        assistant.put("id", "card_" + Integer.toHexString(
+                (name + "\n" + description + "\n" + firstMes).hashCode()));
+        assistant.put("name", name);
+        assistant.put("systemPrompt", prompt.toString().trim());
+        if (!firstMes.isEmpty()) {
+            JSONObject part = new JSONObject().put("type", "text").put("text", firstMes);
+            JSONObject message = new JSONObject().put("role", "assistant")
+                    .put("parts", new JSONArray().put(part));
+            assistant.put("presetMessages", new JSONArray().put(message));
+        }
+        if (withAvatar) {
+            assistant.put("avatar", new JSONObject()
+                    .put("type", "rikka.image")
+                    .put("url", "upload/card.png"));
+        }
+        JSONArray assistants = new JSONArray().put(assistant);
+        return new JSONObject().put("assistants", assistants);
+    }
+
+    private static String cardText(JSONObject card, String... keys) {
+        for (String key : keys) {
+            String value = card.optString(key, "").trim();
+            if (!value.isEmpty()) {
+                return value.length() > MAX_CARD_FIELD ? value.substring(0, MAX_CARD_FIELD) : value;
+            }
+        }
+        return "";
+    }
+
+    private static void appendCardSection(StringBuilder sb, String title, String body) {
+        if (body == null || body.trim().isEmpty()) return;
+        if (sb.length() > 0) sb.append("\n\n");
+        sb.append("## ").append(title).append('\n').append(body.trim());
     }
 
     private static String skillIdFromEntry(String name) {
