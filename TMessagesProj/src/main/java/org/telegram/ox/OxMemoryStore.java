@@ -48,6 +48,7 @@ public class OxMemoryStore {
         public int ingested;
         public int batchFrom;
         public int batchTo;
+        public String previousSummary = "";
         public String digest = "";
     }
 
@@ -143,9 +144,9 @@ public class OxMemoryStore {
             return out;
         }
         int ingested = 0;
-        List<String> userLines = new ArrayList<>();
         long firstTs = 0;
         long lastTs = 0;
+        out.previousSummary = latestSummary(agentId);
         for (int i = from; i < target && i < history.size(); i++) {
             OxChatEntry e = history.get(i);
             if (e == null || e.content == null || e.content.trim().isEmpty()) continue;
@@ -159,17 +160,23 @@ public class OxMemoryStore {
                     importance >= 0.85 ? "long" : "short", "compression", true);
             ingested++;
             if ("user".equals(role)) {
-                String line = clip(e.content.replace('\n', ' ').trim(), 140);
-                if (!line.isEmpty() && userLines.size() < 12) userLines.add(line);
                 for (String fact : extractFacts(e.content)) {
                     insert(agentId, "fact", "user", "用户：" + fact, ts,
                             0.9, "long", "extract", true);
                 }
             }
         }
-        if (ingested > 0 || userLines.size() > 0) {
+        if (ingested > 0) {
             if (target - from >= 4 || countKind(agentId, "summary") == 0) {
-                String summary = summaryText(userLines, firstTs, lastTs);
+                String summary = OxContextCompactor.summarize(
+                        history.subList(from, target), out.previousSummary, 300);
+                if (summary.isEmpty()) {
+                    summary = "较早对话：" + clip(history.get(from).content, 1000);
+                }
+                if (firstTs > 0) {
+                    summary = "对话压缩摘要（" + day(firstTs)
+                            + (lastTs > firstTs ? " 至 " + day(lastTs) : "") + "）：\n" + summary;
+                }
                 insert(agentId, "summary", "system", summary,
                         lastTs > 0 ? lastTs : System.currentTimeMillis(),
                         0.8, "long", "compression", true);
@@ -184,6 +191,22 @@ public class OxMemoryStore {
         out.batchTo = target;
         out.digest = digest(agentId, 1800);
         return out;
+    }
+
+    /** Latest active summary, used as the previous state for recursive compaction. */
+    public static synchronized String latestSummary(String agentId) {
+        try {
+            Cursor c = db().rawQuery("SELECT text FROM memories WHERE agent_id=? "
+                            + "AND kind='summary' AND invalid_at=0 "
+                            + "ORDER BY created_at DESC LIMIT 1", new String[]{agentId});
+            try {
+                return c.moveToFirst() ? c.getString(0) : "";
+            } finally {
+                c.close();
+            }
+        } catch (Throwable t) {
+            return "";
+        }
     }
 
     /** A compact, natural-language view used in the system prompt. */
@@ -430,6 +453,13 @@ public class OxMemoryStore {
     /** Stores an abstractive summary/facts produced by the agent's own model.
      *  Invalid JSON or oversized values are rejected by the caller. */
     public static synchronized int ingestModelMemory(String agentId, JSONObject result) {
+        return ingestModelMemory(agentId, result, 0);
+    }
+
+    /** Stores model output; a cutoff replaces summaries that existed before the
+     *  model call so the abstractive summary becomes the rolling summary. */
+    public static synchronized int ingestModelMemory(String agentId, JSONObject result,
+            long cutoff) {
         if (agentId == null || result == null) return 0;
         int facts = 0;
         try {
@@ -447,6 +477,13 @@ public class OxMemoryStore {
             }
             String summary = result.optString("summary", "").trim();
             if (summary.length() >= 4) {
+                if (cutoff > 0) {
+                    ContentValues old = new ContentValues();
+                    old.put("invalid_at", System.currentTimeMillis());
+                    db().update("memories", old, "agent_id=? AND kind='summary' "
+                                    + "AND invalid_at=0 AND created_at<=?",
+                            new String[]{agentId, String.valueOf(cutoff)});
+                }
                 insert(agentId, "summary", "system", clip(summary, 4000),
                         System.currentTimeMillis(), 0.9, "long", "model", true);
                 scrubAllInvalidated(agentId);
@@ -1035,7 +1072,7 @@ public class OxMemoryStore {
 
     // ---------------- local vector mode ----------------
 
-    private static List<String> tokenize(String text) {
+    static List<String> tokenize(String text) {
         List<String> out = new ArrayList<>();
         if (text == null) return out;
         String lower = text.toLowerCase(Locale.ROOT);

@@ -4,6 +4,37 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.55.0 — 2026-10-28
+
+- Rebuilt compact around offline open-source ideas: MemGPT recursive summaries,
+  LangChain SummaryBufferMemory's summary-plus-recent-window design, Selective
+  Context budget pruning and TextRank sentence selection. LLMLingua/LongLLMLingua
+  need a 7B-class scorer and LLMLingua-2 needs a BERT/ONNX model, so neither is
+  bundled.
+- `OxContextCompactor` estimates CJK/Latin tokens, builds a sentence similarity
+  graph, removes near-duplicate sentences, selects with MMR and writes one
+  sentence per line under a 300-token budget. Rolling summaries include the
+  previous summary plus the new batch.
+- Compaction triggers on the message threshold or, when a context length is
+  set, on estimated tokens above 45% of it. Under token pressure the recent
+  window comes from the trailing 55% budget (minimum 256 tokens and four
+  messages); the old fixed 15-message override was removed. The system prompt
+  notes the estimated token count.
+- The async model distiller receives the previous summary and merges it into the
+  new abstractive summary. A request cutoff invalidates older summaries so only
+  one current summary is injected; facts remain first and at most one summary
+  is shown.
+- Device QA: the 60-message fixture produced a 249-character TextRank summary
+  containing the coffee/Hangzhou lines, then the model `MODEL_SUMMARY` replaced
+  the extractive summary; old 3/14/blue values stayed out of the prompt. A
+  20-message fixture with `context_length=500` triggered at ~790 tokens and kept
+  seven recent messages after compacting thirteen. No app FATAL/ANR; test data
+  was removed.
+- Limits: TextRank is a lexical approximation, not LLMLingua-2 semantic token
+  compression; token estimation is approximate; the fallback summary budget is
+  300 tokens; there is no separate 70% warning stage. External harness agents
+  must use their own compact; harness routing is the next round.
+
 ## 0.54.0 — 2026-10-28
 
 - Adds asynchronous model distillation for memory. After a compression batch of

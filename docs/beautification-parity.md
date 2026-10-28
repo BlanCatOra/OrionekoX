@@ -31,7 +31,7 @@ requirements.
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
 | Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; **0.47.1** exports per-agent workspaces (200 files / 2 MiB each / 8 MiB total); **0.48.1** exports/restores per-agent preferences (tool policies, pin, remark, greeting, reasoning/context/sampling settings); **0.50.0** exports/restores per-agent appearance overrides and custom chat/code fonts (colors, bubbles, corner, border, text, scale, line height, background image; 8 MiB per font, 16 MiB total); **0.51.0** exports/restores the global appearance theme, global background and global chat/code fonts via `settings.json`, preserving a local custom global theme; provider keys, base URLs, headers and `extra_body` never exported |
 | SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0–0.45.1** PNG `tEXt`/`iTXt` + JSON via the agent-list entry, six persona sections, first message and PNG avatar, idempotent ids; **0.49.0** exports V2 JSON and PNG cards (avatar re-encoded, Base64 `chara` chunk, generated placeholder when no avatar) with six-section persona roundtrip; no alternate greetings, character book, tags or real-client validation |
-| Local agent memory library | — | — | — | **0.52.0** per-agent SQLite with normal keyword and experimental local-hash-vector recall, 45-message compression threshold, readable turn/fact/summary entries, `memory_search` and strict `memory_verify`; **0.53.0** BM25 + vector + retention/importance/access fusion, MMR, power forgetting curve with stability/difficulty updates, fact consolidation/invalidation with temporal history and summary scrubbing; **0.54.0** asynchronous agent-model distillation of abstractive summaries and atomic facts with extractive fallback; no external embeddings and not yet exported in backups |
+| Local agent memory library | — | — | — | **0.52.0** per-agent SQLite with normal keyword and experimental local-hash-vector recall, 45-message compression threshold, readable turn/fact/summary entries, `memory_search` and strict `memory_verify`; **0.53.0** BM25 + vector + retention/importance/access fusion, MMR, power forgetting curve with stability/difficulty updates, fact consolidation/invalidation with temporal history and summary scrubbing; **0.54.0** asynchronous agent-model distillation of abstractive summaries and atomic facts with extractive fallback; **0.55.0** offline TextRank/SummaryBufferMemory/Selective-Context-style compaction with token-pressure triggering and rolling summaries (LLMLingua-2 not bundled); no external embeddings and not yet exported in backups |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -1271,6 +1271,37 @@ These confirm the feature directions rather than relying on guesses. Checked
   providers must return JSON-compatible content; there is still no semantic
   embedding provider; the failure path is code-reviewed rather than exercised
   with a dead endpoint.
+
+## 0.55.0 implementation — offline open-source-style compaction
+
+- LLMLingua and LongLLMLingua need a 7B-class scorer; LLMLingua-2 needs a
+  BERT/ONNX model and mobile benchmarks, so neither is bundled. The offline
+  path follows MemGPT recursive summaries, LangChain SummaryBufferMemory's
+  summary-plus-recent-window design, Selective Context's budget pruning and
+  TextRank's sentence graph.
+- `OxContextCompactor` estimates CJK/Latin tokens, builds a sentence similarity
+  graph (damping 0.85, 20 iterations), drops near-duplicate sentences (>0.65),
+  selects with MMR (>0.55) and writes one sentence per line under a 300-token
+  budget. The rolling summary includes the previous summary and the new batch.
+- Compaction triggers on the configured message threshold or, when a context
+  length is set, on estimated tokens above 45% of it. Under token pressure the
+  recent window is chosen from the trailing 55% budget (minimum 256 tokens and
+  four messages), with an explicit note in the system prompt. The old fixed
+  15-message override was removed.
+- The async distiller receives the previous summary and merges it into the new
+  abstractive summary; a request cutoff invalidates older summaries so only one
+  current summary is injected. Facts remain first and at most one summary is
+  shown.
+- Device QA: the 60-message fixture produced a 249-character TextRank summary
+  containing the coffee/Hangzhou lines, then the model `MODEL_SUMMARY` replaced
+  the extractive summary; old 3/14/blue values stayed out of the prompt. A
+  20-message fixture with `context_length=500` triggered at ~790 tokens and kept
+  seven recent messages after compacting thirteen. No app FATAL/ANR; test data
+  was removed.
+- Limits: TextRank is a lexical approximation, not LLMLingua-2 semantic token
+  compression; token estimation is approximate; the fallback summary budget is
+  300 tokens; there is no separate 70% warning stage. External harness agents
+  must use their own compact, not this path; harness routing is the next round.
 
 ## Gaps / next phases
 

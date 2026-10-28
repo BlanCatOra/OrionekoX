@@ -3814,6 +3814,41 @@ debug `dist/OrionekoX-0.54.0-debug-arm64-x64.apk`（sha256
 `770f8ddecb3372858f72abf45a1a8cb0a457e86ed74898eef3de7e70b5f335c9`）。
 详见 `docs/qa-0.54.0.md`。
 
+## 5.177 alpha 0.55.0 —— 开源式 compact：TextRank/SummaryBuffer/token 触发（2026-10-28 18:40–19:05）
+
+- 0.54.0 的 compact 仍是“按消息数截断 + 规则摘要 + 可选模型摘要”，
+  没有 token 压力、TextRank/Selective Context 或滚动摘要窗口。
+- 调研 LLMLingua/LLMLingua-2、MemGPT、LangChain SummaryBufferMemory、
+  Selective Context、TextRank：LLMLingua 原版需 7B 级模型，LLMLingua-2
+  需 BERT/ONNX，端上暂不引入；采用可离线的 TextRank + 去重/MMR +
+  滚动摘要 + token 预算。
+- 新增 `OxContextCompactor`：CJK/拉丁 token 估算、TextRank 句子图
+  （阻尼 0.85/20 次）、相似句去重（>0.65）、选句 MMR（>0.55）、
+  每句一行输出；摘要预算 300 tokens（约 1200 字符）。
+- 触发：消息数 > 默认 45，或设置 context_length 时估算 tokens >
+  45%；token 压力下保留窗口按 55% 预算（最低 256 tokens、至少 4 条），
+  修复了此前保留窗口被固定 15 条覆盖的问题。system 标注
+  “token 压力触发：约 N tokens”。
+- 递归摘要：`compressHistory` 把上一版摘要传入 compactor；异步蒸馏
+  也接收 previousSummary 并合并；模型摘要用请求 cutoff 使旧摘要失效，
+  digest 最多注入 1 条摘要。
+- 设备：60 条 fixture 的 TextRank 摘要 249 字符并含咖啡/杭州；模型
+  `MODEL_SUMMARY` 111 字符生效，抽取摘要失效；旧 3/14/blue 不注入。
+  20 条长消息、context_length=500 的 token 压力测试显示“压缩 13 条、
+  保留 7 条、约 790 tokens”，符合 55% 预算。无 FATAL/ANR，测试对象
+  与 chats 清理为 0，代理/无障碍恢复。
+- 边界：TextRank 是离线近似，不是 LLMLingua-2 语义 token 压缩；
+  token 估算非精确 tokenizer；摘要预算 300 tokens；无 70% 预警阶段；
+  **外部 Harness 不应使用本 compact**，harness 路由/适配留待下一轮。
+- 版本规则：压缩算法、触发条件与摘要策略属于功能迭代，按 minor 从
+  0.54.0 → **0.55.0**（5509），patch 清零。
+
+**产物**：`dist/OrionekoX-0.55.0-alpha-arm64-x64.apk`（versionCode 5509，
+sha256 `702ac8ab1040b9695549f68db8bb6d7cb27f612b1d0164f817d681919b20c8ab`）；
+debug `dist/OrionekoX-0.55.0-debug-arm64-x64.apk`（sha256
+`40d1d0ec47c3f5183a1f0d9bd93dc6d2c6bf7e823a37809670c7b65dedf3a729`）。
+详见 `docs/qa-0.55.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
