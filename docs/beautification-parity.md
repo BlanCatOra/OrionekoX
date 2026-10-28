@@ -672,6 +672,21 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: only upload/-backed images, basename matching, no network downloads;
   a real RikkaHub export still needs a compatibility pass.
 
+## 0.36.0 implementation — multi-agent export
+
+- Ox settings offers “Export selected agents”: a native scrollable checkbox list
+  of non-built-in agents (none selected by default), then SAF creates
+  `orioneko-selected-backup.zip`.
+- The exporter receives only the checked ids, so no other agent, resource or
+  session leaks into the zip. An empty selection shows “Select at least one
+  agent”; cancelling SAF clears the pending ids.
+- Device QA: two test agents (Multi B with 2 messages; Single Export with 4
+  messages, avatar, image and notes.txt) were selected from the list. The export
+  was 6,697 B with 2 sessions, 0 copilots and 3 resources, and only those two
+  agents. Re-importing restored both conversations, image and attachment.
+- Limits: no search/select-all in the list; still no workspaces, memory, MCP or
+  themes, and no external-client validation.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -682,7 +697,7 @@ These confirm the feature directions rather than relying on guesses. Checked
    allowlists; RikkaHub non-selected branches, non-image attachments,
    per-conversation grouping, skill attachments and standalone providers.
 3. Bidirectional export still lacks workspaces, memory, MCP and themes, plus
-   multi-agent selection and validation against real external clients.
+   validation against real external clients.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 5. Per-conversation theme inheritance still copies the parent’s text color; a

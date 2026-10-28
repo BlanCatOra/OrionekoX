@@ -8,7 +8,10 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BuildVars;
@@ -16,6 +19,8 @@ import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
+import org.telegram.ox.OxAgent;
+import org.telegram.ox.OxAgentStore;
 import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxMode;
 import org.telegram.ox.OxOperitImporter;
@@ -32,6 +37,7 @@ import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /** Ox settings, built on Telegram's stock UniversalRecyclerView + SettingCell. */
 @SuppressLint("ViewConstructor")
@@ -56,11 +62,14 @@ public class OxSettingsActivity extends BaseFragment {
     private static final int ID_IMPORT_RIKKA = 117;
     private static final int ID_IMPORT_KELIVO = 118;
     private static final int ID_EXPORT_KELIVO = 119;
+    private static final int ID_EXPORT_SELECTED = 120;
     private static final int REQ_RIKKA = 601;
     private static final int REQ_KELIVO = 602;
     private static final int REQ_KELIVO_EXPORT = 603;
+    private static final int REQ_KELIVO_EXPORT_SELECTED = 604;
 
     private UniversalRecyclerView listView;
+    private List<String> pendingExportKelivoIds;
 
     @Override
     public View createView(Context context) {
@@ -129,6 +138,9 @@ public class OxSettingsActivity extends BaseFragment {
         items.add(SettingsActivity.SettingCell.Factory.of(ID_EXPORT_KELIVO, 0xFF7C5CFF, 0xFF5B3FE0,
                 R.drawable.msg_download, LocaleController.getString(R.string.OxKelivoExport),
                 LocaleController.getString(R.string.OxKelivoExportInfo)));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_EXPORT_SELECTED, 0xFF7C5CFF, 0xFF5B3FE0,
+                R.drawable.msg_filehq, LocaleController.getString(R.string.OxKelivoExportSelected),
+                LocaleController.getString(R.string.OxKelivoExportSelectedInfo)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_TOOLS, 0xFFE8A33D, 0xFFD98A1F,
                 R.drawable.settings_privacy, LocaleController.getString(R.string.OxToolsTitle)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_SKILLS, 0xFF55CA47, 0xFF27B434,
@@ -199,6 +211,9 @@ public class OxSettingsActivity extends BaseFragment {
                 break;
             case ID_EXPORT_KELIVO:
                 confirmKelivoExport();
+                break;
+            case ID_EXPORT_SELECTED:
+                selectAgentsForExport();
                 break;
             case ID_TOOLS:
                 presentFragment(new OxToolsActivity());
@@ -289,11 +304,79 @@ public class OxSettingsActivity extends BaseFragment {
         }
     }
 
-    private void exportKelivo(Context ctx, Uri uri) {
+    private void selectAgentsForExport() {
+        if (getParentActivity() == null) return;
+        List<OxAgent> agents = new ArrayList<>();
+        for (OxAgent a : OxAgentStore.listAgents()) {
+            if (a != null && !a.builtIn && a.id != null && !a.id.isEmpty()) agents.add(a);
+        }
+        if (agents.isEmpty()) {
+            android.widget.Toast.makeText(getParentActivity(),
+                    LocaleController.getString(R.string.OxKelivoExportNothing),
+                    android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        LinearLayout box = new LinearLayout(getParentActivity());
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(8),
+                AndroidUtilities.dp(20), AndroidUtilities.dp(8));
+        List<CheckBox> boxes = new ArrayList<>();
+        for (OxAgent a : agents) {
+            CheckBox cb = new CheckBox(getParentActivity());
+            cb.setText(a.name == null || a.name.isEmpty() ? a.id : a.name);
+            cb.setTextSize(16);
+            cb.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+            cb.setPadding(AndroidUtilities.dp(8), AndroidUtilities.dp(6),
+                    AndroidUtilities.dp(8), AndroidUtilities.dp(6));
+            box.addView(cb);
+            boxes.add(cb);
+        }
+        ScrollView scroll = new ScrollView(getParentActivity());
+        scroll.addView(box);
+        FrameLayout wrap = new FrameLayout(getParentActivity());
+        wrap.addView(scroll, LayoutHelper.createFrame(
+                LayoutHelper.MATCH_PARENT, 360, Gravity.TOP));
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxKelivoExportSelected))
+                .setView(wrap)
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .setPositiveButton(LocaleController.getString(R.string.OxKelivoExportAction),
+                        (d, w) -> {
+                            List<String> ids = new ArrayList<>();
+                            for (int i = 0; i < boxes.size(); i++) {
+                                if (boxes.get(i).isChecked()) ids.add(agents.get(i).id);
+                            }
+                            if (ids.isEmpty()) {
+                                android.widget.Toast.makeText(getParentActivity(),
+                                        LocaleController.getString(R.string.OxKelivoExportSelectNone),
+                                        android.widget.Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+                            pickSelectedExportTarget(ids);
+                        })
+                .show();
+    }
+
+    private void pickSelectedExportTarget(List<String> ids) {
+        if (getParentActivity() == null) return;
+        pendingExportKelivoIds = new ArrayList<>(ids);
+        try {
+            Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("application/zip");
+            i.putExtra(Intent.EXTRA_TITLE, "orioneko-selected-backup.zip");
+            startActivityForResult(i, REQ_KELIVO_EXPORT_SELECTED);
+        } catch (Throwable t) {
+            pendingExportKelivoIds = null;
+            showKelivoError(t.getMessage());
+        }
+    }
+
+    private void exportKelivo(Context ctx, Uri uri, List<String> onlyIds) {
         new Thread(() -> {
             String message;
             try {
-                OxKelivoExporter.Result r = OxKelivoExporter.exportTo(ctx, uri);
+                OxKelivoExporter.Result r = OxKelivoExporter.exportTo(ctx, uri, onlyIds);
                 StringBuilder sb = new StringBuilder(LocaleController.formatString(
                         "OxKelivoExportDone", R.string.OxKelivoExportDone,
                         r.assistants, r.conversations, r.messages, r.resources));
@@ -426,12 +509,24 @@ public class OxSettingsActivity extends BaseFragment {
 
     @Override
     public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
-        if (resultCode != android.app.Activity.RESULT_OK) return;
+        if (resultCode != android.app.Activity.RESULT_OK) {
+            pendingExportKelivoIds = null;
+            return;
+        }
         Uri uri = data == null ? null : data.getData();
         Context ctx = getParentActivity();
-        if (uri == null || ctx == null) return;
+        if (uri == null || ctx == null) {
+            pendingExportKelivoIds = null;
+            return;
+        }
         if (requestCode == REQ_KELIVO_EXPORT) {
-            exportKelivo(ctx, uri);
+            exportKelivo(ctx, uri, null);
+            return;
+        }
+        if (requestCode == REQ_KELIVO_EXPORT_SELECTED && pendingExportKelivoIds != null) {
+            List<String> ids = pendingExportKelivoIds;
+            pendingExportKelivoIds = null;
+            exportKelivo(ctx, uri, ids);
             return;
         }
         if (requestCode == REQ_KELIVO) {

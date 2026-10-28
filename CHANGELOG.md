@@ -4,6 +4,18 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.36.0 — 2026-10-28
+
+- Added “Export selected agents” in Ox settings: a native scrollable checkbox
+  list of non-built-in agents, then SAF creates `orioneko-selected-backup.zip`.
+- Only the checked ids are passed to the exporter, so no other agent, session or
+  resource is written. An empty selection shows a hint; cancelling SAF clears
+  the pending selection.
+- Verified with two test agents (Multi B with 2 messages; Single Export with 4
+  messages, avatar, image and notes.txt): the 6,697 B export contained exactly
+  2 sessions, 0 copilots and 3 resources, and re-importing restored both
+  conversations with their image and attachment.
+
 ## 0.35.0 — 2026-10-28
 
 - RikkaHub `Avatar.Image` avatars are now imported: the URL basename is matched
