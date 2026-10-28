@@ -459,7 +459,7 @@ public class OxAgentsActivity extends BaseFragment {
                     OxKelivoExporter.Result r = OxKelivoExporter.exportTo(
                             ctx, uri, java.util.Collections.singletonList(id));
                     msg = LocaleController.formatString("OxKelivoExportAgentDone",
-                            R.string.OxKelivoExportAgentDone, a.name, r.memories,
+                            R.string.OxKelivoExportAgentDone, a.name, r.memories, r.skills,
                             r.messages, r.resources);
                 } catch (Throwable t) {
                     msg = LocaleController.formatString("OxKelivoExportFailed",

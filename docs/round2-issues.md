@@ -476,3 +476,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：Agent 列表导入 8,285 B PNG 生成 `rikka_card_b303c8ed`（tgId 555000094），`avatar.png` sha256 `33f7346e…` 与源图一致，原生开场白正确；同卡 346 B JSON 再导入只更新同一目录、头像 hash 不变、无 `· 副本` 和重复消息；RikkaHub 行选择卡片得到指向 Agent 列表的错误提示；297 B 最小备份 zip 仍能导入 1 个离线助手。全程无本包 FATAL/ANR；删除测试 Agent 后 555000094/555000095 的 dialogs/messages 均为 0，Download 测试文件已清理。
 - 边界：同 0.45.0；Agent 列表卡片导入仍无独立预览对话框。
+
+## 0.46.0 Chatbox 技能导出/回导 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-93 | 0.46.0 QA | 0.43.2 只给 session 写 `orionekoAgentId`，chatless copilot 没写；回导 copilot 时被重新加 `kelivo_` 前缀，生成 `kelivo_...` 重复 Agent，技能关联也写到副本上 | 导出 copilot 也写 `orionekoAgentId`；导入端新增 `assistantId()`，优先采用该字段，缺失时才走历史 `kelivo_` 规则。技能关联改为先导入 `skills/` 再按实际成功的 id 恢复 | 已修复并设备验证 |
+| R2-94 | 0.46.0 功能 | Chatbox 导出不含 `SKILL.md` 与 Agent 的 `skill_ids`，回导后技能文件和关联都丢失 | 写入 `skills/<id>/SKILL.md` 与 `orionekoSkillIds`；全量导出带所有可见技能，选中导出只带被引用技能；上限 50/512KiB/8MiB；预览与结果新增关联计数 | 已实现并设备验证 |
+
+- 设备：自建 90 B 技能 + 1 个 session Agent + 1 个 copilot Agent，多选导出 1,762 B；zip 内技能 sha256 `6cf9bd70…` 与源一致，copilot/session 均含原 id 与技能关联，`apiKey`/`baseUrl`/`Authorization`/`sk-`/`Bearer`/`ox1:` 扫描 0 命中。删除技能并清空两个 `skill_ids` 后回导：结果“更新 1 / 恢复 2 个技能关联 / 导入技能 1”，两个原 Agent 目录与 tgId 不变、无 `kelivo_` 副本、技能 hash 一致；重复导入仍 2 个目录、同 hash。全程无 FATAL/ANR；删除测试 Agent/技能后 555000098/555000100 的 dialogs/messages 均为 0。
+- 边界：`skills/` 与私有字段为扩展，真实 Chatbox/Kelivo 未实测；只传 SKILL.md 正文；全量导出会带未引用技能；单 Agent 导出 Toast 未单独截图。

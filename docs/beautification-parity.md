@@ -29,7 +29,7 @@ requirements.
 | Named appearance presets | ToolPkg themes | custom themes | preset themes | **0.9.0** save/apply/delete; **0.25.2** rename with duplicate-name rejection; **0.27.0** preview a saved preset without applying it |
 | Theme import JSON | `.toolpkg` theme templates | CustomTheme JSON | CustomTheme JSON | **0.9.0** JSON; **0.10.0** preview; **0.14.0** Operit preference JSON (`values`) |
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
-| Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills, HTTP MCP and long-term memory; provider keys never imported |
+| Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; provider keys never imported |
 | SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0–0.45.1** PNG `tEXt`/`iTXt` + JSON via the agent-list entry, six persona sections, first message and PNG avatar, idempotent ids; no alternate greetings, character book, card export or real-client validation |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
@@ -943,6 +943,31 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: same as 0.45.0 (`zTXt`, alternate greetings, character books, tags,
   export and real-client validation are still missing).
 
+## 0.46.0 implementation — skills and skill links in Chatbox backups
+
+- Exports now write `skills/<id>/SKILL.md` into the Chatbox zip. Full exports
+  carry every visible skill; a selected-agent export carries only the skills
+  those agents reference, so sharing one agent does not leak the whole library.
+- Session and copilot objects carry `orionekoSkillIds`, restricted to skills
+  actually written in the same zip. Caps: 50 skills, 512 KiB each, 8 MiB total.
+- Copilots now also carry `orionekoAgentId`. Before this, a chatless copilot
+  roundtrip re-derived a `kelivo_…` id and created a duplicate agent even though
+  sessions already kept their identity since 0.43.2.
+- The importer restores skills first, then applies `skill_ids` only for ids that
+  imported successfully; preview and result report the number of linked agents.
+  External backups without the fields keep the historical behavior.
+- Device QA: a 90 B skill plus one session and one copilot agent exported to a
+  1,762 B zip; the skill SHA-256 matched (`6cf9bd70…`), both objects carried the
+  original id and skill link, and no API-key/provider strings appeared. After
+  deleting the skill and clearing both `skill_ids`, the import reported one
+  update, two restored links and one skill; both original agent directories and
+  tg ids survived, the skill hash matched, and a repeat import stayed
+  idempotent. Cleanup removed the test agents/skill and zeroed their
+  dialogs/messages; no app FATAL/ANR.
+- Limits: the `skills/` layout and private fields are OrionekoX extensions;
+  only SKILL.md bodies travel (no scripts/attachments); full exports include
+  unreferenced skills; real Chatbox/Kelivo clients were not tested.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -958,9 +983,9 @@ These confirm the feature directions rather than relying on guesses. Checked
    card export remain.
 3. Bidirectional export still lacks workspaces, themes, global/video
    backgrounds, MCP headers/OAuth and server selection, plus validation against
-   real external clients; agent identity and long-term memory now survive
-   self-roundtrip, but chatless copilot memory imports and external Chatbox
-   clients remain unverified.
+   real external clients; agent identity (including chatless copilots), skills
+   and their per-agent links, and long-term memory now survive self-roundtrip,
+   but external Chatbox clients remain unverified.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1
    confirmation/undo are deterministic and offline).
 5. Per-conversation theme inheritance still copies the parent’s text color; a

@@ -17,8 +17,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -36,6 +38,9 @@ public class OxKelivoExporter {
     private static final int MAX_RESOURCES = 64;
     private static final int MAX_MEMORY_CHARS = 64 * 1024;
     private static final int MAX_TOTAL_MEMORY_CHARS = 256 * 1024;
+    private static final int MAX_SKILLS = 50;
+    private static final int MAX_SKILL_BYTES = 512 * 1024;
+    private static final long MAX_TOTAL_SKILL_BYTES = 8L * 1024 * 1024;
 
     public static class Result {
         public int assistants;
@@ -43,6 +48,8 @@ public class OxKelivoExporter {
         public int messages;
         public int resources;
         public int memories;
+        public int skills;
+        public int skillLinks;
         public final List<String> notes = new ArrayList<>();
     }
 
@@ -88,6 +95,39 @@ public class OxKelivoExporter {
         int resourceIndex = 0;
         int memoryChars = 0;
 
+        Map<String, byte[]> skillBodies = new LinkedHashMap<>();
+        Set<String> exportedSkillIds = new HashSet<>();
+        Set<String> referencedSkills = new HashSet<>();
+        for (OxAgent a : agents) {
+            for (int i = 0; a.skillIds != null && i < a.skillIds.length(); i++) {
+                String raw = a.skillIds.optString(i, "");
+                if (!raw.trim().isEmpty()) referencedSkills.add(OxSkillStore.skillId(raw));
+            }
+        }
+        long skillBytes = 0;
+        for (OxSkillStore.Skill skill : OxSkillStore.list()) {
+            if (skillBodies.size() >= MAX_SKILLS) break;
+            if (skill == null || skill.file == null || !skill.file.isFile()) continue;
+            String rawId = skill.id != null && !skill.id.isEmpty() ? skill.id : skill.name;
+            String id = OxSkillStore.skillId(rawId);
+            if (id.isEmpty() || exportedSkillIds.contains(id)) continue;
+            if (only != null && !referencedSkills.contains(id)) continue;
+            if (skill.file.length() > MAX_SKILL_BYTES) {
+                result.notes.add("技能过大，已跳过 " + id);
+                continue;
+            }
+            byte[] body = readFile(skill.file);
+            if (body == null || body.length == 0) continue;
+            if (skillBytes + body.length > MAX_TOTAL_SKILL_BYTES) {
+                result.notes.add("技能总量超出上限，已跳过后续技能");
+                break;
+            }
+            exportedSkillIds.add(id);
+            skillBodies.put(id, body);
+            skillBytes += body.length;
+        }
+        result.skills = skillBodies.size();
+
         for (OxAgent a : agents) {
             List<OxChatEntry> chat;
             try {
@@ -119,6 +159,7 @@ public class OxKelivoExporter {
             }
             JSONObject copilot = new JSONObject();
             copilot.put("id", a.id);
+            copilot.put("orionekoAgentId", a.id);
             copilot.put("name", a.name == null ? a.id : a.name);
             copilot.put("prompt", a.agentsMd == null ? "" : a.agentsMd);
             copilot.put("chatModelProvider", "");
@@ -166,6 +207,7 @@ public class OxKelivoExporter {
                     }
                 }
                 if (!memory.isEmpty()) copilot.put("orionekoMemory", memory);
+                putSkillIds(copilot, a, exportedSkillIds, result);
                 copilots.add(copilot);
                 continue;
             }
@@ -178,6 +220,7 @@ public class OxKelivoExporter {
             session.put("threadName", a.name == null ? a.id : a.name);
             session.put("orionekoAgentId", a.id);
             if (!memory.isEmpty()) session.put("orionekoMemory", memory);
+            putSkillIds(session, a, exportedSkillIds, result);
             String bgPath = OxChatTheme.backgroundForDialog(a.tgId);
             if (bgPath.isEmpty()) bgPath = OxChatTheme.backgroundForAgent(a.tgId);
             if (!bgPath.isEmpty() && resources.size() < MAX_RESOURCES) {
@@ -353,6 +396,9 @@ public class OxKelivoExporter {
             for (Resource r : resources) {
                 put(zip, r.path, r.bytes);
             }
+            for (Map.Entry<String, byte[]> skill : skillBodies.entrySet()) {
+                put(zip, "skills/" + skill.getKey() + "/SKILL.md", skill.getValue());
+            }
             zip.finish();
         } finally {
             zip.close();
@@ -381,6 +427,25 @@ public class OxKelivoExporter {
                 .put("size", bytes.length)
                 .put("checksum", new JSONObject()
                         .put("algorithm", "sha256").put("value", sha256(bytes)));
+    }
+
+    /** Writes only skill ids that are actually present in this export, so a
+     *  restored agent never points at a missing SKILL.md. */
+    private static void putSkillIds(JSONObject target, OxAgent a,
+            Set<String> exportedSkillIds, Result result) throws Exception {
+        if (a.skillIds == null || a.skillIds.length() == 0 || exportedSkillIds.isEmpty()) return;
+        JSONArray ids = new JSONArray();
+        Set<String> seen = new HashSet<>();
+        for (int i = 0; i < a.skillIds.length(); i++) {
+            String raw = a.skillIds.optString(i, "");
+            if (raw.trim().isEmpty()) continue;
+            String id = OxSkillStore.skillId(raw);
+            if (exportedSkillIds.contains(id) && seen.add(id)) ids.put(id);
+        }
+        if (ids.length() > 0) {
+            target.put("orionekoSkillIds", ids);
+            result.skillLinks++;
+        }
     }
 
     private static Resource buildResource(String id, String key, String kind, String mime,

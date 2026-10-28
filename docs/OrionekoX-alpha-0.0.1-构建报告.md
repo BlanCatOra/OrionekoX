@@ -3468,6 +3468,36 @@ debug `dist/OrionekoX-0.45.1-debug-arm64-x64.apk`（sha256
 `8b6d9760270e5fcdda028f81c7ef42ec819db441eb587f717c04fb3386f4381d`）。
 详见 `docs/qa-0.45.1.md`。
 
+## 5.168 alpha 0.46.0 —— Chatbox 备份携带技能与关联（2026-10-28 13:47–14:07）
+
+- Chatbox 导出此前不包含技能库，也不保存 Agent 的 `skill_ids`；回导后
+  技能文件与关联都会丢失。
+- 导出器写入 `skills/<id>/SKILL.md`，并在 session/copilot 写
+  `orionekoSkillIds`；全量导出携带所有可见技能，选中导出只携带被选中
+  Agent 引用的技能。上限 50 个、单个 512 KiB、合计 8 MiB。
+- 导入器先导入技能，再按 `orionekoSkillIds` 恢复 `OxAgent.skillIds`，
+  只保留实际导入成功的 id；预览/结果新增关联计数。
+- 同时修复 copilot 身份：0.43.2 只给 session 写 `orionekoAgentId`，导致
+  copilot 回导被加 `kelivo_` 前缀并生成副本。导出器现在也给 copilot
+  写该字段，导入器优先采用；无字段的外部备份保持旧规则。
+- 设备：自建 90 B 技能 + 1 个 session Agent + 1 个 copilot Agent 多选
+  导出 1,762 B，zip 内技能 sha256 `6cf9bd70…` 与源一致，copilot/session
+  均含 id 与技能关联，敏感字段扫描 0 命中。删除技能并把两个 Agent 的
+  `skill_ids` 清空后回导：结果“更新 1 / 恢复 2 个技能关联 / 导入技能 1”，
+  两个原 Agent 目录和 tgId 不变、无 `kelivo_` 副本、技能 hash 一致；
+  重复导入仍 2 个目录、同 hash。全程无 FATAL/ANR；删除测试 Agent/技能后
+  对应 dialogs/messages 均为 0。
+- 边界：`skills/` 与私有字段为扩展，真实 Chatbox/Kelivo 未实测；只导出
+  SKILL.md 正文，不含脚本/附件；全量导出会带所有可见技能。
+- 版本规则：新增用户可见的备份内容与恢复行为，按 minor 从 0.45.1 →
+  0.46.0，versionCode 4609。
+
+**产物**：`dist/OrionekoX-0.46.0-alpha-arm64-x64.apk`（versionCode 4609，
+sha256 `ffb1167497905baac91081a67266f6e3f86bea0cb5563b29a7f8dd28370f402e`）；
+debug `dist/OrionekoX-0.46.0-debug-arm64-x64.apk`（sha256
+`df097cf624ec220dcbac0d8e453c02e13e54c95848de478a1ab7739a6c768530`）。
+详见 `docs/qa-0.46.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
