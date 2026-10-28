@@ -101,6 +101,7 @@ public class OxAgentStore {
             JSONObject o = new JSONObject(readFile(f));
             OxAgent a = OxAgent.fromJson(o);
             a.apiKey = OxVault.unwrap(a.apiKey);
+            a.harnessToken = OxVault.unwrap(a.harnessToken);
             return a;
         } catch (Exception e) {
             FileLog.e(TAG, e);
@@ -120,8 +121,17 @@ public class OxAgentStore {
                     a.apiKey = wrapped;
                 }
             }
+            String liveHarness = a.harnessToken;
+            if (liveHarness != null && !liveHarness.isEmpty()
+                    && !OxVault.isWrapped(liveHarness)) {
+                String wrapped = OxVault.wrap(liveHarness);
+                if (wrapped != null) {
+                    a.harnessToken = wrapped;
+                }
+            }
             writeFile(new File(dir, "agent.json"), a.toJson().toString());
             a.apiKey = live;
+            a.harnessToken = liveHarness;
             writeFile(new File(dir, "AGENTS.md"), a.agentsMd == null ? "" : a.agentsMd);
         } catch (Exception e) {
             FileLog.e(TAG, e);

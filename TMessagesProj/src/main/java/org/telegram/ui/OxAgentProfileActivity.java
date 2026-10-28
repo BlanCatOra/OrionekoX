@@ -31,6 +31,7 @@ import org.telegram.ox.OxAgent;
 import org.telegram.ox.OxAgentStore;
 import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxHarnessAdapter;
+import org.telegram.ox.OxHarnessTransport;
 import org.telegram.ox.OxMode;
 import org.telegram.ox.OxModelHub;
 import org.telegram.ox.OxProviderPreset;
@@ -85,6 +86,12 @@ public class OxAgentProfileActivity extends BaseFragment {
     private TextSettingsCell harnessRow;
     private EditTextCell harnessSessionCell;
     private EditTextCell harnessCompactCell;
+    private EditTextCell harnessEndpointCell;
+    private EditTextCell harnessTokenCell;
+    private EditTextCell harnessCwdCell;
+    private EditTextCell harnessModelCell;
+    private EditTextCell harnessAgentCell;
+    private TextSettingsCell harnessTestRow;
     private String harness = "api";
     private EditTextCell presenceCell;
     private EditTextCell frequencyCell;
@@ -367,7 +374,47 @@ public class OxAgentProfileActivity extends BaseFragment {
         harnessCompactCell = addEditCell(context, harnessGroup,
                 LocaleController.getString(R.string.OxAgentHarnessCompactHint),
                 agent.harnessCompactCommand, true, false);
+        harnessGroup.addView(sectionLabel(context,
+                        LocaleController.getString(R.string.OxAgentHarnessEndpoint)),
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        harnessEndpointCell = addEditCell(context, harnessGroup,
+                LocaleController.getString(R.string.OxAgentHarnessEndpointHint),
+                agent.harnessEndpoint, false, true);
+        harnessGroup.addView(sectionLabel(context,
+                        LocaleController.getString(R.string.OxAgentHarnessToken)),
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        harnessTokenCell = addEditCell(context, harnessGroup,
+                LocaleController.getString(R.string.OxAgentHarnessTokenHint),
+                agent.harnessToken, false, true);
+        harnessTokenCell.editText.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        harnessGroup.addView(sectionLabel(context,
+                        LocaleController.getString(R.string.OxAgentHarnessCwd)),
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        harnessCwdCell = addEditCell(context, harnessGroup,
+                LocaleController.getString(R.string.OxAgentHarnessCwdHint),
+                agent.harnessCwd, false, true);
+        harnessGroup.addView(sectionLabel(context,
+                        LocaleController.getString(R.string.OxAgentHarnessModel)),
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        harnessModelCell = addEditCell(context, harnessGroup,
+                LocaleController.getString(R.string.OxAgentHarnessModelHint),
+                agent.harnessModel, false, true);
+        harnessGroup.addView(sectionLabel(context,
+                        LocaleController.getString(R.string.OxAgentHarnessAgent)),
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        harnessAgentCell = addEditCell(context, harnessGroup,
+                LocaleController.getString(R.string.OxAgentHarnessAgentHint),
+                agent.harnessAgent, false, false);
+        harnessTestRow = new TextSettingsCell(context);
+        harnessTestRow.setTextAndValue(LocaleController.getString(R.string.OxAgentHarnessTest),
+                LocaleController.getString(R.string.OxAgentHarnessTestIdle), false);
+        harnessTestRow.setTextValueColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        harnessTestRow.setOnClickListener(v -> testHarnessConnection());
+        harnessGroup.addView(harnessTestRow,
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         content.addView(harnessGroup);
+        updateHarnessVisibility();
 
         LinearLayout advancedHeaderCard = section(context);
         TextSettingsCell advancedToggle = new TextSettingsCell(context);
@@ -606,12 +653,56 @@ public class OxAgentProfileActivity extends BaseFragment {
         new AlertDialog.Builder(getParentActivity())
                 .setTitle(LocaleController.getString(R.string.OxAgentHarness))
                 .setItems(labels, (d, which) -> {
-                    harness = ids.get(which);
+                    String next = ids.get(which);
+                    if (!next.equals(harness)) {
+                        // A native session is harness-specific: reusing an
+                        // OpenClaw bridge session for CommandCode (or vice
+                        // versa) would resume the wrong transcript.
+                        harness = next;
+                        if (harnessSessionCell != null) harnessSessionCell.setText("");
+                    }
                     harnessRow.setTextAndValue(LocaleController.getString(R.string.OxAgentHarness),
                             OxHarnessAdapter.label(harness), false);
+                    updateHarnessVisibility();
                 })
                 .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
                 .show();
+    }
+
+    private void updateHarnessVisibility() {
+        boolean api = OxHarnessAdapter.API.equals(harness);
+        boolean bridge = OxHarnessTransport.supports(harness);
+        int sessionVisible = api ? View.GONE : View.VISIBLE;
+        int bridgeVisible = bridge ? View.VISIBLE : View.GONE;
+        if (harnessSessionCell != null) harnessSessionCell.setVisibility(sessionVisible);
+        if (harnessCompactCell != null) {
+            harnessCompactCell.setVisibility(api || bridge ? View.GONE : View.VISIBLE);
+        }
+        if (harnessEndpointCell != null) harnessEndpointCell.setVisibility(bridgeVisible);
+        if (harnessTokenCell != null) harnessTokenCell.setVisibility(bridgeVisible);
+        if (harnessCwdCell != null) harnessCwdCell.setVisibility(bridgeVisible);
+        if (harnessModelCell != null) harnessModelCell.setVisibility(bridgeVisible);
+        if (harnessAgentCell != null) harnessAgentCell.setVisibility(bridgeVisible);
+        if (harnessTestRow != null) harnessTestRow.setVisibility(bridgeVisible);
+    }
+
+    private void testHarnessConnection() {
+        if (harnessTestRow == null) return;
+        harnessTestRow.setTextAndValue(LocaleController.getString(R.string.OxAgentHarnessTest),
+                LocaleController.getString(R.string.OxAgentHarnessTesting), false);
+        harnessTestRow.setTextValueColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        OxHarnessTransport.health(buildFromFields(), (ok, message) ->
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (harnessTestRow == null || getParentActivity() == null) return;
+                    harnessTestRow.setTextAndValue(
+                            LocaleController.getString(R.string.OxAgentHarnessTest),
+                            ok ? LocaleController.getString(R.string.OxAgentHarnessTestOk)
+                               : LocaleController.getString(R.string.OxAgentHarnessTestFail),
+                            false);
+                    harnessTestRow.setTextValueColor(getThemedColor(ok
+                            ? Theme.key_chats_actionBackground : Theme.key_text_RedRegular));
+                    Toast.makeText(getParentActivity(), message, Toast.LENGTH_LONG).show();
+                }));
     }
 
     private void showProviderPicker() {
@@ -928,6 +1019,11 @@ public class OxAgentProfileActivity extends BaseFragment {
         a.harness = harness;
         a.harnessSession = harnessSessionCell == null ? "" : harnessSessionCell.getText().toString().trim();
         a.harnessCompactCommand = harnessCompactCell == null ? "" : harnessCompactCell.getText().toString().trim();
+        a.harnessEndpoint = harnessEndpointCell == null ? "" : harnessEndpointCell.getText().toString().trim();
+        a.harnessToken = harnessTokenCell == null ? "" : harnessTokenCell.getText().toString().trim();
+        a.harnessCwd = harnessCwdCell == null ? "" : harnessCwdCell.getText().toString().trim();
+        a.harnessModel = harnessModelCell == null ? "" : harnessModelCell.getText().toString().trim();
+        a.harnessAgent = harnessAgentCell == null ? "" : harnessAgentCell.getText().toString().trim();
         a.presencePenalty = parseDouble(presenceCell, 0, 0, 2);
         a.frequencyPenalty = parseDouble(frequencyCell, 0, 0, 2);
         a.topK = parseInt(topKCell, 0, 1000);

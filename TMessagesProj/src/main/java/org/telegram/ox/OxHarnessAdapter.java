@@ -63,15 +63,15 @@ public class OxHarnessAdapter {
         add(new Capabilities(API, "API 直连", true, false, false,
                 "OpenAI tools", true, false, "本地 compact 与记忆库；图片以 inline base64 发送"));
         add(new Capabilities(OXLINUX, "OxLinux", false, true, true,
-                "harness 自身", true, true, "经容器执行 compact 命令；会话/PTY 仍需常驻"));
+                "harness 自身", true, true, "容器内常驻 /bin/sh 会话；compact 模板由用户配置"));
         add(new Capabilities(CLAUDE, "Claude Code", false, true, true,
-                "MCP / ACP", true, true, "有 /compact、--autocompact；非交互调用需会话桥"));
+                "MCP / ACP", true, true, "桥接用 print-session；支持 /compact，Provider 可能拒绝鉴权"));
         add(new Capabilities(OPENCODE, "OpenCode", false, true, true,
-                "MCP / OpenAPI", true, true, "有 session/run/api；compact 端点待实测"));
+                "MCP / OpenAPI", true, true, "bridging run --session；compact 走 HTTP session API（已验证）"));
         add(new Capabilities(COMMANDCODE, "CommandCode", false, true, true,
-                "MCP / ACP", true, true, "有 /compact、-p --resume、NDJSON、Vision"));
+                "MCP / ACP", true, true, "NDJSON + --resume；原生 compact 走交互 PTY（已验证）"));
         add(new Capabilities(OPENCLAW, "OpenClaw", false, true, true,
-                "Gateway / ACP", true, true, "Gateway sessions/agent；compact 接口待实测"));
+                "Gateway / ACP", true, true, "Gateway session + sessions.compact（已验证）"));
         add(new Capabilities(HERMES, "Hermes", false, false, false,
                 "待确认", false, true, "需自定义 compact 命令"));
         add(new Capabilities(CODEBUDDY, "CodeBuddy", false, false, false,
@@ -108,11 +108,10 @@ public class OxHarnessAdapter {
         return CAPS.keySet();
     }
 
-    /** Default templates are only filled where the CLI documents the command;
-     *  OpenCode/OpenClaw/OxLinux keep an empty default until verified. */
+    /** No default compact template is shipped. The four bridged harnesses run
+     *  their own compact through the bridge; OxLinux/generic users must enter a
+     *  command that they verified on their device. */
     public static String defaultCompactCommand(String harness) {
-        if (CLAUDE.equals(harness)) return "claude -p \"/compact\" --resume {session}";
-        if (COMMANDCODE.equals(harness)) return "commandcode -p \"/compact\" --resume {session}";
         return "";
     }
 
@@ -132,6 +131,12 @@ public class OxHarnessAdapter {
 
     public static String requestCompact(OxAgent agent) {
         if (agent == null || isLocalApi(agent)) return "local-compact";
+        // A configured bridge owns the native compact for its four harnesses;
+        // no local command template is involved.
+        if (OxHarnessTransport.supports(agent.harness)
+                && OxHarnessTransport.isConfigured(agent)) {
+            return OxHarnessTransport.compact(agent);
+        }
         String cmd = agent.harnessCompactCommand == null
                 ? "" : agent.harnessCompactCommand.trim();
         if (cmd.isEmpty()) cmd = defaultCompactCommand(agent.harness);
@@ -139,7 +144,7 @@ public class OxHarnessAdapter {
         String session = agent.harnessSession == null ? "" : agent.harnessSession;
         cmd = cmd.replace("{session}", shellQuote(session)).replace("{cwd}", ".");
         if (OXLINUX.equals(agent.harness)) {
-            return OxContainerManager.run(cmd, 120_000);
+            return OxContainerManager.runPersistent(cmd, 120_000);
         }
         return "transport-not-connected";
     }

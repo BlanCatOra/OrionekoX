@@ -4,6 +4,31 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.57.0 — 2026-10-28
+
+- Adds `tools/ox-harness-bridge.py`, an authenticated HTTP/NDJSON bridge that
+  runs real Claude Code, CommandCode, OpenCode and OpenClaw CLIs on the host
+  with their own native sessions. The Android app talks to it through
+  `OxHarnessTransport`; external-harness replies no longer fall back to the
+  local model or echo mode.
+- OpenClaw, CommandCode and OpenCode are verified through turn, resume,
+  harness-native compact and a post-compact turn. Claude Code's transport runs,
+  but the provider returned HTTP 403 for this account, so it is not claimed as
+  a working model path.
+- Normalizes text, tool calls/results, status, attachments and errors into one
+  event schema; tool activity is visible in the chat. Adds bridge URL, token
+  (Vault-wrapped), working directory, model and OpenClaw-agent fields plus a
+  native connection test.
+- Fixes harness agents being misclassified as echo mode, compact being skipped
+  when local memory is disabled, bridge compact being blocked by an empty
+  command-template check, a worker-thread UI update, and repeated rootfs
+  downloads.
+- OxLinux now uses one persistent `proot` shell with a sentinel channel, but
+  Android denies execution of app-data binaries (`execve ... Permission
+  denied`); this is documented as a platform blocker, not working support.
+- 13 bridge protocol/parser tests pass. The bridge has no TLS; use loopback or
+  a trusted LAN with the bearer token.
+
 ## 0.56.0 — 2026-10-28
 
 - Adds `OxHarnessAdapter`, a capability registry and ownership router for API

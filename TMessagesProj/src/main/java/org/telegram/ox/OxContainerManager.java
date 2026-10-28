@@ -5,11 +5,15 @@ import android.os.SystemClock;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -64,7 +68,19 @@ public class OxContainerManager {
     }
 
     public static boolean isRootfsReady() {
-        return new File(rootfsDir(), "bin/sh").exists();
+        return shellPath() != null;
+    }
+
+    /** Some Android SELinux policies deny stat/read on symlinks inside app data,
+     *  so check the real dash/bash binaries too instead of only bin/sh. */
+    private static String shellPath() {
+        File dir = rootfsDir();
+        String[] candidates = {"/bin/sh", "/usr/bin/sh", "/bin/dash",
+                "/usr/bin/dash", "/bin/bash", "/usr/bin/bash"};
+        for (String rel : candidates) {
+            if (new File(dir, rel).exists()) return rel;
+        }
+        return null;
     }
 
     /** Diagnostics: file counts + key binaries in the extracted rootfs (no proot involved). */
@@ -103,6 +119,13 @@ public class OxContainerManager {
             if (state == STATE_READY && isRootfsReady()) {
                 return "ready";
             }
+            // A restored/copied rootfs is already usable; do not force a
+            // download just because this process has not unpacked it itself.
+            if (isRootfsReady() && isProotAvailable()) {
+                state = STATE_READY;
+                FileLog.d("OxContainer using existing rootfs shell=" + shellPath());
+                return "ready";
+            }
             state = STATE_INSTALLING;
             errorText = null;
             try {
@@ -125,7 +148,7 @@ public class OxContainerManager {
                 }
                 tarFile.delete();
                 if (!isRootfsReady()) {
-                    throw new IllegalStateException("rootfs unpacked but /bin/sh missing");
+                    throw new IllegalStateException("rootfs unpacked but no shell binary");
                 }
                 state = STATE_READY;
                 return "ready";
@@ -178,9 +201,13 @@ public class OxContainerManager {
             }
             File proot = prootBinary();
             File dir = rootfsDir();
+            String shell = shellPath();
+            if (shell == null) {
+                throw new IllegalStateException("rootfs has no shell binary");
+            }
             ProcessBuilder pb = new ProcessBuilder(
                     proot.getAbsolutePath(), "-r", dir.getAbsolutePath(), "-0",
-                    "/bin/sh", "-c",
+                    shell, "-c",
                     "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " + command);
             pb.redirectErrorStream(true);
             File tmp = new File(filesDir(), "proot-tmp");
@@ -218,6 +245,181 @@ public class OxContainerManager {
         } catch (Throwable t) {
             FileLog.e("OxContainer", t);
             return "container error: " + (t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage());
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Persistent OxLinux shell: one proot process per app process. Commands
+    // are written as a script into rootfs /tmp and executed by the same
+    // /bin/sh, so shell state, cwd and background jobs survive between
+    // calls. This replaces one-shot `proot ... -c` for harness compact.
+    // ------------------------------------------------------------------
+
+    private static final Object PERSISTENT_LOCK = new Object();
+    private static PersistentShell persistentShell;
+
+    public static String runPersistent(String command, long timeoutMs) {
+        synchronized (PERSISTENT_LOCK) {
+            try {
+                String ensure = ensureInstalled();
+                if (!"ready".equals(ensure)) {
+                    return "container error: " + ensure;
+                }
+                if (persistentShell == null || !persistentShell.isAlive()) {
+                    if (persistentShell != null) persistentShell.close();
+                    persistentShell = new PersistentShell();
+                }
+                return persistentShell.run(command, timeoutMs);
+            } catch (Throwable t) {
+                FileLog.e("OxContainer", t);
+                if (persistentShell != null) {
+                    persistentShell.close();
+                    persistentShell = null;
+                }
+                return "container error: "
+                        + (t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage());
+            }
+        }
+    }
+
+    public static void resetPersistent() {
+        synchronized (PERSISTENT_LOCK) {
+            if (persistentShell != null) {
+                persistentShell.close();
+                persistentShell = null;
+            }
+        }
+    }
+
+    private static final class PersistentShell {
+        private final Process process;
+        private final BufferedInputStream in;
+        private final BufferedOutputStream out;
+        private final Object lock = new Object();
+        private final StringBuilder buffer = new StringBuilder();
+        private final Random random = new Random();
+        private volatile boolean alive = true;
+
+        PersistentShell() throws Exception {
+            File proot = prootBinary();
+            File dir = rootfsDir();
+            String shell = shellPath();
+            if (shell == null) {
+                throw new IllegalStateException("rootfs has no shell binary");
+            }
+            ProcessBuilder pb = new ProcessBuilder(
+                    proot.getAbsolutePath(), "-r", dir.getAbsolutePath(), "-0", shell);
+            pb.redirectErrorStream(true);
+            File tmp = new File(filesDir(), "proot-tmp");
+            tmp.mkdirs();
+            pb.environment().put("PROOT_TMP_DIR", tmp.getAbsolutePath());
+            pb.environment().put("PROOT_NO_SECCOMP", "1");
+            pb.environment().put("LD_LIBRARY_PATH",
+                    ApplicationLoader.applicationContext.getApplicationInfo().nativeLibraryDir);
+            pb.environment().put("HOME", "/root");
+            pb.environment().put("PATH",
+                    "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
+            pb.environment().put("TERM", "xterm");
+            process = pb.start();
+            in = new BufferedInputStream(process.getInputStream());
+            out = new BufferedOutputStream(process.getOutputStream());
+            Thread reader = new Thread(this::readLoop, "ox-container-shell");
+            reader.setDaemon(true);
+            reader.start();
+            File rootTmp = new File(dir, "tmp");
+            rootTmp.mkdirs();
+        }
+
+        boolean isAlive() {
+            return alive && process.isAlive();
+        }
+
+        private void readLoop() {
+            byte[] buf = new byte[8192];
+            try {
+                int n;
+                while ((n = in.read(buf)) > 0) {
+                    synchronized (lock) {
+                        buffer.append(new String(buf, 0, n, StandardCharsets.UTF_8));
+                        if (buffer.length() > 131072) {
+                            buffer.delete(0, buffer.length() - 65536);
+                        }
+                        lock.notifyAll();
+                    }
+                }
+            } catch (Throwable t) {
+                FileLog.e("OxContainer shell read", t);
+            } finally {
+                alive = false;
+                synchronized (lock) {
+                    lock.notifyAll();
+                }
+            }
+        }
+
+        String run(String command, long timeoutMs) throws Exception {
+            if (!isAlive()) return "container error: persistent shell is not running";
+            String nonce = Long.toHexString(random.nextLong());
+            String marker = "__OX_DONE_" + nonce + "__";
+            File rootfs = rootfsDir();
+            File script = new File(new File(rootfs, "tmp"), "ox-persistent-" + nonce + ".sh");
+            try (FileOutputStream fos = new FileOutputStream(script)) {
+                String body = "#!/bin/sh\n" + (command == null ? "" : command) + "\n";
+                fos.write(body.getBytes(StandardCharsets.UTF_8));
+            }
+            try {
+                synchronized (lock) {
+                    buffer.setLength(0);
+                    String header = ". /tmp/" + script.getName() + "\n"
+                            + "printf '\\n" + marker + "%d\\n' $?\n";
+                    out.write(header.getBytes(StandardCharsets.UTF_8));
+                    out.flush();
+                    long deadline = SystemClock.elapsedRealtime() + Math.max(1000, timeoutMs);
+                    while (true) {
+                        int idx = buffer.indexOf(marker);
+                        if (idx >= 0) {
+                            String output = buffer.substring(0, idx);
+                            int lineEnd = buffer.indexOf("\n", idx + marker.length());
+                            if (lineEnd < 0) {
+                                long remain = deadline - SystemClock.elapsedRealtime();
+                                if (remain <= 0) {
+                                    close();
+                                    return output.trim() + "\n(timeout)";
+                                }
+                                lock.wait(Math.min(remain, 100));
+                                continue;
+                            }
+                            String exitText = buffer.substring(idx + marker.length(), lineEnd).trim();
+                            buffer.delete(0, lineEnd + 1);
+                            int exit = -999;
+                            try { exit = Integer.parseInt(exitText); } catch (Throwable ignore) {}
+                            String text = output.trim();
+                            return text.isEmpty() ? "(no output, exit=" + exit + ")" : text;
+                        }
+                        if (!process.isAlive()) {
+                            String text = buffer.toString().trim();
+                            return (text.isEmpty() ? "(no output)" : text)
+                                    + "\n(session exited)";
+                        }
+                        long remain = deadline - SystemClock.elapsedRealtime();
+                        if (remain <= 0) {
+                            close();
+                            String text = buffer.toString().trim();
+                            return (text.isEmpty() ? "(no output)" : text) + "\n(timeout)";
+                        }
+                        lock.wait(Math.min(remain, 200));
+                    }
+                }
+            } finally {
+                script.delete();
+            }
+        }
+
+        void close() {
+            alive = false;
+            try { out.close(); } catch (Throwable ignore) {}
+            try { in.close(); } catch (Throwable ignore) {}
+            process.destroy();
         }
     }
 }

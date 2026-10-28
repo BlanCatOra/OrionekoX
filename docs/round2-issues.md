@@ -589,3 +589,25 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 - 设备：`qa_harness_0560`（tgId 555000124，harness=claude，60 条历史，本地 mock）。发送 `hello` 后抓包 22 条消息，`has_compression`/`has_digest`/`has_recall` 均为 false，system 尾部为“# 外部 Harness…由「Claude Code」管理，本地不注入压缩摘要或记忆库。”，该 Agent 记忆库行数 0；设置页与 12 项选择器截图已存档。无本包 FATAL/ANR；测试 Agent/记忆行/chats 清零，代理与无障碍恢复，未执行 `pm clear`。
 - 边界：0.56.0 只是路由/隔离基础，不等于所有 Harness 已接通。Claude/OpenCode/CommandCode/OpenClaw 无 SSH/ACP/Gateway/PTY 传输层，默认 compact 模板未在真实会话验证；Hermes/CodeBuddy/DSH/Pi 本机未安装；外部 Harness 的工具协议、多模态、非文本事件与本地记忆镜像均未实现；本地最近 20 条窗口仍在。能力矩阵见 `docs/harness-adapters.md`。
 - 边界：TextRank 是离线近似，不是 LLMLingua-2 语义 token 压缩；token 估算非精确 tokenizer；摘要预算 300 tokens；无 70% 预警阶段；外部 Harness 不能使用本 compact，需下一轮 HarnessAdapter 路由。
+
+## 0.57.0 真实 Harness 传输 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-117 | 0.57.0 功能 | 0.56.0 只有 Harness 能力表与路由；Claude Code/CommandCode/OpenCode/OpenClaw 没有可用传输，OxLinux 也只有一次性 `proot -c`，无法验证各自 compact/resume | 新增电脑端认证桥接（HTTP+NDJSON）与四个真实 adapter；App 新增 `OxHarnessTransport`，外部 Harness 回合不再走本地模型；OpenClaw 用 Gateway session + `sessions compact`，CommandCode 用 NDJSON `--resume` + 交互 PTY compact，OpenCode 用 `run --session` + session compact API，Claude 用 print session + `/compact`；OxLinux 改为常驻 proot shell | 已实现；OpenClaw/CommandCode/OpenCode 真实验证；Claude 传输验证但 Provider 403；OxLinux 受 Android exec 限制 |
+| R2-118 | 0.57.0 QA | 接入后外部 Harness 因 `base_url` 为空被当回声；`memory_mode=off` 使 `maybeCompact` 不执行；桥接 compact 被空模板提前拦截；Test health 在 worker 线程改 View；重装后 rootfs 仍重复下载 | 外部 Harness 永不进入 echo；compact 判定移到本地记忆开关之前；桥接 compact 先于模板检查并移除未验证默认模板；health 回调切主线程；复用已解包 rootfs 并识别 `/usr/bin/dash` 等真实 shell | 已修复并设备验证 |
+
+- 设备：debug 0.57.0（5709）的 `bridge_test_570`（tgId 555000012）通过
+  `10.0.2.2:8765` 连续完成 5 轮 OpenClaw 回复，原 token 在 restart/compact
+  后仍保持；历史超过阈值后触发
+  `「OpenClaw」原生压缩完成`（`ok=True ms=7837`），同轮回复正常。资料页
+  Test 显示 `Connected`，保存包装后的 token 重启仍可连接。
+- 真实 CLI：OpenClaw/CommandCode/OpenCode 的 turn1→turn2(resume)→compact→
+  turn3 分别返回 `BRIDGE-OCL-731`/`BRIDGE-CC-731`/`BRIDGE-OC-731`；
+  Claude 返回 `403 Request not allowed`，compact 命令返回
+  `Not enough messages to compact.`。13 个桥接测试通过。
+- 边界：Claude 账号被 Provider 拒绝，不宣称支持；OpenClaw 无 token 流和
+  工具结果；附件是路径交接，OpenCode 原生 `--file`；桥接无 TLS；
+  OxLinux 常驻 shell 被 Android `execve` 策略拒绝；外部记忆镜像、按
+  Harness 阈值、Harness 自身压缩状态读取仍未实现。测试 Agent/tgId 的
+  dialogs/messages 清理为 0，代理与无障碍保持，未 `pm clear`。

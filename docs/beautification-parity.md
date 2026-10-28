@@ -1369,9 +1369,10 @@ These confirm the feature directions rather than relying on guesses. Checked
    fact-checking of model-distilled memories, migration of existing memory.txt,
    per-group scoping and a recall@k/MRR benchmark on real conversations.
    Abstractive summaries and atomic-fact distillation now exist (0.54.0).
-8. Harness adapters next (0.56.0 is routing only): real SSH/ACP/Gateway or
-   persistent-PTY transports, verified compact/resume for Claude Code,
-   CommandCode, OpenCode and OpenClaw, configurable adapters for
-   Hermes/CodeBuddy/DSH/Pi, per-harness thresholds, tool-schema normalization
-   and repair, multimodal/non-text session messages, and external memory
-   mirroring with ownership handoff.
+8. Harness adapters: 0.57.0 adds a host bridge with verified compact/resume
+   for OpenClaw, CommandCode and OpenCode; Claude Code's transport runs but
+   its provider returns 403, and OxLinux is blocked by Android app-data exec
+   policy. Still open: ACP/native transports, Hermes/CodeBuddy/DSH/Pi,
+   per-harness thresholds and harness-reported compaction state, full
+   tool-schema repair, native multimodal/non-text messages, and external
+   memory mirroring with ownership handoff.

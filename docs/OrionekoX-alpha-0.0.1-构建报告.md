@@ -3892,6 +3892,45 @@ debug `dist/OrionekoX-0.56.0-debug-arm64-x64.apk`（sha256
 `8a1dd45890bc51bfe34189a91b468477593f0733f0e27a3a0a7936b7f97b3673`）。
 详见 `docs/qa-0.56.0.md`。
 
+## 5.179 alpha 0.57.0 —— 真实外部 Harness 传输：桥接、原生 compact、事件归一化（2026-10-28 20:08–20:57）
+
+- 0.56.0 只有所有权路由，没有传输层；在 Android 进程内也无法直接启动
+  Claude Code/CommandCode/OpenCode/OpenClaw。新增电脑端
+  `tools/ox-harness-bridge.py`：认证 HTTP + NDJSON，运行真实 CLI 与各自
+  原生会话，App 通过 `OxHarnessTransport` 消费统一事件。
+- 四个 adapter：Claude `-p --output-format stream-json` +
+  `--session-id/--resume`；CommandCode `-p --output-format json` +
+  `--resume` + 交互 PTY `/compact`；OpenCode `run --format json --session`
+  + 私有 `serve` 的 session compact API；OpenClaw Gateway
+  `agent --session-id --json` + `sessions compact`。
+- 真实验证：OpenClaw/CommandCode/OpenCode 均完成两轮 resume、原生
+  compact、compact 后第三轮仍能答出原 token（`BRIDGE-OCL-731`、
+  `BRIDGE-CC-731`、`BRIDGE-OC-731`）。Claude 传输可运行，但 Provider
+  返回 403，不能宣称可用。
+- 事件归一化：text、tool_call、tool_result、status、attachment、error、
+  done；App 显示工具调用/结果、重试状态与附件 URL，错误用 Harness 自己
+  的文本结束回合，不伪造成功。
+- 资料页新增 Bridge URL、Bridge token（AES-GCM/Keystore 包装）、工作
+  目录、Harness 模型、OpenClaw Agent、Test harness bridge；断开时明确
+  显示 `transport-not-connected`，不回退 API/回声。修复了 echo 误判、
+  `memory_mode=off` 跳过 compact、桥接 compact 被模板检查拦截、健康检查
+  UI 线程违规、rootfs 重复下载等问题。
+- OxLinux：`runPersistent` 已用常驻 proot shell + 脚本/哨兵通道替代一次性
+  命令，但真机错误为 `proot error: execve("/usr/bin/dash"): Permission
+  denied`（Android 禁止执行 app-data 二进制），只可作为已实现的受限路径，
+  不得列为可用。
+- 测试：桥接 13 个单元/HTTP 测试通过；debug 包上 OpenClaw 端到端回复、
+  resume、原生 compact（`ok=True ms=7837`）、Vault token 往返与
+  `Connected` UI 均验证；测试 Agent/tgId 清理为 0，代理/无障碍保持。
+- 版本规则：新增真实传输与用户可见配置，按 minor 从 0.56.0 →
+  **0.57.0**（5709），patch 清零。
+
+**产物**：`dist/OrionekoX-0.57.0-alpha-arm64-x64.apk`（versionCode 5709，
+sha256 `64f9cd0f787741187e4895c5c8df4193a2b43ff19fa75e6d6e5a6c513b6df678`）；
+debug `dist/OrionekoX-0.57.0-debug-arm64-x64.apk`（sha256
+`e3af72cf5e109752207e5c799672a9bef3421215f346e2989180bd4ff0c61657`）。
+详见 `docs/qa-0.57.0.md` 与 `docs/harness-adapters.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
