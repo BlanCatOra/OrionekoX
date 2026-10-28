@@ -1397,8 +1397,20 @@ These confirm the feature directions rather than relying on guesses. Checked
    force-stop restart), per-agent attribution on group replies
    (OxChatEntry.sender rendered as "Name · time" meta) and targeted
    "Reply <agent>" from the long-press menu (forces that member's turn).
-   Still open: avatar editing on an existing local group, video/GIF/file
-   attachments, chat search, settings, agent editing, quoted semantics for
-   targeted replies, tablet layout, dark variant,
-   reduced-motion/accessibility sweep, token-level streaming. It is not yet
-   a complete replacement for Telegram UI.
+   0.65.0 extends avatars to existing groups (offline edit with a
+   millis+chatId photo id and a Remove-photo dialog, both verified across
+   force-stop restarts), fixes the 0.64 targeted-reply dispatch bug (the
+   forced path never fired because the reply target was cleared before
+   dispatch; corrected and re-verified with the groupReply log), adds quote
+   semantics for targeted replies (snapshot fields + prompt prefix + muted
+   quote line on the bubble), and lands the first seven items of the third
+   visual review: unified image+caption card, 0.6-viewport image height cap
+   with center-crop, post-send scroll re-alignment, removal of the Preview
+   badge, rail fade, full-height assistant accent rule, and
+   markdown-stripped list subtitles. Still open: avatar creation via emoji
+   markup in agent-only mode, user-avatar RPC family, offline title editing,
+   the custom long-press menu, user-bubble timestamps, type scale snapping,
+   attachment row container, tall-screenshot card rendering, video/GIF/file
+   attachments, chat search, settings, agent editing, tablet layout, dark
+   variant, reduced-motion/accessibility sweep, token-level streaming. It is
+   not yet a complete replacement for Telegram UI.

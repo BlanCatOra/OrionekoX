@@ -112,6 +112,8 @@ public class OxUiPreviewActivity extends Activity {
     private TextView replyLabel;
     private String replyAgentId;
     private String replyAgentName;
+    private String replyQuoteSender;
+    private String replyQuoteText;
 
     private static class GroupItem {
         long chatId;
@@ -239,22 +241,17 @@ public class OxUiPreviewActivity extends Activity {
         agentsButton.setTypeface(sans());
         agentsButton.setTextColor(INK);
         agentsButton.setGravity(Gravity.CENTER);
-        agentsButton.setPadding(dp(8), dp(5), dp(8), dp(5));
+        agentsButton.setPadding(dp(11), dp(5), dp(11), dp(5));
+        agentsButton.setBackground(plate(0, 18, LINE, 1));
         agentsButton.setOnClickListener(v -> showAgentPanel());
         LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, dp(30));
         alp.rightMargin = dp(6);
         header.addView(agentsButton, alp);
 
-        TextView preview = new TextView(this);
-        preview.setText("Preview");
-        preview.setTextSize(10.5f);
-        preview.setTypeface(mono());
-        preview.setTextColor(INK);
-        preview.setGravity(Gravity.CENTER);
-        preview.setPadding(dp(10), dp(5), dp(10), dp(5));
-        preview.setBackground(plate(SIGNAL, 20, 0, 0));
-        header.addView(preview, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(28)));
+        // The chartreuse "Preview" dev badge was removed: the footer status
+        // line already carries the preview notice, and a second signal-colored
+        // element next to the send button diluted the single-accent rule.
 
         TextView telegram = new TextView(this);
         telegram.setText("Telegram UI");
@@ -280,6 +277,8 @@ public class OxUiPreviewActivity extends Activity {
         HorizontalScrollView railScroll = new HorizontalScrollView(this);
         railScroll.setHorizontalScrollBarEnabled(false);
         railScroll.setClipToPadding(false);
+        railScroll.setHorizontalFadingEdgeEnabled(true);
+        railScroll.setFadingEdgeLength(dp(36));
         railScroll.setPadding(dp(18), dp(12), dp(18), dp(8));
         agentRail = new LinearLayout(this);
         agentRail.setOrientation(LinearLayout.HORIZONTAL);
@@ -546,23 +545,52 @@ public class OxUiPreviewActivity extends Activity {
         }
     }
 
-    private void addUserImage(String imagePath, long ts) {
+    /** Unified image card: image and caption in one ink card instead of two
+     *  separate bubbles; height capped at 0.6 of the viewport with a
+     *  center-crop so a tall screenshot cannot swallow the screen. Returns
+     *  false when the bitmap cannot be decoded (caller falls back to text). */
+    private boolean addUserImage(String imagePath, long ts, String caption, boolean sending) {
         Bitmap bmp = decodeScaled(imagePath, dp(300));
-        if (bmp == null) return;
+        if (bmp == null) return false;
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.END);
         row.setPadding(0, dp(12), 0, 0);
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(plate(INK, 17, 0, 0));
+        card.setClipToOutline(true);
         ImageView view = new ImageView(this);
         view.setImageBitmap(bmp);
-        view.setAdjustViewBounds(true);
-        view.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.7f));
-        view.setBackground(plate(PAPER, 16, LINE, 1));
-        view.setClipToOutline(true);
-        row.addView(view, new LinearLayout.LayoutParams(
+        view.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        int maxW = (int) (getResources().getDisplayMetrics().widthPixels * 0.7f);
+        int maxH = (int) (getResources().getDisplayMetrics().heightPixels * 0.6f);
+        int bw = bmp.getWidth(), bh = bmp.getHeight();
+        int w = Math.max(dp(120), Math.min(maxW, bw));
+        int h = w * bh / bw;
+        if (h > maxH) {
+            h = maxH;
+            w = Math.max(dp(120), Math.min(maxW, h * bw / bh));
+        }
+        view.setLayoutParams(new LinearLayout.LayoutParams(w, h));
+        card.addView(view);
+        if (caption != null && !caption.trim().isEmpty()) {
+            TextView cap = new TextView(this);
+            cap.setText(styled(caption));
+            cap.setTextSize(15.5f);
+            cap.setTypeface(sans());
+            cap.setTextColor(BONE);
+            cap.setLineSpacing(dp(2), 1.05f);
+            cap.setPadding(dp(15), dp(9), dp(15), dp(12));
+            card.addView(cap, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+        if (sending) card.getBackground().setAlpha(190);
+        row.addView(card, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         messages.addView(row, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return true;
     }
 
     private void addFailed() {
@@ -610,7 +638,8 @@ public class OxUiPreviewActivity extends Activity {
                 infos.add(info);
                 OxAgentsBridge.handleOutgoingGroupMedia(targetDialogId(), infos);
             } else if (replyAgentId != null) {
-                OxAgentsBridge.sendLocalGroupTextTo(targetDialogId(), replyAgentId, text);
+                OxAgentsBridge.sendLocalGroupTextTo(targetDialogId(), replyAgentId, text,
+                        replyQuoteSender, replyQuoteText);
             } else {
                 OxAgentsBridge.sendLocalGroupText(targetDialogId(), text, null);
             }
@@ -652,6 +681,11 @@ public class OxUiPreviewActivity extends Activity {
                         } else {
                             replyAgentId = senderId;
                             replyAgentName = name;
+                            replyQuoteSender = senderId;
+                            String snap = text == null ? "" :
+                                    text.replaceAll("\\s+", " ").trim();
+                            if (snap.length() > 160) snap = snap.substring(0, 160) + "…";
+                            replyQuoteText = snap;
                             showReplyRow();
                         }
                     })
@@ -663,14 +697,21 @@ public class OxUiPreviewActivity extends Activity {
 
     private void showReplyRow() {
         if (replyRow == null) return;
-        replyLabel.setText(LocaleController.getString(R.string.OxUiReplyChip) + " "
-                + replyAgentName);
+        String chip = LocaleController.getString(R.string.OxUiReplyChip) + " " + replyAgentName;
+        if (replyQuoteText != null && !replyQuoteText.isEmpty()) {
+            String short_ = replyQuoteText.length() > 24
+                    ? replyQuoteText.substring(0, 24) + "…" : replyQuoteText;
+            chip += " · 「" + short_ + "」";
+        }
+        replyLabel.setText(chip);
         replyRow.setVisibility(View.VISIBLE);
     }
 
     private void clearReplyTarget() {
         replyAgentId = null;
         replyAgentName = null;
+        replyQuoteSender = null;
+        replyQuoteText = null;
         if (replyRow != null) replyRow.setVisibility(View.GONE);
     }
 
@@ -921,8 +962,11 @@ public class OxUiPreviewActivity extends Activity {
         if (!chat.isEmpty()) {
             OxChatEntry last = chat.get(chat.size() - 1);
             if (last != null && last.content != null && !last.content.isEmpty()) {
-                String text = last.content.replace('\n', ' ')
-                        .replace("**", "").replace("`", "").trim();
+                String text = last.content
+                        .replaceAll("(?m)^(?:[-*#]|\\d\\.)\\s*", "")
+                        .replace("**", "").replace("`", "")
+                        .replace('\n', ' ')
+                        .replaceAll("\\s{2,}", " ").trim();
                 return harness + "  ·  " + (text.length() > 46 ? text.substring(0, 46) + "…" : text);
             }
         }
@@ -1321,7 +1365,8 @@ public class OxUiPreviewActivity extends Activity {
             boolean hasImage = e.imagePath != null && new File(e.imagePath).isFile();
             if (!hasText && !hasImage) continue;
             if ("user".equals(e.role)) {
-                addUser(e.content, e.ts, false, hasImage ? e.imagePath : null);
+                addUser(e.content, e.ts, false, hasImage ? e.imagePath : null,
+                        e.replyToSender, e.replyToText);
             } else if ("assistant".equals(e.role)) {
                 addAssistant(e.content, e.ts, e.sender);
             } else if ("tool".equals(e.role)) {
@@ -1329,7 +1374,8 @@ public class OxUiPreviewActivity extends Activity {
             }
         }
         if (pendingText != null || pendingImagePath != null) {
-            addUser(pendingText, System.currentTimeMillis(), true, pendingImagePath);
+            addUser(pendingText, System.currentTimeMillis(), true, pendingImagePath,
+                    replyQuoteSender, replyQuoteText);
             addWorking();
         }
         if (failedText != null && targetKey().equals(failedTargetKey)) {
@@ -1343,6 +1389,9 @@ public class OxUiPreviewActivity extends Activity {
                     - scroll.getScrollY() < dp(120);
             if (nearBottom || userJustSent) {
                 scroll.fullScroll(View.FOCUS_DOWN);
+                // Re-align after the newly added children finish measuring;
+                // the first pass can run against stale heights.
+                messages.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
             }
             userJustSent = false;
             if (animate) {
@@ -1353,13 +1402,51 @@ public class OxUiPreviewActivity extends Activity {
         });
     }
 
-    private void addUser(String text, long ts, boolean sending, String imagePath) {
-        if (imagePath != null) addUserImage(imagePath, ts);
+    private void addUser(String text, long ts, boolean sending, String imagePath,
+            String quoteSender, String quoteText) {
+        if (imagePath != null && addUserImage(imagePath, ts, text, sending)) return;
         if (text == null || text.trim().isEmpty()) return;
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.END);
         row.setPadding(0, dp(12), 0, 0);
+        if (quoteSender != null && quoteText != null && !quoteText.isEmpty()) {
+            String name = resolveAgentName(quoteSender);
+            TextView quoteLine = new TextView(this);
+            quoteLine.setText("↩ " + (name == null ? quoteSender : name) + ": " + quoteText);
+            quoteLine.setTextSize(12);
+            quoteLine.setTypeface(sans());
+            quoteLine.setTextColor(MUTED);
+            quoteLine.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.72f));
+            quoteLine.setPadding(0, 0, 0, dp(3));
+            LinearLayout quoteWrap = new LinearLayout(this);
+            quoteWrap.setOrientation(LinearLayout.VERTICAL);
+            quoteWrap.setGravity(Gravity.END);
+            quoteWrap.addView(quoteLine);
+            TextView bubble = new TextView(this);
+            bubble.setText(styled(text));
+            bubble.setTextSize(15.5f);
+            bubble.setTypeface(sans());
+            bubble.setTextColor(BONE);
+            bubble.setLineSpacing(dp(2), 1.05f);
+            bubble.setPadding(dp(15), dp(11), dp(15), dp(11));
+            bubble.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.82f));
+            GradientDrawable bg = plate(INK, 17, 0, 0);
+            if (sending) bg.setAlpha(190);
+            bubble.setBackground(bg);
+            bubble.setTextIsSelectable(false);
+            bubble.setOnLongClickListener(v -> {
+                copy(text);
+                return true;
+            });
+            quoteWrap.addView(bubble, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            row.addView(quoteWrap, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            messages.addView(row, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            return;
+        }
         TextView bubble = new TextView(this);
         bubble.setText(styled(text));
         bubble.setTextSize(15.5f);
@@ -1390,7 +1477,10 @@ public class OxUiPreviewActivity extends Activity {
 
         View accent = new View(this);
         accent.setBackgroundColor(SIGNAL);
-        row.addView(accent, new LinearLayout.LayoutParams(dp(2), dp(46)));
+        // Match_parent so the chartreuse rule spans the whole message on long
+        // replies instead of stopping after the meta line.
+        row.addView(accent, new LinearLayout.LayoutParams(dp(2),
+                ViewGroup.LayoutParams.MATCH_PARENT));
 
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
@@ -1503,10 +1593,12 @@ public class OxUiPreviewActivity extends Activity {
         lastSignature = "";
         input.setText("");
         attachRow.setVisibility(View.GONE);
-        clearReplyTarget();
         refresh(true);
         dispatchSend(pendingText, pendingImagePath);
         pendingImagePath = null;
+        // Clear only after dispatch: dispatchSend reads replyAgentId to route
+        // the targeted reply through sendLocalGroupTextTo.
+        clearReplyTarget();
         updateSendVisual();
     }
 }

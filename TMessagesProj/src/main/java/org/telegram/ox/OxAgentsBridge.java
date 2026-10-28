@@ -933,12 +933,47 @@ public class OxAgentsBridge {
      *  on the UI thread after chatDidCreated. */
     public static void attachLocalChatAvatar(long chatId, TLRPC.FileLocation smallSrc,
             TLRPC.FileLocation bigSrc) {
+        attachLocalChatAvatarWithId(chatId, smallSrc, bigSrc,
+                Math.abs(chatId) * 31 + 13, "attachLocalChatAvatar");
+    }
+
+    /** Offline avatar change on an existing local group (ChatEditActivity edit
+     *  path). Millis-based photo id mixed with the chat id so repeated edits —
+     *  including edits to different groups in the same millisecond — get fresh
+     *  file names instead of colliding with each other or with the creation
+     *  id (|chatId|*31+13 ≈ 5.6e10, three orders of magnitude apart). UI
+     *  thread. */
+    public static void updateLocalChatAvatar(long chatId, TLRPC.FileLocation smallSrc,
+            TLRPC.FileLocation bigSrc) {
+        long photoId = System.currentTimeMillis() * 1000 + (chatId % 1000 + 1000) % 1000;
+        attachLocalChatAvatarWithId(chatId, smallSrc, bigSrc, photoId, "updateLocalChatAvatar");
+    }
+
+    /** Offline removal of a local group's avatar (ChatEditActivity delete
+     *  path). Round-trips as ChatPhotoEmpty so headers fall back to initials. */
+    public static void removeLocalChatAvatar(long chatId) {
+        try {
+            TLRPC.Chat chat = MessagesController.getInstance(0).getChat(chatId);
+            if (chat == null || !OxGroupStore.isLocallyCreated(chatId)) return;
+            chat.photo = new TLRPC.TL_chatPhotoEmpty();
+            MessagesController.getInstance(0).putChat(chat, false);
+            ArrayList<TLRPC.Chat> chats = new ArrayList<>();
+            chats.add(chat);
+            MessagesStorage.getInstance(0).putUsersAndChats(null, chats, true, true);
+            NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_AVATAR);
+            log("removeLocalChatAvatar cleared chatId=" + chatId);
+        } catch (Throwable t) {
+            logErr("removeLocalChatAvatar failed for " + chatId, t);
+        }
+    }
+
+    private static void attachLocalChatAvatarWithId(long chatId, TLRPC.FileLocation smallSrc,
+            TLRPC.FileLocation bigSrc, long photoId, String tag) {
         try {
             TLRPC.Chat chat = MessagesController.getInstance(0).getChat(chatId);
             if (chat == null || !OxGroupStore.isLocallyCreated(chatId)) return;
             if (smallSrc == null || bigSrc == null) return;
 
-            long photoId = Math.abs(chatId) * 31 + 13;
             TLRPC.TL_chatPhoto photo = new TLRPC.TL_chatPhoto();
             photo.photo_id = photoId;
             photo.dc_id = 1;
@@ -955,7 +990,7 @@ public class OxAgentsBridge {
             java.io.File smallCache = fl.getPathToAttach(smallSrc, true);
             java.io.File bigCache = fl.getPathToAttach(bigSrc, true);
             if (smallCache == null || !smallCache.exists() || bigCache == null || !bigCache.exists()) {
-                log("attachLocalChatAvatar source files missing for " + chatId);
+                log(tag + " source files missing for " + chatId);
                 return;
             }
             java.util.LinkedHashSet<java.io.File> smallPaths = new java.util.LinkedHashSet<>();
@@ -982,9 +1017,9 @@ public class OxAgentsBridge {
             chats.add(chat);
             MessagesStorage.getInstance(0).putUsersAndChats(null, chats, true, true);
             NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_AVATAR);
-            log("attachLocalChatAvatar attached chatId=" + chatId + " photoId=" + photoId);
+            log(tag + " attached chatId=" + chatId + " photoId=" + photoId);
         } catch (Throwable t) {
-            logErr("attachLocalChatAvatar failed for " + chatId, t);
+            logErr(tag + " failed for " + chatId, t);
         }
     }
 
@@ -1913,11 +1948,23 @@ public class OxAgentsBridge {
     /** Same as {@link #sendLocalGroupText} but forces the reply to a specific
      *  member agent (OxUI reply targeting). agentId may be null. */
     public static void sendLocalGroupTextTo(long dialogId, String agentId, String text) {
-        sendLocalGroupText(dialogId, text, null, agentId);
+        sendLocalGroupText(dialogId, text, null, agentId, null, null);
+    }
+
+    /** Targeted reply with quote semantics: replyToSender/replyToText snapshot
+     *  the quoted assistant entry so the forced turn sees what it answers. */
+    public static void sendLocalGroupTextTo(long dialogId, String agentId, String text,
+            String replyToSender, String replyToText) {
+        sendLocalGroupText(dialogId, text, null, agentId, replyToSender, replyToText);
     }
 
     private static void sendLocalGroupText(long dialogId, String text, MessageObject replyTo,
             String agentId) {
+        sendLocalGroupText(dialogId, text, replyTo, agentId, null, null);
+    }
+
+    private static void sendLocalGroupText(long dialogId, String text, MessageObject replyTo,
+            String agentId, String replyToSender, String replyToText) {
         if (dialogId >= 0 || text == null || text.trim().isEmpty()) return;
         if (agentId != null) {
             log("groupReply forced agentId=" + agentId + " dialog=" + dialogId);
@@ -1952,7 +1999,7 @@ public class OxAgentsBridge {
         if (agentId != null) {
             OxAgent forced = OxAgentStore.loadAgent(agentId);
             if (forced != null && forced.tgId != 0) {
-                startGroupTurn(forced, dialogId, clean, null);
+                startGroupTurn(forced, dialogId, clean, null, replyToSender, replyToText);
                 return;
             }
         }
@@ -1998,10 +2045,29 @@ public class OxAgentsBridge {
                 }
             }
             if (chosen == null) chosen = agents.get(0);
-            startGroupTurn(chosen, dialogId, text.trim(), imagePath);
+            String qSender = null;
+            String qText = null;
+            if (replyTo != null && chosen != null && replyTo.getSenderId() == chosen.tgId) {
+                // Quote semantics for Telegram UI replies to an agent message.
+                // Media-only quotes (no message text) are intentionally skipped.
+                String quoted = replyTo.messageOwner.message;
+                if (quoted != null && !quoted.isEmpty()) {
+                    qSender = chosen.id;
+                    qText = excerpt(quoted);
+                }
+            }
+            startGroupTurn(chosen, dialogId, text.trim(), imagePath, qSender, qText);
         } catch (Throwable t) {
             logErr("onGroupMessage failed", t);
         }
+    }
+
+    /** Truncated snapshot of quoted text carried on the user entry. */
+    private static String excerpt(String text) {
+        if (text == null) return null;
+        String t = text.replaceAll("\\s+", " ").trim();
+        if (t.length() > 160) t = t.substring(0, 160) + "…";
+        return t;
     }
 
     private static void startGroupTurn(OxAgent agent, long dialogId, String userText) {
@@ -2009,6 +2075,11 @@ public class OxAgentsBridge {
     }
 
     private static void startGroupTurn(OxAgent agent, long dialogId, String userText, String imagePath) {
+        startGroupTurn(agent, dialogId, userText, imagePath, null, null);
+    }
+
+    private static void startGroupTurn(OxAgent agent, long dialogId, String userText,
+            String imagePath, String replyToSender, String replyToText) {
         Stream s = new Stream();
         s.dialogId = dialogId;
         s.senderTgId = agent.tgId;
@@ -2016,22 +2087,32 @@ public class OxAgentsBridge {
         s.agent = agent;
         s.userText = userText;
         try {
-            s.messages = groupMessages(agent, dialogId, userText, imagePath);
+            s.messages = groupMessages(agent, dialogId, userText, imagePath, replyToSender, replyToText);
         } catch (Exception e) {
             injectAgentReply(dialogId, agent.tgId, "⚠ " + e.getMessage());
             return;
         }
-        OxGroupStore.appendChat(dialogId, "user", userText, imagePath);
+        OxChatEntry userEntry = new OxChatEntry("user", userText, System.currentTimeMillis(), imagePath);
+        if (replyToSender != null && !replyToSender.isEmpty()) {
+            userEntry.replyToSender = replyToSender;
+            userEntry.replyToText = replyToText;
+        }
+        OxGroupStore.appendEntry(dialogId, userEntry, null);
         active.put(dialogId, s);
         startTyping(dialogId, agent.tgId);
         runRound(s, 0);
     }
 
     private static JSONArray groupMessages(OxAgent agent, long dialogId, String userText) throws Exception {
-        return groupMessages(agent, dialogId, userText, null);
+        return groupMessages(agent, dialogId, userText, null, null, null);
     }
 
     private static JSONArray groupMessages(OxAgent agent, long dialogId, String userText, String imagePath) throws Exception {
+        return groupMessages(agent, dialogId, userText, imagePath, null, null);
+    }
+
+    private static JSONArray groupMessages(OxAgent agent, long dialogId, String userText,
+            String imagePath, String replyToSender, String replyToText) throws Exception {
         JSONArray messages = new JSONArray();
         StringBuilder system = new StringBuilder();
         if (agent.agentsMd != null) system.append(agent.agentsMd.trim());
@@ -2061,10 +2142,19 @@ public class OxAgentsBridge {
         if ((effectiveImage == null || !new File(effectiveImage).isFile()) && refersToImage(userText)) {
             effectiveImage = OxGroupStore.lastImage(dialogId);
         }
+        String userContent = userText;
+        if (replyToSender != null && !replyToSender.isEmpty() && replyToText != null
+                && !replyToText.isEmpty()) {
+            // Quote semantics: bind the quoted text to this exact turn so the
+            // model sees what the user is answering, even after compaction.
+            OxAgent quoted = OxAgentStore.loadAgent(replyToSender);
+            String name = quoted != null && quoted.name != null ? quoted.name : replyToSender;
+            userContent = "（回复 @" + name + "：「" + replyToText + "」）\n" + userText;
+        }
         if (effectiveImage != null && new File(effectiveImage).isFile()) {
-            user.put("content", visionContent(userText, effectiveImage));
+            user.put("content", visionContent(userContent, effectiveImage));
         } else {
-            user.put("content", userText);
+            user.put("content", userContent);
         }
         messages.put(user);
         return messages;
