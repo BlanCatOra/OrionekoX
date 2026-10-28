@@ -547,3 +547,14 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：自建 `QA Memory 0520`（tgId 555000109）预置 60 条聊天，含姓名/生日/咖啡/城市/编辑器事实；用本地 mock OpenAI 服务记录请求并触发工具。普通模式首轮仅 17 条消息，system 含“上下文压缩/记忆库摘要/相关记忆”，`memory_search` 返回生日事实；库内 47 turn（46 短+1 长）/3 fact/1 summary，访问计数与长期提升正常。切换 `memory_mode=vector` 后生日/咖啡事实仍被召回（相关度 0.61，混合分）。`memory_verify("birthday")` 返回带日期证据；`memory_verify("favorite color")` 严格匹配返回未找到。记忆页显示“63 条 · 长期 7 · 短期 56 · 事实 3”。全程无本包 FATAL/ANR；删除测试 Agent、记忆库行与测试 tgId 的 dialogs/messages 后计数均为 0，恢复模拟器代理与无障碍，未执行 `pm clear`。
 - 边界：本地哈希向量不是语义 embedding；摘要为抽取式；记忆库未进入 Chatbox/.oxagent 备份；旧 memory.txt 不自动迁移；群聊按 Agent 共用；阈值按消息条数；应用私有 SQLite 未加密。
+
+## 0.53.0 记忆检索 v2（BM25/幂律遗忘/事实失效）QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-108 | 0.53.0 研究 | 0.52.0 的向量只是 128 维哈希投影，普通模式只是 token 重合，遗忘是固定指数半衰期；没有事实合并、矛盾处理、MMR 或时间有效性，效果无法量化 | 对照 Mem0/MemGPT/Graphiti/Generative Agents/FSRS/MemoryBank/LangMem，改为 BM25+向量+retention/importance/access 混合分，加 MMR、幂律遗忘、stability/difficulty、事实 ADD/UPDATE/失效与摘要清理 | 已实现并设备验证 |
+| R2-109 | 0.53.0 QA | 英文事实抽取只按中文标点/换行分句，整段“姓名+生日+咖啡”被合并成一条事实，生日更新无法单独失效旧值 | 分句增加英文句号等标点；复验姓名/生日/咖啡分为独立事实，3/14 被 3/15 正确失效 | 已修复并设备验证 |
+| R2-110 | 0.53.0 QA | 压缩批次先生成事实再生成摘要，旧摘要仍带着已被失效的 3/14 和 blue；`memory_verify` 也会把旧对话当成当前证据 | 摘要生成后执行 `scrubAllInvalidated` 删除失效事实行；`strictVerify` 事实优先，有事实命中时不再返回旧 turn；复验摘要无旧值、verify 只返回 3/15 与 green | 已修复并设备验证 |
+
+- 设备：自建 60 条消息 fixture（生日 3/14→3/15、blue→green、姓名/咖啡/杭州），mock OpenAI 触发工具。最终有效事实 name/coffee/Hangzhou/birthday 3/15/green，旧 3/14 与 blue 的 `invalid_at` 非 0 且不进入默认召回；摘要旧值被清理。`memory_search` 首条为 3/15 有效事实，`memory_verify("birthday")` 只返回 3/15，`memory_verify("favorite color")` 只返回 green；向量模式 coffee 相关度 0.83，召回后 stability 略升、difficulty 从 4.0 降到 3.6。全程无 FATAL/ANR；测试 Agent/记忆行/chats 清理为 0，恢复代理与无障碍。
+- 边界：仍是本地哈希向量非语义 embedding；摘要抽取式；未做图记忆、token 压力预警和模型蒸馏；Provider 当前无 embedding 模型；旧 turn 在历史查询中仍可能出现（已由事实优先和提示词约束）。

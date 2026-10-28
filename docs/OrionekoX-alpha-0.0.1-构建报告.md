@@ -3747,6 +3747,42 @@ debug `dist/OrionekoX-0.52.0-debug-arm64-x64.apk`（sha256
 `8609d8fae589ed741d1f7cda45d221e9ba64ac4e26beb695b0d3e1934a0ce3eb`）。
 详见 `docs/qa-0.52.0.md`。
 
+## 5.175 alpha 0.53.0 —— 记忆检索 v2：BM25 + 向量 + 幂律遗忘 + 事实失效（2026-10-28 17:30–18:05）
+
+- 0.52.0 的检索是固定权重的词重合/哈希余弦，遗忘曲线是固定指数半衰期，
+  事实只追加、不合并；对照 Mem0、MemGPT、Graphiti、Generative Agents、
+  FSRS、MemoryBank 与 LangMem 后重做核心。
+- schema v2 新增 difficulty、valid_from、invalid_at、subject，并从 v1
+  原地迁移；事实按句号/问号/分号分句，修复英文事实整段合并。
+- 检索改为 BM25 + 向量/retention/importance/access 的混合分，加入 MMR
+  去重；普通模式以 BM25 为主，向量模式加入本地哈希余弦。失效事实默认
+  不召回，只有“以前/原来/used to”等历史查询才降权返回。
+- 遗忘改为幂律 `R=1/(1+ageDays/(9*S))`；召回提升 stability、降低
+  difficulty，S≥21 天或访问 2 次提升为长期；摘要超过 6 条时滚动合并。
+- 事实合并采用 Mem0 思路：同主题近似事实，新事实覆盖旧事实则保留更
+  丰富版本；生日/颜色等值变化则把旧事实 invalid_at 并保留历史；失效
+  事实会从摘要行中清理，摘要头部标注历史信息。
+- `memory_verify` 优先返回事实，有事实命中时不再返回旧对话；system
+  prompt 明确“同主题冲突以最新事实为准，旧对话/摘要仅历史参考”。
+- 设备 60 条消息 fixture：生日 3/14→3/15、blue→green；最终有效事实为
+  name/coffee/Hangzhou/birthday 3/15/color green，旧 3/14 与 blue 失效；
+  摘要中的旧值被清理。`memory_search` 首条为有效 3/15 事实，
+  `memory_verify` 只返回有效事实；向量模式 coffee 相关度 0.83，
+  stability/difficulty 随召回更新。全程无 FATAL/ANR，测试对象已清理。
+- 调研与可复现基准：`docs/memory-architecture-research.md`、
+  `tools/memory_bench_fixture.py`、`tools/memory_bench_server.py`。
+- 边界：向量仍是本地哈希，不是语义 embedding；摘要仍为抽取式；未做
+  图记忆、token 压力预警与模型异步蒸馏；Provider 当前没有可用
+  `/embeddings` 模型（opendesign model_not_found、opencode-go 403）。
+- 版本规则：数据库 schema、打分、事实合并与摘要清理属于算法级功能迭代，
+  按 minor 从 0.52.0 → **0.53.0**（5309），patch 清零。
+
+**产物**：`dist/OrionekoX-0.53.0-alpha-arm64-x64.apk`（versionCode 5309，
+sha256 `b421454304d0f261e3bf9cb15e167990b08c3939fd7090434ccce2343798137b`）；
+debug `dist/OrionekoX-0.53.0-debug-arm64-x64.apk`（sha256
+`f612c6c4f246a4f56bcee79b13f2d01dfa0503ff2ac9c9e4f429f11d482571db`）。
+详见 `docs/qa-0.53.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
