@@ -4,6 +4,33 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.54.0 — 2026-10-28
+
+- Adds asynchronous model distillation for memory. After a compression batch of
+  at least eight messages, `OxMemoryDistiller` calls the agent's own model in
+  the background for a strict-JSON abstractive summary and up to 12 atomic
+  facts. It reuses the agent's base URL, key and headers with bounded
+  transcript, response and timeouts, deduplicates batches, and never blocks the
+  chat turn; HTTP or JSON failures keep the extractive fallback.
+- Model facts pass through the same subject consolidation/invalidation logic;
+  model summaries are stored with `source=model` and importance 0.9. The digest
+  injects at most one summary, preferring the model summary, with facts first.
+- Fixes possessive subject extraction so third-person facts such as
+  “Lin Zhou's birthday…” and “Lin Zhou's favorite color…” no longer collapse
+  into one subject, invalidate each other, and scrub the model summary.
+- Verified with the 60-message fixture and a mock `[MEMORY_DISTILLER]` response:
+  the background request arrived after compression without delaying the reply,
+  the model birthday fact and summary became active, the color fact merged into
+  the existing green fact, and the next system prompt contained five active
+  facts plus only the model summary. Old 3/14/blue values and the extractive
+  summary were absent. No duplicate request or app FATAL/ANR; test data was
+  removed.
+- Limits: distillation runs only on compression batches and consumes the
+  agent's tokens; output is schema/length-validated but not fact-checked;
+  providers must return JSON-compatible content; there is still no semantic
+  embedding provider; the failure path is code-reviewed rather than exercised
+  with a dead endpoint.
+
 ## 0.53.0 — 2026-10-28
 
 - Rebuilt memory retrieval after reviewing Mem0, MemGPT, Graphiti, Generative

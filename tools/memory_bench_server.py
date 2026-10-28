@@ -42,6 +42,16 @@ class Handler(BaseHTTPRequestHandler):
                 "system_tail": system[-1800:],
             }, ensure_ascii=False) + "\n")
 
+        if "[MEMORY_DISTILLER]" in system:
+            payload = {
+                "summary": "MODEL_SUMMARY: Lin Zhou's birthday is March 15, favorite color is green, likes black coffee, lives in Hangzhou.",
+                "facts": [
+                    {"text": "Lin Zhou's birthday is March 15", "importance": 0.93},
+                    {"text": "Lin Zhou's favorite color is green", "importance": 0.9},
+                ],
+            }
+            return self.reply({"choices": [{"index": 0, "finish_reason": "stop",
+                             "message": {"role": "assistant", "content": json.dumps(payload, ensure_ascii=False)}}]})
         if tools:
             result = str(tools[-1].get("content", ""))[:800]
             return self.reply({"choices": [{"index": 0, "finish_reason": "stop",

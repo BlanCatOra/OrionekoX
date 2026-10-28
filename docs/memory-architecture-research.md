@@ -139,6 +139,11 @@ public documentation/papers; formulas are paraphrased, not copied code.
 - Add query expansion from entities and recent turns, plus a lightweight
   reranker.
 
+Status: the asynchronous distiller and strict-JSON facts/summary landed in
+0.54.0 (`OxMemoryDistiller`). Embedding-provider abstraction, query expansion
+and reranking are still pending; current providers expose no embedding model
+(opendesign model_not_found, opencode-go 403).
+
 ### Round C — evaluation and UX
 
 - Synthetic long-conversation benchmark: facts, paraphrases, temporal updates,

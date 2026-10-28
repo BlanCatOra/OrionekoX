@@ -2027,6 +2027,9 @@ public class OxAgentsBridge {
                 system.append("# 上下文压缩\n较早的 ").append(cr.ingested)
                         .append(" 条消息已写入本地记忆库，下面只保留最近 ")
                         .append(keep).append(" 条原文与压缩摘要。需要细节时调用 recall 或 memory_search 查证。");
+                if (cr.batchTo > cr.batchFrom && cr.batchTo <= size) {
+                    OxMemoryDistiller.distill(agent, history.subList(cr.batchFrom, cr.batchTo));
+                }
             }
             if (cr.digest != null && !cr.digest.isEmpty()) digest = cr.digest;
         }

@@ -3783,6 +3783,37 @@ debug `dist/OrionekoX-0.53.0-debug-arm64-x64.apk`（sha256
 `f612c6c4f246a4f56bcee79b13f2d01dfa0503ff2ac9c9e4f429f11d482571db`）。
 详见 `docs/qa-0.53.0.md`。
 
+## 5.176 alpha 0.54.0 —— 异步模型蒸馏：抽象摘要与事实（2026-10-28 18:10–18:35）
+
+- 0.53.0 的压缩摘要和事实仍是规则抽取，容易被小对话淹没。0.54.0 新增
+  `OxMemoryDistiller`：压缩批次 ≥8 条时后台调用 Agent 自己的模型，
+  生成抽象摘要与原子事实；不阻塞聊天，失败保留抽取式 fallback。
+- 请求沿用 Agent 的 baseUrl/apiKey/headers，`stream=false`、temperature
+  0.2、max_tokens 1200；system prompt 标记 `[MEMORY_DISTILLER]`，要求
+  严格 JSON（summary ≤1200 字符、最多 12 条事实、单条 ≤300 字符），
+  不新增 Key、不记录 Key；transcript 上限 14k 字符，响应上限 2 MiB。
+- 模型事实走现有的 subject 合并/失效逻辑；模型摘要 source=model、
+  importance 0.9。digest 最多注入 1 条摘要，优先模型摘要；事实仍优先。
+- QA 发现第三人称事实的 subject 回退成 `lin zhou s`，生日与颜色互相
+  失效并连带清空模型摘要；新增 possessive 规则并在 is/are/like/and 等
+  词处截断，得到 birthday / favorite color 等主题后复验通过。
+- 设备：60 条 fixture + mock 返回 `MODEL_SUMMARY` 与两条事实。后台请求
+  成功写入模型生日事实与模型摘要；颜色事实合并进现有绿色事实；下一轮
+  system 只含 5 条有效事实 + 1 条模型摘要，不再出现旧 3/14、blue 或
+  抽取摘要。无重复请求、聊天不等待蒸馏、无 FATAL/ANR；测试 Agent/
+  记忆行/chats 清零，代理与无障碍恢复。
+- 边界：仅压缩批次触发，消耗 Agent token；模型输出只做结构/长度校验，
+  无事实核查；Provider 需支持 JSON 响应；仍无真正语义 embedding；
+  失败路径仅代码审查、未用坏端点回放。
+- 版本规则：新增后台模型抽取/摘要与记忆写入，属于功能迭代，按 minor
+  从 0.53.0 → **0.54.0**（5409），patch 清零。
+
+**产物**：`dist/OrionekoX-0.54.0-alpha-arm64-x64.apk`（versionCode 5409，
+sha256 `1cf7495caf7fbab3e4ea9daa0756db32f53dfb9f6e9eb58b6266f94c57710b66`）；
+debug `dist/OrionekoX-0.54.0-debug-arm64-x64.apk`（sha256
+`770f8ddecb3372858f72abf45a1a8cb0a457e86ed74898eef3de7e70b5f335c9`）。
+详见 `docs/qa-0.54.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

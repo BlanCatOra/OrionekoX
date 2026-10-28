@@ -6,6 +6,8 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
 
@@ -44,6 +46,8 @@ public class OxMemoryStore {
 
     public static class CompressResult {
         public int ingested;
+        public int batchFrom;
+        public int batchTo;
         public String digest = "";
     }
 
@@ -176,6 +180,8 @@ public class OxMemoryStore {
             prune(agentId);
         }
         out.ingested = ingested;
+        out.batchFrom = from;
+        out.batchTo = target;
         out.digest = digest(agentId, 1800);
         return out;
     }
@@ -193,8 +199,10 @@ public class OxMemoryStore {
                             + "importance DESC, created_at DESC LIMIT 12",
                     new String[]{agentId});
             try {
+                int summaries = 0;
                 while (c.moveToNext() && sb.length() < maxChars) {
                     String kind = c.getString(0);
+                    if ("summary".equals(kind) && ++summaries > 1) continue;
                     String text = c.getString(1);
                     long ts = c.getLong(2);
                     String label = "summary".equals(kind) ? "摘要" : "事实";
@@ -417,6 +425,37 @@ public class OxMemoryStore {
         insert(agentId, "fact", "user", "用户：" + t, System.currentTimeMillis(),
                 0.9, "long", "tool", true);
         return t;
+    }
+
+    /** Stores an abstractive summary/facts produced by the agent's own model.
+     *  Invalid JSON or oversized values are rejected by the caller. */
+    public static synchronized int ingestModelMemory(String agentId, JSONObject result) {
+        if (agentId == null || result == null) return 0;
+        int facts = 0;
+        try {
+            JSONArray arr = result.optJSONArray("facts");
+            for (int i = 0; arr != null && i < arr.length() && facts < 12; i++) {
+                JSONObject f = arr.optJSONObject(i);
+                if (f == null) continue;
+                String text = f.optString("text", "").trim();
+                if (text.length() < 2) continue;
+                double importance = f.optDouble("importance", 0.75);
+                importance = Math.max(0.3, Math.min(0.95, importance));
+                insert(agentId, "fact", "user", "用户：" + clip(text, 500),
+                        System.currentTimeMillis(), importance, "long", "model", true);
+                facts++;
+            }
+            String summary = result.optString("summary", "").trim();
+            if (summary.length() >= 4) {
+                insert(agentId, "summary", "system", clip(summary, 4000),
+                        System.currentTimeMillis(), 0.9, "long", "model", true);
+                scrubAllInvalidated(agentId);
+                consolidateSummaries(agentId);
+            }
+        } catch (Throwable t) {
+            FileLog.e("OxMemoryStore", t);
+        }
+        return facts;
     }
 
     public static synchronized String stats(String agentId) {
@@ -776,6 +815,8 @@ public class OxMemoryStore {
         if (m.find()) return m.group(1);
         m = java.util.regex.Pattern.compile("my\\s+([a-z][a-z ]{1,24})").matcher(t);
         if (m.find()) return trimSubject(m.group(1));
+        m = java.util.regex.Pattern.compile("[a-z]+'s\\s+([a-z][a-z ]{1,30})").matcher(t);
+        if (m.find()) return trimSubject(m.group(1));
         m = java.util.regex.Pattern.compile(
                 "i\\s+(?:like|love|live in|work as|prefer|use|am)\\s+([a-z0-9 ]{1,24})")
                 .matcher(t);
@@ -794,7 +835,7 @@ public class OxMemoryStore {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < words.length && i < 4; i++) {
             String w = words[i];
-            if (STOPWORDS.contains(w) || SUBJECT_STOP.contains(w)) continue;
+            if (STOPWORDS.contains(w) || SUBJECT_STOP.contains(w)) break;
             if (sb.length() > 0) sb.append(' ');
             sb.append(w);
             if (sb.toString().split(" ").length >= 2) break;
