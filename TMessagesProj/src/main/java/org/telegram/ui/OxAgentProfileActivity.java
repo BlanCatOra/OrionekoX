@@ -79,6 +79,8 @@ public class OxAgentProfileActivity extends BaseFragment {
     private EditTextCell topPCell;
     private EditTextCell maxTokensCell;
     private EditTextCell contextCell;
+    private EditTextCell memoryThresholdCell;
+    private TextSettingsCell memoryModeRow;
     private EditTextCell presenceCell;
     private EditTextCell frequencyCell;
     private EditTextCell topKCell;
@@ -91,6 +93,7 @@ public class OxAgentProfileActivity extends BaseFragment {
     private TextSettingsCell parallelRow;
     private String reasoningEffort = "auto";
     private String toolChoice = "auto";
+    private String memoryMode = "normal";
     private boolean parallelTools = true;
     private ImageView providerIcon;
     private TextView providerName;
@@ -160,6 +163,8 @@ public class OxAgentProfileActivity extends BaseFragment {
 
     @Override
     public View createView(Context context) {
+        memoryMode = agent == null || agent.memoryMode == null || agent.memoryMode.isEmpty()
+                ? "normal" : agent.memoryMode;
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(false);
         actionBar.setTitle(LocaleController.getString(isNew ? R.string.OxAgentNewTitle : R.string.OxAgentSettings));
@@ -361,6 +366,18 @@ public class OxAgentProfileActivity extends BaseFragment {
         advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentContextLength)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         contextCell = addEditCell(context, advanced, LocaleController.getString(R.string.OxAgentAutoHint), agent.contextLength > 0 ? String.valueOf(agent.contextLength) : "", false, true);
         contextCell.editText.setInputType(InputType.TYPE_CLASS_NUMBER);
+
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentMemoryMode)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        memoryModeRow = new TextSettingsCell(context);
+        memoryModeRow.setTextAndValue(LocaleController.getString(R.string.OxAgentMemoryMode), memoryModeLabel(), false);
+        memoryModeRow.setOnClickListener(v -> {
+            memoryMode = nextMemoryMode(memoryMode);
+            memoryModeRow.setTextAndValue(LocaleController.getString(R.string.OxAgentMemoryMode), memoryModeLabel(), false);
+        });
+        advanced.addView(memoryModeRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentMemoryThreshold)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        memoryThresholdCell = addEditCell(context, advanced, LocaleController.getString(R.string.OxAgentMemoryThresholdHint), String.valueOf(Math.max(10, agent.memoryThreshold)), false, true);
+        memoryThresholdCell.editText.setInputType(InputType.TYPE_CLASS_NUMBER);
 
         advanced.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentPresencePenalty)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         presenceCell = addEditCell(context, advanced, "0.0 – 2.0", agent.presencePenalty != 0 ? String.valueOf(agent.presencePenalty) : "", false, true);
@@ -773,6 +790,18 @@ public class OxAgentProfileActivity extends BaseFragment {
         return LocaleController.getString(R.string.OxAgentTemperature) + " " + temp + " · Top P " + topP;
     }
 
+    private String memoryModeLabel() {
+        if ("off".equals(memoryMode)) return LocaleController.getString(R.string.OxAgentMemoryModeOff);
+        if ("vector".equals(memoryMode)) return LocaleController.getString(R.string.OxAgentMemoryModeVector);
+        return LocaleController.getString(R.string.OxAgentMemoryModeNormal);
+    }
+
+    private String nextMemoryMode(String value) {
+        if ("off".equals(value)) return "normal";
+        if ("normal".equals(value)) return "vector";
+        return "off";
+    }
+
     private String reasoningLabel() {
         switch (reasoningEffort) {
             case "low": return LocaleController.getString(R.string.OxAgentReasoningLow);
@@ -855,6 +884,9 @@ public class OxAgentProfileActivity extends BaseFragment {
         a.topP = parseDouble(topPCell, 1.0, 0, 1);
         a.maxTokens = parseInt(maxTokensCell, 0, 10_000_000);
         a.contextLength = parseInt(contextCell, 0, 10_000_000);
+        a.memoryMode = memoryMode;
+        a.memoryThreshold = Math.max(10, Math.min(200, parseInt(memoryThresholdCell, 45, 200)));
+        a.memoryRecall = agent.memoryRecall > 0 ? agent.memoryRecall : 6;
         a.presencePenalty = parseDouble(presenceCell, 0, 0, 2);
         a.frequencyPenalty = parseDouble(frequencyCell, 0, 0, 2);
         a.topK = parseInt(topKCell, 0, 1000);

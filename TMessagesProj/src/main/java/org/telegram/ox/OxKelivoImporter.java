@@ -1345,6 +1345,21 @@ public class OxKelivoImporter {
             a.stop = clip(p.optString("stop", ""), 2048);
             applied = true;
         }
+        if (p.has("memory_mode")) {
+            String v = p.optString("memory_mode", "");
+            if ("off".equals(v) || "normal".equals(v) || "vector".equals(v)) {
+                a.memoryMode = v;
+                applied = true;
+            }
+        }
+        if (p.has("memory_threshold")) {
+            a.memoryThreshold = Math.max(10, Math.min(200, p.optInt("memory_threshold", 45)));
+            applied = true;
+        }
+        if (p.has("memory_recall")) {
+            a.memoryRecall = Math.max(1, Math.min(12, p.optInt("memory_recall", 6)));
+            applied = true;
+        }
         JSONObject policy = p.optJSONObject("tools_policy");
         if (policy != null) {
             JSONObject clean = new JSONObject();

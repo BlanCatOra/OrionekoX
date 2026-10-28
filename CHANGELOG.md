@@ -4,6 +4,47 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.52.0 — 2026-10-28
+
+- Adds a per-agent local memory library (`databases/oxmemory.db`) that stores
+  readable turn notes, extracted facts and dated summaries with timestamps,
+  access counts, importance, stability, short/long-term state and a dedupe hash.
+  Each agent is capped at 4,000 entries.
+- Normal recall ranks keyword/token overlap; experimental vector recall uses a
+  128-dimension local signed-hash vector (English words, CJK characters and
+  bigrams) blended with keywords. Neither mode calls an external embedding
+  service.
+- Both modes apply a forgetting curve with a 7-day half-life for short-term and
+  90 days for long-term entries plus access/importance terms. Two recalls or an
+  importance of at least 0.8 promote a short-term entry to long-term; stale,
+  never-accessed, low-importance short entries are pruned after 30 days.
+- When a chat exceeds the configured threshold (default 45 messages), older
+  not-yet-compressed turns are written to the library, fact-marked user lines
+  become high-importance facts and the batch gets a dated summary. Only the
+  newest `max(8, threshold/3)` turns stay verbatim, alongside a compression
+  note, digest and query-relevant memories in the system prompt. A state table
+  prevents re-ingesting the same turns.
+- Adds `memory_search(query, limit)` and strict `memory_verify(query)` tools and
+  upgrades `remember`/`recall`. `memory_verify` requires at least two meaningful
+  shared terms for multi-word claims, so “favorite color” no longer matches
+  “favorite editor”; when there is no evidence it says so explicitly.
+- The agent editor exposes mode, threshold and recall count; the memory page
+  shows total/long/short/fact counts, recent readable entries and a clear
+  action. Chatbox `orionekoAgent` carries the three memory settings, while the
+  SQLite library itself remains local.
+- Verified with a 60-message fixture and a local mock OpenAI server: normal mode
+  sent only 17 messages with compression/digest/recall blocks and `memory_search`
+  returned the birthday fact; the library held 47 turns (46 short, one long),
+  3 facts and one summary. Vector mode still recalled the birthday/coffee facts
+  with a 0.61 blended score. `memory_verify` found the birthday and correctly
+  reported no evidence for “favorite color”. No app FATAL/ANR; test agent, rows
+  and test dialogs/messages were removed.
+- Limits: local hashed vectors are not semantic embeddings; summaries are
+  extractive rather than model-written; the library is not in Chatbox/.oxagent
+  backups; memory.txt is not auto-migrated; groups share the agent library; the
+  threshold counts messages, not token percentage; the private SQLite file is
+  not encrypted.
+
 ## 0.51.0 — 2026-10-28
 
 - Chatbox / Kelivo backups now carry the global appearance when it is in custom

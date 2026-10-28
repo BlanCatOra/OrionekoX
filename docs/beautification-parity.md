@@ -31,6 +31,7 @@ requirements.
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
 | Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; **0.47.1** exports per-agent workspaces (200 files / 2 MiB each / 8 MiB total); **0.48.1** exports/restores per-agent preferences (tool policies, pin, remark, greeting, reasoning/context/sampling settings); **0.50.0** exports/restores per-agent appearance overrides and custom chat/code fonts (colors, bubbles, corner, border, text, scale, line height, background image; 8 MiB per font, 16 MiB total); **0.51.0** exports/restores the global appearance theme, global background and global chat/code fonts via `settings.json`, preserving a local custom global theme; provider keys, base URLs, headers and `extra_body` never exported |
 | SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0–0.45.1** PNG `tEXt`/`iTXt` + JSON via the agent-list entry, six persona sections, first message and PNG avatar, idempotent ids; **0.49.0** exports V2 JSON and PNG cards (avatar re-encoded, Base64 `chara` chunk, generated placeholder when no avatar) with six-section persona roundtrip; no alternate greetings, character book, tags or real-client validation |
+| Local agent memory library | — | — | — | **0.52.0** per-agent SQLite with normal keyword and experimental local-hash-vector recall, 7/90-day forgetting curve, short/long-term promotion, 45-message compression threshold, readable turn/fact/summary entries, `memory_search` and strict `memory_verify`; no external embeddings and not yet exported in backups |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -1156,6 +1157,51 @@ These confirm the feature directions rather than relying on guesses. Checked
   still not carried; a local custom global theme wins; fonts must parse; video
   backgrounds are not carried.
 
+## 0.52.0 implementation — local memory library and context compression
+
+- Each agent gets a private SQLite library (`databases/oxmemory.db`) holding
+  readable turn notes, extracted facts and dated chunk summaries. Entries carry
+  created/last-access times, access count, importance, stability, short/long
+  term state, source and a dedupe hash. The cap is 4,000 entries per agent.
+- Normal recall ranks token overlap and substring matches. The experimental
+  vector mode encodes text into a 128-dimension local signed-hash vector over
+  English words and CJK characters/bigrams, then blends cosine with keyword
+  score. Neither mode calls an external embedding service.
+- Both modes apply a forgetting curve (7-day half-life for short-term, 90-day
+  for long-term, plus access and importance terms). Recall updates last-access
+  and access count; a short-term entry is promoted after two recalls or when
+  importance reaches 0.8. Stale, never-accessed, low-importance short entries
+  are pruned after 30 days.
+- When the chat exceeds the configured threshold (default 45 entries), the
+  oldest not-yet-compressed turns are written to the library, user messages
+  with fact markers become high-importance facts, and the batch gets a dated
+  summary. Only the newest `max(8, threshold/3)` turns stay verbatim. The
+  system prompt receives compression notes, a digest and query-relevant
+  memories; `memory_state` prevents re-ingesting the same turns.
+- `remember` and `recall` now use the library (while keeping memory.txt
+  compatibility). New tools: `memory_search(query, limit)` returns dated,
+  scored evidence; `memory_verify(query)` requires at least two meaningful
+  shared terms for multi-word claims and otherwise says no record was found.
+- Device QA used a 60-message agent with name/birthday/coffee/city/editor facts
+  and a local mock OpenAI server. In normal mode the first request carried only
+  17 messages while the system prompt contained compression, digest and recall
+  blocks; `memory_search` returned the birthday fact. The library held 47
+  turns (46 short, one promoted), 3 facts and one summary. Vector mode returned
+  the same facts with a 0.61 blended score. `memory_verify` found the birthday
+  but correctly reported no evidence for "favorite color" instead of matching
+  "favorite editor" on one shared word.
+- The memory page shows total/long/short/fact counts, recent readable entries
+  and a clear action; the agent editor exposes mode, threshold and keeps the
+  editable memory.txt. An initial layout squeezed the library title to
+  “本地…”, fixed by shortening the stats line. Chatbox `orionekoAgent` now
+  carries memory mode/threshold/recall, but the SQLite library itself is local
+  only. No app FATAL/ANR; test agent, rows and test dialogs were removed.
+- Limits: local hashed vectors are not semantic embeddings; summaries are
+  extractive rather than model-written; the library is not in Chatbox/.oxagent
+  backups; memory.txt is not auto-migrated; groups share the agent library;
+  the threshold counts messages, not token percentage; the private SQLite is
+  not encrypted.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -1186,3 +1232,7 @@ These confirm the feature directions rather than relying on guesses. Checked
    confirm background layering and blur on local groups; cover per-agent themes,
    font import/export, preset preview, gradients, group albums, tool bubbles,
    literal `\n` in old messages, skill dedupe/delete and local-agent search.
+7. Memory library next: export/import it through Chatbox/.oxagent, optional
+   offline embedding models, model-written (not only extractive) summaries,
+   migration of existing memory.txt, per-group scoping and a recall-quality
+   benchmark on real conversations.

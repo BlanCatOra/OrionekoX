@@ -41,6 +41,12 @@ public class OxAgent {
     public String toolChoice = "auto";      // auto | required | none
     public boolean parallelToolCalls = true;
     public String extraBody = "";   // JSON object merged into the request body
+    /** off | normal | vector - local memory library recall mode. */
+    public String memoryMode = "normal";
+    /** Number of chat entries before older context is compressed into memory. */
+    public int memoryThreshold = 45;
+    /** Maximum number of recalled memory entries injected per turn. */
+    public int memoryRecall = 6;
     // tool name -> "auto" | "ask" | "deny"; missing entries fall back to the tool default
     public JSONObject toolsPolicy = new JSONObject();
 
@@ -77,6 +83,9 @@ public class OxAgent {
         a.toolChoice = o.optString("tool_choice", "auto");
         a.parallelToolCalls = o.optBoolean("parallel_tool_calls", true);
         a.extraBody = o.optString("extra_body", "");
+        a.memoryMode = o.optString("memory_mode", "normal");
+        a.memoryThreshold = o.optInt("memory_threshold", 45);
+        a.memoryRecall = o.optInt("memory_recall", 6);
         JSONObject tp = o.optJSONObject("tools_policy");
         a.toolsPolicy = tp == null ? new JSONObject() : tp;
         return a;
@@ -114,6 +123,9 @@ public class OxAgent {
         o.put("tool_choice", toolChoice == null ? "auto" : toolChoice);
         o.put("parallel_tool_calls", parallelToolCalls);
         o.put("extra_body", extraBody == null ? "" : extraBody);
+        o.put("memory_mode", memoryMode == null ? "normal" : memoryMode);
+        o.put("memory_threshold", memoryThreshold);
+        o.put("memory_recall", memoryRecall);
         o.put("tools_policy", toolsPolicy);
         return o;
     }

@@ -1816,7 +1816,7 @@ public class OxAgentsBridge {
         s.userText = userText;
         s.imagePath = imagePath;
         try {
-            s.messages = baseMessages(agent, agent.id);
+            s.messages = baseMessages(agent, agent.id, userText);
             if (imagePath != null && new File(imagePath).exists()) {
                 s.messages.put(new JSONObject().put("role", "user").put("content", visionContent(userText, imagePath)));
             } else {
@@ -1955,8 +1955,11 @@ public class OxAgentsBridge {
             system.append("\n\n# 长期记忆\n").append(memory);
         }
         appendSkills(system, agent);
+        List<OxChatEntry> history = OxGroupStore.loadChat(dialogId);
+        int from = appendMemoryContext(system, agent, userText, history);
         messages.put(new JSONObject().put("role", "system").put("content", system.toString()));
-        for (OxChatEntry e : OxGroupStore.loadChat(dialogId)) {
+        for (int i = from; i < history.size(); i++) {
+            OxChatEntry e = history.get(i);
             if (e.content == null || e.content.trim().isEmpty()) continue;
             messages.put(new JSONObject().put("role", e.role).put("content", e.content));
         }
@@ -2003,7 +2006,48 @@ public class OxAgentsBridge {
         }
     }
 
-    private static JSONArray baseMessages(OxAgent agent, String agentId) throws Exception {
+    /** Appends library digest + query recall and returns the first history index
+     *  that should still be sent verbatim. Older turns are compressed into the
+     *  local memory library once the configured threshold is crossed. */
+    private static int appendMemoryContext(StringBuilder system, OxAgent agent,
+            String query, List<OxChatEntry> history) {
+        int size = history == null ? 0 : history.size();
+        int defaultFrom = Math.max(0, size - 20);
+        String mode = agent.memoryMode == null ? OxMemoryStore.MODE_NORMAL : agent.memoryMode;
+        if (OxMemoryStore.MODE_OFF.equals(mode)) return defaultFrom;
+        int threshold = agent.memoryThreshold > 0 ? agent.memoryThreshold : 45;
+        int from = defaultFrom;
+        String digest = OxMemoryStore.digest(agent.id, 1600);
+        if (size > threshold) {
+            int keep = Math.max(8, threshold / 3);
+            OxMemoryStore.CompressResult cr = OxMemoryStore.compressHistory(agent.id, history, keep);
+            from = Math.max(0, size - keep);
+            if (cr.ingested > 0) {
+                if (system.length() > 0) system.append("\n\n");
+                system.append("# 上下文压缩\n较早的 ").append(cr.ingested)
+                        .append(" 条消息已写入本地记忆库，下面只保留最近 ")
+                        .append(keep).append(" 条原文与压缩摘要。需要细节时调用 recall 或 memory_search 查证。");
+            }
+            if (cr.digest != null && !cr.digest.isEmpty()) digest = cr.digest;
+        }
+        if (!digest.isEmpty()) {
+            if (system.length() > 0) system.append("\n\n");
+            system.append("# 记忆库摘要（").append(OxMemoryStore.MODE_VECTOR.equals(mode) ? "向量模式" : "普通模式")
+                    .append("）\n").append(digest);
+        }
+        String recall = OxMemoryStore.recall(agent.id, query, Math.max(1, Math.min(12,
+                agent.memoryRecall > 0 ? agent.memoryRecall : 6)), mode);
+        if (!recall.isEmpty()) {
+            if (system.length() > 0) system.append("\n\n");
+            system.append("# 与当前消息相关的记忆（按遗忘曲线排序）\n").append(recall);
+        }
+        if (system.length() > 0) system.append("\n\n");
+        system.append("# 记忆使用规则\n如果用户提到过去的事情而你不确定，先调用 recall 或 memory_search 查证；"
+                + "不要把猜测说成事实。确认过的记忆可以引用日期，未找到时明确说没有记录。");
+        return from;
+    }
+
+    private static JSONArray baseMessages(OxAgent agent, String agentId, String query) throws Exception {
         JSONArray messages = new JSONArray();
         StringBuilder system = new StringBuilder();
         if (agent.agentsMd != null) system.append(agent.agentsMd.trim());
@@ -2013,11 +2057,11 @@ public class OxAgentsBridge {
             system.append("# 长期记忆（用户允许你记住的事实）\n").append(memory);
         }
         appendSkills(system, agent);
+        List<OxChatEntry> history = OxAgentStore.loadChat(agentId);
+        int from = appendMemoryContext(system, agent, query, history);
         if (system.length() > 0) {
             messages.put(new JSONObject().put("role", "system").put("content", system.toString()));
         }
-        List<OxChatEntry> history = OxAgentStore.loadChat(agentId);
-        int from = Math.max(0, history.size() - 20);
         if (agent.contextLength > 0) {
             int budget = Math.max(4000, agent.contextLength * 2);
             int chars = 0;
@@ -2030,7 +2074,7 @@ public class OxAgentsBridge {
                 chars += c;
                 start = i;
             }
-            from = start;
+            from = Math.max(from, start);
         }
         for (int i = from; i < history.size(); i++) {
             OxChatEntry e = history.get(i);

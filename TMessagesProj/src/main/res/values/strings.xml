@@ -11820,6 +11820,12 @@
     <string name="OxAgentTopP">Top P</string>
     <string name="OxAgentMaxTokens">Max output tokens</string>
     <string name="OxAgentContextLength">Context length</string>
+    <string name="OxAgentMemoryMode">Memory library</string>
+    <string name="OxAgentMemoryModeOff">Off</string>
+    <string name="OxAgentMemoryModeNormal">Normal (keywords)</string>
+    <string name="OxAgentMemoryModeVector">Experimental (vector)</string>
+    <string name="OxAgentMemoryThreshold">Compression threshold (messages)</string>
+    <string name="OxAgentMemoryThresholdHint">Default 45</string>
     <string name="OxAgentAutoHint">0 = auto</string>
     <string name="OxAgentPresencePenalty">Presence penalty</string>
     <string name="OxAgentFrequencyPenalty">Frequency penalty</string>
@@ -11990,7 +11996,11 @@
     <string name="OxWorkspaceCopyPath">Copy path</string>
     <string name="OxWorkspaceInvalidName">Enter a relative path inside the workspace (no &quot;..&quot; or leading slash).</string>
     <string name="OxMemory">Memory</string>
-    <string name="OxMemoryInfo">Lines saved by the remember tool. The agent reads this file in every turn; edit or clear it here.</string>
+    <string name="OxMemoryInfo">Durable facts from remember and readable summaries written by context compression. The agent recalls relevant entries every turn; edit or clear memory.txt here.</string>
+    <string name="OxMemoryLibrary">Memory library</string>
+    <string name="OxMemoryLibraryEmpty">No indexed memories yet.</string>
+    <string name="OxMemoryLibraryClear">Clear memory library</string>
+    <string name="OxMemoryLibraryClearConfirm">Delete all indexed memories for this agent? The editable memory.txt file is not affected.</string>
     <string name="OxMemoryEmpty">No memories yet. Ask the agent to remember something.</string>
     <string name="OxMemoryClear">Clear memory</string>
     <string name="OxMemoryClearConfirm">Delete all memories for this agent?</string>
