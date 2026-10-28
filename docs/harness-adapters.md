@@ -21,6 +21,7 @@ POST   /v1/sessions                 {harness, cwd, model, agent, system}
 GET    /v1/sessions/<id>
 POST   /v1/sessions/<id>/turns      {text, attachments}  -> NDJSON
 POST   /v1/sessions/<id>/compact
+GET    /v1/sessions/<id>/context
 DELETE /v1/sessions/<id>
 ```
 
@@ -69,7 +70,7 @@ to its native compact endpoint before looking at any local template.
 | CommandCode | `commandcode -p … --output-format json` | `--resume <sessionId>` from NDJSON | interactive PTY, wait for idle prompt, send `/compact` | real turn, resume, PTY confirmed `对话已经过压缩`, post-compact turn returned `BRIDGE-CC-731` |
 | OpenCode | `opencode run --format json --session …` | `--session <ses_…>` | private `opencode serve` + `POST /api/session/<id>/compact` (Basic `opencode:<password>`) | real turn, resume, HTTP 200 compaction message, post-compact turn returned `BRIDGE-OC-731` |
 | Claude Code | `claude -p … --output-format stream-json --session-id/--resume` | UUID session | `claude -p "/compact" --resume <id>` | transport initialized and streamed the provider's 403; compact returned `Not enough messages to compact.` The model path is **not working** on this account |
-| Fake (tests) | in-process | bridge session | in-process | 13 unit/HTTP tests pass |
+| Fake (tests) | in-process | bridge session | in-process | 15 unit/HTTP tests pass |
 
 Bridge smoke artifacts: `/tmp/ox-bridge-smoke/{openclaw,commandcode,opencode,claude}.json`.
 These are one-off validation records, not bundled test fixtures.
@@ -112,6 +113,27 @@ OpenCode receives each path through `--file`; Claude/CommandCode/OpenClaw get
 a labeled path list in the prompt so their own file tools can read it. This is
 a real path handoff, **not** a claim of harness-native inline vision.
 
+## Harness context telemetry
+
+The bridge records the last turn's usage/context per session and exposes it at
+`GET /v1/sessions/<id>/context`. It stores only token/budget/model fields, never
+prompt or reply text.
+
+- OpenClaw: `contextBudgetStatus` (`should_compact`, `prompt_tokens`,
+  `context_budget`) plus usage.
+- CommandCode: `inputTokens`/`outputTokens`/`cacheReadTokens` from run events.
+- OpenCode: private `serve` `GET /api/session/<id>` merges session `tokens`
+  (`input`, `output`, `reasoning`, `cache.read/write`), model and cost.
+- Claude Code: result usage when a turn succeeds; currently the provider 403s.
+- `done` events also carry the same `context` object, so the app updates
+  without an extra request.
+
+The app shows a **Harness context** row in the agent editor and calls
+`OxHarnessAdapter.maybeCompact` with the harness-reported `should_compact`
+(with a 60-second cooldown) in addition to the local history threshold. A true
+`should_compact` value has not been forced on a real harness yet; do not claim
+automatic native compaction was device-verified.
+
 ## Boundaries (do not overclaim)
 
 - Claude Code's transport is implemented and tested, but the provider returned
@@ -141,5 +163,6 @@ python3 -m unittest tools/test_ox_harness_bridge.py -v
 ```
 
 Covers fake turn streaming, attachments, error events, compact, auth, session
-persistence/delete, and recorded event-shape parsers for CommandCode,
-OpenCode and Claude (13 tests).
+persistence/delete, context endpoint/done.context, OpenCode session token
+normalization, and recorded event-shape parsers for CommandCode, OpenCode and
+Claude (15 tests).

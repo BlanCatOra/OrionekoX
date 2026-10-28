@@ -2261,6 +2261,11 @@ public class OxAgentsBridge {
             }
 
             @Override
+            public void onContext(JSONObject context) {
+                log("harness context " + context);
+            }
+
+            @Override
             public void onSession(String nativeSession) {
                 log("harness native session " + nativeSession);
             }

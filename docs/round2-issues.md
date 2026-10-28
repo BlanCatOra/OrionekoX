@@ -611,3 +611,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
   OxLinux 常驻 shell 被 Android `execve` 策略拒绝；外部记忆镜像、按
   Harness 阈值、Harness 自身压缩状态读取仍未实现。测试 Agent/tgId 的
   dialogs/messages 清理为 0，代理与无障碍保持，未 `pm clear`。
+
+## 0.58.0 Harness 上下文状态 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-119 | 0.58.0 功能 | App 只能按本地历史条数猜何时 compact，不知道 Harness 自己的上下文用量与 `should_compact`；OpenClaw/CommandCode/OpenCode 的 usage 也没有进入 App | 桥接记录每会话 `last_context`（只存 token/预算/模型），`done` 附带 context，新增只读 `GET /context`；OpenCode 从私有 serve 的 session API 补 tokens/model/cost；App 新增 `OxHarnessTransport.context()`、资料页 Harness context 行与 `shouldCompact()`，并让 Harness 自报建议参与 compact 判定 | 已实现并设备验证（读取/展示）；`should_compact=true` 真机触发未构造 |
+| R2-120 | 0.58.0 QA | context 读取若只依赖 turn 事件，OpenCode 的 `run` 事件可能没有 token；资料页行值过长会像 0.57 的 Test 行一样挤压 | OpenCode context 额外 GET `/api/session/<id>` 合并 `tokens/model/cost`；UI 只显示短摘要（in/out/无需 compact），错误用红色文本；中文字符串包 117→118 | 已修复并设备验证 |
+
+- 设备：debug 0.58.0（5809）的 `ctx_test_580`（tgId 555000014，OpenClaw）发 `CTX-APP-0580`；App 日志 `harness context {"should_compact":false,"context_budget":1048000,"usage":{...}}`，资料页显示 `in 530 · out 179 · 无需 compact`。真实 `/context`：OpenClaw budget 1,048,000/input 503/output 44；CommandCode inputTokens 16,669/output 9；OpenCode input 2,916/output 25/reasoning 178/cache_read 4,224。15 个桥接测试通过。
+- 边界：外部记忆镜像/所有权交接仍未实现；Harness 自报 `should_compact=true` 的真实触发未构造；OpenCode context 依赖私有 serve；Claude 仍 403；附件仍为路径交接。测试 Agent/tgId 的 dialogs/messages 清零，桥接停止、token 删除，代理与无障碍保持，未 `pm clear`。

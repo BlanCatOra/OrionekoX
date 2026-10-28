@@ -17,6 +17,8 @@ import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Client for tools/ox-harness-bridge.py. The bridge owns the external harness
@@ -33,6 +35,7 @@ public class OxHarnessTransport {
         default void onToolResult(String name, String content, boolean error) {}
         default void onStatus(String state, String message) {}
         default void onAttachment(String url, String kind) {}
+        default void onContext(JSONObject context) {}
         default void onSession(String nativeSession) {}
         void onError(String message);
         void onDone(String text, String nativeSession);
@@ -42,6 +45,12 @@ public class OxHarnessTransport {
         void onResult(boolean ok, String message);
     }
 
+    public interface ContextCallback {
+        void onResult(boolean ok, String message);
+    }
+
+    private static final Map<String, JSONObject> LAST_CONTEXT = new ConcurrentHashMap<>();
+    private static final Map<String, Long> LAST_COMPACT_AT = new ConcurrentHashMap<>();
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int TURN_READ_TIMEOUT_MS = 900_000;
     private static final int COMPACT_READ_TIMEOUT_MS = 300_000;
@@ -132,7 +141,7 @@ public class OxHarnessTransport {
                             code >= 400 ? conn.getErrorStream() : conn.getInputStream()), 600));
                     return;
                 }
-                parseEvents(conn.getInputStream(), callback);
+                parseEvents(conn.getInputStream(), agent.id, callback);
                 return;
             } finally {
                 if (conn != null) conn.disconnect();
@@ -140,7 +149,7 @@ public class OxHarnessTransport {
         }
     }
 
-    private static void parseEvents(InputStream in, Callback callback) throws Exception {
+    private static void parseEvents(InputStream in, String agentId, Callback callback) throws Exception {
         String finalText = null;
         String nativeSession = "";
         boolean done = false;
@@ -186,6 +195,11 @@ public class OxHarnessTransport {
                 } else if ("done".equals(type)) {
                     finalText = event.optString("text", "");
                     nativeSession = event.optString("native_session", nativeSession);
+                    JSONObject ctx = event.optJSONObject("context");
+                    if (ctx != null) {
+                        LAST_CONTEXT.put(agentId, ctx);
+                        callback.onContext(ctx);
+                    }
                     done = true;
                 }
             }
@@ -195,6 +209,83 @@ public class OxHarnessTransport {
             return;
         }
         callback.onDone(finalText == null ? "" : finalText, nativeSession);
+    }
+
+    /** True when the harness itself reported that its context should be compacted. */
+    public static boolean shouldCompact(String agentId) {
+        JSONObject ctx = LAST_CONTEXT.get(agentId);
+        if (ctx == null || !ctx.optBoolean("should_compact", false)) return false;
+        long last = LAST_COMPACT_AT.getOrDefault(agentId, 0L);
+        if (System.currentTimeMillis() - last < 60_000L) return false;
+        LAST_COMPACT_AT.put(agentId, System.currentTimeMillis());
+        return true;
+    }
+
+    public static void context(OxAgent agent, ContextCallback callback) {
+        if (!isConfigured(agent)) {
+            callback.onResult(false, "未填写桥接地址");
+            return;
+        }
+        if (agent.harnessSession == null || agent.harnessSession.trim().isEmpty()) {
+            callback.onResult(false, "暂无会话，请先发一条消息");
+            return;
+        }
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            try {
+                conn = open(agent, "/v1/sessions/" + agent.harnessSession + "/context",
+                        "GET", 20_000);
+                int code = conn.getResponseCode();
+                String raw = readAll(code >= 400 ? conn.getErrorStream() : conn.getInputStream());
+                if (code != 200) {
+                    callback.onResult(false, "HTTP " + code + " · " + clip(raw, 200));
+                    return;
+                }
+                JSONObject obj = new JSONObject(raw);
+                JSONObject ctx = obj.optJSONObject("context");
+                if (ctx == null || ctx.length() == 0) {
+                    callback.onResult(false, "暂无上下文数据，请先发一条消息");
+                    return;
+                }
+                LAST_CONTEXT.put(agent.id, ctx);
+                callback.onResult(true, contextSummary(ctx));
+            } catch (Throwable t) {
+                FileLog.e("OxHarnessTransport", t);
+                callback.onResult(false, t.getMessage() == null
+                        ? t.getClass().getSimpleName() : t.getMessage());
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }, "ox-harness-context").start();
+    }
+
+    private static String contextSummary(JSONObject ctx) {
+        StringBuilder sb = new StringBuilder();
+        long prompt = ctx.optLong("prompt_tokens", -1);
+        long budget = ctx.optLong("context_budget", -1);
+        if (prompt >= 0 && budget > 0) {
+            sb.append(prompt).append(" / ").append(budget).append(" tok");
+        } else {
+            JSONObject usage = ctx.optJSONObject("usage");
+            long in = usage == null ? -1 : firstLong(usage, "input_tokens", "inputTokens", "input");
+            long out = usage == null ? -1 : firstLong(usage, "output_tokens", "outputTokens", "output");
+            if (in >= 0 || out >= 0) {
+                sb.append("in ").append(Math.max(0, in))
+                        .append(" · out ").append(Math.max(0, out));
+            }
+        }
+        if (ctx.has("should_compact")) {
+            if (sb.length() > 0) sb.append(" · ");
+            sb.append(ctx.optBoolean("should_compact") ? "建议 compact" : "无需 compact");
+        }
+        return sb.length() == 0 ? "已读取，Harness 未提供 token 统计" : sb.toString();
+    }
+
+    private static long firstLong(JSONObject o, String... keys) {
+        for (String k : keys) {
+            if (o.has(k) && !o.isNull(k)) return o.optLong(k, -1);
+        }
+        return -1;
     }
 
     private static void createSession(OxAgent agent, String system) throws Exception {

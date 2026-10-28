@@ -11840,6 +11840,9 @@
     <string name="OxAgentHarnessModelHint">provider/model (optional)</string>
     <string name="OxAgentHarnessAgent">OpenClaw agent</string>
     <string name="OxAgentHarnessAgentHint">Agent id (optional)</string>
+    <string name="OxAgentHarnessContext">Harness context</string>
+    <string name="OxAgentHarnessContextIdle">Tap to refresh</string>
+    <string name="OxAgentHarnessContextLoading">Reading…</string>
     <string name="OxAgentHarnessTest">Test harness bridge</string>
     <string name="OxAgentHarnessTestIdle">Not tested</string>
     <string name="OxAgentHarnessTesting">Testing…</string>

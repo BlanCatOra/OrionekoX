@@ -3931,6 +3931,37 @@ debug `dist/OrionekoX-0.57.0-debug-arm64-x64.apk`（sha256
 `e3af72cf5e109752207e5c799672a9bef3421215f346e2989180bd4ff0c61657`）。
 详见 `docs/qa-0.57.0.md` 与 `docs/harness-adapters.md`。
 
+## 5.180 alpha 0.58.0 —— Harness 上下文状态：读取、展示与 compact 判定（2026-10-28 21:10–21:30）
+
+- 0.57.0 的桥接只把回复带回 App，App 不知道 Harness 自己的上下文用量/压缩
+  建议。桥接 `Session` 新增 `last_context`（只存 usage/预算/模型，不存
+  prompt），从 OpenClaw `contextBudgetStatus`、CommandCode `usage`、
+  OpenCode 私有服务 `GET /api/session/<id>` 的 `tokens/model/cost`、
+  Claude result usage 汇总；`done` 事件附带 `context`，并新增
+  `GET /v1/sessions/<id>/context`。
+- App 新增 `OxHarnessTransport.context()`、上下文缓存和 `shouldCompact()`；
+  资料页新增 **Harness context** 行，显示如
+  `in 530 · out 179 · 无需 compact`。`maybeCompact` 允许 Harness 自报
+  `should_compact=true` 时绕过本地历史阈值（60 秒冷却），否则仍按本地
+  阈值/半窗口限流。
+- 真实数据：OpenClaw budget 1,048,000、should_compact=false、input 503 /
+  output 44；CommandCode inputTokens 16,669 / outputTokens 9；
+  OpenCode input 2,916 / output 25 / reasoning 178 / cache_read 4,224。
+- 设备：`ctx_test_580`（tgId 555000014）OpenClaw 一轮回复，App 日志读到
+  `harness context`，资料页显示 `in 530 · out 179 · 无需 compact`；
+  release 0.58.0 覆盖安装启动无 FATAL/ANR，无障碍重新绑定，代理保持。
+- 测试：桥接 15 个单元/HTTP 测试通过；测试 Agent/tgId 清理为 0，桥接
+  进程和临时 token 已删除。
+- 边界：真实 `should_compact=true` 场景未强行构造，不能宣称自动 native
+  compact 已在真机触发；OpenCode context 依赖私有 serve；Claude 仍 403；
+  外部记忆镜像/所有权交接仍待下一轮。
+
+**产物**：`dist/OrionekoX-0.58.0-alpha-arm64-x64.apk`（versionCode 5809，
+sha256 `de28f3c366919784f527642d3f63a3f482f909052db8514a95df45462c868ad0`）；
+debug `dist/OrionekoX-0.58.0-debug-arm64-x64.apk`（sha256
+`b712d965841f60e6bec86bbbf3e1781c4ae24dc055ff1a3a0f86d778709a40e1`）。
+详见 `docs/qa-0.58.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

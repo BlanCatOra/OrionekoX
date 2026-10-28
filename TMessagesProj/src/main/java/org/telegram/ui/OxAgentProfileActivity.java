@@ -91,6 +91,7 @@ public class OxAgentProfileActivity extends BaseFragment {
     private EditTextCell harnessCwdCell;
     private EditTextCell harnessModelCell;
     private EditTextCell harnessAgentCell;
+    private TextSettingsCell harnessContextRow;
     private TextSettingsCell harnessTestRow;
     private String harness = "api";
     private EditTextCell presenceCell;
@@ -406,6 +407,15 @@ public class OxAgentProfileActivity extends BaseFragment {
         harnessAgentCell = addEditCell(context, harnessGroup,
                 LocaleController.getString(R.string.OxAgentHarnessAgentHint),
                 agent.harnessAgent, false, false);
+        harnessContextRow = new TextSettingsCell(context);
+        harnessContextRow.setTextAndValue(
+                LocaleController.getString(R.string.OxAgentHarnessContext),
+                LocaleController.getString(R.string.OxAgentHarnessContextIdle), false);
+        harnessContextRow.setTextValueColor(
+                getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        harnessContextRow.setOnClickListener(v -> refreshHarnessContext());
+        harnessGroup.addView(harnessContextRow,
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         harnessTestRow = new TextSettingsCell(context);
         harnessTestRow.setTextAndValue(LocaleController.getString(R.string.OxAgentHarnessTest),
                 LocaleController.getString(R.string.OxAgentHarnessTestIdle), false);
@@ -683,7 +693,26 @@ public class OxAgentProfileActivity extends BaseFragment {
         if (harnessCwdCell != null) harnessCwdCell.setVisibility(bridgeVisible);
         if (harnessModelCell != null) harnessModelCell.setVisibility(bridgeVisible);
         if (harnessAgentCell != null) harnessAgentCell.setVisibility(bridgeVisible);
+        if (harnessContextRow != null) harnessContextRow.setVisibility(bridgeVisible);
         if (harnessTestRow != null) harnessTestRow.setVisibility(bridgeVisible);
+    }
+
+    private void refreshHarnessContext() {
+        if (harnessContextRow == null) return;
+        harnessContextRow.setTextAndValue(
+                LocaleController.getString(R.string.OxAgentHarnessContext),
+                LocaleController.getString(R.string.OxAgentHarnessContextLoading), false);
+        harnessContextRow.setTextValueColor(
+                getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
+        OxHarnessTransport.context(buildFromFields(), (ok, message) ->
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (harnessContextRow == null || getParentActivity() == null) return;
+                    harnessContextRow.setTextAndValue(
+                            LocaleController.getString(R.string.OxAgentHarnessContext),
+                            message, false);
+                    harnessContextRow.setTextValueColor(getThemedColor(ok
+                            ? Theme.key_chats_actionBackground : Theme.key_text_RedRegular));
+                }));
     }
 
     private void testHarnessConnection() {

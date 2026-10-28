@@ -4,6 +4,24 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.58.0 — 2026-10-28
+
+- Bridge sessions now retain the last turn's usage/context (tokens, context
+  budget, model and `should_compact`; never prompt or reply text), attach it to
+  `done` events and expose `GET /v1/sessions/<id>/context`. OpenCode context is
+  completed from its private server's session API; OpenClaw and CommandCode
+  values come from their own run events.
+- The agent editor gains a **Harness context** row showing values such as
+  `in 530 · out 179 · 无需 compact`. Harness-reported `should_compact` now
+  participates in the compact decision with a 60-second cooldown, in addition
+  to the local history threshold.
+- Real values were captured for OpenClaw (budget 1,048,000), CommandCode
+  (inputTokens 16,669) and OpenCode (input 2,916, cache_read 4,224). A true
+  `should_compact=true` trigger was not forced, and Claude Code remains blocked
+  by the provider's 403.
+- 15 bridge protocol/parser tests pass. External memory mirroring, per-harness
+  threshold configuration and OpenClaw tool-result visibility remain open.
+
 ## 0.57.0 — 2026-10-28
 
 - Adds `tools/ox-harness-bridge.py`, an authenticated HTTP/NDJSON bridge that

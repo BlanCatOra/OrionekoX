@@ -46,7 +46,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-BRIDGE_VERSION = "0.57.0"
+BRIDGE_VERSION = "0.58.0"
 PROTOCOL_VERSION = 1
 HARNESSES = ("claude", "commandcode", "opencode", "openclaw", "fake")
 MAX_TEXT = 1_000_000
@@ -93,6 +93,7 @@ class Session:
         self.native = ""
         self.native_ready = False
         self.openclaw_key = ""
+        self.last_context = {}
         self.created = int(time.time())
         self.last_used = self.created
         self.turn_count = 0
@@ -104,7 +105,8 @@ class Session:
             "model": self.model, "agent": self.agent, "system": self.system,
             "permission_mode": self.permission_mode, "native": self.native,
             "native_ready": self.native_ready,
-            "openclaw_key": self.openclaw_key, "created": self.created,
+            "openclaw_key": self.openclaw_key,
+            "last_context": self.last_context, "created": self.created,
             "last_used": self.last_used, "turn_count": self.turn_count,
         }
 
@@ -116,6 +118,7 @@ class Session:
         s.native = obj.get("native", "")
         s.native_ready = bool(obj.get("native_ready", False))
         s.openclaw_key = obj.get("openclaw_key", "")
+        s.last_context = obj.get("last_context") or {}
         s.created = int(obj.get("created", time.time()))
         s.last_used = int(obj.get("last_used", s.created))
         s.turn_count = int(obj.get("turn_count", 0))
@@ -212,6 +215,9 @@ class Registry:
 def fake_turn(sess: Session, prompt: str, attachments: list[dict], timeout: int):
     yield {"type": "session", "session_id": sess.id, "native_session": sess.id}
     yield {"type": "status", "state": "thinking", "harness": "fake"}
+    yield {"type": "status", "state": "context", "harness": "fake",
+           "prompt_tokens": len(prompt), "context_budget": 1000,
+           "should_compact": len(prompt) > 800}
     if "fail" in prompt:
         yield {"type": "error", "message": "fake harness failure requested by prompt"}
         return
@@ -603,7 +609,8 @@ def parse_opencode_event(obj: dict, state: dict):
     elif t == "step_finish":
         tokens = part.get("tokens") or {}
         state["usage"] = tokens or state["usage"]
-        yield {"type": "status", "state": "step_finished", "harness": "opencode"}
+        yield {"type": "status", "state": "step_finished", "harness": "opencode",
+               "usage": tokens}
     elif t == "error":
         err = obj.get("error") or {}
         state["is_error"] = True
@@ -697,6 +704,32 @@ class OpencodeServer:
 
 
 OPENCODE_SERVER = OpencodeServer()
+
+
+def merge_opencode_session_context(ctx: dict, payload: dict) -> dict:
+    """Normalizes GET /api/session/<id> into the bridge context shape."""
+    data = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(data, dict):
+        return ctx
+    tokens = data.get("tokens") or {}
+    cache = tokens.get("cache") or {}
+    usage = {
+        "input": tokens.get("input", 0),
+        "output": tokens.get("output", 0),
+        "reasoning": tokens.get("reasoning", 0),
+        "cache_read": cache.get("read", 0),
+        "cache_write": cache.get("write", 0),
+    }
+    ctx = dict(ctx)
+    ctx["usage"] = usage
+    model = data.get("model") or {}
+    if model.get("id"):
+        ctx["model"] = model.get("id")
+    if model.get("providerID"):
+        ctx["provider"] = model.get("providerID")
+    if data.get("cost") is not None:
+        ctx["cost"] = data.get("cost")
+    return ctx
 
 
 def opencode_compact(sess: Session, timeout: int) -> dict:
@@ -1093,10 +1126,53 @@ class Bridge:
                 if event.get("type") == "session" and event.get("native_session"):
                     sess.native = event["native_session"]
                     sess.native_ready = True
+                if event.get("type") == "status" and (
+                        event.get("state") == "context" or event.get("usage")):
+                    ctx = dict(sess.last_context)
+                    for key in ("should_compact", "prompt_tokens",
+                                "context_budget", "usage"):
+                        if event.get(key) is not None:
+                            ctx[key] = event[key]
+                    ctx["harness"] = sess.harness
+                    ctx["updated_at"] = int(time.time())
+                    sess.last_context = ctx
+                elif event.get("type") == "done":
+                    ctx = dict(sess.last_context)
+                    if event.get("usage"):
+                        ctx["usage"] = event["usage"]
+                    ctx["harness"] = sess.harness
+                    ctx["updated_at"] = int(time.time())
+                    sess.last_context = ctx
+                    event["context"] = ctx
                 yield event
             sess.last_used = int(time.time())
             sess.native_ready = bool(sess.native)
             self.registry.save()
+
+    def context(self, sess: Session) -> dict:
+        if sess.harness == "opencode" and sess.native:
+            target = OPENCODE_SERVER.get(sess.cwd)
+            if target:
+                port, password = target
+                auth = "Basic " + base64.b64encode(
+                    f"opencode:{password}".encode()).decode()
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/api/session/{sess.native}",
+                    headers={"Authorization": auth})
+                try:
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        payload = json.loads(resp.read(200_000).decode("utf-8", "replace"))
+                    sess.last_context = merge_opencode_session_context(
+                        sess.last_context or {}, payload)
+                    sess.last_context["harness"] = "opencode"
+                    sess.last_context["updated_at"] = int(time.time())
+                    self.registry.save()
+                except Exception as exc:
+                    log(f"opencode context read failed session={sess.id}: {exc}")
+        return {"ok": True, "session_id": sess.id, "harness": sess.harness,
+                "context": sess.last_context or {},
+                "last_turn_at": sess.last_used,
+                "native_session": sess.native}
 
     def compact(self, sess: Session) -> dict:
         with sess.lock:
@@ -1192,6 +1268,17 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(401, {"ok": False, "error": "unauthorized"})
                 return
             self.send_json(200, self.bridge.health())
+            return
+        m = re.match(r"^/v1/sessions/([^/]+)/context$", self.path)
+        if m:
+            if not self.authorized():
+                self.send_json(401, {"ok": False, "error": "unauthorized"})
+                return
+            sess = self.bridge.registry.get(m.group(1))
+            if not sess:
+                self.send_json(404, {"ok": False, "error": "session not found"})
+                return
+            self.send_json(200, self.bridge.context(sess))
             return
         sid = self.path_id()
         if sid:
