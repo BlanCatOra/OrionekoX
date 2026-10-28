@@ -46,7 +46,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-BRIDGE_VERSION = "0.58.0"
+BRIDGE_VERSION = "0.59.0"
 PROTOCOL_VERSION = 1
 HARNESSES = ("claude", "commandcode", "opencode", "openclaw", "fake")
 MAX_TEXT = 1_000_000

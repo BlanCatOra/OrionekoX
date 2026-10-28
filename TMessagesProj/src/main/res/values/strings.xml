@@ -11843,6 +11843,7 @@
     <string name="OxAgentHarnessContext">Harness context</string>
     <string name="OxAgentHarnessContextIdle">Tap to refresh</string>
     <string name="OxAgentHarnessContextLoading">Reading…</string>
+    <string name="OxAgentHarnessMirror">Mirror harness turns to local memory</string>
     <string name="OxAgentHarnessTest">Test harness bridge</string>
     <string name="OxAgentHarnessTestIdle">Not tested</string>
     <string name="OxAgentHarnessTesting">Testing…</string>

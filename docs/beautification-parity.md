@@ -1373,9 +1373,11 @@ These confirm the feature directions rather than relying on guesses. Checked
    for OpenClaw, CommandCode and OpenCode; 0.58.0 adds per-session context
    telemetry (`/context`, usage/budget/should_compact) and a Harness context
    row, with harness-reported compaction advice participating in the compact
-   decision. Claude Code still returns 403, and OxLinux is blocked by Android
-   app-data exec policy. Still open: ACP/native transports,
-   Hermes/CodeBuddy/DSH/Pi, a real `should_compact=true` device trigger,
-   per-harness thresholds, full tool-schema repair, native
-   multimodal/non-text messages, and external memory mirroring with ownership
-   handoff.
+   decision. 0.59.0 adds an explicit, default-off harness→local memory mirror
+   (stable-text dedupe, mirror stats/labels, no injection back into the
+   harness) and verifies local recall after switching the agent to API mode.
+   Claude Code still returns 403, and OxLinux is blocked by Android app-data
+   exec policy. Still open: ACP/native transports, Hermes/CodeBuddy/DSH/Pi,
+   a real `should_compact=true` device trigger, per-harness thresholds, full
+   tool-schema repair, native multimodal/non-text messages, and
+   OpenClaw tool-result visibility.

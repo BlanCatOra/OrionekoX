@@ -92,7 +92,9 @@ public class OxAgentProfileActivity extends BaseFragment {
     private EditTextCell harnessModelCell;
     private EditTextCell harnessAgentCell;
     private TextSettingsCell harnessContextRow;
+    private TextSettingsCell harnessMirrorRow;
     private TextSettingsCell harnessTestRow;
+    private boolean harnessMirror;
     private String harness = "api";
     private EditTextCell presenceCell;
     private EditTextCell frequencyCell;
@@ -180,6 +182,7 @@ public class OxAgentProfileActivity extends BaseFragment {
                 ? "normal" : agent.memoryMode;
         harness = agent == null || agent.harness == null || agent.harness.isEmpty()
                 ? "api" : agent.harness;
+        harnessMirror = agent != null && agent.harnessMirror;
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(false);
         actionBar.setTitle(LocaleController.getString(isNew ? R.string.OxAgentNewTitle : R.string.OxAgentSettings));
@@ -415,6 +418,14 @@ public class OxAgentProfileActivity extends BaseFragment {
                 getThemedColor(Theme.key_windowBackgroundWhiteGrayText));
         harnessContextRow.setOnClickListener(v -> refreshHarnessContext());
         harnessGroup.addView(harnessContextRow,
+                LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        harnessMirrorRow = new TextSettingsCell(context);
+        updateHarnessMirrorRow();
+        harnessMirrorRow.setOnClickListener(v -> {
+            harnessMirror = !harnessMirror;
+            updateHarnessMirrorRow();
+        });
+        harnessGroup.addView(harnessMirrorRow,
                 LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         harnessTestRow = new TextSettingsCell(context);
         harnessTestRow.setTextAndValue(LocaleController.getString(R.string.OxAgentHarnessTest),
@@ -694,7 +705,18 @@ public class OxAgentProfileActivity extends BaseFragment {
         if (harnessModelCell != null) harnessModelCell.setVisibility(bridgeVisible);
         if (harnessAgentCell != null) harnessAgentCell.setVisibility(bridgeVisible);
         if (harnessContextRow != null) harnessContextRow.setVisibility(bridgeVisible);
+        if (harnessMirrorRow != null) harnessMirrorRow.setVisibility(bridgeVisible);
         if (harnessTestRow != null) harnessTestRow.setVisibility(bridgeVisible);
+    }
+
+    private void updateHarnessMirrorRow() {
+        if (harnessMirrorRow == null) return;
+        harnessMirrorRow.setTextAndValue(
+                LocaleController.getString(R.string.OxAgentHarnessMirror),
+                LocaleController.getString(harnessMirror
+                        ? R.string.OxAgentOn : R.string.OxAgentOff), false);
+        harnessMirrorRow.setTextValueColor(getThemedColor(harnessMirror
+                ? Theme.key_chats_actionBackground : Theme.key_windowBackgroundWhiteGrayText));
     }
 
     private void refreshHarnessContext() {
@@ -1053,6 +1075,7 @@ public class OxAgentProfileActivity extends BaseFragment {
         a.harnessCwd = harnessCwdCell == null ? "" : harnessCwdCell.getText().toString().trim();
         a.harnessModel = harnessModelCell == null ? "" : harnessModelCell.getText().toString().trim();
         a.harnessAgent = harnessAgentCell == null ? "" : harnessAgentCell.getText().toString().trim();
+        a.harnessMirror = harnessMirror;
         a.presencePenalty = parseDouble(presenceCell, 0, 0, 2);
         a.frequencyPenalty = parseDouble(frequencyCell, 0, 0, 2);
         a.topK = parseInt(topKCell, 0, 1000);

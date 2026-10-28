@@ -134,6 +134,19 @@ The app shows a **Harness context** row in the agent editor and calls
 `should_compact` value has not been forced on a real harness yet; do not claim
 automatic native compaction was device-verified.
 
+## Explicit memory mirror (0.59.0)
+
+External harness agents never receive local memory. `harness_mirror` is an
+explicit, default-off switch on bridged agents: user/assistant turns and any
+tool events the app actually received are written to `OxMemoryStore` as
+`source=harness-mirror` / `harness-mirror-tool` rows. The mirror uses stable
+text hashes (no timestamp), so retries and reloads are idempotent. Mirror rows
+are visible in the memory stats and the Memory library dialog, but are **not**
+injected into the harness, because external agents still return before local
+digest/recall. If the agent is later switched to API mode, those rows become
+available to ordinary local recall. Mirroring is not compaction and does not
+change the harness's own history.
+
 ## Boundaries (do not overclaim)
 
 - Claude Code's transport is implemented and tested, but the provider returned

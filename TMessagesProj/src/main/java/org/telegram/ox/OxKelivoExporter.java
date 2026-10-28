@@ -514,7 +514,8 @@ public class OxKelivoExporter {
                 || a.memoryRecall != 6
                 || (a.harness != null && !"api".equals(a.harness))
                 || nonEmpty(a.harnessSession)
-                || nonEmpty(a.harnessCompactCommand);
+                || nonEmpty(a.harnessCompactCommand)
+                || a.harnessMirror;
         if (!custom) return null;
         try {
             JSONObject o = new JSONObject();
@@ -537,6 +538,7 @@ public class OxKelivoExporter {
             o.put("harness", clip(a.harness == null ? "api" : a.harness, 32));
             o.put("harness_session", clip(a.harnessSession, 512));
             o.put("harness_compact_command", clip(a.harnessCompactCommand, 2048));
+            o.put("harness_mirror", a.harnessMirror);
             JSONObject policy = new JSONObject();
             if (a.toolsPolicy != null) {
                 Iterator<String> keys = a.toolsPolicy.keys();

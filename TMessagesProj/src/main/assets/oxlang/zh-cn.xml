@@ -6752,6 +6752,7 @@
     <string name="OxAgentHarnessContext">Harness 上下文</string>
     <string name="OxAgentHarnessContextIdle">点击刷新</string>
     <string name="OxAgentHarnessContextLoading">读取中…</string>
+    <string name="OxAgentHarnessMirror">把 Harness 回合镜像到本地记忆库</string>
     <string name="OxAgentHarnessTest">测试 Harness 桥接</string>
     <string name="OxAgentHarnessTestIdle">未测试</string>
     <string name="OxAgentHarnessTesting">测试中…</string>

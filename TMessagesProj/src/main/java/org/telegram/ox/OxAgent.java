@@ -64,6 +64,9 @@ public class OxAgent {
     public String harnessModel = "";
     /** OpenClaw agent id (optional; other harnesses ignore it). */
     public String harnessAgent = "";
+    /** Explicit, read-only mirror of harness turns into the local memory library.
+     *  Mirror rows are never injected back into the harness. */
+    public boolean harnessMirror = false;
     // tool name -> "auto" | "ask" | "deny"; missing entries fall back to the tool default
     public JSONObject toolsPolicy = new JSONObject();
 
@@ -111,6 +114,7 @@ public class OxAgent {
         a.harnessCwd = o.optString("harness_cwd", "");
         a.harnessModel = o.optString("harness_model", "");
         a.harnessAgent = o.optString("harness_agent", "");
+        a.harnessMirror = o.optBoolean("harness_mirror", false);
         JSONObject tp = o.optJSONObject("tools_policy");
         a.toolsPolicy = tp == null ? new JSONObject() : tp;
         return a;
@@ -160,6 +164,7 @@ public class OxAgent {
         o.put("harness_cwd", harnessCwd == null ? "" : harnessCwd);
         o.put("harness_model", harnessModel == null ? "" : harnessModel);
         o.put("harness_agent", harnessAgent == null ? "" : harnessAgent);
+        o.put("harness_mirror", harnessMirror);
         o.put("tools_policy", toolsPolicy);
         return o;
     }

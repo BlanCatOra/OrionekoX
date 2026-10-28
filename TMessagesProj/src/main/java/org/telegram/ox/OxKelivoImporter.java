@@ -1375,6 +1375,10 @@ public class OxKelivoImporter {
             a.harnessCompactCommand = clip(p.optString("harness_compact_command", ""), 2048);
             applied = true;
         }
+        if (p.has("harness_mirror")) {
+            a.harnessMirror = p.optBoolean("harness_mirror", false);
+            applied = true;
+        }
         JSONObject policy = p.optJSONObject("tools_policy");
         if (policy != null) {
             JSONObject clean = new JSONObject();
