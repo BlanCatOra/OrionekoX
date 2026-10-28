@@ -37,6 +37,9 @@ public class OxKelivoImporter {
     private static final int MAX_RESOURCE_BYTES = 2 * 1024 * 1024;
     private static final long MAX_RESOURCE_TOTAL = 24L * 1024 * 1024;
     private static final int MAX_MEMORY_CHARS = 200000;
+    private static final int MAX_WORKSPACE_FILES = 200;
+    private static final int MAX_WORKSPACE_FILE_BYTES = 2 * 1024 * 1024;
+    private static final long MAX_TOTAL_WORKSPACE_BYTES = 8L * 1024 * 1024;
 
     public static class Preview {
         public int assistants;
@@ -54,6 +57,7 @@ public class OxKelivoImporter {
         public int backgrounds;
         public int memories;
         public int skillLinks;
+        public int workspaceFiles;
         public final List<String> names = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -73,6 +77,7 @@ public class OxKelivoImporter {
         public int backgrounds;
         public int memories;
         public int skillLinks;
+        public int workspaceFiles;
         public final Map<String, String> backgroundPaths = new HashMap<>();
         public final List<String> ids = new ArrayList<>();
         public final List<String> conversationIds = new ArrayList<>();
@@ -114,6 +119,7 @@ public class OxKelivoImporter {
         final List<JSONObject> assistants = new ArrayList<>();
         final Map<String, JSONObject> providers = new HashMap<>();
         final Map<String, byte[]> skills = new HashMap<>();
+        final Map<String, Map<String, byte[]>> workspace = new HashMap<>();
         final List<JSONObject> mcpServers = new ArrayList<>();
         final List<Conversation> conversations = new ArrayList<>();
         final Map<String, Resource> avatars = new HashMap<>();
@@ -214,6 +220,12 @@ public class OxKelivoImporter {
         p.backgrounds = archive.backgroundCount;
         if (p.backgrounds > 0) {
             p.notes.add("备份含 " + p.backgrounds + " 个聊天背景；将套用到对应智能体。");
+        }
+        for (Map<String, byte[]> files : archive.workspace.values()) {
+            p.workspaceFiles += files.size();
+        }
+        if (p.workspaceFiles > 0) {
+            p.notes.add("将恢复 " + p.workspaceFiles + " 个工作区文件（覆盖同名文件）。");
         }
         return p;
     }
@@ -378,6 +390,10 @@ public class OxKelivoImporter {
         if (r.memories > 0) {
             r.notes.add("已恢复 " + r.memories + " 个智能体的长期记忆");
         }
+        r.workspaceFiles = restoreWorkspace(archive.workspace);
+        if (r.workspaceFiles > 0) {
+            r.notes.add("恢复工作区文件 " + r.workspaceFiles + " 个");
+        }
         r.skillLinks = skillLinked.size();
         if (r.skillLinks > 0) {
             r.notes.add("已恢复 " + r.skillLinks + " 个智能体的技能关联");
@@ -451,6 +467,8 @@ public class OxKelivoImporter {
                 String manifest = null;
                 int sessionBytes = 0;
                 long resourceBytes = 0;
+                long workspaceBytes = 0;
+                int workspaceCount = 0;
                 Map<String, String> sessionFiles = new HashMap<>();
                 Map<String, byte[]> resourceFiles = new HashMap<>();
                 while ((e = zin.getNextEntry()) != null) {
@@ -482,8 +500,35 @@ public class OxKelivoImporter {
                             byte[] body = readBytes(zin);
                             if (body.length > 0) out.skills.put(id, body);
                         }
+                    } else if (workspaceCount < MAX_WORKSPACE_FILES
+                            && workspaceBytes < MAX_TOTAL_WORKSPACE_BYTES
+                            && n.startsWith("workspace/") && !n.endsWith("/")) {
+                        String rel = n.substring("workspace/".length());
+                        int slash = rel.indexOf('/');
+                        if (slash > 0 && slash < rel.length() - 1) {
+                            String agentId = rel.substring(0, slash);
+                            String path = rel.substring(slash + 1);
+                            if (safeWorkspaceAgentId(agentId) && safeWorkspacePath(path)) {
+                                byte[] body = readBytes(zin, MAX_WORKSPACE_FILE_BYTES + 1);
+                                if (body != null && body.length > 0
+                                        && body.length <= MAX_WORKSPACE_FILE_BYTES
+                                        && workspaceBytes + body.length <= MAX_TOTAL_WORKSPACE_BYTES) {
+                                    Map<String, byte[]> files = out.workspace.get(agentId);
+                                    if (files == null) {
+                                        files = new HashMap<>();
+                                        out.workspace.put(agentId, files);
+                                    }
+                                    if (!files.containsKey(path)) {
+                                        files.put(path, body);
+                                        workspaceBytes += body.length;
+                                        workspaceCount++;
+                                    }
+                                }
+                            }
+                        }
                     } else if (resourceFiles.size() < MAX_RESOURCE_FILES
                             && resourceBytes < MAX_RESOURCE_TOTAL
+                            && !n.startsWith("workspace/")
                             && (!n.endsWith(".json") || n.startsWith("resources/"))
                             && !n.toLowerCase(java.util.Locale.ROOT).endsWith("skill.md")) {
                         byte[] body = readBytes(zin, MAX_RESOURCE_BYTES);
@@ -651,6 +696,24 @@ public class OxKelivoImporter {
         while (p.startsWith("./")) p = p.substring(2);
         while (p.startsWith("/")) p = p.substring(1);
         return p;
+    }
+
+    private static boolean safeWorkspaceAgentId(String id) {
+        return id != null && id.length() <= 80 && id.matches("[a-zA-Z0-9._-]+")
+                && !".".equals(id) && !"..".equals(id);
+    }
+
+    private static boolean safeWorkspacePath(String path) {
+        if (path == null || path.isEmpty() || path.length() > 180
+                || path.startsWith("/") || path.indexOf('\\') >= 0 || path.indexOf('\0') >= 0) {
+            return false;
+        }
+        String[] parts = path.split("/");
+        if (parts.length > 8) return false;
+        for (String part : parts) {
+            if (part.isEmpty() || ".".equals(part) || "..".equals(part)) return false;
+        }
+        return true;
     }
 
     private static String avatarRef(JSONObject o) {
@@ -1090,6 +1153,33 @@ public class OxKelivoImporter {
             if (available.contains(id) && seen.add(id)) out.put(id);
         }
         return out;
+    }
+
+    /** Restores workspace files into existing agents only; never deletes files
+     *  that are not in the backup, and resolveWorkspace blocks path escapes. */
+    private static int restoreWorkspace(Map<String, Map<String, byte[]>> workspace) {
+        int restored = 0;
+        for (Map.Entry<String, Map<String, byte[]>> agentEntry : workspace.entrySet()) {
+            String agentId = agentEntry.getKey();
+            if (OxAgentStore.loadAgent(agentId) == null) continue;
+            for (Map.Entry<String, byte[]> fileEntry : agentEntry.getValue().entrySet()) {
+                String path = fileEntry.getKey();
+                byte[] body = fileEntry.getValue();
+                if (body == null || body.length == 0 || !safeWorkspacePath(path)) continue;
+                try {
+                    File target = OxAgentStore.resolveWorkspace(agentId, path);
+                    if (target.isDirectory()) continue;
+                    File parent = target.getParentFile();
+                    if (parent != null && !parent.exists()) parent.mkdirs();
+                    try (FileOutputStream out = new FileOutputStream(target)) {
+                        out.write(body);
+                    }
+                    restored++;
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        return restored;
     }
 
     private static List<OxChatEntry> convertMessages(JSONArray messages, Archive archive,

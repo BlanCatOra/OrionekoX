@@ -249,6 +249,13 @@ public class OxAgentStore {
         return f;
     }
 
+    /** Read-only lookup for callers that must not create empty workspace dirs. */
+    public static File workspaceDirIfExists(String id) {
+        if (id == null || id.isEmpty()) return null;
+        File f = new File(ApplicationLoader.applicationContext.getFilesDir(), "oxworkspace/" + id);
+        return f.isDirectory() ? f : null;
+    }
+
     public static File resolveWorkspace(String id, String path) throws IOException {
         File base = workspaceDir(id).getCanonicalFile();
         String p = path == null ? "" : path.trim();

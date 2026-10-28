@@ -4,6 +4,37 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.47.1 — 2026-10-28
+
+- Chatbox / Kelivo backups now carry each agent's workspace files as
+  `workspace/<agentId>/<relative path>`, including nested directories, binary
+  content and non-ASCII names. Caps are 200 files, 2 MiB per file, 8 MiB total
+  and depth 6; empty or oversized files are skipped and canonical containment
+  rejects `..`.
+- The importer previews the number of workspace files, restores only for agents
+  that still exist, overwrites same-name files, preserves unrelated files and
+  reports the restored count. Absolute paths, backslashes, `.`/`..` segments and
+  paths deeper than eight segments are rejected.
+- Fixed the completion toast: the 0.47.0 text was truncated to two lines by
+  Android, hiding the workspace count. The compact 0.47.1 toast puts the
+  workspace count second. The exporter also uses a read-only workspace lookup
+  and collects only agents that actually appear in the backup, so exporting no
+  longer creates empty workspace directories or emits orphan entries.
+- Verified with two self-created agents and four workspace files: a 2,215 B
+  export carried four entries with identical SHA-256 values; after deleting
+  three files and keeping a new one, the import restored four, preserved the
+  unrelated file, kept the original agent ids and tg ids, and remained
+  idempotent on a second import. A zip containing `../../evil0470.txt` was
+  rejected wholesale; a 2 MiB + 1 B file was skipped. A final rebuild exported
+  an agent with two files plus an agent with none, produced only the two
+  entries, and did not create the second agent's workspace directory. No app
+  FATAL/ANR; test agents, workspaces and zips were removed and their
+  dialogs/messages were zero.
+- Limits: `workspace/` is an extension that real Chatbox/Kelivo clients have not
+  been tested with; empty directories, permissions, timestamps and symlinks are
+  not preserved; export-side caps were code-reviewed rather than exercised with
+  a 2 MiB source file; deleting an agent leaves its workspace on disk.
+
 ## 0.46.0 — 2026-10-28
 
 - Chatbox / Kelivo backups now carry the skill library and each agent's skill
