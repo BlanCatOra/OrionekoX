@@ -4,6 +4,36 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.49.0 — 2026-10-28
+
+- The agent long-press menu now offers “Export character card” for non-built-in
+  agents, with PNG (avatar included) and plain JSON choices. Both use the system
+  document picker and exclude API keys, provider URLs and request headers.
+- JSON is a SillyTavern `chara_card_v2` / `2.0` wrapper. The six persona
+  sections written by the importer (`Description`, `Personality`, `Scenario`,
+  `System prompt`, `Post-history instructions`, `Example dialogue`) map back to
+  their own fields; any other AGENTS.md is exported as `description`. The first
+  message becomes `first_mes`, and flat top-level aliases keep older V1 readers
+  working. Fields are capped at 32 KiB and the greeting at 16 KiB.
+- PNG scales the avatar to at most 1024 px and 1.6 MP, then embeds the card JSON
+  as Base64 in a `tEXt` chunk named `chara` after IHDR with a spec-correct
+  CRC32. Agents without a usable avatar get a generated 512×640 name card, so
+  export never downloads or depends on a remote image.
+- Verified with a self-created 256×256-avatar agent carrying six persona
+  sections. The 2,420 B PNG had valid IHDR/tEXt/sRGB/sBIT/IDAT/IEND chunks, its
+  decoded JSON matched the source field by field, and its pixels matched the
+  source avatar exactly. The 790 B JSON matched as well; both scanned clean for
+  keys, provider URLs, headers and `extra_body`. Re-importing the PNG created
+  one card agent with the right name, greeting and pixel-identical avatar;
+  importing the JSON next updated that same directory without a duplicate. A
+  no-avatar agent exported a 20,888 B placeholder PNG (512×640) with valid
+  embedded data. No app FATAL/ANR; test agents, cards and leftover test zips
+  were removed and the test dialogs/messages were zero.
+- Limits: real SillyTavern/RikkaHub clients were not tested; alternate
+  greetings, character books, tags and regex are not exported; native agents
+  keep their whole AGENTS.md in `description`; emoji is not a V2 field and
+  returns as the default 🤖; avatar re-encoding drops EXIF/ICC/animation.
+
 ## 0.48.1 — 2026-10-28
 
 - Chatbox / Kelivo backups now carry a private `orionekoAgent` object for each

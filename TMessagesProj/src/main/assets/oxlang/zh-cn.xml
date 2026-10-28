@@ -12039,6 +12039,12 @@
     <string name="OxKelivoExportNothing">没有可导出的非内置智能体</string>
     <string name="OxKelivoExportFailed">导出失败：%1$s</string>
     <string name="OxKelivoExportAgent">导出 Chatbox 备份</string>
+    <string name="OxExportCard">导出角色卡</string>
+    <string name="OxExportCardMessage">选择导出格式。PNG 会嵌入头像与角色卡数据，JSON 为纯文本；两者都不包含 API Key、Provider 地址或请求头。</string>
+    <string name="OxExportCardPng">PNG（含头像）</string>
+    <string name="OxExportCardJson">JSON（纯文本）</string>
+    <string name="OxExportCardDone">已导出角色卡：%1$s</string>
+    <string name="OxExportCardFailed">角色卡导出失败：%1$s</string>
     <string name="OxKelivoExportAgentConfirm">将该智能体及其聊天、长期记忆、技能、工作区、助手偏好、头像、图片和附件导出为 Chatbox v2 zip？\n\n不包含 API Key、Provider 地址与请求头。</string>
     <string name="OxKelivoExportAgentDone">已导出 %1$s：工作区 %6$d、技能 %3$d、记忆 %2$d、消息 %4$d、文件 %5$d</string>
     <string name="OxKelivoExportSelected">导出选中的智能体</string>

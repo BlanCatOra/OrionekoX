@@ -507,3 +507,12 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：自建 session Agent（tgId 555000110，2 条消息）与 chatless copilot（tgId 555000111），覆盖置顶、备注、开场白、high/required/32k、low/none/64k、penalties、top_k、seed、stop 与 `get_time`/`device_info` 的 deny/ask/auto。多选导出 1,881 B，`copilots.json` 与 session 均含完整 `orionekoAgent`；全文扫描 `api_key`、`baseUrl`、`base_url`、`headers`、`extra_body`、`Authorization`、`Bearer `、`sk-`、`ox1:` 均 0 命中，Toast 显示“智能体 2、工作区 0、对话 1、消息 2…”。重置偏好后回导：预览与结果均为“2 个智能体的偏好设置”，回读 `agent.json` 全部字段一致（含 32000/64000），tgId 与 2 个 Agent 目录不变、无 `kelivo_` 副本；重复导入幂等。原生工具权限页显示 `get_time=禁止`、`device_info=询问`，置顶 session 在列表中排首位。全程无本包 FATAL/ANR；删除两个测试 Agent 后 dialogs/messages 均为 0，Download 测试 zip 已清理，未执行 `pm clear`。
 - 边界：`orionekoAgent` 为 OrionekoX 扩展，真实 Chatbox/Kelivo 会忽略且未互测；不导出 `headers`、`extra_body`、Provider 地址与密钥，换机后认证信息需重填；emoji、备注、开场白通过 `agent.json` 回读验证，未逐项截图欢迎语；temperature/topP/maxTokens 继续走原有 session/copilot 字段，不在私有对象中重复。
+
+## 0.49.0 Agent 导出 SillyTavern/RikkaHub 角色卡 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-100 | 0.49.0 功能 | 角色卡自 0.45.0 起只能导入，不能导出，SillyTavern/RikkaHub 双向兼容缺一半；用户无法把本机 Agent 带到其他客户端 | Agent 长按菜单新增“导出角色卡”，原生格式框提供 PNG（头像 + `tEXt`/`chara` 内嵌 V2 JSON）与 JSON（纯文本 V2 包装）；六节 AGENTS.md 逐节还原，其他 Agent 整份人设进 description；无头像生成 512×640 占位图；导出明确排除密钥、Provider 地址与请求头 | 已实现并设备验证 |
+
+- 设备：自建 `QA Card 0490`（tgId 555000103，256×256 头像、六节人设、开场白）与无头像 `QA Card NoImg 0490`。导出 PNG 2,420 B，IHDR/tEXt/sRGB/sBIT/IDAT/IEND 逐块 CRC 通过，`chara` Base64 解码后的 V2 JSON 六节与开场白一致，导出图像素与源头像完全相同；JSON 790 B 字段逐项一致；两者敏感字段扫描 0 命中。回导 PNG 得到 `rikka_card_67bc18d8`（tgId 555000104），姓名、开场白、六节人设（仅小节间空行规范化）与头像逐像素一致；再回导 JSON 只更新同一目录、无副本、头像保留。无头像 Agent 导出 20,888 B 占位 PNG（512×640），内嵌数据正确。全程无本包 FATAL/ANR；删除三个测试 Agent 后 555000103/555000104 的 dialogs/messages 均为 0，Download 卡片与遗留测试 zip 已清理，未执行 `pm clear`。
+- 边界：未与真实 SillyTavern/RikkaHub 客户端互测；不导出 alternate greetings、character_book、tags 与正则；原生 Agent 的整份 AGENTS.md 进入 description；emoji 不是 V2 字段，回导为默认 🤖；头像统一缩放重编码，不保留 EXIF/ICC/动画。

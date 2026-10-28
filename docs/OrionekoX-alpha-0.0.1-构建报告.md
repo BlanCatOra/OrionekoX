@@ -3587,6 +3587,44 @@ debug `dist/OrionekoX-0.48.1-debug-arm64-x64.apk`（sha256
 `f14282ef15194991f7e65db17aa67b6763fe612a4013a3e47631226dcce526f6`）。
 详见 `docs/qa-0.48.1.md`。
 
+## 5.171 alpha 0.49.0 —— Agent 导出 SillyTavern/RikkaHub 角色卡（2026-10-28 15:20–15:33）
+
+- 0.45.0/0.45.1 已支持导入 SillyTavern PNG/JSON 角色卡，但一直不能
+  反向导出，形成“只进不出”的双向兼容缺口。
+- Agent 列表长按菜单新增“导出角色卡”（仅非内置 Agent），原生格式选择框
+  提供 PNG（含头像）与 JSON（纯文本）；两者都明确不含 API Key、
+  Provider 地址与请求头。
+- JSON 输出 `chara_card_v2` / `2.0` 的 V2 包装，含 name、description、
+  personality、scenario、first_mes、mes_example、system_prompt、
+  post_history_instructions、alternate_greetings、character_book、
+  tags、creator、character_version、extensions、avatar；六节 AGENTS.md
+  逐节还原，其他 Agent 的整份人设写入 description；顶层保留 V1 兼容别名。
+- PNG 以头像为底图（最大边 1024 px、160 万像素），把 V2 JSON 以 Base64
+  写入 IHDR 之后的 `tEXt` 块（关键字 `chara`，CRC32 按规范计算）；
+  无头像/头像不可读时生成 512×640 占位卡片，绘制 emoji 与名称。
+- 设备：自建 `QA Card 0490`（tgId 555000103，256×256 头像、六节人设、
+  开场白）。导出 PNG 2,420 B，IHDR/tEXt/sRGB/sBIT/IDAT/IEND 逐块 CRC
+  通过，嵌入 JSON 的六节与开场白一致，导出图与源头像逐像素相同；
+  JSON 导出 790 B，字段一致；敏感字段扫描 0 命中。
+- 回导 PNG 得到 `rikka_card_67bc18d8`（tgId 555000104），姓名、开场白、
+  六节人设与头像均正确；再回导 JSON 只更新同一目录、不产生副本、
+  头像保留。无头像 Agent 导出 20,888 B 占位 PNG（512×640），嵌入
+  数据正确。全程无本包 FATAL/ANR。
+- 清理三个测试 Agent、下载的卡片与遗留测试 zip；测试 tgId 的
+  dialogs/messages 均为 0，未执行 `pm clear`。
+- 边界：未与真实 SillyTavern/RikkaHub 互测；不导出 alternate greetings、
+  character_book、tags、正则；原生 Agent 的整份 AGENTS.md 进入
+  description；emoji 不随卡保存，回导使用默认 🤖；头像重编码不保留
+  EXIF/ICC/动画。
+- 版本规则：新增用户可见的导出格式、入口与 PNG 资产写入，属于功能迭代，
+  按 minor 从 0.48.1 → **0.49.0**（4909），patch 清零。
+
+**产物**：`dist/OrionekoX-0.49.0-alpha-arm64-x64.apk`（versionCode 4909，
+sha256 `94e8615fd8ec67a22ef3d85761a367d85cbd92656a8465f7ce6d4f781ef5ab98`）；
+debug `dist/OrionekoX-0.49.0-debug-arm64-x64.apk`（sha256
+`c649e810d6ba255b72082ea6c5c3db7291d134b823a442c68522dbbd1a7dad88`）。
+详见 `docs/qa-0.49.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
