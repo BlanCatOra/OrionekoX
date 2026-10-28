@@ -495,14 +495,55 @@ public class OxMemoryStore {
         return facts;
     }
 
+    /** Mirrors one external-harness exchange into the local library, read-only.
+     *  Stable text hashes make a retried/replayed mirror idempotent. The rows are
+     *  never read by the harness; they become available to local recall and can
+     *  be injected only if the user switches that agent back to API mode. */
+    public static synchronized int ingestHarnessMirror(String agentId, String userText,
+            String assistantText, List<String> tools, long ts) {
+        if (agentId == null) return 0;
+        int attempted = 0;
+        long t = ts > 0 ? ts : System.currentTimeMillis();
+        if (userText != null && !userText.trim().isEmpty()) {
+            String user = clip(userText.trim(), 4000);
+            double importance = importance(user, "user");
+            insert(agentId, "turn", "user", "用户：" + user, t, importance,
+                    importance >= 0.85 ? "long" : "short", "harness-mirror", true);
+            attempted++;
+            for (String fact : extractFacts(userText)) {
+                insert(agentId, "fact", "user", "用户：" + fact, t,
+                        0.9, "long", "harness-mirror", true);
+            }
+        }
+        if (assistantText != null && !assistantText.trim().isEmpty()) {
+            String reply = clip(assistantText.trim(), 4000);
+            double importance = importance(reply, "assistant");
+            insert(agentId, "turn", "assistant", "助手：" + reply, t + 1, importance,
+                    importance >= 0.85 ? "long" : "short", "harness-mirror", true);
+            attempted++;
+        }
+        if (tools != null) {
+            for (String tool : tools) {
+                if (tool == null || tool.trim().isEmpty()) continue;
+                insert(agentId, "tool", "tool", "工具：" + clip(tool.trim(), 4000),
+                        t + 2, 0.45, "short", "harness-mirror-tool", true);
+                attempted++;
+            }
+        }
+        prune(agentId);
+        return attempted;
+    }
+
     public static synchronized String stats(String agentId) {
         try {
             int all = count(agentId, null);
             int longCount = count(agentId, "long");
             int shortCount = count(agentId, "short");
             int facts = countKind(agentId, "fact");
-            return all + " 条 · 长期 " + longCount + " · 短期 " + shortCount
+            int mirror = countSource(agentId, "harness-mirror%");
+            String line = all + " 条 · 长期 " + longCount + " · 短期 " + shortCount
                     + " · 事实 " + facts;
+            return mirror > 0 ? line + " · 镜像 " + mirror : line;
         } catch (Throwable t) {
             return "记忆库不可用";
         }
@@ -512,14 +553,16 @@ public class OxMemoryStore {
         StringBuilder sb = new StringBuilder();
         try {
             Cursor c = db().rawQuery(
-                    "SELECT kind,text,created_at,access_count,memory_type FROM memories "
+                    "SELECT kind,text,created_at,access_count,memory_type,source FROM memories "
                             + "WHERE agent_id=? ORDER BY created_at DESC LIMIT ?",
                     new String[]{agentId, String.valueOf(Math.max(1, maxResults))});
             try {
                 while (c.moveToNext()) {
+                    String source = c.getString(5);
+                    boolean mirrored = source != null && source.startsWith("harness-mirror");
                     sb.append('[').append(day(c.getLong(2))).append(" · ")
-                            .append(kindLabel(c.getString(0))).append(" · ")
-                            .append(c.getString(4)).append(" · 访问 ")
+                            .append(mirrored ? "镜像" : "").append(kindLabel(c.getString(0)))
+                            .append(" · ").append(c.getString(4)).append(" · 访问 ")
                             .append(c.getInt(3)).append("] ")
                             .append(clip(c.getString(1), 240)).append('\n');
                 }
@@ -577,8 +620,10 @@ public class OxMemoryStore {
             String subject = "fact".equals(kind) ? subjectKey(normalized) : "";
             if ("fact".equals(kind) && consolidateFact(agentId, normalized, subject,
                     createdAt, importance)) return;
-            String hash = sha256(kind + "\n" + role + "\n" + normalized
-                    + ("turn".equals(kind) ? "\n" + createdAt : ""));
+            String hash = source != null && source.startsWith("harness-mirror")
+                    ? sha256("mirror\n" + kind + "\n" + role + "\n" + normalized)
+                    : sha256(kind + "\n" + role + "\n" + normalized
+                            + ("turn".equals(kind) ? "\n" + createdAt : ""));
             ContentValues v = new ContentValues();
             v.put("agent_id", agentId);
             v.put("kind", kind);
@@ -976,6 +1021,21 @@ public class OxMemoryStore {
         }
     }
 
+    private static int countSource(String agentId, String sourceLike) {
+        try {
+            Cursor c = db().rawQuery("SELECT COUNT(*) FROM memories WHERE agent_id=? "
+                            + "AND source LIKE ?",
+                    new String[]{agentId, sourceLike});
+            try {
+                return c.moveToFirst() ? c.getInt(0) : 0;
+            } finally {
+                c.close();
+            }
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
     private static int countKind(String agentId, String kind) {
         Cursor c = db().rawQuery("SELECT COUNT(*) FROM memories WHERE agent_id=? "
                         + "AND invalid_at=0 AND kind=?", new String[]{agentId, kind});
@@ -1041,6 +1101,7 @@ public class OxMemoryStore {
     private static String kindLabel(String kind) {
         if ("summary".equals(kind)) return "摘要";
         if ("fact".equals(kind)) return "事实";
+        if ("tool".equals(kind)) return "工具";
         return "对话";
     }
 

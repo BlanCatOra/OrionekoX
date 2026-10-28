@@ -2785,6 +2785,26 @@ public class OxAgentsBridge {
         } catch (Throwable t) {
             logErr("finishTurn history failed", t);
         }
+        // Explicit, read-only mirror: external harnesses never receive these
+        // rows back. Stable hashes make retries/replays idempotent.
+        if (!OxHarnessAdapter.isLocalApi(s.agent) && s.agent.harnessMirror
+                && finalText != null && !finalText.trim().isEmpty()
+                && !finalText.startsWith("⚠")) {
+            final String agentId = s.agent.id;
+            final String user = s.userText;
+            final String reply = finalText;
+            final List<String> tools = new ArrayList<>();
+            for (OxChatEntry e : s.acc) {
+                if (e != null && "tool".equals(e.role) && e.content != null) {
+                    tools.add(e.content);
+                }
+            }
+            final long ts = System.currentTimeMillis();
+            new Thread(() -> {
+                int rows = OxMemoryStore.ingestHarnessMirror(agentId, user, reply, tools, ts);
+                log("harness mirror agent=" + agentId + " rows=" + rows);
+            }, "ox-harness-mirror").start();
+        }
     }
 
     /** Removes a deleted agent's synthetic dialog and messages from local storage. */

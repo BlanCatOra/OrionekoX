@@ -3962,6 +3962,35 @@ debug `dist/OrionekoX-0.58.0-debug-arm64-x64.apk`（sha256
 `b712d965841f60e6bec86bbbf3e1781c4ae24dc055ff1a3a0f86d778709a40e1`）。
 详见 `docs/qa-0.58.0.md`。
 
+## 5.181 alpha 0.59.0 —— 外部 Harness 显式只读记忆镜像（2026-10-28 21:33–21:50）
+
+- 0.58.0 能读 Harness 上下文，但外部 Harness 的对话没有本地记忆镜像。
+  新增默认关闭的 `harness_mirror`：把桥接 Harness 的 user/assistant 以及
+  App 实际收到的 tool 事件写入 `OxMemoryStore`，source 为
+  `harness-mirror`/`harness-mirror-tool`；镜像行不反注入 Harness，外部
+  模式仍在 digest/recall 之前返回。切回 API 后镜像行参与普通召回。
+- 稳定文本 hash（不含时间戳）使重复发送/重试/重启幂等；事实抽取仅来自
+  user 文本；失败回合不镜像；写库在独立线程。记忆页统计增加“镜像 N”，
+  Memory library 对话框显示“镜像对话/镜像工具”标签。
+- Agent 资料页新增镜像开关（仅桥接 Harness 可见）；Chatbox
+  `orionekoAgent` 导出/导入 `harness_mirror`；中文包 118→119。
+- 设备：`mirror_test_590`（tgId 555000015，OpenClaw）连续两次相同文本：
+  SQLite 3 行（1 user 去重 + 2 assistant），重启后仍为 3；记忆页
+  `3 条 · 长期 0 · 短期 3 · 事实 0 · 镜像 3`，library 对话框显示
+  “镜像对话”。切回 API + mock 后，system prompt 召回 3 条镜像
+  （相关度 0.89/0.81/0.80），证明交接可用。
+- 同时修复空闲监控器 dispatch 后与调度器写回 enabled=1 的竞态：投递后
+  连续 12 秒重复关闭，再进入冷却。
+- 边界：OpenClaw `--json` 无工具结果，OpenClaw 镜像通常只有 user/
+  assistant；SQLite 明文；`should_compact=true` 真机触发仍未构造；Claude
+  403、OxLinux exec 限制、第三轮 A/B/C 未启动。
+
+**产物**：`dist/OrionekoX-0.59.0-alpha-arm64-x64.apk`（versionCode 5909，
+sha256 `6e444203111d4b11a2ccf12794e242818922dbd1faa4249a8b7883965962f0fa`）；
+debug `dist/OrionekoX-0.59.0-debug-arm64-x64.apk`（sha256
+`664bdb43b858860fc2200704e7ca07147f003e5d8009c516a823f7fd76b5c85e`）。
+详见 `docs/qa-0.59.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

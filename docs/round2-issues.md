@@ -621,3 +621,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：debug 0.58.0（5809）的 `ctx_test_580`（tgId 555000014，OpenClaw）发 `CTX-APP-0580`；App 日志 `harness context {"should_compact":false,"context_budget":1048000,"usage":{...}}`，资料页显示 `in 530 · out 179 · 无需 compact`。真实 `/context`：OpenClaw budget 1,048,000/input 503/output 44；CommandCode inputTokens 16,669/output 9；OpenCode input 2,916/output 25/reasoning 178/cache_read 4,224。15 个桥接测试通过。
 - 边界：外部记忆镜像/所有权交接仍未实现；Harness 自报 `should_compact=true` 的真实触发未构造；OpenCode context 依赖私有 serve；Claude 仍 403；附件仍为路径交接。测试 Agent/tgId 的 dialogs/messages 清零，桥接停止、token 删除，代理与无障碍保持，未 `pm clear`。
+
+## 0.59.0 外部 Harness 只读记忆镜像 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-121 | 0.59.0 功能 | 外部 Harness 的对话不会进入本地记忆库；没有显式开关区分“镜像”和“注入”，切换 Harness/API 后无法利用历史 | Agent 新增默认关闭的 `harness_mirror`；把 user/assistant 与 App 收到的 tool 事件写入 `OxMemoryStore`，source 标记 `harness-mirror`/`harness-mirror-tool`；稳定文本 hash 去重；外部模式仍不 digest/recall，切回 API 后可召回；记忆页显示镜像统计/标签；Chatbox 导出/导入该开关 | 已实现并设备验证 |
+| R2-122 | 0.59.0 QA/运维 | 监控器投递后先 disable，调度器随后写回 `enabled=1`，本轮工作期间可能二次投递 | 观察到 run 后连续 12 秒重复 disable 再进入冷却；服务重启并核对 automation `enabled=0` | 已修复并重启监控 |
+
+- 设备：debug 0.59.0 的 `mirror_test_590`（tgId 555000015，OpenClaw，mirror=true）两次相同文本，SQLite 3 行（1 user 去重 + 2 assistant），重启后保持；记忆页 `3 条 · 长期 0 · 短期 3 · 事实 0 · 镜像 3`，library 对话框 3 条“镜像对话”。切回 API + 本机 mock 后 system prompt 召回三条镜像（0.89/0.81/0.80）。15 个桥接测试通过，无本包 FATAL/ANR；测试 Agent/memory 行/tgId dialogs/messages 清零，桥接/mock 停止、token 删除，代理/无障碍恢复。
+- 边界：OpenClaw `--json` 无工具结果；镜像只写本地 SQLite 明文；镜像不反注入 Harness；未构造真实 `should_compact=true`；Claude 403、OxLinux exec 限制未变。

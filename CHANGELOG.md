@@ -4,6 +4,24 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.59.0 — 2026-10-28
+
+- Adds a default-off **Mirror harness turns to local memory** switch for
+  bridged agents. User/assistant turns and any tool events the app actually
+  received are written to `OxMemoryStore` with `harness-mirror` sources. Stable
+  text hashes make retries and restarts idempotent.
+- Mirror rows are visible in memory stats and the Memory library dialog
+  (`镜像对话`/`镜像工具`) but are never injected back into the harness. Switching
+  the agent to API mode makes them available to ordinary local recall; device
+  QA recalled three mirrored rows at 0.89/0.81/0.80 after the switch.
+- Chatbox `orionekoAgent` export/import carries `harness_mirror`. The idle
+  monitor now keeps the automation disabled for 12 seconds after dispatch to
+  avoid a second delivery racing the current round.
+- Boundaries: OpenClaw's `--json` does not expose tool results, so its mirror
+  usually contains only user/assistant rows; mirror storage is the same
+  plaintext SQLite library as local memory; a real `should_compact=true` trigger
+  and Claude/OxLinux support remain unverified.
+
 ## 0.58.0 — 2026-10-28
 
 - Bridge sessions now retain the last turn's usage/context (tokens, context
