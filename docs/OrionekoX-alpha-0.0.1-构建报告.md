@@ -3353,6 +3353,26 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `9f50bd9b7089…`）；debug `dist/OrionekoX-0.43.1-debug-arm64-x64.apk`（sha256
 `5aeeb564141f…`）。详见 `docs/qa-0.43.1.md`。
 
+## 5.164 alpha 0.43.2 —— Chatbox 回环保持 Agent 身份（2026-10-28 11:50–12:02）
+
+- 回环时导出 session 的完整 Agent id 被导入器再次加 `kelivo_chat_` 前缀并追加
+  `_current`，保留原 Agent 再导入会生成副本。
+- 导出 session 增加 `orionekoAgentId`；导入器用 `Conversation.agentIdOverride`
+  在预览和实际导入中原样使用该 id，并做 `[a-zA-Z0-9._-]` 清洗、去前导点与
+  80 字符截断；无该字段的外部备份继续走原 `_current` 规则。
+- 设备：导入样例得到 `kelivo_chat_s1_current`（tgId 555000091），导出 3,593 B
+  且字段正确；保留原 Agent 回环，预览“已存在 1 段对话”，结果替换历史；
+  Agent 目录仍只有 1 个，tgId 不变，chat.json 与原生消息均 5 条；清理后
+  dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：扩展字段仅 OrionekoX 识别；真实 Chatbox 客户端忽略；无聊天 copilot
+  未验证；非法/超长 id 会清洗或截断。
+- 版本规则：回环身份 bug 的小范围修复与 QA，按 patch 从 0.43.1 → 0.43.2，
+  versionCode 4329。
+
+**产物**：`dist/OrionekoX-0.43.2-alpha-arm64-x64.apk`（versionCode 4329，sha256
+`7e8d41863a03…`）；debug `dist/OrionekoX-0.43.2-debug-arm64-x64.apk`（sha256
+`a359796b9c27…`）。详见 `docs/qa-0.43.2.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

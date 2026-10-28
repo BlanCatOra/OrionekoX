@@ -4,6 +4,26 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.43.2 — 2026-10-28
+
+- A Chatbox export now keeps the original Agent identity when imported back
+  into the same install. Each exported session carries a private
+  `orionekoAgentId` field, and the importer uses it verbatim instead of
+  re-deriving an id from the conversation name. Before this, the roundtrip
+  produced a `kelivo_chat_kelivo_chat_…_current_current` copy rather than
+  replacing the original history.
+- The imported id goes through the same sanitizing as `OxAgentStore`
+  (`[a-zA-Z0-9._-]`, no leading dots, 80-character cap). Third-party backups
+  without the field keep the previous naming behavior.
+- Verified on the emulator: a 3,593 B export kept session id `kelivo_chat_s1_current`
+  and the same tg id; the preview reported one existing conversation, the import
+  replaced history, and the install still had exactly one agent directory with
+  five chat entries and five native messages. Cleanup returned dialogs/messages
+  to zero with no app FATAL/ANR.
+- Limits: `orionekoAgentId` is an OrionekoX extension ignored by a real Chatbox
+  client; a conversation without a copilot was not tested; invalid or overlong
+  ids are sanitized or truncated.
+
 ## 0.43.1 — 2026-10-28
 
 - Fixed Chatbox roundtrip loss of JSON attachments. The zip reader used to skip
