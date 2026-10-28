@@ -651,3 +651,14 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：debug 6109，`interface_mode=oxui` 普通启动直接进 OxUI；Telegram UI 按钮把偏好改回 telegram 并进 LaunchActivity；设置再选 OxUI 后清任务重启回 OxUI。合成 `Studio Test`（tgId 555000017）搜索只剩自身，长按详情显示 1 条事实记忆，Chat 返回；截图 root/search/detail 归档。release 6109 无本包 FATAL/ANR；测试 Agent/chat/dialog/messages/memory 清零，偏好恢复 telegram，代理/无障碍保持。
 - 边界：root 只对普通 launcher 启动；搜索仅 Agent 名称/备注；详情记忆只读；群聊/附件/媒体/会话搜索/设置/Agent 编辑/平板/动态主题/reduced-motion/无障碍未做；长按复制未做剪贴板自动回读。
+
+## 0.62.0 OxUI 附件与群组 groundwork QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-127 | 0.62.0 功能 | OxUI 只有文字收发；用户无法从独立前端发图片给 Agent | composer ＋ 走 SAF 选图 → 复制到 files/oxui_media → SendingMediaInfo → 1:1 `handleOutgoingMedia` / 群组 `handleOutgoingGroupMedia`；渲染 `imagePath` 圆角图，signature 含 imagePath，纯图片条目可渲染；发送就绪含图片态 | 已实现并设备验证（echo 真实 photo 消息 + 视觉回合） |
+| R2-128 | 0.62.0 功能 | OxUI 无群组概念；本地发送路径可能被误用于真实 Telegram 群 | `OxGroupStore.markLocallyCreated/isLocallyCreated` + createLocalGroup 打标；Agents 面板 Groups 区列出本地创建群并支持群对话/发送；rail 群 chip | 已实现；端到端暂缺（createLocalGroup 无调用方，New Group 离线不走本地创建），如实标注 |
+| R2-129 | 0.62.0 QA | 子代理视觉评审 P0：MUTED/LINE 对比不足、回复点静止、每次刷新强拉底部、pending 失败无反馈 | MUTED #566259 / LINE 55% ink；呼吸动画受系统动画缩放门控；自动滚动仅近底部/刚发送；120s 未落盘显示 coral “消息未发送 · 点按重试”并可重发 | 已实现并设备验证 |
+
+- 设备：debug 6209，echo Agent + 480x320 测试图，picker→预览→发送，logcat `handleOutgoingMedia dialog=555000018 count=1`、photo 消息 id=100072 与 echo 回复 id=100073 同时出现在 OxUI 与 Telegram UI。15 个桥接测试通过；测试数据清理为 0，`interface_mode` 恢复 telegram。
+- 边界：群组创建链路未接通（createLocalGroup 无调用方，New Group 离线停留服务器请求）；附件仅图片；会话搜索/设置/记忆/Agent 编辑/平板/暗色/reduced-motion/无障碍清扫未做。

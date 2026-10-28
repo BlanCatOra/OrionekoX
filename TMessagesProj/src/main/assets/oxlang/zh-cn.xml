@@ -6774,6 +6774,10 @@
     <string name="OxUiChat">进入对话</string>
     <string name="OxUiNoResults">没有匹配的 Agent。</string>
     <string name="OxUiCopyDone">已复制</string>
+    <string name="OxUiAttach">附加图片</string>
+    <string name="OxUiGroups">群组</string>
+    <string name="OxUiGroupMembers">群内 Agent：%d</string>
+    <string name="OxUiNotSent">消息未发送 · 点按重试</string>
     <string name="OxObInterfaceTitle">界面</string>
     <string name="OxObInterfaceTelegramSub">原生聊天、联系人与设置</string>
     <string name="OxObInterfaceOxuiSub">Claude 风格的独立前端；功能同步仍在完善</string>

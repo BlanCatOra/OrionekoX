@@ -1384,10 +1384,12 @@ These confirm the feature directions rather than relying on guesses. Checked
 
 9. OxUI(preview) is the first independent front end: Claude-inspired serif
    editorial conversation, chartreuse signal accent, agent rail and a shared
-   local send path. 0.61.0 adds a real root switch for plain launcher starts,
-   a Telegram UI escape hatch, an Agents panel with name/remark search, agent
-   detail + read-only memory stats, and long-press copy. Still open: groups,
-   attachments/media, chat search, settings, agent editing, tablet layout,
-   dynamic theme/reduced-motion/accessibility, token-level streaming, and a
-   third visual pass from device screenshots. It is not yet a complete
-   replacement for Telegram UI.
+   local send path. 0.61.0 adds a real root switch, Agents panel with search,
+   agent detail + memory stats and long-press copy; 0.62.0 adds image
+   attachments end-to-end (SAF picker → real photo message → vision turn),
+   locally-created-group groundwork with a Groups panel, contrast/breathing/
+   auto-scroll/retry fixes from a subagent visual review. Still open: wiring
+   group creation (createLocalGroup has no caller yet), video/GIF/file
+   attachments, chat search, settings, agent editing, tablet layout, dark
+   variant, reduced-motion/accessibility sweep, token-level streaming. It is
+   not yet a complete replacement for Telegram UI.

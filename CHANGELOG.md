@@ -4,6 +4,25 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.62.0 — 2026-10-28
+
+- Adds image attachments end-to-end in OxUI: a ＋ button opens the system
+  image picker, the URI is imported into files/oxui_media (16MB cap), and
+  sending builds a real photo message plus an agent vision turn through the
+  same local path as Telegram UI. OxUI renders OxChatEntry.imagePath as a
+  rounded image and refreshes signature-aware so image-only turns appear.
+- Adds locally-created-group groundwork: OxGroupStore.markLocallyCreated/
+  isLocallyCreated (set by createLocalGroup), an OxUI Groups panel with group
+  chat view and local send path, and a group chip in the agent rail. Group
+  creation itself is not wired yet (createLocalGroup has no caller), so the
+  chain is documented as groundwork, not verified end-to-end.
+- Applies visual-review fixes: MUTED/LINE contrast, breathing reply dot gated
+  on the system animator scale, bottom-scroll only when near the bottom or just
+  sent, and a coral "message not sent · tap to retry" row after a 120s pending
+  timeout.
+- Device QA verifies the image flow with an echo agent (real photo message +
+  reply visible in both UIs). Test data removed; interface mode restored.
+
 ## 0.61.0 — 2026-10-28
 
 - OxUI becomes a real root for plain launcher starts when
