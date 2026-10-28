@@ -4,6 +4,18 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.39.0 — 2026-10-28
+
+- Chatbox exports now include the agent-scope chat background. Agents with chat
+  get a session-scoped `background` resource and `session.background`; chatless
+  copilots get a global background resource and `copilot.background`.
+- Background assets use the same data-URL payload, SHA-256/size checks and
+  2 MB/total caps as other resources; headers and keys are still excluded.
+- Verified with a BG38 agent: the 15,580 B export contained one session and one
+  background resource with the correct storage key. After deleting the original
+  agent/theme and re-importing, background.png (14,884 B) and the agent theme
+  were restored, and the native chat showed the BG38 wallpaper again.
+
 ## 0.38.0 — 2026-10-28
 
 - Kelivo/Chatbox chat backgrounds are now imported: `kind=background` resources

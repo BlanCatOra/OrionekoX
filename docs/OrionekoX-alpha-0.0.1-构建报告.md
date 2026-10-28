@@ -3230,6 +3230,25 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `a99da68291cd…`）；debug `dist/OrionekoX-0.38.0-debug-arm64-x64.apk`（sha256
 `c6616f5f1be8…`）。详见 `docs/qa-0.38.0.md`。
 
+## 5.158 alpha 0.39.0 —— Chatbox 导出包含 Agent 背景（2026-10-28 10:04–10:14）
+
+- `OxChatTheme.backgroundForAgent` 暴露 Agent 主题背景路径；导出器把背景写成
+  `kind=background` 资源：有聊天写 session scope + session `background`，
+  无聊天写 global + copilot `background`。
+- 资源沿用 data URL/sha256/size 与 2 MB/总量上限；不导出 headers/Key。
+- 设备：BG38 Agent 单 Agent 导出 15,580 B，manifest 1 session/1 background
+  资源、session background.storageKey 正确、2 条消息保留；删除原 Agent/
+  主题后回环导入得到 background.png 14,884 B、backgroundMode=image，
+  原生聊天 BG38 壁纸恢复；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：仅 Agent 图片背景；全局/按会话/视频背景不导出；导出不单独统计背景；
+  外部 Chatbox 未实测。
+- 版本规则：新增可见的导出背景能力，按 minor 从 0.38.0 → 0.39.0，
+  versionCode 3909。
+
+**产物**：`dist/OrionekoX-0.39.0-alpha-arm64-x64.apk`（versionCode 3909，sha256
+`e06f40bbe691…`）；debug `dist/OrionekoX-0.39.0-debug-arm64-x64.apk`（sha256
+`56f4494076be…`）。详见 `docs/qa-0.39.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

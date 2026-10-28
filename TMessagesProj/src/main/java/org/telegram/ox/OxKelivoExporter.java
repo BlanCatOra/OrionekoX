@@ -127,6 +127,22 @@ public class OxKelivoExporter {
                 }
             }
             if (!sessionOnly) {
+                String bgPath = OxChatTheme.backgroundForAgent(a.tgId);
+                if (!bgPath.isEmpty() && resources.size() < MAX_RESOURCES) {
+                    Resource bg = buildResource("res" + (resourceIndex++),
+                            "orioneko-" + UUID.randomUUID(), "background",
+                            mimeForName(bgPath), "global", null, new File(bgPath),
+                            MAX_RESOURCE_BYTES, result);
+                    if (bg != null && totalBytes + bg.bytes.length <= MAX_TOTAL_BYTES) {
+                        resources.add(bg);
+                        totalBytes += bg.bytes.length;
+                        copilot.put("background", new JSONObject()
+                                .put("type", "storage-key")
+                                .put("storageKey", bg.key));
+                    } else if (bg != null) {
+                        result.notes.add("背景超出总量上限，已跳过 " + a.id);
+                    }
+                }
                 copilots.add(copilot);
                 continue;
             }
@@ -137,6 +153,22 @@ public class OxKelivoExporter {
             session.put("id", sid);
             session.put("name", a.name == null ? a.id : a.name);
             session.put("threadName", a.name == null ? a.id : a.name);
+            String bgPath = OxChatTheme.backgroundForAgent(a.tgId);
+            if (!bgPath.isEmpty() && resources.size() < MAX_RESOURCES) {
+                Resource bg = buildResource("res" + (resourceIndex++),
+                        "orioneko-" + UUID.randomUUID(), "background",
+                        mimeForName(bgPath), "session", sid, new File(bgPath),
+                        MAX_RESOURCE_BYTES, result);
+                if (bg != null && totalBytes + bg.bytes.length <= MAX_TOTAL_BYTES) {
+                    resources.add(bg);
+                    totalBytes += bg.bytes.length;
+                    session.put("background", new JSONObject()
+                            .put("type", "storage-key")
+                            .put("storageKey", bg.key));
+                } else if (bg != null) {
+                    result.notes.add("背景超出总量上限，已跳过 " + a.id);
+                }
+            }
             JSONObject settings = new JSONObject();
             settings.put("provider", "");
             settings.put("modelId", a.model == null ? "" : a.model);
