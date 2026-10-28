@@ -568,3 +568,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：60 条 fixture + mock `[MEMORY_DISTILLER]` 返回固定摘要与两条事实。首轮压缩后后台请求到达 mock，聊天回复不等待；库内模型生日事实有效（subject=birthday），颜色事实合并进现有绿色事实，模型摘要 `source=model`、importance 0.9 有效；下一轮 system 只含 5 条有效事实 + 1 条模型摘要，旧 3/14/blue 与抽取摘要不再注入。无重复蒸馏请求、无 FATAL/ANR；清理测试 Agent/记忆行/chats 为 0，恢复代理与无障碍。
 - 边界：仅压缩批次触发并消耗 Agent token；模型输出只做结构/长度校验，未做事实核查；Provider 需支持 JSON 响应；仍无真正语义 embedding；失败路径仅代码审查、未用坏端点回放。
+
+## 0.55.0 开源式 compact QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-113 | 0.55.0 功能 | compact 只有消息数阈值和规则摘要，没有 token 压力、TextRank/Selective Context 或滚动摘要窗口；长上下文可能没有被真正压缩 | 新增 `OxContextCompactor`（token 估算、TextRank、去重/MMR、300-token 摘要）；消息阈值或 contextLength 45% token 压力触发；保留窗口按 55% 预算；递归摘要合并上一版摘要 | 已实现并设备验证 |
+| R2-114 | 0.55.0 QA | token 压力下保留窗口仍被固定 `max(8, threshold/3)=15` 覆盖，500-token 上下文保留了 19 条、只压缩 1 条 | token 压力时改用 55% 预算、最低 256 tokens/4 条，不再被固定条数覆盖；复验压缩 13 条、保留 7 条、约 790 tokens | 已修复并设备验证 |
+
+- 设备：60 条 fixture 的 TextRank 摘要 249 字符并含咖啡/杭州；模型 `MODEL_SUMMARY` 111 字符生效，抽取摘要被 cutoff 失效，旧 3/14/blue 不注入。20 条长消息、context_length=500 的 token 压力测试显示“压缩 13 条、保留 7 条、约 790 tokens”。无 FATAL/ANR；测试 Agent/记忆行/chats 清零，代理与无障碍恢复。
+- 边界：TextRank 是离线近似，不是 LLMLingua-2 语义 token 压缩；token 估算非精确 tokenizer；摘要预算 300 tokens；无 70% 预警阶段；外部 Harness 不能使用本 compact，需下一轮 HarnessAdapter 路由。

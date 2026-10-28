@@ -38,12 +38,17 @@ public class OxMemoryDistiller {
             + "transcript has nothing durable, return an empty summary and facts.";
 
     public static void distill(final OxAgent agent, final List<OxChatEntry> batch) {
+        distill(agent, batch, "");
+    }
+
+    public static void distill(final OxAgent agent, final List<OxChatEntry> batch,
+            final String previousSummary) {
         if (agent == null || batch == null || batch.size() < 8 || agent.isEchoMode()) return;
         final String key = agent.id + ":" + batch.get(0).ts + ":" + batch.size();
         if (!RUNNING.add(key)) return;
         new Thread(() -> {
             try {
-                run(agent, batch);
+                run(agent, batch, previousSummary == null ? "" : previousSummary);
             } catch (Throwable t) {
                 FileLog.e("OxMemoryDistiller", t);
             } finally {
@@ -52,9 +57,11 @@ public class OxMemoryDistiller {
         }, "ox-memory-distill").start();
     }
 
-    private static void run(OxAgent agent, List<OxChatEntry> batch) throws Exception {
+    private static void run(OxAgent agent, List<OxChatEntry> batch, String previousSummary)
+            throws Exception {
         String transcript = transcript(batch);
         if (transcript.length() < 40) return;
+        long startedAt = System.currentTimeMillis();
         JSONObject body = new JSONObject();
         body.put("model", agent.model == null ? "" : agent.model);
         body.put("stream", false);
@@ -62,8 +69,14 @@ public class OxMemoryDistiller {
         body.put("max_tokens", 1200);
         JSONArray messages = new JSONArray();
         messages.put(new JSONObject().put("role", "system").put("content", SYSTEM_PROMPT));
-        messages.put(new JSONObject().put("role", "user")
-                .put("content", "Conversation transcript:\n" + transcript));
+        StringBuilder user = new StringBuilder();
+        if (!previousSummary.trim().isEmpty()) {
+            user.append("Previous rolling summary (merge it with the new transcript, "
+                    + "keep durable facts and remove corrected/obsolete details):\n")
+                    .append(previousSummary.trim()).append("\n\n");
+        }
+        user.append("Conversation transcript:\n").append(transcript);
+        messages.put(new JSONObject().put("role", "user").put("content", user.toString()));
         body.put("messages", messages);
 
         String url = agent.baseUrl.replaceAll("/+$", "") + "/chat/completions";
@@ -98,7 +111,7 @@ public class OxMemoryDistiller {
                 FileLog.d("OxMemoryDistiller invalid JSON agent=" + agent.id);
                 return;
             }
-            int facts = OxMemoryStore.ingestModelMemory(agent.id, result);
+            int facts = OxMemoryStore.ingestModelMemory(agent.id, result, startedAt);
             FileLog.d("OxMemoryDistiller agent=" + agent.id + " facts=" + facts
                     + " summary=" + result.optString("summary", "").length());
         } finally {
