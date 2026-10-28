@@ -344,3 +344,12 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：2 助手样例（Image upload RA + Emoji FQN 🦊）；预览提示 1 个图像头像；导入 2 助手、头像 1 个，avatar.png 2,519 B；原生 RA 头像与 🦊 正确；重复导入 0 新建/2 更新、头像 sha256 不变；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：仅 upload/ 本地图像，网络/content 无文件时跳过；basename 匹配；真实备份待复测。
+
+## 0.36.0 多选 Agent 导出 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-73 | 0.36.0 QA | 0.33.0 只能导出单个 Agent，无法一次选择多个 | Ox 设置新增 “Export selected agents” 复选框列表，勾选后经 SAF 导出 `orioneko-selected-backup.zip`；导出器只接收勾选 id | 已修复 |
+
+- 设备：Multi B（2 消息）+ Single Export（4 消息/头像/图片/附件）勾选导出 6,697 B；manifest 2 sessions/0 copilot/3 资源，仅这两个 Agent；回环导入生成 2 个会话，B 消息/B 回复、图片、notes.txt 与 4 条消息均正确；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：无搜索/全选；不导出 Key/provider URL/工作区/记忆/技能/MCP/主题；外部 Chatbox 未实测。

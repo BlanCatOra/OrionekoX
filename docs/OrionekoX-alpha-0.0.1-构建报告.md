@@ -3154,6 +3154,25 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `7c1aa6d7d77e…`）；debug `dist/OrionekoX-0.35.0-debug-arm64-x64.apk`（sha256
 `1c3b982d2590…`）。详见 `docs/qa-0.35.0.md`。
 
+## 5.154 alpha 0.36.0 —— 多选 Agent 导出 Chatbox 备份（2026-10-28 08:22–08:38）
+
+- Ox 设置新增 “Export selected agents”：原生复选框列表（所有非内置 Agent，
+  默认不勾选），确认后 SAF 创建 `orioneko-selected-backup.zip`。
+- 复用 `OxKelivoExporter.exportTo(..., onlyIds)`，只写勾选的 session/copilot
+  与资源；空选择提示且不写文件；取消 SAF 清空待导出列表。
+- 设备：Multi B（2 消息）+ Single Export（4 消息/头像/图片/附件）勾选导出
+  6,697 B；manifest 2 sessions/0 copilot/3 资源，仅这两个 Agent；回环导入
+  生成 2 个会话，B 消息/B 回复、图片、notes.txt 与 4 条消息均正确；清理后
+  dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：无搜索/全选；不导出 Key/provider URL/工作区/记忆/技能/MCP/主题；
+  外部 Chatbox 未实测。
+- 版本规则：新增可见的多选 Agent 导出能力，按 minor 从 0.35.0 → 0.36.0，
+  versionCode 3609。
+
+**产物**：`dist/OrionekoX-0.36.0-alpha-arm64-x64.apk`（versionCode 3609，sha256
+`3f4b52ac9866…`）；debug `dist/OrionekoX-0.36.0-debug-arm64-x64.apk`（sha256
+`2a6607834fa3…`）。详见 `docs/qa-0.36.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
