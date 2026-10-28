@@ -4,6 +4,33 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.46.0 — 2026-10-28
+
+- Chatbox / Kelivo backups now carry the skill library and each agent's skill
+  links. Exports write `skills/<id>/SKILL.md`; full exports include every
+  visible skill, while a selected-agent export includes only the skills those
+  agents reference. Sessions and copilots carry `orionekoSkillIds`, restricted
+  to skills actually present in the zip. Caps: 50 skills, 512 KiB each, 8 MiB
+  total.
+- The importer loads skills first and restores `skill_ids` only for ids that
+  imported successfully. The preview and result report how many agents were
+  linked. External backups without the field keep the old behavior.
+- Fixed chatless copilot identity: 0.43.2 only wrote `orionekoAgentId` into
+  sessions, so a copilot roundtrip re-derived a `kelivo_…` id and created a
+  duplicate agent. Copilots now export the field too, and both preview and
+  import use the same override.
+- Verified on the emulator with a 90 B skill plus one session and one copilot
+  agent: a 1,762 B selected export carried an identical SKILL.md
+  (SHA-256 `6cf9bd70…`), both objects kept their original id and skill link,
+  and no API-key/provider strings appeared. After deleting the skill and
+  clearing both `skill_ids`, the import reported one update, two restored
+  links and one skill; both original agent directories and tg ids survived, the
+  skill hash matched, and a repeat import stayed idempotent. Cleanup removed the
+  test agents/skill and zeroed their dialogs/messages; no app FATAL/ANR.
+- Limits: the `skills/` layout and private fields are extensions; only
+  SKILL.md bodies travel (no scripts or attachments); full exports include
+  unreferenced skills; real Chatbox/Kelivo clients were not tested.
+
 ## 0.45.1 — 2026-10-28
 
 - Consolidated character-card import. The agent list has imported SillyTavern

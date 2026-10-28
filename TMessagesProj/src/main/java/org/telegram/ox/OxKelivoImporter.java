@@ -53,6 +53,7 @@ public class OxKelivoImporter {
         public int files;
         public int backgrounds;
         public int memories;
+        public int skillLinks;
         public final List<String> names = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -71,6 +72,7 @@ public class OxKelivoImporter {
         public int files;
         public int backgrounds;
         public int memories;
+        public int skillLinks;
         public final Map<String, String> backgroundPaths = new HashMap<>();
         public final List<String> ids = new ArrayList<>();
         public final List<String> conversationIds = new ArrayList<>();
@@ -91,6 +93,7 @@ public class OxKelivoImporter {
         final List<OxChatEntry> entries = new ArrayList<>();
         String agentIdOverride = "";
         String memory = "";
+        final List<String> skillIds = new ArrayList<>();
         final List<String> imageRefs = new ArrayList<>();
         final List<String> fileRefs = new ArrayList<>();
         final List<String> fileNames = new ArrayList<>();
@@ -131,14 +134,22 @@ public class OxKelivoImporter {
         for (OxAgent a : OxAgentStore.listAgents()) {
             if (a.id != null) existing.add(a.id);
         }
+        Set<String> archiveSkillIds = new HashSet<>();
+        for (String id : archive.skills.keySet()) archiveSkillIds.add(OxSkillStore.skillId(id));
+        Set<String> existingSkills = new HashSet<>();
+        for (OxSkillStore.Skill s : OxSkillStore.list()) {
+            if (s.id != null) existingSkills.add(OxSkillStore.skillId(s.id));
+        }
         Set<String> memoryAgents = new HashSet<>();
+        Set<String> linkedAgents = new HashSet<>();
         for (JSONObject o : archive.assistants) {
             String name = name(o);
-            String id = agentId(o.optString("id", ""), name);
+            String id = assistantId(o, name);
             p.assistants++;
             if (p.names.size() < 8) p.names.add(name);
             if (existing.contains(id)) p.existing++;
             if (!memoryOf(o).isEmpty()) memoryAgents.add(id);
+            if (hasLinkedSkill(skillIdsOf(o), archiveSkillIds)) linkedAgents.add(id);
         }
         for (Conversation c : archive.conversations) {
             p.conversations++;
@@ -146,23 +157,23 @@ public class OxKelivoImporter {
             if (p.names.size() < 8) p.names.add(c.title);
             if (existing.contains(agentIdFor(c))) p.existingConversations++;
             if (!c.memory.isEmpty()) memoryAgents.add(agentIdFor(c));
+            if (hasLinkedSkill(c.skillIds, archiveSkillIds)) linkedAgents.add(agentIdFor(c));
         }
         p.memories = memoryAgents.size();
+        p.skillLinks = linkedAgents.size();
         p.notes.add("仅导入 Kelivo / Chatbox 备份中的助手、人设、技能、HTTP MCP 与对话；不含 Provider 密钥。");
         if (p.memories > 0) {
             p.notes.add("将恢复 " + p.memories + " 个智能体的长期记忆（覆盖现有记忆）。");
         }
+        if (p.skillLinks > 0) {
+            p.notes.add("将恢复 " + p.skillLinks + " 个智能体的技能关联（覆盖现有）。");
+        }
         if (!archive.providers.isEmpty()) {
             p.notes.add("将使用备份中的 " + archive.providers.size() + " 个 Provider 配置为助手接线。");
         }
-        Set<String> existingSkills = new HashSet<>();
-        for (OxSkillStore.Skill s : OxSkillStore.list()) {
-            if (s.id != null) existingSkills.add(s.id);
-        }
-        for (String id : archive.skills.keySet()) {
-            String safe = OxSkillStore.skillId(id);
+        for (String id : archiveSkillIds) {
             p.skills++;
-            if (existingSkills.contains(safe)) p.existingSkills++;
+            if (existingSkills.contains(id)) p.existingSkills++;
         }
         if (!archive.skills.isEmpty()) {
             p.notes.add("将导入 " + archive.skills.size() + " 个技能；同名技能会更新。");
@@ -213,9 +224,21 @@ public class OxKelivoImporter {
         OxAgent fallback = existingProvider();
         Set<String> providersUsed = new HashSet<>();
         Set<String> memoriesRestored = new HashSet<>();
+        Set<String> skillLinked = new HashSet<>();
+        Set<String> importedSkillIds = new HashSet<>();
+        for (Map.Entry<String, byte[]> entry : archive.skills.entrySet()) {
+            String id = OxSkillStore.skillId(entry.getKey());
+            try {
+                OxSkillStore.importSkill(id, entry.getValue());
+                importedSkillIds.add(id);
+                r.skills++;
+            } catch (Throwable t) {
+                r.notes.add("技能「" + id + "」导入失败");
+            }
+        }
         for (JSONObject o : archive.assistants) {
             String name = name(o);
-            String id = agentId(o.optString("id", ""), name);
+            String id = assistantId(o, name);
             OxAgent a = findById(id);
             boolean update = a != null;
             long oldTgId = a == null ? 0 : a.tgId;
@@ -274,6 +297,11 @@ public class OxKelivoImporter {
             if (!model.isEmpty()) a.model = model;
             JSONArray headers = headers(o.optJSONArray("customHeaders"));
             if (headers.length() > 0) a.headers = headers;
+            JSONArray linkedSkills = linkedSkillArray(skillIdsOf(o), importedSkillIds);
+            if (linkedSkills.length() > 0) {
+                a.skillIds = linkedSkills;
+                skillLinked.add(a.id);
+            }
             OxAgentStore.saveAgent(a);
             String memory = memoryOf(o);
             if (!memory.isEmpty()) {
@@ -326,6 +354,11 @@ public class OxKelivoImporter {
             if (!c.providerId.isEmpty() && archive.providers.get(c.providerId) != null) {
                 providersUsed.add(c.providerId);
             }
+            JSONArray linkedSkills = linkedSkillArray(c.skillIds, importedSkillIds);
+            if (linkedSkills.length() > 0) {
+                a.skillIds = linkedSkills;
+                skillLinked.add(a.id);
+            }
             OxAgentStore.saveAgent(a);
             if (!c.memory.isEmpty()) {
                 OxAgentStore.saveMemory(a.id, c.memory);
@@ -345,6 +378,10 @@ public class OxKelivoImporter {
         if (r.memories > 0) {
             r.notes.add("已恢复 " + r.memories + " 个智能体的长期记忆");
         }
+        r.skillLinks = skillLinked.size();
+        if (r.skillLinks > 0) {
+            r.notes.add("已恢复 " + r.skillLinks + " 个智能体的技能关联");
+        }
         if (!providersUsed.isEmpty()) {
             r.notes.add("使用备份中的 " + providersUsed.size() + " 个 Provider 配置接线");
         }
@@ -362,14 +399,6 @@ public class OxKelivoImporter {
         }
         if (r.files > 0) {
             r.notes.add("导入聊天附件 " + r.files + " 个");
-        }
-        for (Map.Entry<String, byte[]> e : archive.skills.entrySet()) {
-            try {
-                OxSkillStore.importSkill(e.getKey(), e.getValue());
-                r.skills++;
-            } catch (Throwable t) {
-                r.notes.add("技能「" + e.getKey() + "」导入失败");
-            }
         }
         if (r.skills > 0) r.notes.add("导入技能 " + r.skills + " 个");
         for (JSONObject s : archive.mcpServers) {
@@ -911,6 +940,7 @@ public class OxKelivoImporter {
         if (prompt.isEmpty()) prompt = out.defaultPrompt;
         String roundtripId = session.optString("orionekoAgentId", "").trim();
         String memory = memoryOf(session);
+        List<String> skillIds = skillIdsOf(session);
 
         JSONArray threads = session.optJSONArray("threads");
         for (int i = 0; threads != null && i < threads.length(); i++) {
@@ -924,13 +954,13 @@ public class OxKelivoImporter {
             if (threadTitle.isEmpty()) threadTitle = title;
             addConversation(out, id + "_" + threadId, threadTitle, providerId, model,
                     avatar, background, temperature, topP, maxTokens, prompt, messages,
-                    "", memory);
+                    "", memory, skillIds);
         }
         if (current != null && current.length() > 0 && !currentDuplicated(current, threads)) {
             String threadName = session.optString("threadName", "").trim();
             addConversation(out, id + "_current", threadName.isEmpty() ? title : threadName,
                     providerId, model, avatar, background, temperature, topP, maxTokens, prompt,
-                    current, roundtripId, memory);
+                    current, roundtripId, memory, skillIds);
         }
     }
 
@@ -938,13 +968,14 @@ public class OxKelivoImporter {
             String model, String avatarRef, String backgroundRef, double temperature, double topP,
             int maxTokens, String prompt, JSONArray messages) {
         addConversation(out, rawId, title, providerId, model, avatarRef, backgroundRef,
-                temperature, topP, maxTokens, prompt, messages, "", "");
+                temperature, topP, maxTokens, prompt, messages, "", "",
+                new ArrayList<>());
     }
 
     private static void addConversation(Archive out, String rawId, String title, String providerId,
             String model, String avatarRef, String backgroundRef, double temperature, double topP,
             int maxTokens, String prompt, JSONArray messages, String agentIdOverride,
-            String memory) {
+            String memory, List<String> skillIds) {
         if (out.conversations.size() >= MAX_CONVERSATIONS) return;
         String safeId = rawId == null ? "" : rawId.replaceAll("[^a-zA-Z0-9_-]", "_");
         while (safeId.startsWith("_")) safeId = safeId.substring(1);
@@ -962,6 +993,7 @@ public class OxKelivoImporter {
         c.id = safeId;
         c.agentIdOverride = safeAgentId(agentIdOverride);
         c.memory = memory == null ? "" : memory;
+        if (skillIds != null) c.skillIds.addAll(skillIds);
         c.title = title == null || title.trim().isEmpty() ? "Kelivo 对话" : title.trim();
         c.systemPrompt = prompt == null ? "" : prompt;
         c.providerId = providerId == null ? "" : providerId;
@@ -1030,6 +1062,34 @@ public class OxKelivoImporter {
             memory = memory.substring(memory.length() - MAX_MEMORY_CHARS);
         }
         return memory.trim().isEmpty() ? "" : memory;
+    }
+
+    /** Private field written by OrionekoX exports; external Chatbox files omit it. */
+    private static List<String> skillIdsOf(JSONObject o) {
+        List<String> out = new ArrayList<>();
+        JSONArray ids = o == null ? null : o.optJSONArray("orionekoSkillIds");
+        for (int i = 0; ids != null && i < ids.length() && out.size() < 50; i++) {
+            String id = ids.optString(i, "").trim();
+            if (!id.isEmpty() && !out.contains(id)) out.add(id);
+        }
+        return out;
+    }
+
+    private static boolean hasLinkedSkill(List<String> linked, Set<String> available) {
+        for (String raw : linked) {
+            if (available.contains(OxSkillStore.skillId(raw))) return true;
+        }
+        return false;
+    }
+
+    private static JSONArray linkedSkillArray(List<String> linked, Set<String> available) {
+        JSONArray out = new JSONArray();
+        Set<String> seen = new HashSet<>();
+        for (String raw : linked) {
+            String id = OxSkillStore.skillId(raw);
+            if (available.contains(id) && seen.add(id)) out.put(id);
+        }
+        return out;
     }
 
     private static List<OxChatEntry> convertMessages(JSONArray messages, Archive archive,
@@ -1421,6 +1481,13 @@ public class OxKelivoImporter {
         String safe = sourceId == null ? "" : sourceId.replaceAll("[^a-zA-Z0-9_-]", "");
         if (safe.isEmpty()) safe = Integer.toHexString((name == null ? "" : name).hashCode());
         return "kelivo_" + safe;
+    }
+
+    /** Chatbox copilots carry the original id in the private orionekoAgentId;
+     *  external backups without it keep the historical kelivo_ prefix. */
+    private static String assistantId(JSONObject o, String name) {
+        String override = safeAgentId(o == null ? "" : o.optString("orionekoAgentId", ""));
+        return override.isEmpty() ? agentId(o.optString("id", ""), name) : override;
     }
 
     private static OxAgent findById(String id) {
