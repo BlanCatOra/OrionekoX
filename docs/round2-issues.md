@@ -409,4 +409,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 | R2-82 | 0.41.0 QA | RikkaHub 历史已写入 `chat.json`，但导入后原生会话仍只显示开场白，看不到历史消息 | 导入器记录实际新增消息的会话，导入完成后调用 `OxAgentsBridge.replayImportedHistory`，按时间回放原生消息 | 已修复 |
 
 - 设备：1,064 B 最小备份含 1 会话、2 条消息和 37 B `report.txt`；首次导入结果“已导入历史消息 2 条，导入附件 1 个”，`chat.json` 两条且文件路径/文件名正确；修复回放后原生聊天显示 `report.txt` 文件气泡（37 B · TXT，正文“看附件”）与助手“收到附件”；重复导入无新增、无重复气泡；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
-- 边界：每条消息只取第一个 document；仅图片与 document，video/audio 跳过；仅匹配 `upload/`，不下载远程/data URL；附件暂不进入 Chatbox 导出。
+- 边界：每条消息只取第一个 document；仅图片与 document，video/audio 跳过；仅匹配 `upload/`，不下载远程/data URL；文件条目由现有导出逻辑携带，本轮未做导出回环。
+
+## 0.42.0 RikkaHub 多附件与音视频导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-83 | 0.42.0 QA | 0.41.0 每条消息只导入第一个 document，多张图片/多个文件会丢失；video/audio part 被直接跳过；视频/音频文件名会带 `rikka_upload_` 前缀 | 解析单条消息全部媒体（≤20），图片/文件按序拆成独立气泡；视频/音频作为文件气泡导入，名称回退 URL basename；去重键加入媒体 basename，共享节点时间戳 | 已修复 |
+
+- 设备：2,016 B 样例含文字 + 2 PNG + `report.txt` + `clip.mp4` + `clip.mp3`；导入结果“已导入历史消息 6 条 / 导入图片 2 张 / 导入附件 3 个”；原生聊天显示两张照片气泡和 `report.txt`（24 B · TXT）、`clip.mp4`（24 B · MP4）、`clip.mp3`（10 B · MP3）文件气泡，助手回复正常；重复导入仍为 6 条、无重复；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：单条最多 20 个媒体；视频/音频无缩略图/内嵌播放器/时长；仅匹配 `upload/`；远程/data URL 不下载；导出回环未复验。

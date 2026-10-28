@@ -66,8 +66,8 @@
 - 支持图片与 document；video/audio 等其它 part 仍跳过。
 - 每条消息只取第一个 document，多个附件会丢失其余项。
 - 仅匹配备份 `upload/` 中的文件；远程 URL、data URL 附件不下载。
-- 文件复制到应用私有目录，不进入 Agent 的 `media/`，导出 Chatbox 备份时
-  暂不包含该文件。
+- 文件复制到应用私有目录，不进入 Agent 的 `media/`；文件条目由现有 Chatbox
+  导出逻辑携带，但本轮未做导出回环复验。
 - 未对真实 RikkaHub 导出的完整数据库/大附件做兼容性与性能验证。
 
 ## 4. 产物

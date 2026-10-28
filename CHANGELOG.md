@@ -4,6 +4,28 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.42.0 — 2026-10-28
+
+- RikkaHub messages can now import every media part (up to 20): images become
+  native photo bubbles, while `document`, `video` and `audio` parts become file
+  bubbles. The first media shares the message text; the remaining attachments
+  are emitted as extra bubbles in order. Video/audio names fall back to the URL
+  basename instead of the internal `rikka_upload_` prefix.
+- Deduplication now includes the image/file basename, so multiple attachments
+  in one message no longer collapse into a single entry. Extra bubbles share
+  the node timestamp, keeping later messages ordered and remaining compatible
+  with 0.41.0 single-file history.
+- The result reports the image count and an attachment count covering files,
+  video and audio.
+- Verified with a 2,016 B backup (text + two PNGs + `report.txt` + mp4 + mp3):
+  six messages, two photo bubbles and three file bubbles (`report.txt` 24 B ·
+  TXT, `clip.mp4` 24 B · MP4, `clip.mp3` 10 B · MP3), followed by the assistant
+  reply. A repeat import left six entries and six native rows; cleanup returned
+  dialogs/messages to zero with no app FATAL/ANR.
+- Limits: max 20 media per message; video/audio are generic file bubbles with
+  no thumbnail, inline player or duration; only `upload/` matches are
+  supported; no export roundtrip was re-tested this round.
+
 ## 0.41.0 — 2026-10-28
 
 - RikkaHub backups now import non-image `document` parts as local file
