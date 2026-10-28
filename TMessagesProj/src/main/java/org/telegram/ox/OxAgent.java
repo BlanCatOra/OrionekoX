@@ -47,6 +47,13 @@ public class OxAgent {
     public int memoryThreshold = 45;
     /** Maximum number of recalled memory entries injected per turn. */
     public int memoryRecall = 6;
+    /** api | oxlinux | claude | opencode | commandcode | openclaw | hermes |
+     *  codebuddy | dsh | pi | device | generic. Only api uses our local compact. */
+    public String harness = "api";
+    /** Session id understood by the external harness (for /compact or resume). */
+    public String harnessSession = "";
+    /** Optional compact command template; {session} and {cwd} are replaced. */
+    public String harnessCompactCommand = "";
     // tool name -> "auto" | "ask" | "deny"; missing entries fall back to the tool default
     public JSONObject toolsPolicy = new JSONObject();
 
@@ -86,6 +93,9 @@ public class OxAgent {
         a.memoryMode = o.optString("memory_mode", "normal");
         a.memoryThreshold = o.optInt("memory_threshold", 45);
         a.memoryRecall = o.optInt("memory_recall", 6);
+        a.harness = o.optString("harness", "api");
+        a.harnessSession = o.optString("harness_session", "");
+        a.harnessCompactCommand = o.optString("harness_compact_command", "");
         JSONObject tp = o.optJSONObject("tools_policy");
         a.toolsPolicy = tp == null ? new JSONObject() : tp;
         return a;
@@ -126,6 +136,10 @@ public class OxAgent {
         o.put("memory_mode", memoryMode == null ? "normal" : memoryMode);
         o.put("memory_threshold", memoryThreshold);
         o.put("memory_recall", memoryRecall);
+        o.put("harness", harness == null ? "api" : harness);
+        o.put("harness_session", harnessSession == null ? "" : harnessSession);
+        o.put("harness_compact_command",
+                harnessCompactCommand == null ? "" : harnessCompactCommand);
         o.put("tools_policy", toolsPolicy);
         return o;
     }

@@ -30,6 +30,7 @@ import org.telegram.messenger.R;
 import org.telegram.ox.OxAgent;
 import org.telegram.ox.OxAgentStore;
 import org.telegram.ox.OxAgentsBridge;
+import org.telegram.ox.OxHarnessAdapter;
 import org.telegram.ox.OxMode;
 import org.telegram.ox.OxModelHub;
 import org.telegram.ox.OxProviderPreset;
@@ -81,6 +82,10 @@ public class OxAgentProfileActivity extends BaseFragment {
     private EditTextCell contextCell;
     private EditTextCell memoryThresholdCell;
     private TextSettingsCell memoryModeRow;
+    private TextSettingsCell harnessRow;
+    private EditTextCell harnessSessionCell;
+    private EditTextCell harnessCompactCell;
+    private String harness = "api";
     private EditTextCell presenceCell;
     private EditTextCell frequencyCell;
     private EditTextCell topKCell;
@@ -165,6 +170,8 @@ public class OxAgentProfileActivity extends BaseFragment {
     public View createView(Context context) {
         memoryMode = agent == null || agent.memoryMode == null || agent.memoryMode.isEmpty()
                 ? "normal" : agent.memoryMode;
+        harness = agent == null || agent.harness == null || agent.harness.isEmpty()
+                ? "api" : agent.harness;
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(false);
         actionBar.setTitle(LocaleController.getString(isNew ? R.string.OxAgentNewTitle : R.string.OxAgentSettings));
@@ -346,6 +353,21 @@ public class OxAgentProfileActivity extends BaseFragment {
         testRow.setOnClickListener(v -> testConnection());
         providerGroup.addView(testRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         content.addView(providerGroup);
+
+        content.addView(sectionHeader(context, LocaleController.getString(R.string.OxAgentHarness)));
+        LinearLayout harnessGroup = section(context);
+        harnessGroup.addView(sectionLabel(context, LocaleController.getString(R.string.OxAgentHarnessInfo)), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        harnessRow = new TextSettingsCell(context);
+        harnessRow.setTextAndValue(LocaleController.getString(R.string.OxAgentHarness), OxHarnessAdapter.label(harness), false);
+        harnessRow.setOnClickListener(v -> showHarnessPicker());
+        harnessGroup.addView(harnessRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        harnessSessionCell = addEditCell(context, harnessGroup,
+                LocaleController.getString(R.string.OxAgentHarnessSessionHint),
+                agent.harnessSession, false, true);
+        harnessCompactCell = addEditCell(context, harnessGroup,
+                LocaleController.getString(R.string.OxAgentHarnessCompactHint),
+                agent.harnessCompactCommand, true, false);
+        content.addView(harnessGroup);
 
         LinearLayout advancedHeaderCard = section(context);
         TextSettingsCell advancedToggle = new TextSettingsCell(context);
@@ -574,6 +596,22 @@ public class OxAgentProfileActivity extends BaseFragment {
             rebuildHeaders();
         }
         updateProviderInfo();
+    }
+
+    private void showHarnessPicker() {
+        if (getParentActivity() == null) return;
+        final java.util.List<String> ids = new java.util.ArrayList<>(OxHarnessAdapter.ids());
+        CharSequence[] labels = new CharSequence[ids.size()];
+        for (int i = 0; i < ids.size(); i++) labels[i] = OxHarnessAdapter.label(ids.get(i));
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxAgentHarness))
+                .setItems(labels, (d, which) -> {
+                    harness = ids.get(which);
+                    harnessRow.setTextAndValue(LocaleController.getString(R.string.OxAgentHarness),
+                            OxHarnessAdapter.label(harness), false);
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
     }
 
     private void showProviderPicker() {
@@ -887,6 +925,9 @@ public class OxAgentProfileActivity extends BaseFragment {
         a.memoryMode = memoryMode;
         a.memoryThreshold = Math.max(10, Math.min(200, parseInt(memoryThresholdCell, 45, 200)));
         a.memoryRecall = agent.memoryRecall > 0 ? agent.memoryRecall : 6;
+        a.harness = harness;
+        a.harnessSession = harnessSessionCell == null ? "" : harnessSessionCell.getText().toString().trim();
+        a.harnessCompactCommand = harnessCompactCell == null ? "" : harnessCompactCell.getText().toString().trim();
         a.presencePenalty = parseDouble(presenceCell, 0, 0, 2);
         a.frequencyPenalty = parseDouble(frequencyCell, 0, 0, 2);
         a.topK = parseInt(topKCell, 0, 1000);

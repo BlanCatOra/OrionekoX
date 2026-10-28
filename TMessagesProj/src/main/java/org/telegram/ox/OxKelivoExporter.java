@@ -511,7 +511,10 @@ public class OxKelivoExporter {
                 || nonEmpty(a.stop)
                 || !"normal".equals(a.memoryMode)
                 || a.memoryThreshold != 45
-                || a.memoryRecall != 6;
+                || a.memoryRecall != 6
+                || (a.harness != null && !"api".equals(a.harness))
+                || nonEmpty(a.harnessSession)
+                || nonEmpty(a.harnessCompactCommand);
         if (!custom) return null;
         try {
             JSONObject o = new JSONObject();
@@ -531,6 +534,9 @@ public class OxKelivoExporter {
             o.put("memory_mode", clip(a.memoryMode, 16));
             o.put("memory_threshold", Math.max(10, Math.min(200, a.memoryThreshold)));
             o.put("memory_recall", Math.max(1, Math.min(12, a.memoryRecall)));
+            o.put("harness", clip(a.harness == null ? "api" : a.harness, 32));
+            o.put("harness_session", clip(a.harnessSession, 512));
+            o.put("harness_compact_command", clip(a.harnessCompactCommand, 2048));
             JSONObject policy = new JSONObject();
             if (a.toolsPolicy != null) {
                 Iterator<String> keys = a.toolsPolicy.keys();

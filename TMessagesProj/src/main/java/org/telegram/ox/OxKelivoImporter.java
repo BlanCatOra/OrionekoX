@@ -1360,6 +1360,21 @@ public class OxKelivoImporter {
             a.memoryRecall = Math.max(1, Math.min(12, p.optInt("memory_recall", 6)));
             applied = true;
         }
+        if (p.has("harness")) {
+            String v = p.optString("harness", "api");
+            if (OxHarnessAdapter.ids().contains(v)) {
+                a.harness = v;
+                applied = true;
+            }
+        }
+        if (p.has("harness_session")) {
+            a.harnessSession = clip(p.optString("harness_session", ""), 512);
+            applied = true;
+        }
+        if (p.has("harness_compact_command")) {
+            a.harnessCompactCommand = clip(p.optString("harness_compact_command", ""), 2048);
+            applied = true;
+        }
         JSONObject policy = p.optJSONObject("tools_policy");
         if (policy != null) {
             JSONObject clean = new JSONObject();
