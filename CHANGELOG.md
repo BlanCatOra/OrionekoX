@@ -4,6 +4,21 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.61.0 — 2026-10-28
+
+- OxUI becomes a real root for plain launcher starts when
+  `interface_mode=oxui`; deep links/shares keep the Telegram path. The OxUI
+  header switches back to Telegram UI by clearing the task, and back in root
+  mode backgrounds the task instead of revealing Telegram UI.
+- Adds an Agents panel with name/remark search, tap-to-chat, long-press agent
+  detail (harness/model, memory stats and recent memory), and long-press
+  message copy. Detail layout, keyboard offset, Markdown list subtitles and
+  selectable-text long-press conflicts were fixed.
+- Device QA covers root launch, switching back/forth, filtered search, detail
+  memory and Chat return. Test agent/data removed; `interface_mode` restored to
+  Telegram UI. Groups, attachments/media, chat search, settings, agent editing
+  and tablet layout remain open.
+
 ## 0.60.0 — 2026-10-28
 
 - Adds **OxUI (preview)**, an independent front end selectable from the

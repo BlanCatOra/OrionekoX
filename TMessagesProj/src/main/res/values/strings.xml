@@ -11857,6 +11857,14 @@
     <string name="OxUiEmptyBody">Choose an agent and write the first line. Replies appear here and in the Telegram UI.</string>
     <string name="OxUiNoAgentTitle">No agent available yet.</string>
     <string name="OxUiNoAgentBody">Create an agent in Ox settings first, then return to this preview.</string>
+    <string name="OxUiAgents">Agents</string>
+    <string name="OxUiSearchAgents">Search agents</string>
+    <string name="OxUiAgentsHint">Tap an agent to chat; long-press for details and memory.</string>
+    <string name="OxUiMemory">Memory library</string>
+    <string name="OxUiNoMemory">No memory entries yet.</string>
+    <string name="OxUiChat">Chat</string>
+    <string name="OxUiNoResults">No agents match this search.</string>
+    <string name="OxUiCopyDone">Copied</string>
     <string name="OxObInterfaceTitle">Interface</string>
     <string name="OxObInterfaceTelegramSub">Native chat, contacts and settings</string>
     <string name="OxObInterfaceOxuiSub">Claude-inspired independent front end; feature parity is still in progress</string>

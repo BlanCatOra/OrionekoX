@@ -133,6 +133,7 @@ import org.telegram.messenger.PushListenerController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.SharedConfig;
+import org.telegram.ox.OxMode;
 import org.telegram.messenger.SharedPrefsHelper;
 import org.telegram.messenger.TopicsController;
 import org.telegram.messenger.UserConfig;
@@ -466,6 +467,27 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         }
         Theme.createCommonChatResources();
         Theme.createDialogsResources(this);
+        // OxUI root: a plain launcher start enters the separate OxUI activity.
+        // Telegram UI remains reachable from OxUI's header (which switches the
+        // preference back). Deep links/shares keep the normal Telegram path.
+        try {
+            Intent launchIntent = getIntent();
+            boolean plainLaunch = launchIntent == null
+                    || ((launchIntent.getAction() == null
+                        || Intent.ACTION_MAIN.equals(launchIntent.getAction()))
+                        && launchIntent.getData() == null);
+            if (plainLaunch && OxMode.IFACE_OXUI.equals(OxMode.getInterfaceMode())
+                    && OxMode.isAgentOnly()
+                    && (SharedConfig.passcodeHash.length() == 0 || !SharedConfig.appLocked)) {
+                Intent oxui = new Intent(this, OxUiPreviewActivity.class);
+                oxui.putExtra("oxui_root", true);
+                startActivity(oxui);
+                finish();
+                return;
+            }
+        } catch (Throwable t) {
+            FileLog.e(t);
+        }
         if (SharedConfig.passcodeHash.length() != 0 && SharedConfig.appLocked) {
             SharedConfig.lastPauseTime = (int) (SystemClock.elapsedRealtime() / 1000);
         }

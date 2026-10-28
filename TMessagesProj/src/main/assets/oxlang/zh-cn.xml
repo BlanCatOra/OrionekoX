@@ -6766,6 +6766,14 @@
     <string name="OxUiEmptyBody">选择一个 Agent，写下第一句话。回复会同时出现在 Telegram UI 和 OxUI。</string>
     <string name="OxUiNoAgentTitle">还没有可用的 Agent。</string>
     <string name="OxUiNoAgentBody">先在 Ox 设置里创建一个 Agent，再回到预览。</string>
+    <string name="OxUiAgents">Agents</string>
+    <string name="OxUiSearchAgents">搜索 Agent</string>
+    <string name="OxUiAgentsHint">点击进入对话，长按查看详情与记忆。</string>
+    <string name="OxUiMemory">记忆库</string>
+    <string name="OxUiNoMemory">还没有记忆条目。</string>
+    <string name="OxUiChat">进入对话</string>
+    <string name="OxUiNoResults">没有匹配的 Agent。</string>
+    <string name="OxUiCopyDone">已复制</string>
     <string name="OxObInterfaceTitle">界面</string>
     <string name="OxObInterfaceTelegramSub">原生聊天、联系人与设置</string>
     <string name="OxObInterfaceOxuiSub">Claude 风格的独立前端；功能同步仍在完善</string>

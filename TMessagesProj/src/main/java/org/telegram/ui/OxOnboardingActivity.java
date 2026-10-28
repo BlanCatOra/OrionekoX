@@ -1330,6 +1330,14 @@ public class OxOnboardingActivity extends BaseFragment {
                 OxAgentsBridge.ensureLocalAccount();
             } catch (Throwable ignored) {
             }
+            if (OxMode.IFACE_OXUI.equals(OxMode.getInterfaceMode())
+                    && getParentActivity() != null) {
+                Intent restart = new Intent(getParentActivity(), LaunchActivity.class);
+                restart.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                getParentActivity().startActivity(restart);
+                finished = true;
+                return;
+            }
             presentFragment(new MainTabsActivity(), true);
         }
     }
@@ -1378,6 +1386,14 @@ public class OxOnboardingActivity extends BaseFragment {
             try {
                 OxAgentsBridge.ensureLocalAccount();
             } catch (Throwable ignored) {
+            }
+            if (OxMode.IFACE_OXUI.equals(OxMode.getInterfaceMode())
+                    && getParentActivity() != null) {
+                Intent restart = new Intent(getParentActivity(), LaunchActivity.class);
+                restart.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                getParentActivity().startActivity(restart);
+                finished = true;
+                return;
             }
             presentFragment(new MainTabsActivity(), true);
         });

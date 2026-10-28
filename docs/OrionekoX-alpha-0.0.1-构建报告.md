@@ -4022,6 +4022,35 @@ debug `dist/OrionekoX-0.60.0-debug-arm64-x64.apk`（sha256
 `fc3a837a7a83a9f23db0de0f4b0f27c784bd98b48b30b29be0223a1c828df76f`）。
 详见 `docs/qa-0.60.0.md` 与 `docs/oxui-design.md`。
 
+## 5.183 alpha 0.61.0 —— OxUI root 切换 + Agent 列表/搜索/详情/记忆（2026-10-28 22:40–23:05）
+
+- OxUI 第二轮：LaunchActivity 在普通 launcher 启动且
+  `interface_mode=oxui`、agent-only 时直接进入 `OxUiPreviewActivity`，
+  深链/分享保持 Telegram 路径；OxUI root 顶部 Telegram UI 切回偏好并
+  清任务重启，返回键在 root 模式 `moveTaskToBack`，不再露出 Telegram
+  UI；Ox Settings/引导页选择 OxUI 后清任务重启进入 root。
+- 新增 Agents 全屏面板：名称/备注搜索、Harness/最近消息摘要、点击进入
+  对话、长按详情；详情页显示名称、Harness/模型、备注、
+  `OxMemoryStore.stats()` 与最近记忆、Chat 按钮；消息长按复制。
+- 修复详情页 header 被拉满并垂直居中（显式 44dp + TOP）、搜索键盘导致
+  详情错位（打开详情前隐藏键盘）、列表摘要残留 Markdown、消息
+  selectable 抢走长按复制等问题。
+- 设备：合成 `Studio Test`（tgId 555000017，合成历史 + 一条记忆）验证
+  root 启动、Telegram UI 切回、OxUI 重新进入、搜索只剩 Studio Test、
+  详情记忆统计与 Chat 返回；截图 root/search/detail 已归档。release
+  6109 启动无 FATAL/ANR；测试 Agent/chat/dialog/messages/memory 清零，
+  `interface_mode` 恢复 telegram；代理/无障碍保持。
+- 边界：只对普通 launcher 启动切换 root；搜索只搜 Agent 名称/备注；
+  详情记忆只读；群聊、附件/媒体、会话搜索、设置页、Agent 编辑、平板
+  双栏、动态主题、reduced-motion、完整无障碍仍未做；长按复制未做
+  剪贴板自动回读；OxUI 仍不是 Telegram UI 的完整替代。
+
+**产物**：`dist/OrionekoX-0.61.0-alpha-arm64-x64.apk`（versionCode 6109，
+sha256 `62c0664029de7942a722919f0679ee16a0377b2568d2afdbb55b97c44ba509f3`）；
+debug `dist/OrionekoX-0.61.0-debug-arm64-x64.apk`（sha256
+`6e6cc172662318e38725dfd5c7fea12297e5ddb2f57da38d786b247999287e54`）。
+详见 `docs/qa-0.61.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

@@ -1,6 +1,10 @@
 package org.telegram.ui;
 
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -35,6 +39,8 @@ import org.telegram.ox.OxAgent;
 import org.telegram.ox.OxAgentStore;
 import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxChatEntry;
+import org.telegram.ox.OxHarnessAdapter;
+import org.telegram.ox.OxMemoryStore;
 import org.telegram.ox.OxMode;
 
 import java.text.SimpleDateFormat;
@@ -69,6 +75,8 @@ public class OxUiPreviewActivity extends Activity {
     private EditText input;
     private TextView send;
     private TextView statusLine;
+    private FrameLayout overlay;
+    private String panelQuery = "";
 
     private String pendingText;
     private String pendingAgentId;
@@ -76,6 +84,7 @@ public class OxUiPreviewActivity extends Activity {
     private int pendingBaseSize;
     private String lastSignature = "";
     private boolean firstRender = true;
+    private boolean rootMode;
 
     private final Runnable poll = new Runnable() {
         @Override
@@ -100,9 +109,23 @@ public class OxUiPreviewActivity extends Activity {
             w.setStatusBarColor(BONE);
             w.setNavigationBarColor(BONE);
         }
+        rootMode = getIntent() != null && getIntent().getBooleanExtra("oxui_root", false);
         setContentView(buildRoot());
         loadAgents();
         handler.post(poll);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (overlay != null && overlay.getVisibility() == View.VISIBLE) {
+            hideOverlay();
+            return;
+        }
+        if (rootMode) {
+            moveTaskToBack(true);
+            return;
+        }
+        super.onBackPressed();
     }
 
     @Override
@@ -174,6 +197,19 @@ public class OxUiPreviewActivity extends Activity {
         title.addView(sub);
         header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
+        TextView agentsButton = new TextView(this);
+        agentsButton.setText(LocaleController.getString(R.string.OxUiAgents));
+        agentsButton.setTextSize(11);
+        agentsButton.setTypeface(sans());
+        agentsButton.setTextColor(INK);
+        agentsButton.setGravity(Gravity.CENTER);
+        agentsButton.setPadding(dp(8), dp(5), dp(8), dp(5));
+        agentsButton.setOnClickListener(v -> showAgentPanel());
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(30));
+        alp.rightMargin = dp(6);
+        header.addView(agentsButton, alp);
+
         TextView preview = new TextView(this);
         preview.setText("Preview");
         preview.setTextSize(10.5f);
@@ -192,7 +228,7 @@ public class OxUiPreviewActivity extends Activity {
         telegram.setGravity(Gravity.CENTER);
         telegram.setPadding(dp(11), dp(5), dp(11), dp(5));
         telegram.setBackground(plate(0, 18, LINE, 1));
-        telegram.setOnClickListener(v -> finish());
+        telegram.setOnClickListener(v -> openTelegramUi());
         LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, dp(30));
         tlp.leftMargin = dp(8);
@@ -283,7 +319,7 @@ public class OxUiPreviewActivity extends Activity {
         open.setTextSize(10.5f);
         open.setTypeface(sans());
         open.setTextColor(INK);
-        open.setOnClickListener(v -> finish());
+        open.setOnClickListener(v -> openTelegramUi());
         footer.addView(open);
         composerWrap.addView(footer, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -301,7 +337,372 @@ public class OxUiPreviewActivity extends Activity {
             @Override public void afterTextChanged(Editable s) {}
         });
         send.setEnabled(false);
-        return root;
+
+        FrameLayout shell = new FrameLayout(this);
+        shell.addView(root, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        overlay = new FrameLayout(this);
+        overlay.setBackgroundColor(BONE);
+        overlay.setVisibility(View.GONE);
+        overlay.setClickable(true);
+        shell.addView(overlay, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        return shell;
+    }
+
+    private void openTelegramUi() {
+        if (rootMode) {
+            OxMode.setInterfaceMode(OxMode.IFACE_TELEGRAM);
+            Intent intent = new Intent(this, LaunchActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+        }
+        finish();
+    }
+
+    private void copy(String text) {
+        try {
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            cm.setPrimaryClip(ClipData.newPlainText("OxUI", text));
+            Toast.makeText(this, R.string.OxUiCopyDone, Toast.LENGTH_SHORT).show();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void hideOverlay() {
+        hideKeyboard();
+        if (overlay != null) {
+            overlay.setVisibility(View.GONE);
+            overlay.removeAllViews();
+        }
+    }
+
+    private void showAgentPanel() {
+        if (overlay == null) return;
+        overlay.removeAllViews();
+        overlay.setVisibility(View.VISIBLE);
+        overlay.setAlpha(0f);
+        overlay.animate().alpha(1f).setDuration(160).start();
+
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackgroundColor(BONE);
+        panel.setPadding(dp(22), dp(18), dp(22), dp(18));
+
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = new TextView(this);
+        title.setText(LocaleController.getString(R.string.OxUiAgents));
+        title.setTextSize(30);
+        title.setTypeface(serif());
+        title.setTextColor(INK);
+        head.addView(title, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView close = new TextView(this);
+        close.setText("×");
+        close.setTextSize(26);
+        close.setTextColor(INK);
+        close.setGravity(Gravity.CENTER);
+        close.setContentDescription("Close");
+        close.setOnClickListener(v -> hideOverlay());
+        head.addView(close, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        panel.addView(head, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        EditText search = new EditText(this);
+        search.setSingleLine(true);
+        search.setHint(LocaleController.getString(R.string.OxUiSearchAgents));
+        search.setHintTextColor(MUTED);
+        search.setTextColor(INK);
+        search.setTextSize(14.5f);
+        search.setTypeface(sans());
+        search.setBackground(plate(PAPER, 18, LINE, 1));
+        search.setPadding(dp(14), dp(9), dp(14), dp(9));
+        search.setText(panelQuery);
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46));
+        slp.topMargin = dp(16);
+        panel.addView(search, slp);
+
+        ScrollView listScroll = new ScrollView(this);
+        listScroll.setClipToPadding(false);
+        listScroll.setPadding(0, dp(10), 0, 0);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        listScroll.addView(list, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        panel.addView(listScroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        panel.addView(sectionRule(), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(1)));
+        LinearLayout footer = new LinearLayout(this);
+        footer.setOrientation(LinearLayout.HORIZONTAL);
+        footer.setGravity(Gravity.CENTER_VERTICAL);
+        footer.setPadding(0, dp(12), 0, 0);
+        TextView hint = new TextView(this);
+        hint.setText(LocaleController.getString(R.string.OxUiAgentsHint));
+        hint.setTextSize(11);
+        hint.setTypeface(sans());
+        hint.setTextColor(MUTED);
+        footer.addView(hint, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView telegram = new TextView(this);
+        telegram.setText(LocaleController.getString(R.string.OxUiOpenTelegram));
+        telegram.setTextSize(11.5f);
+        telegram.setTypeface(sans());
+        telegram.setTextColor(INK);
+        telegram.setOnClickListener(v -> openTelegramUi());
+        footer.addView(telegram);
+        panel.addView(footer, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        overlay.addView(panel, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        Runnable render = () -> renderAgentList(list, search.getText().toString().trim());
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {
+                panelQuery = s.toString();
+                render.run();
+            }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+        render.run();
+    }
+
+    private void hideKeyboard() {
+        try {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            View focus = getCurrentFocus();
+            if (imm != null && focus != null) {
+                imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private View sectionRule() {
+        View v = new View(this);
+        v.setBackgroundColor(LINE);
+        return v;
+    }
+
+    private void renderAgentList(LinearLayout list, String query) {
+        list.removeAllViews();
+        String q = query == null ? "" : query.toLowerCase(Locale.ROOT);
+        int shown = 0;
+        for (OxAgent a : agents) {
+            String name = a.name == null ? "" : a.name;
+            String remark = a.remark == null ? "" : a.remark;
+            if (!q.isEmpty() && !name.toLowerCase(Locale.ROOT).contains(q)
+                    && !remark.toLowerCase(Locale.ROOT).contains(q)) continue;
+            shown++;
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(4), dp(13), dp(4), dp(13));
+            row.setBackground(new android.graphics.drawable.RippleDrawable(
+                    ColorStateList.valueOf(0x1814211C), null, null));
+            TextView badge = new TextView(this);
+            badge.setText(a.emoji == null || a.emoji.isEmpty() ? "◐" : a.emoji);
+            badge.setTextSize(18);
+            badge.setGravity(Gravity.CENTER);
+            badge.setBackground(plate(PAPER, 20, LINE, 1));
+            row.addView(badge, new LinearLayout.LayoutParams(dp(38), dp(38)));
+            LinearLayout text = new LinearLayout(this);
+            text.setOrientation(LinearLayout.VERTICAL);
+            text.setPadding(dp(13), 0, dp(8), 0);
+            TextView nameView = new TextView(this);
+            nameView.setText(name);
+            nameView.setTextSize(16);
+            nameView.setTypeface(sans());
+            nameView.setTextColor(INK);
+            text.addView(nameView);
+            TextView sub = new TextView(this);
+            sub.setText(agentSubtitle(a));
+            sub.setTextSize(11.5f);
+            sub.setTypeface(sans());
+            sub.setTextColor(MUTED);
+            sub.setMaxLines(1);
+            sub.setEllipsize(TextUtils.TruncateAt.END);
+            text.addView(sub);
+            row.addView(text, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            TextView more = new TextView(this);
+            more.setText("›");
+            more.setTextSize(20);
+            more.setTextColor(MUTED);
+            more.setGravity(Gravity.CENTER);
+            row.addView(more, new LinearLayout.LayoutParams(dp(28), dp(38)));
+            row.setOnClickListener(v -> {
+                selected = a;
+                pendingText = null;
+                pendingAgentId = null;
+                lastSignature = "";
+                hideOverlay();
+                renderAgents();
+                refresh(true);
+            });
+            row.setOnLongClickListener(v -> {
+                showAgentDetail(a);
+                return true;
+            });
+            list.addView(row, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            View line = sectionRule();
+            LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 1);
+            llp.leftMargin = dp(51);
+            list.addView(line, llp);
+        }
+        if (shown == 0) {
+            TextView empty = new TextView(this);
+            empty.setText(LocaleController.getString(R.string.OxUiNoResults));
+            empty.setTextSize(13.5f);
+            empty.setTypeface(sans());
+            empty.setTextColor(MUTED);
+            empty.setPadding(dp(4), dp(24), dp(4), 0);
+            list.addView(empty);
+        }
+    }
+
+    private String agentSubtitle(OxAgent a) {
+        String harness = OxHarnessAdapter.label(a.harness);
+        String remark = a.remark == null ? "" : a.remark.trim();
+        if (!remark.isEmpty()) return harness + "  ·  " + remark;
+        java.util.List<OxChatEntry> chat = OxAgentStore.loadChat(a.id);
+        if (!chat.isEmpty()) {
+            OxChatEntry last = chat.get(chat.size() - 1);
+            if (last != null && last.content != null && !last.content.isEmpty()) {
+                String text = last.content.replace('\n', ' ')
+                        .replace("**", "").replace("`", "").trim();
+                return harness + "  ·  " + (text.length() > 46 ? text.substring(0, 46) + "…" : text);
+            }
+        }
+        return harness;
+    }
+
+    private void showAgentDetail(OxAgent a) {
+        if (overlay == null) return;
+        hideKeyboard();
+        overlay.removeAllViews();
+        overlay.setVisibility(View.VISIBLE);
+        overlay.setAlpha(0f);
+        overlay.animate().alpha(1f).setDuration(160).start();
+
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setGravity(Gravity.TOP);
+        panel.setBackgroundColor(BONE);
+        panel.setPadding(dp(22), dp(18), dp(22), dp(18));
+
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView back = new TextView(this);
+        back.setText("←");
+        back.setTextSize(24);
+        back.setTextColor(INK);
+        back.setGravity(Gravity.CENTER);
+        back.setOnClickListener(v -> showAgentPanel());
+        head.addView(back, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        TextView close = new TextView(this);
+        close.setText("×");
+        close.setTextSize(26);
+        close.setTextColor(INK);
+        close.setGravity(Gravity.CENTER);
+        close.setOnClickListener(v -> hideOverlay());
+        head.addView(new View(this), new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        head.addView(close, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        panel.addView(head, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+        TextView badge = new TextView(this);
+        badge.setText(a.emoji == null || a.emoji.isEmpty() ? "◐" : a.emoji);
+        badge.setTextSize(25);
+        badge.setGravity(Gravity.CENTER);
+        badge.setBackground(plate(PAPER, 30, LINE, 1));
+        panel.addView(badge, new LinearLayout.LayoutParams(dp(58), dp(58)));
+
+        TextView name = new TextView(this);
+        name.setText(a.name == null ? "Agent" : a.name);
+        name.setTextSize(29);
+        name.setTypeface(serif());
+        name.setTextColor(INK);
+        name.setPadding(0, dp(12), 0, 0);
+        panel.addView(name);
+        TextView meta = new TextView(this);
+        meta.setText(OxHarnessAdapter.label(a.harness)
+                + (a.harnessModel == null || a.harnessModel.isEmpty() ? "" : "  ·  " + a.harnessModel));
+        meta.setTextSize(11.5f);
+        meta.setTypeface(mono());
+        meta.setTextColor(MUTED);
+        meta.setPadding(0, dp(4), 0, 0);
+        panel.addView(meta);
+        if (a.remark != null && !a.remark.isEmpty()) {
+            TextView remark = new TextView(this);
+            remark.setText(a.remark);
+            remark.setTextSize(13.5f);
+            remark.setTypeface(sans());
+            remark.setTextColor(INK);
+            remark.setLineSpacing(dp(3), 1f);
+            remark.setPadding(0, dp(12), 0, 0);
+            panel.addView(remark);
+        }
+
+        TextView memoryTitle = new TextView(this);
+        memoryTitle.setText(LocaleController.getString(R.string.OxUiMemory) + "  ·  "
+                + OxMemoryStore.stats(a.id));
+        memoryTitle.setTextSize(11);
+        memoryTitle.setTypeface(mono());
+        memoryTitle.setTextColor(MUTED);
+        memoryTitle.setPadding(0, dp(20), 0, 0);
+        panel.addView(memoryTitle);
+        TextView memory = new TextView(this);
+        String recent = OxMemoryStore.recent(a.id, 8);
+        memory.setText(recent.isEmpty()
+                ? LocaleController.getString(R.string.OxUiNoMemory)
+                : recent);
+        memory.setTextSize(12.5f);
+        memory.setTypeface(sans());
+        memory.setTextColor(INK);
+        memory.setLineSpacing(dp(3), 1f);
+        memory.setPadding(dp(12), dp(12), dp(12), dp(12));
+        memory.setMaxLines(12);
+        memory.setEllipsize(TextUtils.TruncateAt.END);
+        memory.setBackground(plate(PAPER, 12, LINE, 1));
+        LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        mlp.topMargin = dp(8);
+        panel.addView(memory, mlp);
+
+        TextView chat = new TextView(this);
+        chat.setText(LocaleController.getString(R.string.OxUiChat));
+        chat.setTextSize(13.5f);
+        chat.setTypeface(sans());
+        chat.setTextColor(BONE);
+        chat.setGravity(Gravity.CENTER);
+        chat.setPadding(dp(18), dp(11), dp(18), dp(11));
+        chat.setBackground(plate(INK, 20, 0, 0));
+        chat.setOnClickListener(v -> {
+            selected = a;
+            pendingText = null;
+            pendingAgentId = null;
+            lastSignature = "";
+            hideOverlay();
+            renderAgents();
+            refresh(true);
+        });
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        clp.topMargin = dp(18);
+        panel.addView(chat, clp);
+
+        overlay.addView(panel, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     private void loadAgents() {
@@ -475,7 +876,11 @@ public class OxUiPreviewActivity extends Activity {
         GradientDrawable bg = plate(INK, 17, 0, 0);
         if (sending) bg.setAlpha(190);
         bubble.setBackground(bg);
-        bubble.setTextIsSelectable(true);
+        bubble.setTextIsSelectable(false);
+        bubble.setOnLongClickListener(v -> {
+            copy(text);
+            return true;
+        });
         row.addView(bubble, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         messages.addView(row, new LinearLayout.LayoutParams(
@@ -510,7 +915,11 @@ public class OxUiPreviewActivity extends Activity {
         t.setTextColor(INK);
         t.setLineSpacing(dp(4), 1.06f);
         t.setPadding(0, dp(3), 0, 0);
-        t.setTextIsSelectable(true);
+        t.setTextIsSelectable(false);
+        t.setOnLongClickListener(v -> {
+            copy(text);
+            return true;
+        });
         body.addView(t);
         row.addView(body, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
