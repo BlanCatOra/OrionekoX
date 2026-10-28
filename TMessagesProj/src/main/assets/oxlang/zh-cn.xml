@@ -6729,6 +6729,12 @@
     <string name="OxAgentChooseProvider">选择服务商</string>
     <string name="OxAgentCollapse">收起</string>
     <string name="OxAgentContextLength">上下文长度</string>
+    <string name="OxAgentMemoryMode">记忆库模式</string>
+    <string name="OxAgentMemoryModeOff">关闭</string>
+    <string name="OxAgentMemoryModeNormal">普通（关键词）</string>
+    <string name="OxAgentMemoryModeVector">实验性（向量）</string>
+    <string name="OxAgentMemoryThreshold">上下文压缩阈值（消息数）</string>
+    <string name="OxAgentMemoryThresholdHint">默认 45</string>
     <string name="OxAgentDefaultApiName">API 智能体</string>
     <string name="OxAgentDefaultContainerName">OxLinux 智能体</string>
     <string name="OxAgentDefaultLanName">局域网智能体</string>
@@ -11792,7 +11798,11 @@
     <string name="OxWorkspaceCopyPath">复制路径</string>
     <string name="OxWorkspaceInvalidName">请输入工作区内的相对路径（不能包含 .. 或以 / 开头）。</string>
     <string name="OxMemory">记忆</string>
-    <string name="OxMemoryInfo">这里保存 remember 工具写入的长期记忆；智能体每轮都会读取。可以直接编辑或清空。</string>
+    <string name="OxMemoryInfo">这里保存 remember 写入的事实与上下文压缩生成的摘要；智能体每轮召回相关条目。可直接编辑或清空下面的 memory.txt。</string>
+    <string name="OxMemoryLibrary">记忆库</string>
+    <string name="OxMemoryLibraryEmpty">还没有索引记忆。</string>
+    <string name="OxMemoryLibraryClear">清空记忆库</string>
+    <string name="OxMemoryLibraryClearConfirm">删除该智能体的全部索引记忆？不会影响可编辑的 memory.txt。</string>
     <string name="OxMemoryEmpty">还没有记忆。可以让智能体记住一件事。</string>
     <string name="OxMemoryClear">清空记忆</string>
     <string name="OxMemoryClearConfirm">删除这个智能体的所有记忆？</string>

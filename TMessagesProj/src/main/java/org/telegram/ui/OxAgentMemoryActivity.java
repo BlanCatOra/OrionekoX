@@ -20,11 +20,13 @@ import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ox.OxAgent;
 import org.telegram.ox.OxAgentStore;
+import org.telegram.ox.OxMemoryStore;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.LayoutHelper;
 
 /** View and edit one agent's long-term memory file. */
@@ -37,6 +39,7 @@ public class OxAgentMemoryActivity extends BaseFragment {
     private final String agentId;
     private OxAgent agent;
     private EditText editText;
+    private TextSettingsCell libraryRow;
 
     public OxAgentMemoryActivity(String agentId) {
         super();
@@ -79,6 +82,16 @@ public class OxAgentMemoryActivity extends BaseFragment {
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12), AndroidUtilities.dp(12));
 
+        libraryRow = new TextSettingsCell(context);
+        libraryRow.setTextAndValue(LocaleController.getString(R.string.OxMemoryLibrary),
+                OxMemoryStore.stats(agentId), true);
+        libraryRow.setOnClickListener(v -> showLibrary());
+        content.addView(libraryRow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        TextSettingsCell clearLibrary = new TextSettingsCell(context);
+        clearLibrary.setText(LocaleController.getString(R.string.OxMemoryLibraryClear), true);
+        clearLibrary.setOnClickListener(v -> clearLibrary());
+        content.addView(clearLibrary, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable bg = new GradientDrawable();
@@ -112,6 +125,35 @@ public class OxAgentMemoryActivity extends BaseFragment {
         root.addView(content, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         fragmentView = root;
         return root;
+    }
+
+    private void showLibrary() {
+        if (getParentActivity() == null) return;
+        String text = OxMemoryStore.recent(agentId, 20);
+        if (text.isEmpty()) text = LocaleController.getString(R.string.OxMemoryLibraryEmpty);
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxMemoryLibrary))
+                .setMessage(text)
+                .setPositiveButton(LocaleController.getString(R.string.OK), null)
+                .show();
+    }
+
+    private void clearLibrary() {
+        if (getParentActivity() == null) return;
+        new AlertDialog.Builder(getParentActivity())
+                .setTitle(LocaleController.getString(R.string.OxMemoryLibraryClear))
+                .setMessage(LocaleController.getString(R.string.OxMemoryLibraryClearConfirm))
+                .setPositiveButton(LocaleController.getString(R.string.OxMemoryLibraryClear), (d, w) -> {
+                    OxMemoryStore.clear(agentId);
+                    if (libraryRow != null) {
+                        libraryRow.setTextAndValue(LocaleController.getString(R.string.OxMemoryLibrary),
+                                OxMemoryStore.stats(agentId), true);
+                    }
+                    Toast.makeText(getParentActivity(),
+                            LocaleController.getString(R.string.OxMemorySaved), Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                .show();
     }
 
     private void save() {

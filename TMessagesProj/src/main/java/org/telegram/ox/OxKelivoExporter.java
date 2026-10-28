@@ -508,7 +508,10 @@ public class OxKelivoExporter {
                 || a.frequencyPenalty != 0
                 || a.topK != 0
                 || a.seed != -1
-                || nonEmpty(a.stop);
+                || nonEmpty(a.stop)
+                || !"normal".equals(a.memoryMode)
+                || a.memoryThreshold != 45
+                || a.memoryRecall != 6;
         if (!custom) return null;
         try {
             JSONObject o = new JSONObject();
@@ -525,6 +528,9 @@ public class OxKelivoExporter {
             o.put("top_k", Math.max(0, Math.min(1000, a.topK)));
             o.put("seed", Math.max(-1, a.seed));
             o.put("stop", clip(a.stop, 2048));
+            o.put("memory_mode", clip(a.memoryMode, 16));
+            o.put("memory_threshold", Math.max(10, Math.min(200, a.memoryThreshold)));
+            o.put("memory_recall", Math.max(1, Math.min(12, a.memoryRecall)));
             JSONObject policy = new JSONObject();
             if (a.toolsPolicy != null) {
                 Iterator<String> keys = a.toolsPolicy.keys();

@@ -440,28 +440,33 @@ public class OxBuiltinTools {
     static {
         register(new OxTool() {
             @Override public String name() { return "remember"; }
-            @Override public String description() { return "Save a durable fact about the user into this agent's long-term memory."; }
+            @Override public String description() { return "Save a durable fact about the user into this agent's long-term memory library."; }
             @Override public String defaultPolicy() { return POLICY_AUTO; }
             @Override public JSONObject parameters() { return schema(new String[]{"text"}); }
             @Override public String execute(JSONObject args) { return "use executeWithAgent"; }
             @Override public String executeWithAgent(JSONObject args, OxAgent agent) throws Exception {
                 String text = args.optString("text", "").trim();
                 if (text.isEmpty()) throw new IllegalArgumentException("text is empty");
+                OxMemoryStore.rememberFact(agent.id, text);
                 OxAgentStore.appendMemory(agent.id, text);
-                return "remembered: " + text;
+                return "remembered (long-term): " + text;
             }
         });
 
         register(new OxTool() {
             @Override public String name() { return "recall"; }
-            @Override public String description() { return "Search this agent's long-term memory for a keyword."; }
+            @Override public String description() { return "Search this agent's local memory library for relevant past conversation, facts and summaries."; }
             @Override public String defaultPolicy() { return POLICY_AUTO; }
             @Override public JSONObject parameters() { return schema(new String[]{"query"}); }
             @Override public String execute(JSONObject args) { return "use executeWithAgent"; }
             @Override public String executeWithAgent(JSONObject args, OxAgent agent) {
                 String q = args.optString("query", "").trim();
-                String r = OxAgentStore.searchMemory(agent.id, q, 30);
+                String mode = agent.memoryMode == null ? OxMemoryStore.MODE_NORMAL : agent.memoryMode;
+                String r = OxMemoryStore.recall(agent.id, q, 8,
+                        OxMemoryStore.MODE_OFF.equals(mode) ? OxMemoryStore.MODE_NORMAL : mode);
                 if (!r.isEmpty()) return r;
+                String legacy = OxAgentStore.searchMemory(agent.id, q, 30);
+                if (!legacy.isEmpty()) return legacy;
                 // Imported agents may carry their facts only in the migrated chat history.
                 StringBuilder sb = new StringBuilder();
                 int n = 0;
@@ -472,6 +477,35 @@ public class OxBuiltinTools {
                     }
                 }
                 return sb.length() == 0 ? "no matching memory" : sb.toString().trim();
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "memory_search"; }
+            @Override public String description() { return "Search the local memory library with dates and relevance. Use when you suspect an earlier conversation mentioned something but you are not sure."; }
+            @Override public String defaultPolicy() { return POLICY_AUTO; }
+            @Override public JSONObject parameters() { return schema(new String[]{"query", "limit"}); }
+            @Override public String execute(JSONObject args) { return "use executeWithAgent"; }
+            @Override public String executeWithAgent(JSONObject args, OxAgent agent) {
+                String q = args.optString("query", "").trim();
+                int limit = Math.max(1, Math.min(20, args.optInt("limit", 8)));
+                String mode = agent.memoryMode == null ? OxMemoryStore.MODE_NORMAL : agent.memoryMode;
+                String r = OxMemoryStore.recall(agent.id, q, limit,
+                        OxMemoryStore.MODE_OFF.equals(mode) ? OxMemoryStore.MODE_NORMAL : mode);
+                return r.isEmpty() ? "no matching memory for: " + q : r;
+            }
+        });
+
+        register(new OxTool() {
+            @Override public String name() { return "memory_verify"; }
+            @Override public String description() { return "Verify a claim against the local memory library. Returns dated evidence or an explicit not-found warning; never invent a memory."; }
+            @Override public String defaultPolicy() { return POLICY_AUTO; }
+            @Override public JSONObject parameters() { return schema(new String[]{"query"}); }
+            @Override public String execute(JSONObject args) { return "use executeWithAgent"; }
+            @Override public String executeWithAgent(JSONObject args, OxAgent agent) {
+                String q = args.optString("query", "").trim();
+                if (q.isEmpty()) return "query is empty";
+                return OxMemoryStore.verify(agent.id, q);
             }
         });
 

@@ -3704,6 +3704,49 @@ debug `dist/OrionekoX-0.51.0-debug-arm64-x64.apk`（sha256
 `a6bba2603e4c18b0d964349a4dd1a2c6ba026317bdb77c064d2af8aa4f358d77`）。
 详见 `docs/qa-0.51.0.md`。
 
+## 5.174 alpha 0.52.0 —— 本地记忆库、遗忘曲线与阈值压缩（2026-10-28 17:00–17:22）
+
+- 现有长期记忆只有 `memory.txt`，没有检索、遗忘或压缩状态；上下文只是
+  按 token/最近 20 条截断，更早内容直接丢失。
+- 0.52.0 新增每个 Agent 独立的 SQLite 记忆库（`databases/oxmemory.db`），
+  保存可读对话、抽取事实与按日期摘要，记录时间、访问次数、重要度、
+  稳定度、短期/长期与去重 hash；单 Agent 上限 4,000 条。
+- 普通模式用词元重合/子串匹配；实验向量模式用 128 维本地哈希向量
+  余弦 + 关键词混合，不调用外部 embedding。两种模式都叠加 7 天/90 天
+  半衰期的遗忘曲线；访问 2 次或高重要度的短期记忆会提升为长期。
+- Agent 设置新增记忆库模式、压缩阈值（默认 45 条消息，10–200）与召回
+  条数；聊天超过阈值时保留最近 `max(8, 阈值/3)` 条原文，把更早条目
+  写入记忆库并生成摘要，`memory_state` 记录进度避免重复压缩。
+- 系统提示新增“上下文压缩 / 记忆库摘要 / 相关记忆”区块与“不确定时
+  先查证”规则；新增 `memory_search`、`memory_verify` 工具，升级
+  `remember`/`recall`。`memory_verify` 严格匹配多关键词，避免
+  “favorite color”误配“favorite editor”。
+- 记忆页新增统计行、最近记忆对话框与清空记忆库；Agent 设置新增模式与
+  阈值行；Chatbox `orionekoAgent` 增加记忆模式/阈值/召回数。中文包
+  112→114（新增文案与统计截断修复）。
+- 设备：自建 60 条历史（含姓名/生日/咖啡/城市/编辑器事实）的
+  `QA Memory 0520`（tgId 555000109），用本地 mock OpenAI 服务记录请求。
+  普通模式首轮只发送 17 条消息，system 同时含压缩/摘要/相关记忆；
+  `memory_search` 返回生日事实。数据库 47 turn（46 短+1 长）/3 fact/
+  1 summary，访问计数与长期提升正常。切换向量模式后同一查询仍召回
+  生日/咖啡事实（相关度 0.61）。`memory_verify("birthday")` 返回带日期
+  证据；`memory_verify("favorite color")` 严格匹配返回未找到。
+- 记忆页统计显示“63 条 · 长期 7 · 短期 56 · 事实 3”；首次布局因统计
+  过长把“本地记忆库”截成“本地…”，缩短文案后复验完整。
+- 清理测试 Agent、记忆库行与测试 tgId 的 dialogs/messages，计数均为 0；
+  恢复模拟器 HTTP 代理与无障碍；全程无本包 FATAL/ANR。
+- 边界：本地哈希向量不是语义 embedding；摘要为抽取式；记忆库尚未进入
+  Chatbox/.oxagent 备份；旧 memory.txt 不自动迁移；群聊按 Agent 共用；
+  阈值按消息条数而非 token 百分比；私有 SQLite 未加密。
+- 版本规则：新增用户可见的记忆模式、压缩、工具与设置，属于功能迭代，
+  按 minor 从 0.51.0 → **0.52.0**（5209），patch 清零。
+
+**产物**：`dist/OrionekoX-0.52.0-alpha-arm64-x64.apk`（versionCode 5209，
+sha256 `fdeb1c51c779bd9766ab7a6a4413ae4639511435d88aeff097c311982c4f0cff`）；
+debug `dist/OrionekoX-0.52.0-debug-arm64-x64.apk`（sha256
+`8609d8fae589ed741d1f7cda45d221e9ba64ac4e26beb695b0d3e1934a0ce3eb`）。
+详见 `docs/qa-0.52.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
