@@ -6735,6 +6735,10 @@
     <string name="OxAgentMemoryModeVector">实验性（向量）</string>
     <string name="OxAgentMemoryThreshold">上下文压缩阈值（消息数）</string>
     <string name="OxAgentMemoryThresholdHint">默认 45</string>
+    <string name="OxAgentHarness">接入方式 / Harness</string>
+    <string name="OxAgentHarnessInfo">API 直连使用本地 compact；外部 Harness 调用它自己的 compact，本地不注入记忆库。</string>
+    <string name="OxAgentHarnessSessionHint">Harness 会话或任务 id（供 /compact 使用）</string>
+    <string name="OxAgentHarnessCompactHint">Compact 命令模板；{session}、{cwd} 会被替换</string>
     <string name="OxAgentDefaultApiName">API 智能体</string>
     <string name="OxAgentDefaultContainerName">OxLinux 智能体</string>
     <string name="OxAgentDefaultLanName">局域网智能体</string>

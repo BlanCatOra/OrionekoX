@@ -3849,6 +3849,49 @@ debug `dist/OrionekoX-0.55.0-debug-arm64-x64.apk`（sha256
 `40d1d0ec47c3f5183a1f0d9bd93dc6d2c6bf7e823a37809670c7b65dedf3a729`）。
 详见 `docs/qa-0.55.0.md`。
 
+## 5.178 alpha 0.56.0 —— Harness 所有权路由：外部 compact 与本地记忆隔离（2026-10-28 19:05–19:20）
+
+- 0.55.0 把所有 Agent 都送进本地 compact；对 Claude Code、OpenCode、
+  CommandCode、OpenClaw、OxLinux 等外部 Harness，这等于本地改写了
+  另一份会话历史，Harness 自身仍持有原文，双方状态会分叉。
+- 新增 `OxHarnessAdapter`，登记 API 直连、OxLinux、Claude Code、
+  OpenCode、CommandCode、OpenClaw、Hermes、CodeBuddy、DeepSeek
+  Harness、Pi、其他设备、通用 Harness 的能力：是否本地 compact、
+  是否 Harness compact、resume、工具协议、多模态、非文本事件。
+- 所有权规则落到 `appendMemoryContext`：只有 `api` 使用本地
+  TextRank/SummaryBuffer、写记忆库并注入摘要/召回；外部 Harness
+  不压缩、不写库、不注入，只追加“上下文与 compact 由该 Harness
+  管理”，并通过 `maybeCompact()` 请求其自行 compact。
+- `maybeCompact` 每半个阈值窗口最多触发一次，独立线程执行；
+  `requestCompact` 只对 OxLinux 经 `OxContainerManager.run` 执行，
+  其他传输层未接通时返回 `transport-not-connected`。只对公开 CLI
+  已确认的 Claude Code/CommandCode 提供默认模板，其余留空待实测。
+- Agent 新增 `harness`/`harness_session`/`harness_compact_command`；
+  资料页新增原生 Harness 选择器、会话 ID、compact 命令三行；Chatbox
+  `orionekoAgent` 同步导出/导入并校验；中文包 114→115。
+- 设备：`qa_harness_0560`（harness=claude，60 条历史）发送 hello，
+  mock 抓包 22 条消息，`has_compression/has_digest/has_recall` 全为
+  false，system 尾部为“# 外部 Harness …由「Claude Code」管理…”，
+  该 Agent 记忆库行数 0；选择器与设置页截图见
+  `docs/screenshots/qa-0.56.0-harness-settings.png`、
+  `qa-0.56.0-harness-picker.png`。无本包 FATAL/ANR；测试对象/会话
+  清零，代理与无障碍恢复。
+- 边界：0.56.0 只是路由/隔离基础，**不是所有 Harness 已接通**。
+  Claude/OpenCode/CommandCode/OpenClaw 没有 SSH/ACP/Gateway/PTY
+  传输层，默认模板未在真实会话验证；Hermes/CodeBuddy/DSH/Pi 本机
+  未安装；外部 Harness 的工具调用、多模态、非文本事件转换与本地
+  记忆镜像均未实现；外部 Harness 的 20 条本地窗口仍在，不代表其
+  会话管理已完成。能力矩阵见 `docs/harness-adapters.md`。
+- 版本规则：新增用户可见的 Harness 选择、会话/compact 配置与上下文
+  所有权分流，属于功能迭代，按 minor 从 0.55.0 → **0.56.0**（5609），
+  patch 清零。
+
+**产物**：`dist/OrionekoX-0.56.0-alpha-arm64-x64.apk`（versionCode 5609，
+sha256 `81253aa8933fbeeba5771e55d00a07ab86496029b9f38b507d923227b24dbd92`）；
+debug `dist/OrionekoX-0.56.0-debug-arm64-x64.apk`（sha256
+`8a1dd45890bc51bfe34189a91b468477593f0733f0e27a3a0a7936b7f97b3673`）。
+详见 `docs/qa-0.56.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

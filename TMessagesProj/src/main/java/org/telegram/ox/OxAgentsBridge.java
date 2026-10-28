@@ -2016,6 +2016,14 @@ public class OxAgentsBridge {
         String mode = agent.memoryMode == null ? OxMemoryStore.MODE_NORMAL : agent.memoryMode;
         if (OxMemoryStore.MODE_OFF.equals(mode)) return defaultFrom;
         int threshold = agent.memoryThreshold > 0 ? agent.memoryThreshold : 45;
+        if (!OxHarnessAdapter.isLocalApi(agent)) {
+            OxHarnessAdapter.maybeCompact(agent, history, threshold);
+            if (system.length() > 0) system.append("\n\n");
+            system.append("# 外部 Harness\n上下文与 compact 由「")
+                    .append(OxHarnessAdapter.label(agent.harness))
+                    .append("」管理，本地不注入压缩摘要或记忆库。");
+            return defaultFrom;
+        }
         int estimatedTokens = OxContextCompactor.estimateTokens(history);
         boolean tokenPressure = agent.contextLength > 0
                 && estimatedTokens > agent.contextLength * 45 / 100;

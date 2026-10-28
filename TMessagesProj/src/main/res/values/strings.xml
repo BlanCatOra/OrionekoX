@@ -11826,6 +11826,10 @@
     <string name="OxAgentMemoryModeVector">Experimental (vector)</string>
     <string name="OxAgentMemoryThreshold">Compression threshold (messages)</string>
     <string name="OxAgentMemoryThresholdHint">Default 45</string>
+    <string name="OxAgentHarness">Connection / harness</string>
+    <string name="OxAgentHarnessInfo">API direct uses local compact. External harnesses run their own compact; local memory is not injected.</string>
+    <string name="OxAgentHarnessSessionHint">Harness session or task id (used by /compact)</string>
+    <string name="OxAgentHarnessCompactHint">Compact command template; {session} and {cwd} are replaced</string>
     <string name="OxAgentAutoHint">0 = auto</string>
     <string name="OxAgentPresencePenalty">Presence penalty</string>
     <string name="OxAgentFrequencyPenalty">Frequency penalty</string>

@@ -1303,6 +1303,37 @@ These confirm the feature directions rather than relying on guesses. Checked
   300 tokens; there is no separate 70% warning stage. External harness agents
   must use their own compact, not this path; harness routing is the next round.
 
+## 0.56.0 implementation — harness ownership routing
+
+- `OxHarnessAdapter` is a capability registry for API direct, OxLinux, Claude
+  Code, OpenCode, CommandCode, OpenClaw, Hermes, CodeBuddy, DeepSeek Harness,
+  Pi, other-device and generic transports: local compact, harness compact,
+  resume/session, tool protocol, multimodal and non-text event support.
+- `appendMemoryContext` now branches on ownership. Only `api` runs the local
+  TextRank/SummaryBuffer compactor, writes the memory library and injects
+  digest/recall. External harnesses keep their own history: no local compact,
+  no memory write, no inject. The prompt gets a short “context and compact are
+  managed by <harness>” note and `maybeCompact` asks the harness to compact.
+- `maybeCompact` is rate-limited to once per half threshold window and runs off
+  the chat thread. `requestCompact` substitutes `{session}`/`{cwd}` and can
+  execute only the OxLinux command hook through `OxContainerManager.run`;
+  other transports return `transport-not-connected`. Only Claude Code and
+  CommandCode have default templates, and those are unverified live.
+- Agent model/UI/backup: `harness`, `harness_session`,
+  `harness_compact_command`, a native harness picker, session and command rows,
+  plus validated Chatbox export/import. Chinese pack 114→115.
+- Device QA: `qa_harness_0560` (harness=claude, 60-message fixture) sent 22
+  messages on the default recent window; compression note, memory digest and
+  recall were all absent, the system tail named “Claude Code”, and the agent's
+  memory-library row count was zero. No app FATAL/ANR; test data, proxy and
+  accessibility were restored.
+- Limits: this release is routing and isolation, not working adapters for every
+  harness. There is no SSH/ACP/Gateway/persistent-PTY transport yet, so
+  Claude/OpenCode/CommandCode/OpenClaw cannot be driven or compacted for real;
+  Hermes/CodeBuddy/DSH/Pi are uninstalled and unverified. Per-harness tool
+  schemas, multimodal and non-text event mapping, and external-memory mirroring
+  remain open. See `docs/harness-adapters.md`.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -1338,3 +1369,9 @@ These confirm the feature directions rather than relying on guesses. Checked
    fact-checking of model-distilled memories, migration of existing memory.txt,
    per-group scoping and a recall@k/MRR benchmark on real conversations.
    Abstractive summaries and atomic-fact distillation now exist (0.54.0).
+8. Harness adapters next (0.56.0 is routing only): real SSH/ACP/Gateway or
+   persistent-PTY transports, verified compact/resume for Claude Code,
+   CommandCode, OpenCode and OpenClaw, configurable adapters for
+   Hermes/CodeBuddy/DSH/Pi, per-harness thresholds, tool-schema normalization
+   and repair, multimodal/non-text session messages, and external memory
+   mirroring with ownership handoff.

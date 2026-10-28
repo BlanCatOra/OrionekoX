@@ -577,4 +577,15 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 | R2-114 | 0.55.0 QA | token 压力下保留窗口仍被固定 `max(8, threshold/3)=15` 覆盖，500-token 上下文保留了 19 条、只压缩 1 条 | token 压力时改用 55% 预算、最低 256 tokens/4 条，不再被固定条数覆盖；复验压缩 13 条、保留 7 条、约 790 tokens | 已修复并设备验证 |
 
 - 设备：60 条 fixture 的 TextRank 摘要 249 字符并含咖啡/杭州；模型 `MODEL_SUMMARY` 111 字符生效，抽取摘要被 cutoff 失效，旧 3/14/blue 不注入。20 条长消息、context_length=500 的 token 压力测试显示“压缩 13 条、保留 7 条、约 790 tokens”。无 FATAL/ANR；测试 Agent/记忆行/chats 清零，代理与无障碍恢复。
+- 边界：TextRank 是离线词法近似而非 LLMLingua-2 语义压缩；token 估算非精确 tokenizer；摘要预算 300 tokens；无 70% 预警阶段；外部 Harness 的 compact 路由留待 0.56.0。
+
+## 0.56.0 Harness 所有权路由 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-115 | 0.56.0 架构 | 本地 compact/记忆注入对所有 Agent 生效；外部 Harness（Claude Code、OpenCode、CommandCode、OpenClaw、OxLinux）自己有会话与 compact，本地再压一遍会造成两份分叉历史 | 新增 `OxHarnessAdapter` 能力表与所有权分流：仅 API 直连走本地 compact/写库/注入；外部 Harness 不压缩、不写库、不注入，只提示由该 Harness 管理并通过 `maybeCompact` 请求其 compact；OxLinux 走容器命令，其余无传输层时明确返回 `transport-not-connected` | 已实现并设备验证（路由隔离） |
+| R2-116 | 0.56.0 QA | Harness 选择、会话 ID 与 compact 命令若只存在内存，换机/导出后丢失；无默认模板时用户不知道命令格式 | Agent 持久化 `harness`/`harness_session`/`harness_compact_command`；资料页原生选择器与两行输入；Chatbox `orionekoAgent` 导出/导入并校验；仅为公开 CLI 已确认的 Claude Code/CommandCode 提供默认模板，其余留空 | 已实现并设备验证（UI/字段） |
+
+- 设备：`qa_harness_0560`（tgId 555000124，harness=claude，60 条历史，本地 mock）。发送 `hello` 后抓包 22 条消息，`has_compression`/`has_digest`/`has_recall` 均为 false，system 尾部为“# 外部 Harness…由「Claude Code」管理，本地不注入压缩摘要或记忆库。”，该 Agent 记忆库行数 0；设置页与 12 项选择器截图已存档。无本包 FATAL/ANR；测试 Agent/记忆行/chats 清零，代理与无障碍恢复，未执行 `pm clear`。
+- 边界：0.56.0 只是路由/隔离基础，不等于所有 Harness 已接通。Claude/OpenCode/CommandCode/OpenClaw 无 SSH/ACP/Gateway/PTY 传输层，默认 compact 模板未在真实会话验证；Hermes/CodeBuddy/DSH/Pi 本机未安装；外部 Harness 的工具协议、多模态、非文本事件与本地记忆镜像均未实现；本地最近 20 条窗口仍在。能力矩阵见 `docs/harness-adapters.md`。
 - 边界：TextRank 是离线近似，不是 LLMLingua-2 语义 token 压缩；token 估算非精确 tokenizer；摘要预算 300 tokens；无 70% 预警阶段；外部 Harness 不能使用本 compact，需下一轮 HarnessAdapter 路由。

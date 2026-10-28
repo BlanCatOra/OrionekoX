@@ -4,6 +4,33 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.56.0 — 2026-10-28
+
+- Adds `OxHarnessAdapter`, a capability registry and ownership router for API
+  direct, OxLinux, Claude Code, OpenCode, CommandCode, OpenClaw, Hermes,
+  CodeBuddy, DeepSeek Harness, Pi, other-device and generic agents.
+- Only API direct agents use OrionekoX's local TextRank/SummaryBuffer compact,
+  write the memory library and receive summary/recall injection. External
+  harness agents keep their own history: no local compact, no memory writes and
+  no injection. They get a short prompt note naming the harness that owns
+  context, plus a rate-limited compact request.
+- `requestCompact` substitutes the configured session id and can execute the
+  OxLinux hook through `OxContainerManager`. Transports that do not exist yet
+  return `transport-not-connected` instead of pretending to work. Only Claude
+  Code and CommandCode ship default command templates, and those are not yet
+  verified against a live session.
+- Adds `harness`, `harness_session` and `harness_compact_command` to the agent
+  model, a native 12-mode selector in the agent profile, and validated Chatbox
+  export/import of the new fields. Chinese pack 114→115.
+- Device QA: a 60-message Claude Code fixture sent 22 messages on the default
+  recent window, with no local compression note, digest or recall, a system tail
+  naming the external harness, and zero memory-library rows. No app FATAL/ANR;
+  test data was removed.
+- Limits: this is routing and isolation, not working adapters for every
+  harness. ACP/Gateway/SSH/persistent-PTY transports, per-harness tool and
+  multimodal normalization, non-text event mapping and external memory
+  mirroring are not implemented. See `docs/harness-adapters.md`.
+
 ## 0.55.0 — 2026-10-28
 
 - Rebuilt compact around offline open-source ideas: MemGPT recursive summaries,
