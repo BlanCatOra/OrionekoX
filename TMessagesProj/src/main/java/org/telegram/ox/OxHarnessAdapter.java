@@ -119,9 +119,12 @@ public class OxHarnessAdapter {
     public static void maybeCompact(final OxAgent agent, final List<OxChatEntry> history,
             int threshold) {
         if (agent == null || isLocalApi(agent) || history == null) return;
-        if (history.size() <= Math.max(1, threshold)) return;
+        boolean nativeWants = OxHarnessTransport.shouldCompact(agent.id);
+        if (!nativeWants && history.size() <= Math.max(1, threshold)) return;
         int last = LAST_COMPACT.getOrDefault(agent.id, 0);
-        if (history.size() - last < Math.max(4, threshold / 2)) return;
+        int window = Math.max(4, threshold / 2);
+        if (!nativeWants && history.size() - last < window) return;
+        if (nativeWants && history.size() == last) return;
         LAST_COMPACT.put(agent.id, history.size());
         new Thread(() -> {
             String r = requestCompact(agent);

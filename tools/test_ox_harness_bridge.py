@@ -99,9 +99,27 @@ class BridgeHttpTest(unittest.TestCase):
         done = events[-1]
         self.assertEqual(done["text"], "fake:hello")
         self.assertEqual(done["native_session"], sess["session_id"])
+        self.assertIn("context", done)
+        self.assertEqual(done["context"]["prompt_tokens"], len("hello"))
+        self.assertEqual(done["context"]["context_budget"], 1000)
         # second turn resumes the same fake session
         events2 = self.turn(sess["session_id"], "again")
         self.assertEqual(events2[-1]["session_id"], sess["session_id"])
+
+    def test_context_endpoint_reports_harness_state(self):
+        sess = self.create()
+        code, obj = self.request("GET", f"/v1/sessions/{sess['session_id']}/context")
+        self.assertEqual(code, 200)
+        self.assertTrue(obj["ok"])
+        self.assertEqual(obj["context"], {})
+        self.turn(sess["session_id"], "hello context")
+        code, obj = self.request("GET", f"/v1/sessions/{sess['session_id']}/context")
+        self.assertEqual(code, 200)
+        self.assertEqual(obj["harness"], "fake")
+        self.assertEqual(obj["context"]["prompt_tokens"], len("hello context"))
+        self.assertEqual(obj["context"]["context_budget"], 1000)
+        self.assertFalse(obj["context"]["should_compact"])
+        self.assertIn("usage", obj["context"])
 
     def test_fake_attachment_is_written(self):
         sess = self.create()
@@ -248,6 +266,17 @@ class ParserTest(unittest.TestCase):
         result = [e for e in events if e["type"] == "tool_result"][0]
         self.assertEqual(result["name"], "Bash")
         self.assertEqual(result["content"], "done")
+
+    def test_opencode_context_normalization(self):
+        ctx = bridge.merge_opencode_session_context({}, {"data": {
+            "tokens": {"input": 1197, "output": 73, "reasoning": 320,
+                       "cache": {"read": 15296, "write": 5}},
+            "model": {"id": "mimo-v2.6-flash-free", "providerID": "opencode"},
+            "cost": 0}})
+        self.assertEqual(ctx["usage"]["input"], 1197)
+        self.assertEqual(ctx["usage"]["cache_read"], 15296)
+        self.assertEqual(ctx["model"], "mimo-v2.6-flash-free")
+        self.assertEqual(ctx["provider"], "opencode")
 
     def test_claude_auth_error(self):
         st = self.state()

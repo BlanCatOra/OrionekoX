@@ -1370,9 +1370,12 @@ These confirm the feature directions rather than relying on guesses. Checked
    per-group scoping and a recall@k/MRR benchmark on real conversations.
    Abstractive summaries and atomic-fact distillation now exist (0.54.0).
 8. Harness adapters: 0.57.0 adds a host bridge with verified compact/resume
-   for OpenClaw, CommandCode and OpenCode; Claude Code's transport runs but
-   its provider returns 403, and OxLinux is blocked by Android app-data exec
-   policy. Still open: ACP/native transports, Hermes/CodeBuddy/DSH/Pi,
-   per-harness thresholds and harness-reported compaction state, full
-   tool-schema repair, native multimodal/non-text messages, and external
-   memory mirroring with ownership handoff.
+   for OpenClaw, CommandCode and OpenCode; 0.58.0 adds per-session context
+   telemetry (`/context`, usage/budget/should_compact) and a Harness context
+   row, with harness-reported compaction advice participating in the compact
+   decision. Claude Code still returns 403, and OxLinux is blocked by Android
+   app-data exec policy. Still open: ACP/native transports,
+   Hermes/CodeBuddy/DSH/Pi, a real `should_compact=true` device trigger,
+   per-harness thresholds, full tool-schema repair, native
+   multimodal/non-text messages, and external memory mirroring with ownership
+   handoff.

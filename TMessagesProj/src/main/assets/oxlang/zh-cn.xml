@@ -6749,6 +6749,9 @@
     <string name="OxAgentHarnessModelHint">provider/model（可选）</string>
     <string name="OxAgentHarnessAgent">OpenClaw Agent</string>
     <string name="OxAgentHarnessAgentHint">Agent id（可选）</string>
+    <string name="OxAgentHarnessContext">Harness 上下文</string>
+    <string name="OxAgentHarnessContextIdle">点击刷新</string>
+    <string name="OxAgentHarnessContextLoading">读取中…</string>
     <string name="OxAgentHarnessTest">测试 Harness 桥接</string>
     <string name="OxAgentHarnessTestIdle">未测试</string>
     <string name="OxAgentHarnessTesting">测试中…</string>
