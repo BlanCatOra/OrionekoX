@@ -605,6 +605,9 @@ public class OxSettingsActivity extends BaseFragment {
                 final OxRikkaImporter.Result result = OxRikkaImporter.importFrom(ctx, uri);
                 AndroidUtilities.runOnUIThread(() -> {
                     OxAgentsBridge.syncAgents(true);
+                    for (String id : result.conversationIds) {
+                        OxAgentsBridge.replayImportedHistory(id);
+                    }
                     NotificationCenter.getInstance(0).postNotificationName(NotificationCenter.dialogsNeedReload);
                     if (getParentActivity() == null) return;
                     new AlertDialog.Builder(getParentActivity())

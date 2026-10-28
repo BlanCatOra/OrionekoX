@@ -3266,6 +3266,28 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `e4805cf78f54…`）；debug `dist/OrionekoX-0.40.0-debug-arm64-x64.apk`（sha256
 `4334c6285c4f…`）。详见 `docs/qa-0.40.0.md`。
 
+## 5.160 alpha 0.41.0 —— RikkaHub 文件附件导入（2026-10-28 10:44–11:00）
+
+- `OxRikkaImporter` 解析 `type=document` part：匹配备份 `upload/` 文件后复制到
+  `files/rikka_upload_<name>`，写入 `OxChatEntry.filePath/fileName`；纯文件消息
+  允许空正文；结果新增附件计数与“导入附件 N 个”note。
+- 同时修复 RikkaHub 历史导入后原生会话不更新的问题：记录实际新增消息的
+  会话并调用 `OxAgentsBridge.replayImportedHistory`；此前 `chat.json` 有历史，
+  原生聊天却只显示开场白。
+- 设备：1,064 B 最小备份（1 会话 / 2 消息 / 37 B report.txt）导入后得到
+  `chat.json` 两条记录与 37 B 私有附件；原生聊天显示 `report.txt` 文件气泡
+  （37 B · TXT，正文“看附件”）和助手“收到附件”。重复导入无历史 note、
+  `chat.json` 仍 2 条、无重复消息；清理后 dialogs/messages 归零，无本包
+  FATAL/ANR。
+- 边界：每条消息只取第一个 document；仅图片与 document；video/audio 跳过；
+  仅匹配 `upload/`，不下载远程/data URL；附件暂不进入 Chatbox 导出。
+- 版本规则：新增可见的“RikkaHub 文件附件导入”能力，按 minor 从 0.40.0 →
+  0.41.0，versionCode 4109。
+
+**产物**：`dist/OrionekoX-0.41.0-alpha-arm64-x64.apk`（versionCode 4109，sha256
+`aff7743a17de…`）；debug `dist/OrionekoX-0.41.0-debug-arm64-x64.apk`（sha256
+`0eca64a72f54…`）。详见 `docs/qa-0.41.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
