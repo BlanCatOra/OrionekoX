@@ -22,6 +22,7 @@ import org.telegram.messenger.UserConfig;
 import org.telegram.ox.OxAgent;
 import org.telegram.ox.OxAgentStore;
 import org.telegram.ox.OxAgentsBridge;
+import org.telegram.ox.OxChatTheme;
 import org.telegram.ox.OxMode;
 import org.telegram.ox.OxOperitImporter;
 import org.telegram.ox.OxKelivoImporter;
@@ -38,6 +39,7 @@ import org.telegram.ui.Components.UniversalRecyclerView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** Ox settings, built on Telegram's stock UniversalRecyclerView + SettingCell. */
 @SuppressLint("ViewConstructor")
@@ -408,6 +410,18 @@ public class OxSettingsActivity extends BaseFragment {
                 final OxKelivoImporter.Result result = OxKelivoImporter.importFrom(ctx, uri);
                 AndroidUtilities.runOnUIThread(() -> {
                     OxAgentsBridge.syncAgents(true);
+                    int applied = 0;
+                    for (Map.Entry<String, String> e : result.backgroundPaths.entrySet()) {
+                        OxAgent a = OxAgentStore.loadAgent(e.getKey());
+                        if (a != null && a.tgId != 0
+                                && OxChatTheme.applyImportedBackground(a.tgId, e.getValue())) {
+                            applied++;
+                        }
+                    }
+                    if (result.backgrounds > 0) {
+                        result.notes.add("已套用 " + applied + " 个聊天背景"
+                                + (applied < result.backgrounds ? "；其余保留已有自定义背景" : ""));
+                    }
                     for (String id : result.conversationIds) {
                         OxAgentsBridge.replayImportedHistory(id);
                     }

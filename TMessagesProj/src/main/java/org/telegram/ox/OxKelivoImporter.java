@@ -50,6 +50,7 @@ public class OxKelivoImporter {
         public int avatars;
         public int images;
         public int files;
+        public int backgrounds;
         public final List<String> names = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -66,6 +67,8 @@ public class OxKelivoImporter {
         public int avatars;
         public int images;
         public int files;
+        public int backgrounds;
+        public final Map<String, String> backgroundPaths = new HashMap<>();
         public final List<String> ids = new ArrayList<>();
         public final List<String> conversationIds = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
@@ -78,6 +81,7 @@ public class OxKelivoImporter {
         String providerId = "";
         String model = "";
         String avatarRef = "";
+        String backgroundRef = "";
         double temperature = 0.7;
         double topP = 1.0;
         int maxTokens = 0;
@@ -101,9 +105,11 @@ public class OxKelivoImporter {
         final Map<String, Resource> avatars = new HashMap<>();
         final Map<String, Resource> images = new HashMap<>();
         final Map<String, Resource> files = new HashMap<>();
+        final Map<String, Resource> backgrounds = new HashMap<>();
         int avatarCount;
         int imageCount;
         int fileCount;
+        int backgroundCount;
         String defaultPrompt = "";
     }
 
@@ -173,6 +179,10 @@ public class OxKelivoImporter {
         if (p.files > 0) {
             p.notes.add("将导入 " + p.files + " 个聊天附件；原生聊天中显示为文件气泡。");
         }
+        p.backgrounds = archive.backgroundCount;
+        if (p.backgrounds > 0) {
+            p.notes.add("备份含 " + p.backgrounds + " 个聊天背景；将套用到对应智能体。");
+        }
         return p;
     }
 
@@ -204,6 +214,11 @@ public class OxKelivoImporter {
                 if (saved != null) r.avatars++;
             } else {
                 a.avatarPath = oldAvatar;
+            }
+            String bgPath = saveBackground(a.id, backgroundRef(o), archive);
+            if (bgPath != null) {
+                r.backgroundPaths.put(a.id, bgPath);
+                r.backgrounds++;
             }
             a.emoji = "🤖";
             a.providerId = "kelivo";
@@ -267,6 +282,11 @@ public class OxKelivoImporter {
                 if (saved != null) r.avatars++;
             } else {
                 a.avatarPath = oldAvatar;
+            }
+            String bgPath = saveBackground(a.id, c.backgroundRef, archive);
+            if (bgPath != null) {
+                r.backgroundPaths.put(a.id, bgPath);
+                r.backgrounds++;
             }
             a.emoji = "💬";
             a.providerId = "kelivo";
@@ -507,6 +527,7 @@ public class OxKelivoImporter {
             String mime = descriptor.optString("mimeType", "").trim();
             boolean avatarKind = "avatar".equals(kind) || "copilot-image".equals(kind);
             boolean attachmentKind = "parsed-attachment".equals(kind) || "raw-attachment".equals(kind);
+            boolean backgroundKind = "background".equals(kind);
             byte[] bytes = files.get(normPath(path));
             if (bytes == null) continue;
             bytes = decodeDataUrl(bytes, descriptor.optString("encoding", ""));
@@ -515,15 +536,17 @@ public class OxKelivoImporter {
                     || (attachmentKind && (mime.startsWith("image/")
                     || (mime.isEmpty() && looksLikeImage(bytes))));
             boolean fileKind = attachmentKind && !imageLike;
-            if (!avatarKind && !imageLike && !fileKind) continue;
-            if ((avatarKind || imageLike) && !looksLikeImage(bytes)) continue;
-            if (mime.isEmpty() || (imageLike && !mime.startsWith("image/"))) mime = guessMime(bytes);
+            if (!avatarKind && !imageLike && !fileKind && !backgroundKind) continue;
+            if ((avatarKind || imageLike || backgroundKind) && !looksLikeImage(bytes)) continue;
+            if (mime.isEmpty() || ((imageLike || backgroundKind) && !mime.startsWith("image/"))) {
+                mime = guessMime(bytes);
+            }
             if (fileKind && mime.isEmpty()) mime = mimeForPath(path);
             Resource resource = new Resource();
             resource.mime = mime;
             resource.bytes = bytes;
             Map<String, Resource> target = avatarKind ? out.avatars
-                    : (imageLike ? out.images : out.files);
+                    : (imageLike ? out.images : (fileKind ? out.files : out.backgrounds));
             JSONArray keys = descriptor.optJSONArray("originalStorageKeys");
             boolean keyed = false;
             for (int j = 0; keys != null && j < keys.length(); j++) {
@@ -538,7 +561,8 @@ public class OxKelivoImporter {
             if (keyed) {
                 if (avatarKind) out.avatarCount++;
                 else if (imageLike) out.imageCount++;
-                else out.fileCount++;
+                else if (fileKind) out.fileCount++;
+                else out.backgroundCount++;
             }
         }
     }
@@ -581,6 +605,23 @@ public class OxKelivoImporter {
         return o.optString("picUrl", "").trim();
     }
 
+    private static String backgroundRef(JSONObject o) {
+        if (o == null) return "";
+        Object raw = o.opt("background");
+        if (raw == null) raw = o.opt("backgroundImage");
+        if (raw instanceof JSONObject) {
+            JSONObject bg = (JSONObject) raw;
+            String key = bg.optString("storageKey", "").trim();
+            if (!key.isEmpty()) return key;
+            String url = bg.optString("url", "").trim();
+            if (!url.isEmpty()) return url;
+        } else if (raw instanceof String) {
+            String value = ((String) raw).trim();
+            if (!value.isEmpty()) return value;
+        }
+        return "";
+    }
+
     private static String saveAvatar(String agentId, String ref, Archive archive) {
         if (ref == null || ref.trim().isEmpty()) return null;
         Resource resource = archive.avatars.get(ref.trim());
@@ -589,6 +630,16 @@ public class OxKelivoImporter {
         if (dir == null) return null;
         dir.mkdirs();
         return writeResource(new File(dir, "avatar" + extensionForMime(resource.mime)), resource);
+    }
+
+    private static String saveBackground(String agentId, String ref, Archive archive) {
+        if (ref == null || ref.trim().isEmpty()) return null;
+        Resource resource = archive.backgrounds.get(ref.trim());
+        if (resource == null) return null;
+        File dir = OxAgentStore.memoryFile(agentId).getParentFile();
+        if (dir == null) return null;
+        dir.mkdirs();
+        return writeResource(new File(dir, "background" + extensionForMime(resource.mime)), resource);
     }
 
     private static int saveChatImages(String agentId, Conversation conversation,
@@ -818,6 +869,7 @@ public class OxKelivoImporter {
         if (avatar.isEmpty() && meta != null) avatar = meta.optString("picUrl", "").trim();
         if (avatar.isEmpty()) avatar = session.optString("picUrl", "").trim();
         if (avatar.isEmpty()) avatar = avatarRef(session);
+        String background = backgroundRef(session);
 
         JSONArray current = session.optJSONArray("messages");
         String prompt = firstSystemPrompt(current);
@@ -834,18 +886,18 @@ public class OxKelivoImporter {
             String threadTitle = thread.optString("name", "").trim();
             if (threadTitle.isEmpty()) threadTitle = title;
             addConversation(out, id + "_" + threadId, threadTitle, providerId, model,
-                    avatar, temperature, topP, maxTokens, prompt, messages);
+                    avatar, background, temperature, topP, maxTokens, prompt, messages);
         }
         if (current != null && current.length() > 0 && !currentDuplicated(current, threads)) {
             String threadName = session.optString("threadName", "").trim();
             addConversation(out, id + "_current", threadName.isEmpty() ? title : threadName,
-                    providerId, model, avatar, temperature, topP, maxTokens, prompt, current);
+                    providerId, model, avatar, background, temperature, topP, maxTokens, prompt, current);
         }
     }
 
     private static void addConversation(Archive out, String rawId, String title, String providerId,
-            String model, String avatarRef, double temperature, double topP, int maxTokens,
-            String prompt, JSONArray messages) {
+            String model, String avatarRef, String backgroundRef, double temperature, double topP,
+            int maxTokens, String prompt, JSONArray messages) {
         if (out.conversations.size() >= MAX_CONVERSATIONS) return;
         String safeId = rawId == null ? "" : rawId.replaceAll("[^a-zA-Z0-9_-]", "_");
         while (safeId.startsWith("_")) safeId = safeId.substring(1);
@@ -866,6 +918,7 @@ public class OxKelivoImporter {
         c.providerId = providerId == null ? "" : providerId;
         c.model = model == null ? "" : model;
         c.avatarRef = avatarRef == null ? "" : avatarRef;
+        c.backgroundRef = backgroundRef == null ? "" : backgroundRef;
         c.temperature = temperature;
         c.topP = topP;
         c.maxTokens = maxTokens;

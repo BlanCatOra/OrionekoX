@@ -490,6 +490,28 @@ public class OxChatTheme {
         persist(s);
     }
 
+    /** Applies an imported backup background as an agent override unless the
+     *  agent already has its own background image (user customization wins). */
+    public static boolean applyImportedBackground(long tgId, String path) {
+        if (tgId == 0 || path == null || path.isEmpty()) return false;
+        File f = agentFile(agentKey(tgId));
+        Snapshot s = readFile(f);
+        if (s != null && s.backgroundImage != null && !s.backgroundImage.isEmpty()
+                && !s.backgroundImage.equals(path)) return false;
+        if (s == null) s = readPrefs().copy();
+        s.mode = MODE_CUSTOM;
+        s.backgroundImage = path;
+        s.backgroundMode = BG_IMAGE;
+        try {
+            FileOutputStream out = new FileOutputStream(f);
+            out.write(s.toJson("").toString().getBytes("UTF-8"));
+            out.close();
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public static void enableCustom() {
         Snapshot s = current();
         if (!MODE_CUSTOM.equals(s.mode)) {

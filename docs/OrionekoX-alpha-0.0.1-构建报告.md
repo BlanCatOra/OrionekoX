@@ -3209,6 +3209,27 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `8876b1ce2a07…`）；debug `dist/OrionekoX-0.37.1-debug-arm64-x64.apk`（sha256
 `b21e0412ad0d…`）。详见 `docs/qa-0.37.1.md`。
 
+## 5.157 alpha 0.38.0 —— Chatbox / Kelivo 聊天背景导入（2026-10-28 09:40–09:55）
+
+- 解析 Chatbox v2 `kind=background` 资源与 session/助手 `background`/
+  `backgroundImage` 引用（storageKey/url/字符串），写 Agent 目录
+  `background.<ext>`。
+- syncAgents 后经 `OxChatTheme.applyImportedBackground` 写入按 Agent 主题
+  （mode=custom/backgroundMode=image）；已有不同自定义背景时跳过并在结果
+  note 说明。
+- 设备：BG38 背景样例预览提示 1 个背景；导入后 note“已套用 1 个聊天背景”，
+  background.png 14,884 B、agent_555000078.json 指向该文件；原生聊天显示
+  BG38 壁纸与气泡；将主题背景改为 custom-bg.png 后重复导入，note“已套用
+  0 个；其余保留已有自定义背景”，原路径未被覆盖；清理后 dialogs/messages
+  归零，无本包 FATAL/ANR。
+- 边界：仅图片背景、仅按 Agent；导出备份暂不含该背景；真实备份待复测。
+- 版本规则：新增可见的备份聊天背景导入能力，按 minor 从 0.37.1 → 0.38.0，
+  versionCode 3809。
+
+**产物**：`dist/OrionekoX-0.38.0-alpha-arm64-x64.apk`（versionCode 3809，sha256
+`a99da68291cd…`）；debug `dist/OrionekoX-0.38.0-debug-arm64-x64.apk`（sha256
+`c6616f5f1be8…`）。详见 `docs/qa-0.38.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
