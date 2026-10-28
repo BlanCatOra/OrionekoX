@@ -4,6 +4,42 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.50.0 — 2026-10-28
+
+- Chatbox / Kelivo backups now carry each agent's per-agent appearance
+  override as a private `orionekoTheme` object: mode, background mode/colors/
+  alpha/dim/blur/AMOLED/gradient, incoming/outgoing bubble colors and opacity,
+  corner radius, bubble style, border color/width, text color, font scale and
+  line height. Agents that follow the global look are not written as fake
+  overrides.
+- Local absolute paths are stripped. The wallpaper keeps using the existing
+  `background` resource, while chat and code fonts travel as
+  `fonts/<agentId>/chat.ttf` and `code.ttf`, capped at 8 MiB per file, 16 MiB
+  total and 40 files. A dedicated font reader replaces the 2 MiB generic
+  resource limit that initially dropped a 2.37 MB chat font.
+- Import validates fonts with `Typeface.createFromFile`, writes them into
+  app-private storage and applies the theme only after the agent exists. An
+  existing local per-agent override wins; fonts written for a skipped theme are
+  deleted. Preview and result report theme and font counts, and the export
+  info/confirmation strings mention appearance themes.
+- Verified with a chatless copilot (dark background, dim 40, blur 2,
+  `#263238`/`#7C4DFF` bubbles, 230 alpha, 20 dp corners, cyan 2 dp border,
+  1.12× text, 1.3× line height, 2.37 MB chat font, 108 KB code font) and a
+  session agent with one message (green/brown bubbles, 14 dp corners, green
+  border, 1.05× text, 1.15× line height, one font). Exports were 1,453,353 B
+  and 1,383,082 B: theme paths were empty, background and font hashes matched
+  the sources, and secret scans were clean. After deleting the theme, fonts and
+  background, imports restored the expected theme, font and background counts;
+  colors, radii, borders, scales and line heights matched (float readback
+  differs only at 1e-7), and the native chat showed the dark bubble with cyan
+  border. Re-importing the copilot backup restored zero themes, kept the local
+  theme and left no orphan font files. No app FATAL/ANR; test agents, themes,
+  fonts and zips were removed and the test dialogs/messages were zero.
+- Limits: `orionekoTheme`/`fonts/` are OrionekoX extensions ignored by real
+  Chatbox/Kelivo clients (not tested); only per-agent overrides travel, not the
+  global theme or per-dialog overrides; an existing local override wins; fonts
+  must parse on the device; video backgrounds are not carried.
+
 ## 0.49.0 — 2026-10-28
 
 - The agent long-press menu now offers “Export character card” for non-built-in

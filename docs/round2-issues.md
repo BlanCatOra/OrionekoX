@@ -516,3 +516,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：自建 `QA Card 0490`（tgId 555000103，256×256 头像、六节人设、开场白）与无头像 `QA Card NoImg 0490`。导出 PNG 2,420 B，IHDR/tEXt/sRGB/sBIT/IDAT/IEND 逐块 CRC 通过，`chara` Base64 解码后的 V2 JSON 六节与开场白一致，导出图像素与源头像完全相同；JSON 790 B 字段逐项一致；两者敏感字段扫描 0 命中。回导 PNG 得到 `rikka_card_67bc18d8`（tgId 555000104），姓名、开场白、六节人设（仅小节间空行规范化）与头像逐像素一致；再回导 JSON 只更新同一目录、无副本、头像保留。无头像 Agent 导出 20,888 B 占位 PNG（512×640），内嵌数据正确。全程无本包 FATAL/ANR；删除三个测试 Agent 后 555000103/555000104 的 dialogs/messages 均为 0，Download 卡片与遗留测试 zip 已清理，未执行 `pm clear`。
 - 边界：未与真实 SillyTavern/RikkaHub 客户端互测；不导出 alternate greetings、character_book、tags 与正则；原生 Agent 的整份 AGENTS.md 进入 description；emoji 不是 V2 字段，回导为默认 🤖；头像统一缩放重编码，不保留 EXIF/ICC/动画。
+
+## 0.50.0 Chatbox 备份携带 Agent 外观主题与字体 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-101 | 0.50.0 功能 | Chatbox 备份已带背景，但按 Agent 的颜色、气泡、圆角、边框、文字色、字号、行高、模糊/暗化与自定义字体不能往返，换机后需重配 | 导出在 session/copilot 写私有 `orionekoTheme`（仅存在按 Agent 覆盖时），清空绝对路径；背景走既有资源，聊天/代码字体写 `fonts/<agentId>/chat.ttf` 与 `code.ttf`（单 8 MiB、总 16 MiB、40 个）；导入校验字体并在 Agent 存在后应用，已有本地主题保留 | 已实现并设备验证 |
+| R2-102 | 0.50.0 QA | 首轮导出只出现 108 KB 代码字体，2.37 MB 聊天字体被静默丢弃：导出器复用了 2 MiB 上限的通用资源读取函数 | 新增字体专用 `readFont`/带上限的 `readFile`（8 MiB），重建后同一 zip 同时包含 2,371,712 B 与 108,128 B 字体，sha256 与源一致 | 已修复并设备验证 |
+
+- 设备：自建 chatless copilot `QA Theme 0500`（tgId 555000106，深蓝背景/dim 40/blur 2/收 #263238/发 #7C4DFF/230 透明度/20dp 圆角/#00E5FF 2dp 边框/1.12× 字号/1.3× 行高/2.37 MB 聊天字体/108 KB 代码字体）与 session Agent `QA Theme Session 0500`（tgId 555000107，1 条消息，绿色系主题、14dp 圆角、1 个字体）。导出分别为 1,453,353 B 与 1,383,082 B；`orionekoTheme` 在 copilot/session 中均存在，三个路径字段为空，背景解码哈希与字体哈希均与源一致，全文扫描 `api_key`/`base_url`/`baseUrl`/`headers`/`Authorization`/`Bearer `/`sk-`/`ox1:` 0 命中且无 `/data/data/` 绝对路径。删除主题/字体/背景后回导：copilot 恢复 1 主题/2 字体/1 背景，session 恢复 1 主题/1 字体/1 背景，颜色、圆角、边框、字号、行高（float 精度内）与全部哈希一致；原生会话可见深色气泡与青色边框。重复导入 copilot 备份为 0 主题并保留本地主题，字体文件数不增加。全程无 FATAL/ANR；清理两个测试 Agent、主题、字体与 zip 后 555000106/555000107 的 dialogs/messages 均为 0，未执行 `pm clear`。
+- 边界：`orionekoTheme`/`fonts/` 为 OrionekoX 扩展，真实 Kelivo/Chatbox 未互测；只带按 Agent 覆盖，不带全局主题与按会话覆盖；已有本地主题优先；字体必须可被平台解析；视频背景不携带。

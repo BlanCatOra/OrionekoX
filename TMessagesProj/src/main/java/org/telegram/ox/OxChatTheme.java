@@ -56,6 +56,7 @@ public class OxChatTheme {
     private static final String BG_FILE = "ox_chat_bg";
     private static String blurCacheKey = "";
     private static android.graphics.Bitmap blurCacheBitmap;
+    private static int fontImportSeq;
 
     private static boolean applied;
     private static View appliedRoot;
@@ -509,6 +510,68 @@ public class OxChatTheme {
             return true;
         } catch (Throwable t) {
             return false;
+        }
+    }
+
+    /** Agent-scope appearance override, or null when the agent follows global. */
+    public static Snapshot agentSnapshot(long tgId) {
+        if (tgId == 0) return null;
+        return readFile(agentFile(agentKey(tgId)));
+    }
+
+    /** Restores a per-agent appearance from a Chatbox backup. An existing local
+     *  override wins, matching the background import rule. Absolute paths from
+     *  the backup are replaced by the assets extracted alongside it. */
+    public static boolean applyImportedAgentTheme(long tgId, JSONObject theme,
+            String backgroundPath, String fontPath, String codeFontPath) {
+        if (tgId == 0 || theme == null) return false;
+        File f = agentFile(agentKey(tgId));
+        if (f.isFile()) return false;
+        Snapshot s;
+        try {
+            s = parseJsonObject(theme, new Snapshot());
+        } catch (Throwable t) {
+            return false;
+        }
+        s.mode = MODE_CUSTOM;
+        if (backgroundPath != null && !backgroundPath.isEmpty()) {
+            s.backgroundImage = backgroundPath;
+            s.backgroundMode = BG_IMAGE;
+        } else {
+            s.backgroundImage = "";
+            if (BG_IMAGE.equals(s.backgroundMode)) s.backgroundMode = BG_SOLID;
+        }
+        s.fontPath = fontPath == null ? "" : fontPath;
+        s.codeFontPath = codeFontPath == null ? "" : codeFontPath;
+        try {
+            FileOutputStream out = new FileOutputStream(f);
+            out.write(s.toJson("").toString().getBytes("UTF-8"));
+            out.close();
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** Writes a font extracted from a backup into app-private storage and
+     *  verifies that the platform can parse it. Returns "" on any failure. */
+    public static String saveImportedFont(byte[] data, String tag) {
+        if (data == null || data.length == 0 || data.length > 8 * 1024 * 1024) return "";
+        String safe = tag == null ? "font" : tag.replaceAll("[^a-zA-Z0-9_-]", "_");
+        if (safe.isEmpty()) safe = "font";
+        File out = new File(fontDir(), "chatbox_" + safe + "_"
+                + System.currentTimeMillis() + "_" + (fontImportSeq++) + ".ttf");
+        try {
+            writeFile(out, data);
+            Typeface tf = Typeface.createFromFile(out);
+            if (tf == null) {
+                out.delete();
+                return "";
+            }
+            return out.getAbsolutePath();
+        } catch (Throwable t) {
+            out.delete();
+            return "";
         }
     }
 

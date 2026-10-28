@@ -11698,8 +11698,8 @@
     <string name="OxKelivoNothing">No importable assistants or conversations in this backup</string>
     <string name="OxKelivoFailed">Kelivo import failed: %1$s</string>
     <string name="OxKelivoExport">Export Kelivo / Chatbox backup</string>
-    <string name="OxKelivoExportInfo">zip · agents, chats, long-term memory, skills, workspaces, agent preferences, avatars, attachments; no API keys</string>
-    <string name="OxKelivoExportConfirm">Export all non-built-in agents, their chats, long-term memory, skills, workspaces, agent preferences (tool policies, pin, remark, greeting, reasoning), avatars and attachments to a Chatbox v2 zip?\n\nAPI keys, provider URLs and request headers are not included.</string>
+    <string name="OxKelivoExportInfo">zip · agents, chats, long-term memory, skills, workspaces, agent preferences, appearance themes, fonts, avatars, attachments; no API keys</string>
+    <string name="OxKelivoExportConfirm">Export all non-built-in agents, their chats, long-term memory, skills, workspaces, agent preferences (tool policies, pin, remark, greeting, reasoning), appearance themes (colors, bubbles, fonts, backgrounds), avatars and attachments to a Chatbox v2 zip?\n\nAPI keys, provider URLs and request headers are not included.</string>
     <string name="OxKelivoExportAction">Export</string>
     <string name="OxKelivoExportDone">Exported: %1$d agents, %7$d workspace files, %4$d chats, %5$d messages, %2$d memories, %3$d skills, %6$d files</string>
     <string name="OxKelivoExportNothing">No non-built-in agents to export</string>
@@ -11711,7 +11711,7 @@
     <string name="OxExportCardJson">JSON (text only)</string>
     <string name="OxExportCardDone">Exported character card: %1$s</string>
     <string name="OxExportCardFailed">Character card export failed: %1$s</string>
-    <string name="OxKelivoExportAgentConfirm">Export this agent with its chat, long-term memory, skills, workspace, preferences, avatar, images and attachments as a Chatbox v2 zip?\n\nAPI keys, provider URLs and request headers are not included.</string>
+    <string name="OxKelivoExportAgentConfirm">Export this agent with its chat, long-term memory, skills, workspace, preferences, appearance theme (colors, bubbles, fonts, background), avatar, images and attachments as a Chatbox v2 zip?\n\nAPI keys, provider URLs and request headers are not included.</string>
     <string name="OxKelivoExportAgentDone">Exported %1$s: %6$d workspace files, %3$d skills, %2$d memories, %4$d messages, %5$d files</string>
     <string name="OxKelivoExportSelected">Export selected agents</string>
     <string name="OxKelivoExportSelectedInfo">Choose agents to write into one Chatbox v2 zip</string>

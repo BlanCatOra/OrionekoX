@@ -41,6 +41,9 @@ public class OxKelivoImporter {
     private static final int MAX_WORKSPACE_FILES = 200;
     private static final int MAX_WORKSPACE_FILE_BYTES = 2 * 1024 * 1024;
     private static final long MAX_TOTAL_WORKSPACE_BYTES = 8L * 1024 * 1024;
+    private static final int MAX_FONTS = 40;
+    private static final int MAX_FONT_BYTES = 8 * 1024 * 1024;
+    private static final long MAX_TOTAL_FONT_BYTES = 16L * 1024 * 1024;
 
     public static class Preview {
         public int assistants;
@@ -60,6 +63,7 @@ public class OxKelivoImporter {
         public int skillLinks;
         public int workspaceFiles;
         public int preferences;
+        public int themes;
         public final List<String> names = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -81,10 +85,21 @@ public class OxKelivoImporter {
         public int skillLinks;
         public int workspaceFiles;
         public int preferences;
+        public int themes;
+        public int fonts;
         public final Map<String, String> backgroundPaths = new HashMap<>();
+        public final Map<String, ImportedTheme> importedThemes = new HashMap<>();
         public final List<String> ids = new ArrayList<>();
         public final List<String> conversationIds = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
+    }
+
+    /** Appearance data extracted from a backup. Fonts are already written to
+     *  app-private storage; the UI applies the snapshot once the agent exists. */
+    public static class ImportedTheme {
+        public JSONObject theme;
+        public String fontPath = "";
+        public String codeFontPath = "";
     }
 
     private static class Conversation {
@@ -103,6 +118,7 @@ public class OxKelivoImporter {
         String memory = "";
         final List<String> skillIds = new ArrayList<>();
         JSONObject agentPrefs;
+        JSONObject theme;
         final List<String> imageRefs = new ArrayList<>();
         final List<String> fileRefs = new ArrayList<>();
         final List<String> fileNames = new ArrayList<>();
@@ -130,6 +146,7 @@ public class OxKelivoImporter {
         final Map<String, Resource> images = new HashMap<>();
         final Map<String, Resource> files = new HashMap<>();
         final Map<String, Resource> backgrounds = new HashMap<>();
+        final Map<String, byte[]> fonts = new HashMap<>();
         int avatarCount;
         int imageCount;
         int fileCount;
@@ -153,6 +170,7 @@ public class OxKelivoImporter {
         Set<String> memoryAgents = new HashSet<>();
         Set<String> linkedAgents = new HashSet<>();
         Set<String> preferenceAgents = new HashSet<>();
+        Set<String> themeAgents = new HashSet<>();
         for (JSONObject o : archive.assistants) {
             String name = name(o);
             String id = assistantId(o, name);
@@ -162,6 +180,7 @@ public class OxKelivoImporter {
             if (!memoryOf(o).isEmpty()) memoryAgents.add(id);
             if (hasLinkedSkill(skillIdsOf(o), archiveSkillIds)) linkedAgents.add(id);
             if (hasAgentPrefs(o.optJSONObject("orionekoAgent"))) preferenceAgents.add(id);
+            if (o.optJSONObject("orionekoTheme") != null) themeAgents.add(id);
         }
         for (Conversation c : archive.conversations) {
             p.conversations++;
@@ -171,11 +190,13 @@ public class OxKelivoImporter {
             if (!c.memory.isEmpty()) memoryAgents.add(agentIdFor(c));
             if (hasLinkedSkill(c.skillIds, archiveSkillIds)) linkedAgents.add(agentIdFor(c));
             if (hasAgentPrefs(c.agentPrefs)) preferenceAgents.add(agentIdFor(c));
+            if (c.theme != null) themeAgents.add(agentIdFor(c));
         }
         p.memories = memoryAgents.size();
         p.skillLinks = linkedAgents.size();
         p.preferences = preferenceAgents.size();
-        p.notes.add("仅导入 Kelivo / Chatbox 备份中的助手、人设、技能、助手偏好、HTTP MCP 与对话；不含 Provider 密钥。");
+        p.themes = themeAgents.size();
+        p.notes.add("仅导入 Kelivo / Chatbox 备份中的助手、人设、技能、助手偏好、外观主题、HTTP MCP 与对话；不含 Provider 密钥。");
         if (p.memories > 0) {
             p.notes.add("将恢复 " + p.memories + " 个智能体的长期记忆（覆盖现有记忆）。");
         }
@@ -185,6 +206,10 @@ public class OxKelivoImporter {
         if (p.preferences > 0) {
             p.notes.add("将恢复 " + p.preferences
                     + " 个智能体的偏好设置（工具权限、置顶、备注、开场白与推理参数）。");
+        }
+        if (p.themes > 0) {
+            p.notes.add("将恢复 " + p.themes
+                    + " 个智能体的外观主题（颜色、气泡、字体与背景；已有主题则保留）。");
         }
         if (!archive.providers.isEmpty()) {
             p.notes.add("将使用备份中的 " + archive.providers.size() + " 个 Provider 配置为助手接线。");
@@ -330,6 +355,9 @@ public class OxKelivoImporter {
             if (applyAgentPrefs(a, o.optJSONObject("orionekoAgent"))) {
                 preferenceAgents.add(a.id);
             }
+            ImportedTheme importedTheme = importTheme(a.id,
+                    o.optJSONObject("orionekoTheme"), archive, r);
+            if (importedTheme != null) r.importedThemes.put(a.id, importedTheme);
             OxAgentStore.saveAgent(a);
             String memory = memoryOf(o);
             if (!memory.isEmpty()) {
@@ -390,6 +418,8 @@ public class OxKelivoImporter {
             if (applyAgentPrefs(a, c.agentPrefs)) {
                 preferenceAgents.add(a.id);
             }
+            ImportedTheme importedTheme = importTheme(a.id, c.theme, archive, r);
+            if (importedTheme != null) r.importedThemes.put(a.id, importedTheme);
             OxAgentStore.saveAgent(a);
             if (!c.memory.isEmpty()) {
                 OxAgentStore.saveMemory(a.id, c.memory);
@@ -492,6 +522,8 @@ public class OxKelivoImporter {
                 long resourceBytes = 0;
                 long workspaceBytes = 0;
                 int workspaceCount = 0;
+                long fontBytes = 0;
+                int fontCount = 0;
                 Map<String, String> sessionFiles = new HashMap<>();
                 Map<String, byte[]> resourceFiles = new HashMap<>();
                 while ((e = zin.getNextEntry()) != null) {
@@ -548,6 +580,16 @@ public class OxKelivoImporter {
                                     }
                                 }
                             }
+                        }
+                    } else if (fontCount < MAX_FONTS && fontBytes < MAX_TOTAL_FONT_BYTES
+                            && n.startsWith("fonts/") && !n.endsWith("/")
+                            && n.toLowerCase(java.util.Locale.ROOT).endsWith(".ttf")) {
+                        byte[] body = readBytes(zin, MAX_FONT_BYTES + 1);
+                        if (body != null && body.length > 0 && body.length <= MAX_FONT_BYTES
+                                && fontBytes + body.length <= MAX_TOTAL_FONT_BYTES) {
+                            out.fonts.put(normPath(n), body);
+                            fontBytes += body.length;
+                            fontCount++;
                         }
                     } else if (resourceFiles.size() < MAX_RESOURCE_FILES
                             && resourceBytes < MAX_RESOURCE_TOTAL
@@ -1028,6 +1070,7 @@ public class OxKelivoImporter {
         String memory = memoryOf(session);
         List<String> skillIds = skillIdsOf(session);
         JSONObject agentPrefs = session.optJSONObject("orionekoAgent");
+        JSONObject theme = session.optJSONObject("orionekoTheme");
 
         JSONArray threads = session.optJSONArray("threads");
         for (int i = 0; threads != null && i < threads.length(); i++) {
@@ -1041,13 +1084,13 @@ public class OxKelivoImporter {
             if (threadTitle.isEmpty()) threadTitle = title;
             addConversation(out, id + "_" + threadId, threadTitle, providerId, model,
                     avatar, background, temperature, topP, maxTokens, prompt, messages,
-                    "", memory, skillIds, agentPrefs);
+                    "", memory, skillIds, agentPrefs, theme);
         }
         if (current != null && current.length() > 0 && !currentDuplicated(current, threads)) {
             String threadName = session.optString("threadName", "").trim();
             addConversation(out, id + "_current", threadName.isEmpty() ? title : threadName,
                     providerId, model, avatar, background, temperature, topP, maxTokens, prompt,
-                    current, roundtripId, memory, skillIds, agentPrefs);
+                    current, roundtripId, memory, skillIds, agentPrefs, theme);
         }
     }
 
@@ -1056,13 +1099,13 @@ public class OxKelivoImporter {
             int maxTokens, String prompt, JSONArray messages) {
         addConversation(out, rawId, title, providerId, model, avatarRef, backgroundRef,
                 temperature, topP, maxTokens, prompt, messages, "", "",
-                new ArrayList<>(), null);
+                new ArrayList<>(), null, null);
     }
 
     private static void addConversation(Archive out, String rawId, String title, String providerId,
             String model, String avatarRef, String backgroundRef, double temperature, double topP,
             int maxTokens, String prompt, JSONArray messages, String agentIdOverride,
-            String memory, List<String> skillIds, JSONObject agentPrefs) {
+            String memory, List<String> skillIds, JSONObject agentPrefs, JSONObject theme) {
         if (out.conversations.size() >= MAX_CONVERSATIONS) return;
         String safeId = rawId == null ? "" : rawId.replaceAll("[^a-zA-Z0-9_-]", "_");
         while (safeId.startsWith("_")) safeId = safeId.substring(1);
@@ -1082,6 +1125,7 @@ public class OxKelivoImporter {
         c.memory = memory == null ? "" : memory;
         if (skillIds != null) c.skillIds.addAll(skillIds);
         c.agentPrefs = agentPrefs;
+        c.theme = theme;
         c.title = title == null || title.trim().isEmpty() ? "Kelivo 对话" : title.trim();
         c.systemPrompt = prompt == null ? "" : prompt;
         c.providerId = providerId == null ? "" : providerId;
@@ -1158,6 +1202,34 @@ public class OxKelivoImporter {
 
     /** Applies OrionekoX's private per-agent preferences. Credentials, provider
      *  wiring, request headers and extra_body are never read from the backup. */
+    private static ImportedTheme importTheme(String agentId, JSONObject theme,
+            Archive archive, Result r) {
+        if (agentId == null || theme == null) return null;
+        ImportedTheme out = new ImportedTheme();
+        out.theme = theme;
+        byte[] chatFont = archive.fonts.get("fonts/" + agentId + "/chat.ttf");
+        if (chatFont != null) {
+            String path = OxChatTheme.saveImportedFont(chatFont, agentId + "_chat");
+            if (!path.isEmpty()) {
+                out.fontPath = path;
+                r.fonts++;
+            } else {
+                r.notes.add("聊天字体无法解析，已跳过 " + agentId);
+            }
+        }
+        byte[] codeFont = archive.fonts.get("fonts/" + agentId + "/code.ttf");
+        if (codeFont != null) {
+            String path = OxChatTheme.saveImportedFont(codeFont, agentId + "_code");
+            if (!path.isEmpty()) {
+                out.codeFontPath = path;
+                r.fonts++;
+            } else {
+                r.notes.add("代码字体无法解析，已跳过 " + agentId);
+            }
+        }
+        return out;
+    }
+
     private static boolean applyAgentPrefs(OxAgent a, JSONObject p) {
         if (a == null || !hasAgentPrefs(p)) return false;
         boolean applied = false;

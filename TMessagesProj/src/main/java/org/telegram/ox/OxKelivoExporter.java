@@ -46,6 +46,9 @@ public class OxKelivoExporter {
     private static final int MAX_WORKSPACE_FILE_BYTES = 2 * 1024 * 1024;
     private static final long MAX_TOTAL_WORKSPACE_BYTES = 8L * 1024 * 1024;
     private static final int MAX_WORKSPACE_DEPTH = 6;
+    private static final int MAX_FONTS = 40;
+    private static final int MAX_FONT_BYTES = 8 * 1024 * 1024;
+    private static final long MAX_TOTAL_FONT_BYTES = 16L * 1024 * 1024;
 
     public static class Result {
         public int assistants;
@@ -57,6 +60,8 @@ public class OxKelivoExporter {
         public int skillLinks;
         public int workspaceFiles;
         public int preferences;
+        public int themes;
+        public int fonts;
         public final List<String> notes = new ArrayList<>();
     }
 
@@ -138,6 +143,9 @@ public class OxKelivoExporter {
         Map<String, byte[]> workspaceEntries = new LinkedHashMap<>();
         long[] workspaceBytes = new long[]{0};
         int[] workspaceCount = new int[]{0};
+
+        Map<String, byte[]> themeFonts = new LinkedHashMap<>();
+        long[] themeFontBytes = new long[]{0};
 
         for (OxAgent a : agents) {
             List<OxChatEntry> chat;
@@ -230,6 +238,7 @@ public class OxKelivoExporter {
                 if (!memory.isEmpty()) copilot.put("orionekoMemory", memory);
                 putSkillIds(copilot, a, exportedSkillIds, result);
                 if (preferences != null) copilot.put("orionekoAgent", preferences);
+                putAgentTheme(copilot, a, themeFonts, themeFontBytes, result);
                 copilots.add(copilot);
                 continue;
             }
@@ -244,6 +253,7 @@ public class OxKelivoExporter {
             if (!memory.isEmpty()) session.put("orionekoMemory", memory);
             putSkillIds(session, a, exportedSkillIds, result);
             if (preferences != null) session.put("orionekoAgent", preferences);
+            putAgentTheme(session, a, themeFonts, themeFontBytes, result);
             String bgPath = OxChatTheme.backgroundForDialog(a.tgId);
             if (bgPath.isEmpty()) bgPath = OxChatTheme.backgroundForAgent(a.tgId);
             if (!bgPath.isEmpty() && resources.size() < MAX_RESOURCES) {
@@ -425,6 +435,9 @@ public class OxKelivoExporter {
             for (Map.Entry<String, byte[]> file : workspaceEntries.entrySet()) {
                 put(zip, file.getKey(), file.getValue());
             }
+            for (Map.Entry<String, byte[]> font : themeFonts.entrySet()) {
+                put(zip, font.getKey(), font.getValue());
+            }
             zip.finish();
         } finally {
             zip.close();
@@ -584,6 +597,46 @@ public class OxKelivoExporter {
 
     /** Writes only skill ids that are actually present in this export, so a
      *  restored agent never points at a missing SKILL.md. */
+    /** Writes a per-agent appearance override and copies its custom fonts as
+     *  zip entries. Local absolute paths are stripped; the importer rebuilds
+     *  them from the bundled assets. */
+    private static boolean putAgentTheme(JSONObject target, OxAgent a,
+            Map<String, byte[]> fontEntries, long[] totalFontBytes, Result result)
+            throws Exception {
+        OxChatTheme.Snapshot s = OxChatTheme.agentSnapshot(a.tgId);
+        if (s == null) return false;
+        JSONObject theme = s.toJson("");
+        theme.put("backgroundImage", "");
+        theme.put("fontPath", "");
+        theme.put("codeFontPath", "");
+        addThemeFont(fontEntries, totalFontBytes, a.id, "chat", s.fontPath, result);
+        addThemeFont(fontEntries, totalFontBytes, a.id, "code", s.codeFontPath, result);
+        target.put("orionekoTheme", theme);
+        result.themes++;
+        return true;
+    }
+
+    private static void addThemeFont(Map<String, byte[]> fontEntries, long[] totalFontBytes,
+            String agentId, String kind, String path, Result result) throws Exception {
+        if (path == null || path.isEmpty() || agentId == null) return;
+        File f = new File(path);
+        if (!f.isFile() || f.length() <= 0) return;
+        if (f.length() > MAX_FONT_BYTES) {
+            result.notes.add("字体过大，已跳过 " + agentId);
+            return;
+        }
+        if (fontEntries.size() >= MAX_FONTS
+                || totalFontBytes[0] + f.length() > MAX_TOTAL_FONT_BYTES) {
+            result.notes.add("字体总量超出上限，已跳过 " + agentId);
+            return;
+        }
+        byte[] data = readFont(f);
+        if (data == null || data.length == 0) return;
+        fontEntries.put("fonts/" + agentId + "/" + kind + ".ttf", data);
+        totalFontBytes[0] += data.length;
+        result.fonts++;
+    }
+
     private static void putSkillIds(JSONObject target, OxAgent a,
             Set<String> exportedSkillIds, Result result) throws Exception {
         if (a.skillIds == null || a.skillIds.length() == 0 || exportedSkillIds.isEmpty()) return;
@@ -631,8 +684,18 @@ public class OxKelivoExporter {
     }
 
     private static byte[] readFile(File file) {
+        return readFile(file, MAX_RESOURCE_BYTES);
+    }
+
+    /** Fonts use their own, larger limit; the generic resource cap would drop
+     *  common CJK-capable faces. */
+    private static byte[] readFont(File file) {
+        return readFile(file, MAX_FONT_BYTES);
+    }
+
+    private static byte[] readFile(File file, int maxBytes) {
         try {
-            if (file.length() > MAX_RESOURCE_BYTES) return null;
+            if (file.length() > maxBytes) return null;
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             FileInputStream in = new FileInputStream(file);
             try {
