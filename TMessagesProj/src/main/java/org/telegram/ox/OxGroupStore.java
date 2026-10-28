@@ -86,6 +86,16 @@ public class OxGroupStore {
         return prefs().contains("chat_" + key(chatId));
     }
 
+    /** Marks a chat as created inside OrionekoX. Real Telegram groups that merely
+     *  contain an Ox agent must not be treated as locally-created targets. */
+    public static synchronized void markLocallyCreated(long chatId) {
+        prefs().edit().putBoolean("created_" + key(chatId), true).apply();
+    }
+
+    public static synchronized boolean isLocallyCreated(long chatId) {
+        return prefs().getBoolean("created_" + key(chatId), false);
+    }
+
     /** Recent conversation log for the group, capped at 40 entries. */
     public static synchronized List<OxChatEntry> loadChat(long chatId) {
         ArrayList<OxChatEntry> out = new ArrayList<>();

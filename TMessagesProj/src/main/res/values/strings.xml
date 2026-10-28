@@ -11865,6 +11865,10 @@
     <string name="OxUiChat">Chat</string>
     <string name="OxUiNoResults">No agents match this search.</string>
     <string name="OxUiCopyDone">Copied</string>
+    <string name="OxUiAttach">Attach an image</string>
+    <string name="OxUiGroups">Groups</string>
+    <string name="OxUiGroupMembers">Agents in chat: %d</string>
+    <string name="OxUiNotSent">Message not sent · tap to retry</string>
     <string name="OxObInterfaceTitle">Interface</string>
     <string name="OxObInterfaceTelegramSub">Native chat, contacts and settings</string>
     <string name="OxObInterfaceOxuiSub">Claude-inspired independent front end; feature parity is still in progress</string>

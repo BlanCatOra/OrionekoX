@@ -331,6 +331,7 @@ public class OxAgentsBridge {
         } catch (Throwable t) {
             logErr("createLocalGroup persist failed", t);
         }
+        OxGroupStore.markLocallyCreated(chatId);
 
         // A local service message makes the group appear in the dialog list and
         // gives the stock ChatActivity something to render immediately.

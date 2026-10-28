@@ -17,3 +17,4 @@ TMessagesProj/jni/ffmpeg/build_android
 orioneko.keystore
 dist/
 patches/*.patch
+__pycache__/

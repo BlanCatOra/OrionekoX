@@ -1,11 +1,15 @@
 package org.telegram.ui;
 
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -25,6 +29,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.ImageView;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -34,16 +39,22 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.R;
+import org.telegram.messenger.SendMessagesHelper;
+import org.telegram.tgnet.TLRPC;
 import org.telegram.ox.OxAgent;
 import org.telegram.ox.OxAgentStore;
 import org.telegram.ox.OxAgentsBridge;
 import org.telegram.ox.OxChatEntry;
+import org.telegram.ox.OxGroupStore;
 import org.telegram.ox.OxHarnessAdapter;
 import org.telegram.ox.OxMemoryStore;
 import org.telegram.ox.OxMode;
 
 import java.text.SimpleDateFormat;
+import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -60,9 +71,9 @@ public class OxUiPreviewActivity extends Activity {
     private static final int BONE = 0xFFF1EBDD;
     private static final int PAPER = 0xFFE5DCCB;
     private static final int INK = 0xFF14211C;
-    private static final int MUTED = 0xFF69766E;
+    private static final int MUTED = 0xFF566259;
     private static final int SIGNAL = 0xFFC8EF6A;
-    private static final int LINE = 0x3314211C;
+    private static final int LINE = 0x8C14211C;
     private static final int CORAL = 0xFFCE6549;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -85,6 +96,25 @@ public class OxUiPreviewActivity extends Activity {
     private String lastSignature = "";
     private boolean firstRender = true;
     private boolean rootMode;
+    private long selectedChatId;
+    private String selectedGroupTitle = "";
+    private String pendingImagePath;
+    private boolean userJustSent;
+    private String failedText;
+    private String failedImagePath;
+    private String failedTargetKey;
+    private final List<GroupItem> groupItems = new ArrayList<>();
+    private LinearLayout attachRow;
+    private ImageView attachPreview;
+    private TextView attachName;
+
+    private static class GroupItem {
+        long chatId;
+        String title;
+        int agents;
+    }
+
+    private static final int REQ_PICK_IMAGE = 1001;
 
     private final Runnable poll = new Runnable() {
         @Override
@@ -112,6 +142,7 @@ public class OxUiPreviewActivity extends Activity {
         rootMode = getIntent() != null && getIntent().getBooleanExtra("oxui_root", false);
         setContentView(buildRoot());
         loadAgents();
+        loadGroupsAsync();
         handler.post(poll);
     }
 
@@ -267,11 +298,54 @@ public class OxUiPreviewActivity extends Activity {
         composerWrap.setOrientation(LinearLayout.VERTICAL);
         composerWrap.setPadding(dp(16), dp(6), dp(16), dp(10));
 
+        attachRow = new LinearLayout(this);
+        attachRow.setOrientation(LinearLayout.HORIZONTAL);
+        attachRow.setGravity(Gravity.CENTER_VERTICAL);
+        attachRow.setPadding(dp(6), dp(4), dp(6), dp(8));
+        attachRow.setVisibility(View.GONE);
+        attachPreview = new ImageView(this);
+        attachPreview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        attachPreview.setBackground(plate(PAPER, 12, LINE, 1));
+        attachPreview.setClipToOutline(true);
+        attachRow.addView(attachPreview, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        attachName = new TextView(this);
+        attachName.setTextSize(12);
+        attachName.setTypeface(sans());
+        attachName.setTextColor(INK);
+        attachName.setSingleLine(true);
+        attachName.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+        attachName.setPadding(dp(10), 0, dp(8), 0);
+        attachRow.addView(attachName, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView attachCancel = new TextView(this);
+        attachCancel.setText("×");
+        attachCancel.setTextSize(20);
+        attachCancel.setTextColor(MUTED);
+        attachCancel.setGravity(Gravity.CENTER);
+        attachCancel.setOnClickListener(v -> {
+            pendingImagePath = null;
+            attachRow.setVisibility(View.GONE);
+            updateSendVisual();
+        });
+        attachRow.addView(attachCancel, new LinearLayout.LayoutParams(dp(36), dp(44)));
+        composerWrap.addView(attachRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
         LinearLayout composer = new LinearLayout(this);
         composer.setOrientation(LinearLayout.HORIZONTAL);
         composer.setGravity(Gravity.CENTER_VERTICAL);
         composer.setPadding(dp(6), dp(4), dp(6), dp(4));
         composer.setBackground(plate(PAPER, 22, LINE, 1));
+
+        TextView attach = new TextView(this);
+        attach.setText("＋");
+        attach.setTextSize(19);
+        attach.setTypeface(sans());
+        attach.setTextColor(INK);
+        attach.setGravity(Gravity.CENTER);
+        attach.setContentDescription(LocaleController.getString(R.string.OxUiAttach));
+        attach.setOnClickListener(v -> pickImage());
+        composer.addView(attach, new LinearLayout.LayoutParams(dp(40), dp(44)));
 
         input = new EditText(this);
         input.setHint(LocaleController.getString(R.string.OxUiHint));
@@ -330,13 +404,12 @@ public class OxUiPreviewActivity extends Activity {
         input.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) {
-                boolean ready = selected != null && selected.tgId != 0 && s.toString().trim().length() > 0;
-                send.setAlpha(ready ? 1f : 0.42f);
-                send.setEnabled(ready);
+                updateSendVisual();
             }
             @Override public void afterTextChanged(Editable s) {}
         });
         send.setEnabled(false);
+        updateSendVisual();
 
         FrameLayout shell = new FrameLayout(this);
         shell.addView(root, new FrameLayout.LayoutParams(
@@ -350,6 +423,175 @@ public class OxUiPreviewActivity extends Activity {
         return shell;
     }
 
+    private void updateSendVisual() {
+        if (send == null) return;
+        CharSequence text = input == null ? "" : input.getText();
+        boolean ready = (selected != null && selected.tgId != 0) || isGroupTarget();
+        ready = ready && ((text != null && text.toString().trim().length() > 0)
+                || pendingImagePath != null);
+        send.setEnabled(ready);
+        send.setAlpha(ready ? 1f : 0.9f);
+        send.setTextColor(ready ? INK : MUTED);
+        send.setBackground(plate(ready ? SIGNAL : PAPER, 22, ready ? 0 : LINE, 1));
+    }
+
+    private void pickImage() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("image/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(Intent.createChooser(intent,
+                    LocaleController.getString(R.string.OxUiAttach)), REQ_PICK_IMAGE);
+        } catch (Throwable t) {
+            Toast.makeText(this, R.string.OxUiNoAgentTitle, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String importPickedImage(android.net.Uri uri) {
+        try {
+            String ext = ".jpg";
+            String mime = getContentResolver().getType(uri);
+            if (mime != null) {
+                if (mime.contains("png")) ext = ".png";
+                else if (mime.contains("webp")) ext = ".webp";
+                else if (mime.contains("gif")) ext = ".gif";
+            }
+            File dir = new File(getFilesDir(), "oxui_media");
+            dir.mkdirs();
+            File dest = new File(dir, "img_" + System.currentTimeMillis() + ext);
+            try (InputStream in = getContentResolver().openInputStream(uri)) {
+                if (in == null) return null;
+                java.io.FileOutputStream out = new java.io.FileOutputStream(dest);
+                byte[] buf = new byte[16384];
+                int n;
+                long total = 0;
+                while ((n = in.read(buf)) > 0) {
+                    total += n;
+                    out.write(buf, 0, n);
+                    if (total > 16L * 1024 * 1024) break;
+                }
+                out.close();
+            }
+            return dest.getAbsolutePath();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQ_PICK_IMAGE || resultCode != RESULT_OK || data == null
+                || data.getData() == null) return;
+        String path = importPickedImage(data.getData());
+        if (path == null) {
+            Toast.makeText(this, R.string.OxUiNoAgentTitle, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        pendingImagePath = path;
+        attachRow.setVisibility(View.VISIBLE);
+        Bitmap bmp = decodeScaled(path, dp(240));
+        if (bmp != null) attachPreview.setImageBitmap(bmp);
+        attachName.setText(new File(path).getName());
+        updateSendVisual();
+    }
+
+    private Bitmap decodeScaled(String path, int max) {
+        try {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(path, o);
+            int sample = 1;
+            while (o.outWidth / sample > max * 2 || o.outHeight / sample > max * 2) sample *= 2;
+            BitmapFactory.Options o2 = new BitmapFactory.Options();
+            o2.inSampleSize = sample;
+            return BitmapFactory.decodeFile(path, o2);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private void addUserImage(String imagePath, long ts) {
+        Bitmap bmp = decodeScaled(imagePath, dp(300));
+        if (bmp == null) return;
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.END);
+        row.setPadding(0, dp(12), 0, 0);
+        ImageView view = new ImageView(this);
+        view.setImageBitmap(bmp);
+        view.setAdjustViewBounds(true);
+        view.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.7f));
+        view.setBackground(plate(PAPER, 16, LINE, 1));
+        view.setClipToOutline(true);
+        row.addView(view, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        messages.addView(row, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+    }
+
+    private void addFailed() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(12), 0, 0);
+        View bar = new View(this);
+        bar.setBackgroundColor(CORAL);
+        row.addView(bar, new LinearLayout.LayoutParams(dp(2), dp(34)));
+        TextView text = new TextView(this);
+        text.setText(LocaleController.getString(R.string.OxUiNotSent));
+        text.setTextSize(12.5f);
+        text.setTypeface(sans());
+        text.setTextColor(CORAL);
+        text.setPadding(dp(10), 0, 0, 0);
+        text.setOnClickListener(v -> {
+            if (failedText == null && failedImagePath == null) return;
+            pendingText = failedText;
+            pendingImagePath = failedImagePath;
+            pendingAgentId = failedTargetKey;
+            pendingAt = System.currentTimeMillis();
+            pendingBaseSize = history().size();
+            userJustSent = true;
+            failedText = null;
+            failedImagePath = null;
+            failedTargetKey = null;
+            lastSignature = "";
+            refresh(true);
+            dispatchSend(pendingText, pendingImagePath);
+        });
+        row.addView(text, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        messages.addView(row, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+    }
+
+    private void dispatchSend(String text, String imagePath) {
+        if (isGroupTarget()) {
+            if (imagePath != null) {
+                ArrayList<SendMessagesHelper.SendingMediaInfo> infos = new ArrayList<>();
+                SendMessagesHelper.SendingMediaInfo info = new SendMessagesHelper.SendingMediaInfo();
+                info.path = imagePath;
+                info.caption = text == null ? "" : text;
+                infos.add(info);
+                OxAgentsBridge.handleOutgoingGroupMedia(targetDialogId(), infos);
+            } else {
+                OxAgentsBridge.sendLocalGroupText(targetDialogId(), text, null);
+            }
+            return;
+        }
+        if (selected == null || selected.tgId == 0) return;
+        if (imagePath != null) {
+            ArrayList<SendMessagesHelper.SendingMediaInfo> infos = new ArrayList<>();
+            SendMessagesHelper.SendingMediaInfo info = new SendMessagesHelper.SendingMediaInfo();
+            info.path = imagePath;
+            info.caption = text == null ? "" : text;
+            infos.add(info);
+            OxAgentsBridge.handleOutgoingMedia(selected.tgId, infos);
+        } else {
+            OxAgentsBridge.sendFromOxUi(selected, text);
+        }
+    }
+
     private void openTelegramUi() {
         if (rootMode) {
             OxMode.setInterfaceMode(OxMode.IFACE_TELEGRAM);
@@ -358,6 +600,23 @@ public class OxUiPreviewActivity extends Activity {
             startActivity(intent);
         }
         finish();
+    }
+
+    private boolean isGroupTarget() {
+        return selectedChatId != 0;
+    }
+
+    private long targetDialogId() {
+        return selectedChatId == 0 ? (selected == null ? 0 : selected.tgId) : -selectedChatId;
+    }
+
+    private String targetKey() {
+        return isGroupTarget() ? "g" + selectedChatId : (selected == null ? "" : selected.id);
+    }
+
+    private String targetName() {
+        if (isGroupTarget()) return selectedGroupTitle;
+        return selected == null || selected.name == null ? "Agent" : selected.name;
     }
 
     private void copy(String text) {
@@ -557,7 +816,8 @@ public class OxUiPreviewActivity extends Activity {
             llp.leftMargin = dp(51);
             list.addView(line, llp);
         }
-        if (shown == 0) {
+        renderGroupList(list, query);
+        if (shown == 0 && groupItems.isEmpty()) {
             TextView empty = new TextView(this);
             empty.setText(LocaleController.getString(R.string.OxUiNoResults));
             empty.setTextSize(13.5f);
@@ -705,6 +965,110 @@ public class OxUiPreviewActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
+    private void loadGroupsAsync() {
+        new Thread(() -> {
+            List<GroupItem> out = new ArrayList<>();
+            try {
+                for (long chatId : OxGroupStore.chatIds()) {
+                    if (!OxGroupStore.isLocallyCreated(chatId)) continue;
+                    GroupItem item = new GroupItem();
+                    item.chatId = chatId;
+                    item.agents = OxGroupStore.agents(chatId).size();
+                    TLRPC.Chat chat = MessagesController.getInstance(0).getChat(chatId);
+                    item.title = chat != null && !TextUtils.isEmpty(chat.title)
+                            ? chat.title : ("Group " + chatId);
+                    out.add(item);
+                }
+            } catch (Throwable ignored) {
+            }
+            List<GroupItem> finalOut = out;
+            runOnUiThread(() -> {
+                groupItems.clear();
+                groupItems.addAll(finalOut);
+            });
+        }, "oxui-groups").start();
+    }
+
+    private void selectGroup(GroupItem item) {
+        selected = null;
+        selectedChatId = item.chatId;
+        selectedGroupTitle = item.title;
+        pendingText = null;
+        pendingAgentId = null;
+        lastSignature = "";
+        hideOverlay();
+        renderAgents();
+        refresh(true);
+    }
+
+    private void renderGroupList(LinearLayout list, String query) {
+        list.removeAllViews();
+        if (groupItems.isEmpty()) return;
+        String q = query == null ? "" : query.toLowerCase(Locale.ROOT);
+        List<GroupItem> shown = new ArrayList<>();
+        for (GroupItem item : groupItems) {
+            String title = item.title == null ? "" : item.title;
+            if (!q.isEmpty() && !title.toLowerCase(Locale.ROOT).contains(q)) continue;
+            shown.add(item);
+        }
+        if (shown.isEmpty()) return;
+        TextView header = new TextView(this);
+        header.setText(LocaleController.getString(R.string.OxUiGroups));
+        header.setTextSize(11);
+        header.setTypeface(mono());
+        header.setTextColor(MUTED);
+        header.setLetterSpacing(0.06f);
+        header.setPadding(dp(4), dp(18), dp(4), dp(6));
+        list.addView(header, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        for (GroupItem item : shown) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(4), dp(13), dp(4), dp(13));
+            row.setBackground(new android.graphics.drawable.RippleDrawable(
+                    ColorStateList.valueOf(0x1814211C), null, null));
+            TextView badge = new TextView(this);
+            badge.setText("👥");
+            badge.setTextSize(16);
+            badge.setGravity(Gravity.CENTER);
+            badge.setBackground(plate(PAPER, 20, LINE, 1));
+            row.addView(badge, new LinearLayout.LayoutParams(dp(38), dp(38)));
+            LinearLayout text = new LinearLayout(this);
+            text.setOrientation(LinearLayout.VERTICAL);
+            text.setPadding(dp(13), 0, dp(8), 0);
+            TextView name = new TextView(this);
+            name.setText(item.title);
+            name.setTextSize(16);
+            name.setTypeface(sans());
+            name.setTextColor(INK);
+            text.addView(name);
+            TextView sub = new TextView(this);
+            sub.setText(LocaleController.formatString("OxUiGroupMembers",
+                    R.string.OxUiGroupMembers, item.agents));
+            sub.setTextSize(11.5f);
+            sub.setTypeface(sans());
+            sub.setTextColor(MUTED);
+            text.addView(sub);
+            row.addView(text, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            TextView more = new TextView(this);
+            more.setText("›");
+            more.setTextSize(20);
+            more.setTextColor(MUTED);
+            more.setGravity(Gravity.CENTER);
+            row.addView(more, new LinearLayout.LayoutParams(dp(28), dp(38)));
+            row.setOnClickListener(v -> selectGroup(item));
+            list.addView(row, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            View line = sectionRule();
+            LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 1);
+            llp.leftMargin = dp(51);
+            list.addView(line, llp);
+        }
+    }
+
     private void loadAgents() {
         agents.clear();
         for (OxAgent a : OxAgentStore.listAgents()) {
@@ -758,29 +1122,39 @@ public class OxUiPreviewActivity extends Activity {
     }
 
     private List<OxChatEntry> history() {
+        if (isGroupTarget()) return OxGroupStore.loadChat(selectedChatId);
         if (selected == null) return new ArrayList<>();
         return OxAgentStore.loadChat(selected.id);
     }
 
     private void refresh(boolean force) {
-        if (selected == null) {
+        if (selected == null && !isGroupTarget()) {
             renderEmpty(LocaleController.getString(R.string.OxUiNoAgentTitle),
                     LocaleController.getString(R.string.OxUiNoAgentBody));
             return;
         }
         List<OxChatEntry> chat = history();
-        if (pendingText != null && pendingAgentId != null
-                && pendingAgentId.equals(selected.id)) {
+        String key = targetKey();
+        if (pendingText != null && pendingAgentId != null && pendingAgentId.equals(key)) {
             if (chat.size() > pendingBaseSize && containsUser(chat, pendingText, pendingBaseSize)) {
                 pendingText = null;
                 pendingAgentId = null;
+                failedText = null;
+                failedImagePath = null;
+                failedTargetKey = null;
             } else if (System.currentTimeMillis() - pendingAt > 120_000) {
+                failedText = pendingText;
+                failedImagePath = pendingImagePath;
+                failedTargetKey = key;
                 pendingText = null;
                 pendingAgentId = null;
+                pendingImagePath = null;
+                updateSendVisual();
             }
         }
         String sig = signature(chat) + "|"
-                + (pendingText == null ? "" : "pending:" + pendingText);
+                + (pendingText == null ? "" : "pending:" + pendingText)
+                + "|" + (failedText == null || !key.equals(failedTargetKey) ? "" : "failed");
         if (!force && sig.equals(lastSignature)) return;
         lastSignature = sig;
         renderConversation(chat);
@@ -798,7 +1172,8 @@ public class OxUiPreviewActivity extends Activity {
         if (chat.isEmpty()) return "0";
         OxChatEntry last = chat.get(chat.size() - 1);
         return chat.size() + ":" + (last == null ? "" : last.role)
-                + ":" + (last == null || last.content == null ? 0 : last.content.hashCode());
+                + ":" + (last == null || last.content == null ? 0 : last.content.hashCode())
+                + ":" + (last == null || last.imagePath == null ? "" : last.imagePath);
     }
 
     private void renderEmpty(String title, String body) {
@@ -835,23 +1210,35 @@ public class OxUiPreviewActivity extends Activity {
         int start = Math.max(0, chat.size() - 80);
         for (int i = start; i < chat.size(); i++) {
             OxChatEntry e = chat.get(i);
-            if (e == null || e.content == null || e.content.trim().isEmpty()) continue;
+            if (e == null) continue;
+            boolean hasText = e.content != null && !e.content.trim().isEmpty();
+            boolean hasImage = e.imagePath != null && new File(e.imagePath).isFile();
+            if (!hasText && !hasImage) continue;
             if ("user".equals(e.role)) {
-                addUser(e.content, e.ts, false);
+                addUser(e.content, e.ts, false, hasImage ? e.imagePath : null);
             } else if ("assistant".equals(e.role)) {
                 addAssistant(e.content, e.ts);
             } else if ("tool".equals(e.role)) {
                 addTool(e.content);
             }
         }
-        if (pendingText != null) {
-            addUser(pendingText, System.currentTimeMillis(), true);
+        if (pendingText != null || pendingImagePath != null) {
+            addUser(pendingText, System.currentTimeMillis(), true, pendingImagePath);
             addWorking();
+        }
+        if (failedText != null && targetKey().equals(failedTargetKey)) {
+            addFailed();
         }
         final boolean animate = firstRender;
         firstRender = false;
         scroll.post(() -> {
-            scroll.fullScroll(View.FOCUS_DOWN);
+            View content = scroll.getChildAt(0);
+            boolean nearBottom = content == null || content.getHeight() - scroll.getHeight()
+                    - scroll.getScrollY() < dp(120);
+            if (nearBottom || userJustSent) {
+                scroll.fullScroll(View.FOCUS_DOWN);
+            }
+            userJustSent = false;
             if (animate) {
                 messages.setAlpha(0f);
                 messages.setTranslationY(dp(10));
@@ -860,7 +1247,9 @@ public class OxUiPreviewActivity extends Activity {
         });
     }
 
-    private void addUser(String text, long ts, boolean sending) {
+    private void addUser(String text, long ts, boolean sending, String imagePath) {
+        if (imagePath != null) addUserImage(imagePath, ts);
+        if (text == null || text.trim().isEmpty()) return;
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.END);
@@ -901,8 +1290,7 @@ public class OxUiPreviewActivity extends Activity {
         body.setOrientation(LinearLayout.VERTICAL);
         body.setPadding(dp(13), 0, dp(8), 0);
         TextView meta = new TextView(this);
-        meta.setText((selected == null || selected.name == null ? "Agent" : selected.name)
-                + "  ·  " + time(ts));
+        meta.setText(targetName() + "  ·  " + time(ts));
         meta.setTextSize(10.5f);
         meta.setTypeface(mono());
         meta.setTextColor(MUTED);
@@ -953,6 +1341,18 @@ public class OxUiPreviewActivity extends Activity {
         View dot = new View(this);
         dot.setBackground(plate(SIGNAL, 4, 0, 0));
         row.addView(dot, new LinearLayout.LayoutParams(dp(7), dp(7)));
+        try {
+            float scale = android.provider.Settings.Global.getFloat(getContentResolver(),
+                    android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f);
+            if (scale > 0) {
+                ObjectAnimator breath = ObjectAnimator.ofFloat(dot, View.ALPHA, 0.25f, 1f);
+                breath.setDuration(700);
+                breath.setRepeatCount(ValueAnimator.INFINITE);
+                breath.setRepeatMode(ValueAnimator.REVERSE);
+                breath.start();
+            }
+        } catch (Throwable ignored) {
+        }
         TextView t = new TextView(this);
         t.setText("  " + LocaleController.getString(R.string.OxUiThinking));
         t.setTextSize(11.5f);
@@ -980,23 +1380,24 @@ public class OxUiPreviewActivity extends Activity {
     }
 
     private void sendMessage() {
-        if (selected == null) {
+        boolean targetReady = (selected != null && selected.tgId != 0) || isGroupTarget();
+        if (!targetReady) {
             Toast.makeText(this, R.string.OxUiNoAgentTitle, Toast.LENGTH_SHORT).show();
             return;
         }
-        if (selected.tgId == 0) {
-            Toast.makeText(this, R.string.OxUiNoAgentBody, Toast.LENGTH_SHORT).show();
-            return;
-        }
         String text = input.getText() == null ? "" : input.getText().toString().trim();
-        if (text.isEmpty()) return;
+        if (text.isEmpty() && pendingImagePath == null) return;
         pendingText = text;
-        pendingAgentId = selected.id;
+        pendingAgentId = targetKey();
         pendingAt = System.currentTimeMillis();
         pendingBaseSize = history().size();
+        userJustSent = true;
         lastSignature = "";
         input.setText("");
+        attachRow.setVisibility(View.GONE);
         refresh(true);
-        OxAgentsBridge.sendFromOxUi(selected, text);
+        dispatchSend(pendingText, pendingImagePath);
+        pendingImagePath = null;
+        updateSendVisual();
     }
 }

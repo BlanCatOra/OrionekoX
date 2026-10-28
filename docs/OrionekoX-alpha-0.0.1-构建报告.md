@@ -4051,6 +4051,34 @@ debug `dist/OrionekoX-0.61.0-debug-arm64-x64.apk`（sha256
 `6e6cc172662318e38725dfd5c7fea12297e5ddb2f57da38d786b247999287e54`）。
 详见 `docs/qa-0.61.0.md`。
 
+## 5.184 alpha 0.62.0 —— OxUI 图片附件 + 本地群组 groundwork + 视觉 P0（2026-10-28 23:10–00:20）
+
+- 按用户 token 策略，本轮以 2 个后台子代理并行完成特性审计与视觉评审，
+  主线随后落地：composer 图片附件端到端、本地群组 listing/对话/发送
+  groundwork（含本地创建群标记）、以及视觉评审 P0 修复（MUTED/LINE
+  对比度、回复点呼吸动画、自动滚动仅在近底部/刚发送时、coral 失败重试）。
+- 图片附件：＋按钮走 SAF `image/*`，URI 复制到 `files/oxui_media`（16MB
+  上限），1:1 走 `handleOutgoingMedia`（真实 photo 消息 + generatePhotoSizes
+  + 归档 + 视觉回合），群组走 `handleOutgoingGroupMedia`；OxUI 渲染
+  `imagePath` 圆角图片，signature 纳入 imagePath，纯图片条目不再被跳过。
+- 设备：echo 合成 Agent + 测试图 480x320，picker 选择 → 预览行 → 发送 →
+  `handleOutgoingMedia count=1` → photo 消息 + echo 回复同时出现在 OxUI
+  与 Telegram UI；截图 attach-preview / image-sent 已归档。
+- 群组：`OxGroupStore.markLocallyCreated/isLocallyCreated` 落地并由
+  `createLocalGroup` 打标；OxUI 面板 Groups 区 + 群对话 + 发送路径实现。
+  **缺口**：`createLocalGroup` 目前无调用方，Telegram UI New Group 在离线
+  本地账号上停在服务器请求，端到端群组链路暂无法验证（QA 文档如实标注），
+  下一轮接 New Group 离线分支。
+- 测试 Agent/图片/oxui_media/interface_mode 均清理恢复；release 6209
+  覆盖启动无 FATAL/ANR。
+- 版本规则：按 minor 从 0.61.0 → **0.62.0**（6209），patch 清零。
+
+**产物**：`dist/OrionekoX-0.62.0-alpha-arm64-x64.apk`（versionCode 6209，
+sha256 `62c546b0218171e81978dc4811dddbd5e3bc3f654ce9b908d3e0bd3ebd9bc22f`）；
+debug `dist/OrionekoX-0.62.0-debug-arm64-x64.apk`（sha256
+`b563e6c62d40b12c72e2b0aa859604e83299913359a6f5796563eb7f9cf3b6cf`）。
+详见 `docs/qa-0.62.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
