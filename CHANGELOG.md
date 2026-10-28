@@ -4,6 +4,23 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.63.0 — 2026-10-29
+
+- Wires the New Group flow to offline local chat creation: in agent-only
+  mode, MessagesController.createChat maps selected contacts to local agents
+  (real contacts are skipped, they cannot be invited offline), creates the
+  group through OxAgentsBridge.createLocalGroup, and posts
+  chatDidCreated/chatDidFailCreate via runOnUIThread so the create screen
+  recovers cleanly. An empty agent set fails instead of hanging on a server
+  request that ConnectionsManager drops without callbacks.
+- Groups are now end-to-end: created in Telegram UI, listed in the OxUI
+  Groups panel (titles resolve after cold start via getChatSync), messageable
+  from OxUI (rail group chip), and synced with Telegram UI.
+- Fixes three regressions: renderGroupList wiping agent rows, missing
+  getChatSync title fallback after cold start, and the rail group chip /
+  target reset lost in the 0.62 replay. Offline avatar upload on group
+  creation is documented as the next gap.
+
 ## 0.62.0 — 2026-10-28
 
 - Adds image attachments end-to-end in OxUI: a ＋ button opens the system

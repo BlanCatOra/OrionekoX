@@ -15071,6 +15071,41 @@ public class MessagesController extends BaseController implements NotificationCe
             // A freshly duplicated agent may not be in the users cache yet; without
             // this the loop below silently drops it from the create-chat request.
             org.telegram.ox.OxAgentsBridge.syncAgents(false);
+            // Agent-only builds have no server connection: ConnectionsManager drops
+            // every request without invoking callbacks, so a New Group must never
+            // fall through to sendRequest. Local agents become a local chat (real
+            // contacts cannot be invited offline and are skipped); an empty agent
+            // set fails cleanly so the create screen can recover.
+            if (org.telegram.ox.OxMode.isAgentOnly()) {
+                ArrayList<org.telegram.ox.OxAgent> localAgents = new ArrayList<>();
+                for (int a = 0; a < selectedContacts.size(); a++) {
+                    org.telegram.ox.OxAgent agent = org.telegram.ox.OxAgentsBridge.agentByTgId(selectedContacts.get(a));
+                    if (agent != null) {
+                        localAgents.add(agent);
+                    }
+                }
+                final String fTitle = title;
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (localAgents.isEmpty()) {
+                        getNotificationCenter().postNotificationName(NotificationCenter.chatDidFailCreate);
+                        return;
+                    }
+                    try {
+                        TLRPC.TL_messages_invitedUsers localRes =
+                                org.telegram.ox.OxAgentsBridge.createLocalGroup(fTitle, localAgents);
+                        if (localRes.updates.chats != null && !localRes.updates.chats.isEmpty()) {
+                            getNotificationCenter().postNotificationName(
+                                    NotificationCenter.chatDidCreated, localRes.updates.chats.get(0).id);
+                        } else {
+                            getNotificationCenter().postNotificationName(NotificationCenter.chatDidFailCreate);
+                        }
+                    } catch (Throwable t) {
+                        FileLog.e(t);
+                        getNotificationCenter().postNotificationName(NotificationCenter.chatDidFailCreate);
+                    }
+                });
+                return 0;
+            }
             TLRPC.TL_messages_createChat req = new TLRPC.TL_messages_createChat();
             req.title = title;
             if (ttlPeriod >= 0) {

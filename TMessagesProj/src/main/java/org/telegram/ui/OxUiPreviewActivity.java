@@ -40,6 +40,7 @@ import android.widget.Toast;
 
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
+import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.tgnet.TLRPC;
@@ -797,6 +798,8 @@ public class OxUiPreviewActivity extends Activity {
             row.addView(more, new LinearLayout.LayoutParams(dp(28), dp(38)));
             row.setOnClickListener(v -> {
                 selected = a;
+                selectedChatId = 0;
+                selectedGroupTitle = "";
                 pendingText = null;
                 pendingAgentId = null;
                 lastSignature = "";
@@ -975,6 +978,11 @@ public class OxUiPreviewActivity extends Activity {
                     item.chatId = chatId;
                     item.agents = OxGroupStore.agents(chatId).size();
                     TLRPC.Chat chat = MessagesController.getInstance(0).getChat(chatId);
+                    if (chat == null || TextUtils.isEmpty(chat.title)) {
+                        // Cold start: the chat cache loads asynchronously, so fall
+                        // back to a blocking storage read on this worker thread.
+                        chat = MessagesStorage.getInstance(0).getChatSync(chatId);
+                    }
                     item.title = chat != null && !TextUtils.isEmpty(chat.title)
                             ? chat.title : ("Group " + chatId);
                     out.add(item);
@@ -1002,7 +1010,6 @@ public class OxUiPreviewActivity extends Activity {
     }
 
     private void renderGroupList(LinearLayout list, String query) {
-        list.removeAllViews();
         if (groupItems.isEmpty()) return;
         String q = query == null ? "" : query.toLowerCase(Locale.ROOT);
         List<GroupItem> shown = new ArrayList<>();
@@ -1090,6 +1097,22 @@ public class OxUiPreviewActivity extends Activity {
 
     private void renderAgents() {
         agentRail.removeAllViews();
+        if (isGroupTarget()) {
+            TextView groupChip = new TextView(this);
+            groupChip.setText("👥  " + selectedGroupTitle);
+            groupChip.setTextSize(13);
+            groupChip.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            groupChip.setTextColor(BONE);
+            groupChip.setGravity(Gravity.CENTER);
+            groupChip.setMaxWidth(dp(190));
+            groupChip.setSingleLine(true);
+            groupChip.setEllipsize(TextUtils.TruncateAt.END);
+            groupChip.setPadding(dp(14), dp(9), dp(14), dp(9));
+            groupChip.setBackground(plate(INK, 20, 0, 0));
+            groupChip.setOnClickListener(v -> showAgentPanel());
+            agentRail.addView(groupChip, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
         for (OxAgent a : agents) {
             boolean active = selected != null && a.id.equals(selected.id);
             TextView chip = new TextView(this);

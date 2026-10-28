@@ -1388,8 +1388,11 @@ These confirm the feature directions rather than relying on guesses. Checked
    agent detail + memory stats and long-press copy; 0.62.0 adds image
    attachments end-to-end (SAF picker → real photo message → vision turn),
    locally-created-group groundwork with a Groups panel, contrast/breathing/
-   auto-scroll/retry fixes from a subagent visual review. Still open: wiring
-   group creation (createLocalGroup has no caller yet), video/GIF/file
-   attachments, chat search, settings, agent editing, tablet layout, dark
-   variant, reduced-motion/accessibility sweep, token-level streaming. It is
-   not yet a complete replacement for Telegram UI.
+   auto-scroll/retry fixes from a subagent visual review. 0.63.0 wires New Group
+   creation to the offline local-chat path, so groups are now listed in the
+   Groups panel and messageable from OxUI with Telegram UI sync. Still open:
+   offline avatar upload on group creation, video/GIF/file attachments, chat
+   search, settings, agent editing, per-agent attribution in group replies,
+   tablet layout, dark variant, reduced-motion/accessibility sweep,
+   token-level streaming. It is not yet a complete replacement for Telegram
+   UI.

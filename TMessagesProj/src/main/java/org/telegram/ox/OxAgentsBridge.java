@@ -276,7 +276,10 @@ public class OxAgentsBridge {
         return seq;
     }
 
-    private static TLRPC.TL_messages_invitedUsers createLocalGroup(String title, ArrayList<OxAgent> agents) {
+    /** Offline New Group: builds a real local chat (persisted chat/full + create
+     *  service message + dialog row) and marks it as locally created so OxUI can
+     *  list and message it. Must run on the UI thread. */
+    public static TLRPC.TL_messages_invitedUsers createLocalGroup(String title, ArrayList<OxAgent> agents) {
         long chatId = nextLocalChatId();
         int now = (int) (System.currentTimeMillis() / 1000);
         TLRPC.User me = MessagesController.getInstance(0).getUser(SELF_ID);

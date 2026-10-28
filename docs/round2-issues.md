@@ -662,3 +662,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：debug 6209，echo Agent + 480x320 测试图，picker→预览→发送，logcat `handleOutgoingMedia dialog=555000018 count=1`、photo 消息 id=100072 与 echo 回复 id=100073 同时出现在 OxUI 与 Telegram UI。15 个桥接测试通过；测试数据清理为 0，`interface_mode` 恢复 telegram。
 - 边界：群组创建链路未接通（createLocalGroup 无调用方，New Group 离线停留服务器请求）；附件仅图片；会话搜索/设置/记忆/Agent 编辑/平板/暗色/reduced-motion/无障碍清扫未做。
+
+## 0.63.0 本地群端到端 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-130 | 0.63.0 功能 | New Group 流程在离线本地账号停在服务器请求（ConnectionsManager 丢弃请求且不回调），createLocalGroup 无调用方，群组无法端到端 | createChat 在 syncAgents 后增加 agent-only 分支：全本地 agent → createLocalGroup + chatDidCreated(chatId)；空 agent 集或异常 → chatDidFailCreate 恢复创建页；真实联系人跳过；通知经 runOnUIThread | 已实现并设备验证（创建→列表→发送→同步） |
+| R2-131 | 0.63.0 QA | renderGroupList 开头 removeAllViews 清掉 agent 行；冷启动群标题显示 Group <id>；rail 群 chip/agent chip 目标重置在 0.62 重放中丢失 | 去掉多余清空、getChatSync 回退标题、补齐群 chip 与目标重置；验证选群/切回 | 已修复并设备验证 |
+
+- 设备：debug 6309，Telegram UI 创建 `OxUI QA 630`（logcat `createLocalGroup id=1800000000 agents=1`、`created_1800000000=true`），OxUI Groups 区列出、rail ink 群 chip、发送 GROUP-TEST-630（id=100076）+ echo 回复（id=100077），Telegram chats 列表同步显示。15 桥接测试通过；测试 Agent/群数据清理 0，interface_mode 恢复 telegram，无 FATAL/ANR。
+- 边界：头像离线上传死锁未解（New Group 选头像会卡，QA 未选头像）；群回复 meta 用群名（无 sender 字段）；“Reply to <agent>” 定向、视觉评审 P1/P2 清单未做；Claude 403、OxLinux exec 限制未变。
