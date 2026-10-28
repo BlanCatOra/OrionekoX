@@ -59,7 +59,9 @@ public class OxRikkaImporter {
         public int skills;
         public int messages;
         public int avatars;
+        public int files;
         public final List<String> importedAgentIds = new ArrayList<>();
+        public final List<String> conversationIds = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
 
@@ -138,9 +140,12 @@ public class OxRikkaImporter {
             p.conversations = history[0];
             p.messageNodes = history[1];
         }
-        p.notes.add("仅导入 settings.json、skills/ 技能、助手图像头像、聊天文本历史与匹配的图片附件；不含其他附件和 OAuth token。");
+        p.notes.add("仅导入 settings.json、skills/ 技能、助手图像头像、聊天文本历史与匹配的图片/文件附件；不含其他附件和 OAuth token。");
         if (p.avatars > 0) {
             p.notes.add("将导入 " + p.avatars + " 个助手图像头像。");
+        }
+        if (archive.database != null && archive.database.length > 0) {
+            p.notes.add("历史中的 document 附件会匹配 upload/ 后作为文件气泡导入。");
         }
         if (p.conversations > 0) {
             p.notes.add("历史按每个消息节点的当前分支导入；工具与未匹配附件的消息会跳过。");
@@ -278,6 +283,7 @@ public class OxRikkaImporter {
             r.mcpAdded++;
         }
         importConversations(archive.database, archive.uploads, r);
+        if (r.files > 0) r.notes.add("导入附件 " + r.files + " 个");
         return r;
     }
 
@@ -597,6 +603,8 @@ public class OxRikkaImporter {
                         if (!"user".equals(role) && !"assistant".equals(role)) continue;
                         StringBuilder text = new StringBuilder();
                         String imagePath = null;
+                        String filePath = null;
+                        String fileName = "";
                         JSONArray parts = message.optJSONArray("parts");
                         if (parts != null) {
                             for (int p = 0; p < parts.length(); p++) {
@@ -606,6 +614,16 @@ public class OxRikkaImporter {
                                 if ("image".equals(type)) {
                                     if (imagePath == null) {
                                         imagePath = materializeUpload(part.optString("url", ""), uploads, uploaded);
+                                    }
+                                    continue;
+                                }
+                                if ("document".equals(type)) {
+                                    if (filePath == null) {
+                                        filePath = materializeUpload(part.optString("url", ""), uploads, uploaded);
+                                        fileName = part.optString("fileName", "").trim();
+                                        if (fileName.isEmpty() && filePath != null) {
+                                            fileName = new File(filePath).getName();
+                                        }
                                     }
                                     continue;
                                 }
@@ -620,17 +638,26 @@ public class OxRikkaImporter {
                         }
                         String content = text.toString().trim();
                         if (content.isEmpty() && imagePath != null) content = "[图片]";
-                        if (content.isEmpty()) continue;
+                        if (content.isEmpty() && imagePath == null && filePath == null) continue;
                         if (content.length() > 100_000) content = content.substring(0, 100_000);
                         long ts = base + order * 1000L;
                         order++;
                         String key = role + "\u0000" + content + "\u0000" + ts;
                         Set<String> keys = seen.get(agentId);
                         if (keys != null && !keys.add(key)) continue;
-                        chat.add(imagePath == null
+                        OxChatEntry entry = imagePath == null
                                 ? new OxChatEntry(role, content, ts)
-                                : new OxChatEntry(role, content, ts, imagePath));
+                                : new OxChatEntry(role, content, ts, imagePath);
+                        if (filePath != null) {
+                            entry.filePath = filePath;
+                            entry.fileName = fileName;
+                            r.files++;
+                        }
+                        chat.add(entry);
                         total++;
+                        if (!r.conversationIds.contains(agentId)) {
+                            r.conversationIds.add(agentId);
+                        }
                     }
                 } catch (Throwable t) {
                     r.notes.add("读取会话历史失败：" + ids.get(i));

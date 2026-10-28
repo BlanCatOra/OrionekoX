@@ -400,3 +400,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：Agent 背景 BG38 + 会话覆盖 BG40；原生聊天显示 BG40；导出 14,441 B，资源解码 sha256 与 BG40 一致（非 BG38）；删除原 Agent/主题/会话文件后回环导入，background.png hash 仍为 BG40，原生聊天 BG40 恢复；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
 - 边界：回环后会话背景映射为 Agent 背景，不保留会话 specificity；仅图片；外部 Chatbox 未实测。
+
+## 0.41.0 RikkaHub 文件附件导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-81 | 0.41.0 QA | RikkaHub 历史中的非图片 `document` part 只被跳过，`upload/` 里的附件不会进入本地会话 | 解析 document 的 `url`/`fileName`，匹配 `upload/` 后复制到 `files/rikka_upload_<name>`，写入 `OxChatEntry.filePath/fileName`；纯文件消息允许空正文，结果统计附件数 | 已修复 |
+| R2-82 | 0.41.0 QA | RikkaHub 历史已写入 `chat.json`，但导入后原生会话仍只显示开场白，看不到历史消息 | 导入器记录实际新增消息的会话，导入完成后调用 `OxAgentsBridge.replayImportedHistory`，按时间回放原生消息 | 已修复 |
+
+- 设备：1,064 B 最小备份含 1 会话、2 条消息和 37 B `report.txt`；首次导入结果“已导入历史消息 2 条，导入附件 1 个”，`chat.json` 两条且文件路径/文件名正确；修复回放后原生聊天显示 `report.txt` 文件气泡（37 B · TXT，正文“看附件”）与助手“收到附件”；重复导入无新增、无重复气泡；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：每条消息只取第一个 document；仅图片与 document，video/audio 跳过；仅匹配 `upload/`，不下载远程/data URL；附件暂不进入 Chatbox 导出。

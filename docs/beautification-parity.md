@@ -760,6 +760,24 @@ These confirm the feature directions rather than relying on guesses. Checked
   image backgrounds are exported (not global or video), and no real Chatbox
   client test yet.
 
+## 0.41.0 implementation — RikkaHub document attachments
+
+- RikkaHub `document` parts are matched against `upload/` entries, copied to
+  `files/rikka_upload_<name>`, and stored on `OxChatEntry.filePath`/`fileName`;
+  messages may be pure files with an empty caption.
+- The importer counts new attachments and reports “导入附件 N 个”. It also tracks
+  conversations that received new messages and calls
+  `OxAgentsBridge.replayImportedHistory`, fixing the case where `chat.json` had
+  history while the native chat still showed only the greeting.
+- Device QA: a 1,064 B backup with one 37 B `report.txt` imported two messages
+  and one attachment; the native chat showed a `report.txt` document bubble
+  (37 B · TXT, caption “看附件”) and the assistant reply. A repeat import added
+  no rows and left two messages; cleanup removed the agent/upload/sample and
+  dialogs/messages returned to zero with no app FATAL/ANR.
+- Limits: only the first document per message; images and documents only
+  (video/audio skipped); only `upload/` matches (no remote/data-URL download);
+  imported files are not yet included in Chatbox export.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -767,8 +785,9 @@ These confirm the feature directions rather than relying on guesses. Checked
    mapped by 0.26.2).
 2. Kelivo full backup import beyond assistants/skills/conversations/MCP/avatars/
    images/attachments: video backgrounds and workspaces; SSE/stdio MCP with their tool
-   allowlists; RikkaHub non-selected branches, non-image attachments,
-   per-conversation grouping, skill attachments and standalone providers.
+   allowlists; RikkaHub non-selected branches, per-conversation grouping, skill
+   attachments and standalone providers; RikkaHub video/audio parts and multiple
+   documents per message.
 3. Bidirectional export still lacks workspaces, memory, themes, global/video
    backgrounds, MCP headers/OAuth and server selection, plus validation against
    real external clients.

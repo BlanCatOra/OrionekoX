@@ -4,6 +4,25 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.41.0 — 2026-10-28
+
+- RikkaHub backups now import non-image `document` parts as local file
+  messages. The importer matches the part URL against `upload/`, copies the
+  file into app-private storage, stores `file_path`/`file_name`, and allows
+  pure-file messages with an empty caption; the result reports the attachment
+  count.
+- Imported RikkaHub conversation history is now replayed into the native chat
+  after import. Previously `chat.json` received the messages but the native
+  dialog could still show only the greeting.
+- Verified with a 1,064 B backup (one conversation, two messages, 37 B
+  `report.txt`): the native chat rendered a `report.txt` document bubble
+  (37 B · TXT, caption “看附件”) and the assistant reply. A repeat import
+  added no duplicate rows; cleanup returned dialogs/messages to zero with no
+  app FATAL/ANR.
+- Limits: only the first document per message; images/documents only;
+  video/audio are skipped; only `upload/` matches are supported; imported
+  files are not yet part of Chatbox export.
+
 ## 0.40.0 — 2026-10-28
 
 - Chatbox export now prefers the active conversation background over the agent
