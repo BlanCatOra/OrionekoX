@@ -2043,7 +2043,8 @@ public class OxAgentsBridge {
         }
         if (system.length() > 0) system.append("\n\n");
         system.append("# 记忆使用规则\n如果用户提到过去的事情而你不确定，先调用 recall 或 memory_search 查证；"
-                + "不要把猜测说成事实。确认过的记忆可以引用日期，未找到时明确说没有记录。");
+                + "不要把猜测说成事实。确认过的记忆可以引用日期；同一主题有冲突时，以时间最新的事实条目为准，"
+                + "旧对话与摘要只作历史参考。未找到时明确说没有记录。");
         return from;
     }
 

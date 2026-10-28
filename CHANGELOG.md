@@ -4,6 +4,42 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.53.0 — 2026-10-28
+
+- Rebuilt memory retrieval after reviewing Mem0, MemGPT, Graphiti, Generative
+  Agents, FSRS, MemoryBank and LangMem. Retrieval now combines BM25 (computed in
+  Java per agent), local vector cosine (vector mode), power-curve retention,
+  importance and access count, then applies MMR to avoid near-duplicate
+  results.
+- Schema v2 adds difficulty, valid-from, invalid-at and subject keys and
+  migrates v1 rows in place. The fixed half-life decay became the FSRS-style
+  power curve `R=1/(1+ageDays/(9*S))`; recall raises stability and lowers
+  difficulty, and entries promote to long-term at two recalls or stability
+  >=21 days.
+- Facts are split on English and CJK sentence punctuation. A richer same-subject
+  fact updates the existing entry; changed values, numeric differences or
+  negation conflicts invalidate the old fact while preserving history. Invalid
+  facts are excluded from normal recall, allowed only for explicit historical
+  queries, and scrubbed from active summaries. More than six summaries are
+  merged into a rolling summary.
+- `memory_search` and `memory_verify` use the new ranking; verification returns
+  facts before historical turns and suppresses old turns when a fact matches.
+  The prompt instructs the model to prefer the newest fact on conflicts and
+  treat old turns/summaries as history.
+- Verified with a deterministic 60-message fixture (birthday 3/14 to 3/15,
+  favorite color blue to green, name/coffee/city facts): active facts ended as
+  name/coffee/Hangzhou/3-15/green, the old 3/14 and blue entries were
+  invalidated, the summary lost the stale lines, `memory_search` ranked the
+  active 3/15 fact first, and verification for birthday/color returned only the
+  active values. Vector mode ranked the coffee fact at 0.83; recall raised
+  stability and lowered difficulty. No app FATAL/ANR; test rows and dialogs
+  were removed.
+- Limits: the vector is still a local hash projection, not a semantic
+  embedding; summaries remain extractive; there is no graph memory, token
+  pressure warning or asynchronous model distillation; current providers expose
+  no embedding model (opendesign model_not_found, opencode-go 403). Research
+  notes and reproducible fixture/mock scripts are included for the next rounds.
+
 ## 0.52.0 — 2026-10-28
 
 - Adds a per-agent local memory library (`databases/oxmemory.db`) that stores

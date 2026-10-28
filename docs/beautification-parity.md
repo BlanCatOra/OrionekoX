@@ -31,7 +31,7 @@ requirements.
 | RikkaHub backup settings | — | — | `settings.json` + DB/files | **0.19.0** assistants/providers/MCP; **0.20.0** skills; **0.21.x** skills/headers/openers; **0.24.0** selected-branch text history; **0.25.0** matching `upload/` images as history vision context; tool parts, other files and OAuth not imported |
 | Kelivo / Chatbox assistant backup | — | `copilots.json`, `assistants_v1` | — | **0.26.0** assistants/personas with prompt, sampling, headers and model-name override; **0.28–0.44** conversations, avatars, images, attachments, backgrounds, skills import, HTTP MCP and long-term memory; **0.46.0** exports `SKILL.md` files and per-agent skill links; **0.47.1** exports per-agent workspaces (200 files / 2 MiB each / 8 MiB total); **0.48.1** exports/restores per-agent preferences (tool policies, pin, remark, greeting, reasoning/context/sampling settings); **0.50.0** exports/restores per-agent appearance overrides and custom chat/code fonts (colors, bubbles, corner, border, text, scale, line height, background image; 8 MiB per font, 16 MiB total); **0.51.0** exports/restores the global appearance theme, global background and global chat/code fonts via `settings.json`, preserving a local custom global theme; provider keys, base URLs, headers and `extra_body` never exported |
 | SillyTavern / RikkaHub character cards | Operit `character_cards` JSON | SillyTavern PNG/JSON | SillyTavern PNG/JSON | **0.45.0–0.45.1** PNG `tEXt`/`iTXt` + JSON via the agent-list entry, six persona sections, first message and PNG avatar, idempotent ids; **0.49.0** exports V2 JSON and PNG cards (avatar re-encoded, Base64 `chara` chunk, generated placeholder when no avatar) with six-section persona roundtrip; no alternate greetings, character book, tags or real-client validation |
-| Local agent memory library | — | — | — | **0.52.0** per-agent SQLite with normal keyword and experimental local-hash-vector recall, 7/90-day forgetting curve, short/long-term promotion, 45-message compression threshold, readable turn/fact/summary entries, `memory_search` and strict `memory_verify`; no external embeddings and not yet exported in backups |
+| Local agent memory library | — | — | — | **0.52.0** per-agent SQLite with normal keyword and experimental local-hash-vector recall, 45-message compression threshold, readable turn/fact/summary entries, `memory_search` and strict `memory_verify`; **0.53.0** BM25 + vector + retention/importance/access fusion, MMR, power forgetting curve with stability/difficulty updates, fact consolidation/invalidation with temporal history and summary scrubbing; no external embeddings and not yet exported in backups |
 | Theme export / share | ToolPkg | copy JSON | export presets | **0.11.0** `.oxtheme` with background + fonts; **0.18.0** `.oxthemes` preset bundle (all named presets + assets, preview, duplicate skip); JSON export |
 | Per-chat / per-agent theme | theme configs | chat themes | per-assistant | **0.10.0** per Agent; **0.16.0** per conversation (`files/ox_chat_dialogs/`) with precedence chat > agent > global; agent chat verified; **0.17.1** local-group scope device-verified |
 | One-click native reset | — | — | — | **0.9.0** reset clears custom and restores Telegram |
@@ -1201,6 +1201,42 @@ These confirm the feature directions rather than relying on guesses. Checked
   backups; memory.txt is not auto-migrated; groups share the agent library;
   the threshold counts messages, not token percentage; the private SQLite is
   not encrypted.
+
+## 0.53.0 implementation — memory retrieval v2
+
+- Schema v2 adds difficulty, valid-from, invalid-at and subject keys, migrating
+  existing v1 rows in place. Facts are now split on English/CJK sentence
+  punctuation instead of merging a whole paragraph into one fact.
+- Retrieval is hybrid: BM25 is computed in Java over the agent's documents and
+  normalized per query, then blended with vector cosine (vector mode only),
+  power-curve retention, importance and access count. Normal mode is
+  BM25-dominant; vector mode adds the local hashed vector. MMR removes
+  near-duplicate results before formatting.
+- The fixed-half-life decay was replaced by the FSRS-style power curve
+  `R=1/(1+ageDays/(9*S))`. Successful recall increases stability and lowers
+  difficulty; a short-term entry is promoted at two recalls or stability >=21
+  days. Invalidated facts are excluded from normal recall and are only returned
+  (penalized) for explicit historical queries.
+- Fact consolidation follows Mem0's ADD/UPDATE/NOOP/soft-DELETE idea: a richer
+  superset updates the existing fact; a same-subject value change (birthday
+  3/14 to 3/15, blue to green) or numeric/negation conflict marks the old fact
+  invalid without deleting it. Invalidated facts are removed from active
+  summaries, and summaries older than six are merged into a rolling summary.
+- `memory_verify` returns facts first and suppresses historical turns when a
+  fact matches. The system prompt says to prefer the newest fact on conflicts
+  and treat old turns/summaries as history only.
+- Device QA used 60 messages with a birthday update, a color change and
+  filler. Active facts ended as name/coffee/Hangzhou/birthday 3/15/green;
+  birthday 3/14 and blue were invalidated; the summary lost the stale lines.
+  `memory_search` ranked the active 3/15 fact first, and `memory_verify` for
+  birthday/color returned only the active facts. Vector mode ranked the
+  coffee fact at 0.83. Recall raised stability and lowered difficulty.
+- Limits: the vector is still a local hash projection, not a semantic
+  embedding; summaries remain extractive; there is no model distillation,
+  graph memory or token-pressure warning; current providers expose no
+  embedding model (opendesign model_not_found, opencode-go 403). The next
+  rounds add embedding-provider abstraction, asynchronous LLM extraction/
+  summaries and a recall@k benchmark before claiming semantic superiority.
 
 ## Gaps / next phases
 
