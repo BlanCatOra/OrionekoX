@@ -3132,6 +3132,28 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 `79be212983be…`）；debug `dist/OrionekoX-0.34.0-debug-arm64-x64.apk`（sha256
 `092601ccd828…`）。详见 `docs/qa-0.34.0.md`。
 
+## 5.153 alpha 0.35.0 —— RikkaHub 图像头像导入（2026-10-28 08:00–08:18）
+
+- 解析 RikkaHub settings.json 助手 `avatar` 的 `Avatar.Image` url，取
+  basename 匹配备份 `upload/` 文件，写入 Agent 目录 avatar.png/jpg/webp/gif；
+  不下载网络 URL，重复导入保留已有头像。
+- `avatarEmoji` 改为类型名包含 `emoji`，兼容 FQN 序列化的
+  `Avatar.Emoji`。
+- 预览增加“将导入 N 个助手图像头像”，总览补充图像头像；结果 note
+  “导入头像 N 个”。
+- 设备：2 助手样例（Image upload RA + Emoji FQN 🦊）；预览提示 1 个图像
+  头像；导入 2 助手、头像 1 个，avatar.png 2,519 B；原生 RA 头像正确，
+  Emoji 🦊 正确；重复导入 0 新建/2 更新、头像 sha256 不变；清理后
+  dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：仅 upload/ 本地图像，网络/content 无文件时跳过；basename 匹配；
+  真实备份待复测。
+- 版本规则：新增可见的 RikkaHub 图像头像导入能力，按 minor 从 0.34.0 →
+  0.35.0，versionCode 3509。
+
+**产物**：`dist/OrionekoX-0.35.0-alpha-arm64-x64.apk`（versionCode 3509，sha256
+`7c1aa6d7d77e…`）；debug `dist/OrionekoX-0.35.0-debug-arm64-x64.apk`（sha256
+`1c3b982d2590…`）。详见 `docs/qa-0.35.0.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。

@@ -655,6 +655,23 @@ These confirm the feature directions rather than relying on guesses. Checked
 - Limits: all-or-nothing export, SKILL.md bodies only, and external
   Kelivo/Chatbox/RikkaHub clients have not imported the zip yet.
 
+## 0.35.0 implementation — RikkaHub image avatars
+
+- RikkaHub `Avatar.Image` URLs (`file:`/`content:` or any type name containing
+  `image`) are resolved by basename against the backup's `upload/` folder and
+  copied to the agent's `avatar.png/jpg/webp/gif`. Network URLs are never
+  fetched, and repeat imports preserve an existing avatar.
+- `Avatar.Emoji` is now recognized by type-name substring, so RikkaHub's default
+  FQN serialization (`...Avatar.Emoji`) maps its emoji.
+- Preview reports “将导入 N 个助手图像头像” and the overview includes image
+  avatars; the result note reports imported avatar count.
+- Device QA: two assistants (Image from upload/RA and FQN Emoji 🦊); preview
+  reported one image avatar; import created two agents with avatar.png 2,519 B,
+  the native header showed the RA image, and the emoji agent kept 🦊. A repeat
+  import updated both with the avatar hash unchanged.
+- Limits: only upload/-backed images, basename matching, no network downloads;
+  a real RikkaHub export still needs a compatibility pass.
+
 ## Gaps / next phases
 
 1. Operit theme-v1 remaining media: 9-patch bubble assets, avatar/font URIs,
@@ -663,8 +680,7 @@ These confirm the feature directions rather than relying on guesses. Checked
 2. Kelivo full backup import beyond assistants/skills/conversations/MCP/avatars/
    images/attachments: backgrounds and workspaces; SSE/stdio MCP with their tool
    allowlists; RikkaHub non-selected branches, non-image attachments,
-   per-conversation grouping, skill attachments, standalone providers and image
-   avatars.
+   per-conversation grouping, skill attachments and standalone providers.
 3. Bidirectional export still lacks workspaces, memory, MCP and themes, plus
    multi-agent selection and validation against real external clients.
 4. Semantic persona recommendation (the 0.22.0 keyword scoring and 0.25.1

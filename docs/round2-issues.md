@@ -334,3 +334,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 设备：QASkill0340 150 B 导入后导出 2,353 B/7 个 SKILL.md；裁剪 272 B 子集删除后回环导入，修正后得到 `files/oxskills/QASkill0340/SKILL.md` 150 B；列表正确、无 `skills_` 重复目录；清理后无残留，无本包 FATAL/ANR。
 - 边界：全量导出、无多选；仅 SKILL.md 正文；外部客户端未实测。
+
+## 0.35.0 RikkaHub 图像头像导入 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-71 | 0.35.0 QA | RikkaHub 备份的 `Avatar.Image` 未导入，助手只有 emoji/默认头像 | 解析 avatar.url，按 basename 匹配备份 `upload/` 文件，写入 Agent 目录并设置 avatar_path；重复导入保留已有头像 | 已修复 |
+| R2-72 | 0.35.0 QA | `avatarEmoji` 只认 `type=emoji`，RikkaHub FQN 序列化的 `...Avatar.Emoji` 丢失 emoji | 类型名改为包含 `emoji` 判断，兼容 FQN 与短名 | 已修复 |
+
+- 设备：2 助手样例（Image upload RA + Emoji FQN 🦊）；预览提示 1 个图像头像；导入 2 助手、头像 1 个，avatar.png 2,519 B；原生 RA 头像与 🦊 正确；重复导入 0 新建/2 更新、头像 sha256 不变；清理后 dialogs/messages 归零，无本包 FATAL/ANR。
+- 边界：仅 upload/ 本地图像，网络/content 无文件时跳过；basename 匹配；真实备份待复测。

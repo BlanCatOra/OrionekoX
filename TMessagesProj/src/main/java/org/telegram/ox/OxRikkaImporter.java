@@ -26,9 +26,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * Imports assistants, provider wiring, remote MCP servers, skills and the selected
- * text branch of chat history from a RikkaHub backup. Attachments, tool parts and
- * OAuth tokens are not imported.
+ * Imports assistants, provider wiring, remote MCP servers, skills, image
+ * avatars and the selected text branch of chat history from a RikkaHub backup.
+ * Other attachments, tool parts and OAuth tokens are not imported.
  */
 public class OxRikkaImporter {
 
@@ -45,6 +45,7 @@ public class OxRikkaImporter {
         public int existingAssistants;
         public int existingMcp;
         public int existingSkills;
+        public int avatars;
         public final List<String> names = new ArrayList<>();
         public final List<String> skillNames = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
@@ -57,6 +58,7 @@ public class OxRikkaImporter {
         public int mcpSkipped;
         public int skills;
         public int messages;
+        public int avatars;
         public final List<String> importedAgentIds = new ArrayList<>();
         public final List<String> notes = new ArrayList<>();
     }
@@ -101,6 +103,8 @@ public class OxRikkaImporter {
             p.assistants++;
             if (p.names.size() < 8) p.names.add(name);
             if (existingIds.contains(id)) p.existingAssistants++;
+            String avatarName = avatarUploadName(a.optJSONObject("avatar"));
+            if (avatarName != null && archive.uploads.containsKey(avatarName)) p.avatars++;
             ProviderRef ref = models.get(a.optString("chatModelId", ""));
             if (ref == null) ref = models.get(defaultModel);
             if (ref == null) ref = fallback;
@@ -134,7 +138,10 @@ public class OxRikkaImporter {
             p.conversations = history[0];
             p.messageNodes = history[1];
         }
-        p.notes.add("仅导入 settings.json、skills/ 技能、聊天文本历史与匹配的图片附件；不含其他附件和 OAuth token。");
+        p.notes.add("仅导入 settings.json、skills/ 技能、助手图像头像、聊天文本历史与匹配的图片附件；不含其他附件和 OAuth token。");
+        if (p.avatars > 0) {
+            p.notes.add("将导入 " + p.avatars + " 个助手图像头像。");
+        }
         if (p.conversations > 0) {
             p.notes.add("历史按每个消息节点的当前分支导入；工具与未匹配附件的消息会跳过。");
         }
@@ -199,7 +206,14 @@ public class OxRikkaImporter {
             a.providerId = "rikka";
             a.emoji = avatarEmoji(src.optJSONObject("avatar"));
             if (a.emoji.isEmpty()) a.emoji = "🤖";
-            a.avatarPath = oldAvatar;
+            if (oldAvatar.isEmpty()) {
+                String saved = saveRikkaAvatar(a.id, src.optJSONObject("avatar"),
+                        archive.uploads);
+                a.avatarPath = saved == null ? "" : saved;
+                if (saved != null) r.avatars++;
+            } else {
+                a.avatarPath = oldAvatar;
+            }
             a.temperature = src.has("temperature") ? src.optDouble("temperature", 0.7) : 0.7;
             a.topP = src.has("topP") ? src.optDouble("topP", 1.0) : 1.0;
             a.maxTokens = src.optInt("maxTokens", 0);
@@ -240,6 +254,7 @@ public class OxRikkaImporter {
             if (update) r.agentsUpdated++;
             else r.agentsCreated++;
         }
+        if (r.avatars > 0) r.notes.add("导入头像 " + r.avatars + " 个");
 
         JSONArray servers = settings.optJSONArray("mcpServers");
         for (int i = 0; servers != null && i < servers.length(); i++) {
@@ -428,10 +443,64 @@ public class OxRikkaImporter {
 
     private static String avatarEmoji(JSONObject avatar) {
         if (avatar == null) return "";
-        if ("emoji".equals(avatar.optString("type", ""))) {
+        String type = avatar.optString("type", "").toLowerCase(java.util.Locale.ROOT);
+        if (type.contains("emoji")) {
             return avatar.optString("content", "").trim();
         }
         return "";
+    }
+
+    /** Returns the upload/ basename referenced by a RikkaHub Avatar.Image, or null. */
+    private static String avatarUploadName(JSONObject avatar) {
+        if (avatar == null) return null;
+        String url = avatar.optString("url", "").trim();
+        if (url.isEmpty()) return null;
+        String type = avatar.optString("type", "").toLowerCase(java.util.Locale.ROOT);
+        if (!type.contains("image") && !url.startsWith("file:")
+                && !url.startsWith("content:")) return null;
+        String name = url;
+        int q = name.indexOf('?');
+        if (q >= 0) name = name.substring(0, q);
+        int slash = name.lastIndexOf('/');
+        if (slash >= 0) name = name.substring(slash + 1);
+        try {
+            name = Uri.decode(name);
+        } catch (Throwable ignored) {
+        }
+        if (name.isEmpty() || name.contains("..")) return null;
+        return name;
+    }
+
+    /** Copies a RikkaHub Avatar.Image from the backup's upload/ folder into the
+     *  agent directory. Network URLs are left alone (no import-time downloads). */
+    private static String saveRikkaAvatar(String agentId, JSONObject avatar,
+            Map<String, byte[]> uploads) {
+        String name = avatarUploadName(avatar);
+        if (name == null) return null;
+        byte[] data = uploads.get(name);
+        if (data == null || data.length == 0) return null;
+        File dir = OxAgentStore.memoryFile(agentId).getParentFile();
+        if (dir == null) return null;
+        dir.mkdirs();
+        String lower = name.toLowerCase(java.util.Locale.ROOT);
+        String ext = lower.endsWith(".png") ? ".png"
+                : lower.endsWith(".jpg") || lower.endsWith(".jpeg") ? ".jpg"
+                : lower.endsWith(".webp") ? ".webp"
+                : lower.endsWith(".gif") ? ".gif" : ".img";
+        File target = new File(dir, "avatar" + ext);
+        FileOutputStream out = null;
+        try {
+            out = new FileOutputStream(target);
+            out.write(data);
+            return target.getAbsolutePath();
+        } catch (Throwable t) {
+            target.delete();
+            return null;
+        } finally {
+            if (out != null) {
+                try { out.close(); } catch (Throwable ignored) {}
+            }
+        }
     }
 
     private static String reasoning(String level) {
