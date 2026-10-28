@@ -37,6 +37,7 @@ import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -411,6 +412,33 @@ public class OxSettingsActivity extends BaseFragment {
                 final OxKelivoImporter.Result result = OxKelivoImporter.importFrom(ctx, uri);
                 AndroidUtilities.runOnUIThread(() -> {
                     OxAgentsBridge.syncAgents(true);
+                    int themesApplied = 0;
+                    int fontsKept = 0;
+                    for (Map.Entry<String, OxKelivoImporter.ImportedTheme> e
+                            : result.importedThemes.entrySet()) {
+                        OxAgent a = OxAgentStore.loadAgent(e.getKey());
+                        OxKelivoImporter.ImportedTheme theme = e.getValue();
+                        boolean ok = a != null && a.tgId != 0
+                                && OxChatTheme.applyImportedAgentTheme(a.tgId, theme.theme,
+                                        result.backgroundPaths.get(e.getKey()),
+                                        theme.fontPath, theme.codeFontPath);
+                        if (ok) {
+                            themesApplied++;
+                            if (!theme.fontPath.isEmpty()) fontsKept++;
+                            if (!theme.codeFontPath.isEmpty()) fontsKept++;
+                        } else {
+                            if (!theme.fontPath.isEmpty()) new File(theme.fontPath).delete();
+                            if (!theme.codeFontPath.isEmpty()) new File(theme.codeFontPath).delete();
+                        }
+                    }
+                    result.themes = themesApplied;
+                    result.fonts = fontsKept;
+                    if (!result.importedThemes.isEmpty()) {
+                        result.notes.add("已恢复 " + themesApplied + " 个智能体的外观主题"
+                                + (result.fonts > 0 ? "（含字体 " + result.fonts + " 个）" : "")
+                                + (themesApplied < result.importedThemes.size()
+                                ? "；其余保留已有自定义主题" : ""));
+                    }
                     int applied = 0;
                     for (Map.Entry<String, String> e : result.backgroundPaths.entrySet()) {
                         OxAgent a = OxAgentStore.loadAgent(e.getKey());
@@ -480,7 +508,7 @@ public class OxSettingsActivity extends BaseFragment {
     private String kelivoResultText(OxKelivoImporter.Result r) {
         if (r.created == 0 && r.updated == 0 && r.skills == 0 && r.mcpAdded == 0
                 && r.conversations == 0 && r.memories == 0 && r.preferences == 0
-                && r.workspaceFiles == 0) {
+                && r.workspaceFiles == 0 && r.themes == 0) {
             return LocaleController.getString(R.string.OxKelivoNothing);
         }
         StringBuilder sb = new StringBuilder();
