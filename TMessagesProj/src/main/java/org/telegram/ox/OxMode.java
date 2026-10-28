@@ -15,6 +15,9 @@ public class OxMode {
     public static final int MODE_UNSET = -1;
     public static final int MODE_OX = 0;
     public static final int MODE_LOGIN = 1;
+    public static final String IFACE_TELEGRAM = "telegram";
+    public static final String IFACE_OXUI = "oxui";
+
     public static final int PENDING_NONE = 0;
     public static final int PENDING_LOGIN = 1;
     public static final int PENDING_OX = 2;
@@ -96,6 +99,21 @@ public class OxMode {
 
     public static void setOnboardingMode(int value) {
         prefs().edit().putInt("onboarding_mode", value).apply();
+    }
+
+    /** telegram | oxui. OxUI is a preview front end; Telegram UI remains the fallback. */
+    public static String getInterfaceMode() {
+        try {
+            String v = prefs().getString("interface_mode", IFACE_TELEGRAM);
+            return IFACE_OXUI.equals(v) ? IFACE_OXUI : IFACE_TELEGRAM;
+        } catch (Exception e) {
+            return IFACE_TELEGRAM;
+        }
+    }
+
+    public static void setInterfaceMode(String value) {
+        prefs().edit().putString("interface_mode",
+                IFACE_OXUI.equals(value) ? IFACE_OXUI : IFACE_TELEGRAM).apply();
     }
 
     public static boolean isLegalAccepted() {

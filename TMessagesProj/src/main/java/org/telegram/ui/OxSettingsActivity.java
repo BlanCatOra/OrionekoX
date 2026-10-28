@@ -66,6 +66,7 @@ public class OxSettingsActivity extends BaseFragment {
     private static final int ID_IMPORT_KELIVO = 118;
     private static final int ID_EXPORT_KELIVO = 119;
     private static final int ID_EXPORT_SELECTED = 120;
+    private static final int ID_OXUI = 121;
     private static final int REQ_RIKKA = 601;
     private static final int REQ_KELIVO = 602;
     private static final int REQ_KELIVO_EXPORT = 603;
@@ -102,6 +103,12 @@ public class OxSettingsActivity extends BaseFragment {
         items.add(UItem.asHeader(LocaleController.getString(R.string.OxSettingsSectionMode)));
         items.add(SettingsActivity.SettingCell.Factory.of(0, 0xFF419FD9, 0xFF2B7CB8,
                 R.drawable.settings_account, currentMode()));
+        items.add(SettingsActivity.SettingCell.Factory.of(ID_OXUI, 0xFF14211C, 0xFF08120E,
+                R.drawable.msg_theme, LocaleController.getString(R.string.OxUiInterface),
+                LocaleController.getString(R.string.OxUiInterfaceInfo),
+                OxMode.IFACE_OXUI.equals(OxMode.getInterfaceMode())
+                        ? LocaleController.getString(R.string.OxUiPreviewName)
+                        : LocaleController.getString(R.string.OxUiTelegram)));
         items.add(SettingsActivity.SettingCell.Factory.of(ID_LANGUAGE, 0xFF9C6ADE, 0xFF7B4FD1,
                 R.drawable.settings_language, LocaleController.getString(R.string.OxSettingsLanguage), null, currentLanguage()));
         items.add(UItem.asShadow(null));
@@ -196,6 +203,25 @@ public class OxSettingsActivity extends BaseFragment {
                 break;
             case ID_AGENTS:
                 presentFragment(new OxAgentsActivity());
+                break;
+            case ID_OXUI:
+                if (getParentActivity() == null) break;
+                new AlertDialog.Builder(getParentActivity())
+                        .setTitle(LocaleController.getString(R.string.OxUiInterface))
+                        .setItems(new CharSequence[]{
+                                LocaleController.getString(R.string.OxUiTelegram),
+                                LocaleController.getString(R.string.OxUiPreviewName)
+                        }, (d, which) -> {
+                            OxMode.setInterfaceMode(which == 1
+                                    ? OxMode.IFACE_OXUI : OxMode.IFACE_TELEGRAM);
+                            if (listView != null) listView.adapter.update(true);
+                            if (which == 1 && getParentActivity() != null) {
+                                getParentActivity().startActivity(new Intent(
+                                        getParentActivity(), OxUiPreviewActivity.class));
+                            }
+                        })
+                        .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                        .show();
                 break;
             case ID_APPEARANCE:
                 presentFragment(new OxAppearanceActivity());

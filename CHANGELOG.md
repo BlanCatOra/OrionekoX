@@ -4,6 +4,21 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.60.0 — 2026-10-28
+
+- Adds **OxUI (preview)**, an independent front end selectable from the
+  onboarding final page and Ox Settings. It does not use Telegram cells or the
+  action bar: serif editorial conversation, agent rail, chartreuse signal
+  accent, ink user pills and a floating paper composer.
+- OxUI reads real local agents/history and sends through
+  `OxAgentsBridge.sendFromOxUi`, the same local path as Telegram UI, so a
+  message appears in both. Markdown is converted to native spans and copy is
+  localized.
+- The app root remains Telegram UI. Groups, attachments/media, search,
+  settings, memory pages, tablet layout, dynamic theme and full parity are
+  still open; the entry is explicitly a preview.
+- Design rationale, references and token system: `docs/oxui-design.md`.
+
 ## 0.59.0 — 2026-10-28
 
 - Adds a default-off **Mirror harness turns to local memory** switch for

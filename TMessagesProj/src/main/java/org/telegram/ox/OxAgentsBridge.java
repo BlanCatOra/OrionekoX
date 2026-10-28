@@ -1700,6 +1700,13 @@ public class OxAgentsBridge {
         startTurn(agent, dialogId, text);
     }
 
+    /** OxUI composer entry point: uses the same local message path as Telegram UI,
+     *  so the user turn is persisted and the agent reply is shared by both UIs. */
+    public static void sendFromOxUi(OxAgent agent, String text) {
+        if (agent == null || agent.tgId == 0 || text == null || text.trim().isEmpty()) return;
+        handleOutgoingText(agent.tgId, text.trim());
+    }
+
     // ---------------- reply pipeline (tool loop + streaming bubble) ----------------
 
     private static class Stream {

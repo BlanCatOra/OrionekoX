@@ -3991,6 +3991,37 @@ debug `dist/OrionekoX-0.59.0-debug-arm64-x64.apk`（sha256
 `664bdb43b858860fc2200704e7ca07147f003e5d8009c516a823f7fd76b5c85e`）。
 详见 `docs/qa-0.59.0.md`。
 
+## 5.182 alpha 0.60.0 —— OxUI preview：独立前端、入口与真实收发（2026-10-28 22:05–22:30）
+
+- 用户提出前端重构级升级：在 Telegram UI 与现有美化之外增加 OxUI(preview)，
+  入口放进引导页和 Ox 设置；OxUI 不使用 Telegram 的 cell/action bar，但功能
+  要与 Telegram UI 同步；设计参考 Claude style skill 与社区方案，美观优先。
+- 设计 token：Bone/Paper/Ink/Muted/Signal/Coral；serif 标题与助手正文、
+  humanist sans 控件、mono 元数据；wordmark + Agent rail + 单列编辑式对话 +
+  悬浮 composer；助手用短 chartreuse 竖线而非气泡，用户用 ink pill。刻意
+  避开 cream+terracotta 的默认组合，不做统一圆角卡片墙或渐变装饰。
+- `OxMode` 新增 `interface_mode`（telegram/oxui）；Ox Settings Mode 区新增
+  Interface 行；引导页第 6 步新增 Interface 卡与 “Open OxUI preview” 链接。
+- `OxUiPreviewActivity` 独立 Activity：读取 `OxAgentStore` 的真实 Agent/历史；
+  发送走新增 `OxAgentsBridge.sendFromOxUi()`（复用 Telegram UI 同一本地路径）；
+  Markdown 转 native spans；每 1.2 秒按历史签名刷新；pending 用户消息与
+  “Agent 正在回复…”提示；中英文字符串包 119→120→121。
+- 设备：`Studio Test`（tgId 555000016，合成历史）打开 OxUI，截图
+  `docs/screenshots/qa-0.60.0-oxui-preview.png`；内置 Echo 中发送
+  `OxUI test 0600`，OxUI 与 Telegram Echo 会话同时出现用户消息与回复
+  （id 100067/100068），证明同步。设置页/引导页入口截图已归档；测试 Agent
+  及其 chat/dialog/messages/memory 清理为 0；release 6009 启动无 FATAL/ANR。
+- 边界：OxUI 仍是 preview，应用根仍为 Telegram UI；只有单聊，缺群聊、
+  附件/媒体、搜索、设置、记忆页、Agent 详情、平板双栏、动态主题、
+  reduced-motion 与完整无障碍；外部 Harness 回复在回合结束后落盘，OxUI
+  不是 token 级流式。下一轮做第二轮视觉评审与 root 切换/导航。
+
+**产物**：`dist/OrionekoX-0.60.0-alpha-arm64-x64.apk`（versionCode 6009，
+sha256 `af6eae6d0e85306b043d108f1641e7fc402403b9f54677ebd47bc4f28181ad82`）；
+debug `dist/OrionekoX-0.60.0-debug-arm64-x64.apk`（sha256
+`fc3a837a7a83a9f23db0de0f4b0f27c784bd98b48b30b29be0223a1c828df76f`）。
+详见 `docs/qa-0.60.0.md` 与 `docs/oxui-design.md`。
+
 ## 6. 与开发报告路线图的对应关系
 
 - 本次完成的是 **M0 的一部分**：基座 fork 就绪、patches/ 目录化、独立签名与包名、可复现构建链路（JDK+SDK+NDK 全套本机工具链已持久化在 `~/orioneko-toolchain`）。
