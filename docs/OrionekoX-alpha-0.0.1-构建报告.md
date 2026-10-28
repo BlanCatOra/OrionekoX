@@ -4162,3 +4162,46 @@ debug `dist/OrionekoX-0.64.0-debug-arm64-x64.apk`（sha256
 `703a202334becc03138e602db7cf2e817374fa022380d92afefc4dd95470ae2a`）；
 构建日志 `/tmp/ox-build-0640-final.log`；QA 详见
 [docs/qa-0.64.0.md](qa-0.64.0.md)。
+## 5.187 alpha 0.65.0 —— 已有群改/删头像离线分支 + 强制回复修复 + quote 语义 + 视觉三轮快赢（2026-10-29 02:42–03:55）
+
+- 0.65.0 三项首要：① 已有本地群改/删头像仍走服务器请求（0.64 只覆盖创建
+  路径）；② 修复 0.64.0 定向回复假验证——`sendMessage` 在 `dispatchSend`
+  之前 `clearReplyTarget()`，强制路径从未生效（单成员群使 TARGET-640 的
+  假阳性漏检，logcat 无 `groupReply forced` 行）；③ 定向回复 quote 语义。
+- 头像编辑：`ChatEditActivity.didUploadPhoto` 最前插 agent-only 分支 →
+  `updateLocalChatAvatar`（photoId=millis*1000+chatId%1000，与创建 id 三数量
+  级隔离、同毫秒跨群唯一）；不设 hasUploadedPhoto，UI 由
+  updateInterfaces→setAvatar 刷新。首版分支位置是死代码（ImageUpdater 离线
+  回调全空参数走外层 else），子代理评审抓出后前移修正。删除路径：上游
+  useAttachMenu=true 丢弃 onDelete 回调，agent-only 有头像时拦截弹
+  Set New Photo / Remove photo 对话框 → `removeLocalChatAvatar`
+  （TL_chatPhotoEmpty；TL_chat 无条件序列化 photo，无需清 flag）。
+- quote 语义（快照方案，子代理设计注）：OxChatEntry 增 replyToSender/
+  replyToText（optString 向后兼容不迁移）；groupMessages 向最后一条 user
+  消息注入 `（回复 @Name：「摘录≤160」）`；Telegram UI 路径 onGroupMessage
+  抽取同一快照；OxUI chip 显前 24 字、气泡上渲染 MUTED 引用行；落盘 content
+  保持纯净。
+- 视觉三轮（子代理评审 12 项落地 7 项）：图文一体 ink 卡片、0.6 视口
+  CENTER_CROP 高度上限、发送后滚动二次对齐、删 Preview 徽章+统一头部胶囊、
+  rail 36dp 渐隐、强调条 MATCH_PARENT、副标题剥离 markdown 行首；其余 5 项
+  （自定义长按菜单、用户气泡时间戳、类型尺度吸附、附件行容器、竖长截图卡片
+  异常）列下轮。
+- 设备端到端：改头像（photoId=1793215169213003，无死锁，编辑页即时渲染，
+  force-stop 重启头像仍在）；删头像（removeLocalChatAvatar cleared，init
+  回落）；TARGET-650Q → `groupReply forced agentId=echo`；落盘条目含
+  reply_to_sender/reply_to_text 且气泡渲染引用行；CAP-650 图文一体卡。
+- 评审 backlog：群 emoji 头像创建静默丢头像（agent-only）、用户头像族 RPC
+  未守护、changeChatTitle 离线回滚。
+- 本轮模拟器 qemu 自发崩溃一次（打开聊天页时），按既定流程重启（默认
+  snapshot + 锁清理）并 `adb root` 恢复数据访问。
+- 清理：QA 群 1800000003 与图片/oxui_media 全 0；echo chat.json 仅移除本轮
+  4 条 QA 条目（保留既有历史）；interface_mode=telegram；无障碍/代理恢复；
+  release 6509 无 FATAL。
+- 版本规则：按 minor 从 0.64.0 → **0.65.0**（6509），patch 清零。
+
+**产物**：`dist/OrionekoX-0.65.0-alpha-arm64-x64.apk`（versionCode 6509，
+sha256 `9801360d7f50d3fa9cdcaa6222707ca67d1b3a76b704b6815ff34e73a658250f`）；
+debug `dist/OrionekoX-0.65.0-debug-arm64-x64.apk`（sha256
+`9be0280b77349d98930bd837ee9baa7df129ca4c0c4c333536d47c020eb4a336`）；
+构建日志 `/tmp/ox-build-0650-final.log`；QA 详见
+[docs/qa-0.65.0.md](qa-0.65.0.md)。

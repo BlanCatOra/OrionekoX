@@ -1648,10 +1648,36 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
     }
 
     public void openSetPhotoAlert() {
+        if (org.telegram.ox.OxMode.isAgentOnly() && userId == 0 && chatId != 0 && avatar != null) {
+            // Agent-only: ImageUpdater's attach menu has no delete item, so the
+            // offline delete path needs this lightweight surface. Choosing a new
+            // photo re-opens the attach sheet with no delete callback.
+            new android.app.AlertDialog.Builder(getParentActivity())
+                    .setItems(new CharSequence[]{
+                            getString("ChatSetNewPhoto", R.string.ChatSetNewPhoto),
+                            getString("DeletePhoto", R.string.DeletePhoto)
+                    }, (d, which) -> {
+                        if (which == 0) {
+                            imageUpdater.openMenu(false, null, null, 0);
+                        } else {
+                            avatar = null;
+                            org.telegram.ox.OxAgentsBridge.removeLocalChatAvatar(chatId);
+                            showAvatarProgress(false, true);
+                            avatarImage.setImage(null, null, avatarDrawable, currentChat);
+                            cameraDrawable.setCurrentFrame(0);
+                            setAvatarCell.imageView.playAnimation();
+                        }
+                    }).show();
+            return;
+        }
         imageUpdater.openMenu(avatar != null, () -> {
             avatar = null;
             if (userId == 0) {
-                MessagesController.getInstance(currentAccount).changeChatAvatar(chatId, null, null, null, null, 0, null, null, null, null);
+                if (org.telegram.ox.OxMode.isAgentOnly()) {
+                    org.telegram.ox.OxAgentsBridge.removeLocalChatAvatar(chatId);
+                } else {
+                    MessagesController.getInstance(currentAccount).changeChatAvatar(chatId, null, null, null, null, 0, null, null, null, null);
+                }
             } else {
                 TLRPC.TL_photos_updateProfilePhoto req = new TLRPC.TL_photos_updateProfilePhoto();
                 req.bot = getMessagesController().getInputUser(userId);
@@ -1929,6 +1955,16 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
     public void didUploadPhoto(final TLRPC.InputFile photo, final TLRPC.InputFile video, double videoStartTimestamp, String videoPath, final TLRPC.PhotoSize bigSize, final TLRPC.PhotoSize smallSize, boolean isVideo, TLRPC.VideoSize emojiMarkup) {
         AndroidUtilities.runOnUIThread(() -> {
             avatar = smallSize.location;
+            if (org.telegram.ox.OxMode.isAgentOnly() && userId == 0 && chatId != 0
+                    && photo == null && video == null && emojiMarkup == null) {
+                // Offline local group: ImageUpdater returned local PhotoSizes
+                // without uploading; changeChatAvatar below would send a server
+                // request that never completes in agent-only mode. UI refresh
+                // comes from updateInterfaces -> setAvatar inside the bridge.
+                org.telegram.ox.OxAgentsBridge.updateLocalChatAvatar(chatId, smallSize.location, bigSize.location);
+                showAvatarProgress(false, true);
+                return;
+            }
             if (photo != null || video != null || emojiMarkup != null) {
                 if (userId != 0) {
                     if (currentUser != null) {

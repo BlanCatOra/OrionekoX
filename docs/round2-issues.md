@@ -691,3 +691,27 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
   media3 variant 解析 1 秒失败，必须模块级调用。
 - 边界：改已有群头像仍走服务器路径；定向回复无引用语义；旧群历史无
   sender 不迁移；视觉评审 P1/P2 其余项未做。
+
+## 0.65.0 已有群改/删头像离线分支与定向回复修复 QA 记录
+
+> **R2-134 更正（2026-10-29）**：0.64.0 的 “Reply to \<agent\> 定向已设备验证”
+> 结论不成立。`sendMessage` 在 `dispatchSend` 之前调用 `clearReplyTarget()`，
+> `dispatchSend` 读到的 `replyAgentId` 恒为 null，强制路径从未生效；当时 TARGET-640
+> 由 Translator 回复是因为单成员群普通轮换同样选中它，且 logcat 中并没有出现
+> `groupReply forced` 行。0.65.0 修复（clear 后移）并在设备上以
+> `groupReply forced agentId=echo` 日志复验。
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-135 | 0.64.0 遗留 | 已有本地群改头像走 `changeChatAvatar`（TL_channels_editPhoto），agent-only 下静默死锁 | `ChatEditActivity.didUploadPhoto` 最前插入 agent-only 分支（全空输入判定）→ `updateLocalChatAvatar`（photoId=millis*1000+chatId%1000，与创建 id 永不碰撞、同毫秒跨群唯一）；不设 hasUploadedPhoto，UI 走 updateInterfaces→setAvatar；首版插在外层 if 链内是死代码，经子代理评审前移修正 | 已实现并设备验证（改+重启持久化） |
+| R2-136 | 0.65.0 功能 | 群头像删除在 ChatEditActivity 无入口：ImageUpdater useAttachMenu=true 时 onDelete 回调被 attach sheet 丢弃 | agent-only 且有头像时 `openSetPhotoAlert` 弹 Set New Photo / Remove photo 对话框；Remove → `removeLocalChatAvatar`（TL_chatPhotoEmpty，TL_chat 无条件序列化 photo 故无需清 flag） | 已实现并设备验证（init 头像恢复、无死锁） |
+| R2-134' | 0.65.0 修复 | 定向回复强制路径死代码（见上更正） | `clearReplyTarget()` 移到 dispatchSend 之后；设备复验 `groupReply forced agentId=echo` | 已修复并设备验证 |
+| R2-137 | 设计注（子代理） | 定向回复无 quote 语义，agent 看不到在回复什么 | OxChatEntry 增 replyToSender/replyToText（快照 ≤160 字，向后兼容不迁移）；groupMessages 在最后一条 user 消息注入 `（回复 @Name：「摘录」）` 前缀；Telegram UI 路径 onGroupMessage 对 agent 消息抽取同一快照；OxUI chip 显示前 24 字、气泡上渲染 MUTED 引用行 | 已实现并设备验证（落盘字段 + 气泡渲染） |
+| R2-138 | 视觉三轮评审 | 图片与说明割裂为两气泡；竖图无高度上限；发送后滚动竞争截断末条 | addUserImage 统一 ink 卡片（图上文下）+ 0.6 viewport CENTER_CROP 上限 + fullScroll 后二次对齐 | 已实现并设备验证（CAP-650 图文一体卡） |
+| R2-139 | 视觉三轮评审 | 头部 Preview 徽章多余且稀释 chartreuse 信号；rail 无渐隐；强调条不随长文；列表副标题残留 markdown 行首 | 删除徽章+统一 Agents 按钮胶囊；rail 36dp fading edge；强调条 MATCH_PARENT；副标题剥离 `- `/`#`/`1.` | 已实现并设备验证 |
+
+- 设备：debug 6509。评审（子代理，11 张截图）12 项清单本轮落地 7 项；
+  遗留：自定义长按菜单、用户气泡时间戳、类型尺度吸附、附件行容器、
+  竖长截图卡片渲染异常（疑 pending/历史渲染交互）。
+- 评审另发现 backlog：群 emoji 头像创建在 agent-only 下静默丢头像；
+  用户头像族 RPC 与 PhotoViewer 主图操作未守护；changeChatTitle 离线回滚。

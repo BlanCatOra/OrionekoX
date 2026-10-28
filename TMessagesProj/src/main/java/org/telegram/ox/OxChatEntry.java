@@ -17,6 +17,8 @@ public class OxChatEntry {
     public String filePath;    // optional: local document attached to this entry
     public String fileName;    // display name for filePath
     public String sender;      // optional: agent id that produced this entry (group chats)
+    public String replyToSender; // optional: quoted entry's agent id (targeted group replies)
+    public String replyToText;   // optional: truncated snapshot of the quoted text
 
     public OxChatEntry(String role, String content, long ts) {
         this.role = role;
@@ -38,6 +40,10 @@ public class OxChatEntry {
             OxChatEntry e = new OxChatEntry(o.optString("role", "user"), o.optString("content"), o.optLong("ts"));
             String sender = o.optString("sender", "");
             if (!sender.isEmpty()) e.sender = sender;
+            String rSender = o.optString("reply_to_sender", "");
+            if (!rSender.isEmpty()) e.replyToSender = rSender;
+            String rText = o.optString("reply_to_text", "");
+            if (!rText.isEmpty()) e.replyToText = rText;
             String img = o.optString("image_path", "");
             if (!img.isEmpty()) e.imagePath = img;
             String file = o.optString("file_path", "");
@@ -63,6 +69,8 @@ public class OxChatEntry {
                 if (e.fileName != null && !e.fileName.isEmpty()) o.put("file_name", e.fileName);
             }
             if (e.sender != null && !e.sender.isEmpty()) o.put("sender", e.sender);
+            if (e.replyToSender != null && !e.replyToSender.isEmpty()) o.put("reply_to_sender", e.replyToSender);
+            if (e.replyToText != null && !e.replyToText.isEmpty()) o.put("reply_to_text", e.replyToText);
             a.put(o);
         }
         return a;

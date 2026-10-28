@@ -4,6 +4,28 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.65.0 — 2026-10-29
+
+- Offline avatar edit/remove for existing local groups: ChatEditActivity
+  routes agent-only avatar changes to updateLocalChatAvatar (a
+  millis+chatId-derived photo id that cannot collide with creation ids or
+  same-millisecond edits) and surfaces a lightweight Set New Photo / Remove
+  photo dialog, since the attach menu drops the delete callback. Both paths
+  verified across force-stop restarts.
+- Fixes the 0.64.0 targeted-reply dispatch bug: the reply target was cleared
+  before dispatch, so the forced path never fired (the earlier verification
+  was a false positive on a single-member group). Re-verified with the
+  groupReply forced log line.
+- Quote semantics for targeted replies: replyToSender/replyToText snapshots
+  on the user entry (<=160 chars, backwards-compatible), injected as a
+  prefix into the final user message so the model sees what is being
+  answered, with the excerpt shown on the chip and as a muted line above
+  the bubble.
+- Third visual review quick wins: unified image+caption card, 0.6-viewport
+  center-crop height cap, post-send scroll re-alignment, Preview badge
+  removal with unified header capsules, rail fading edge, full-height
+  assistant accent rule, markdown-stripped list subtitles.
+
 ## 0.64.0 — 2026-10-29
 
 - Offline group avatar on creation: in agent-only mode ImageUpdater returns

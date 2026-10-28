@@ -120,17 +120,22 @@ public class OxGroupStore {
 
     public static synchronized void appendChat(long chatId, String role, String content,
             String imagePath, String sender) {
-        if (content == null || content.trim().isEmpty()) return;
+        appendEntry(chatId, new OxChatEntry(role, content, System.currentTimeMillis(), imagePath), sender);
+    }
+
+    /** Entry-based append: lets callers carry quote fields without stacking
+     *  positional parameters. sender overrides entry.sender when non-null. */
+    public static synchronized void appendEntry(long chatId, OxChatEntry entry, String sender) {
+        if (entry == null || entry.content == null || entry.content.trim().isEmpty()) return;
         try {
             List<OxChatEntry> chat = loadChat(chatId);
-            OxChatEntry entry = new OxChatEntry(role, content, System.currentTimeMillis(), imagePath);
-            entry.sender = sender;
+            if (sender != null) entry.sender = sender;
             chat.add(entry);
             while (chat.size() > 40) chat.remove(0);
             prefs().edit().putString("log_" + key(chatId),
                     OxChatEntry.toJsonArray(chat).toString()).apply();
         } catch (Throwable t) {
-            FileLog.e("OxGroupStore.appendChat", t);
+            FileLog.e("OxGroupStore.appendEntry", t);
         }
     }
 
