@@ -54,6 +54,16 @@ public class OxAgent {
     public String harnessSession = "";
     /** Optional compact command template; {session} and {cwd} are replaced. */
     public String harnessCompactCommand = "";
+    /** Host bridge base URL, e.g. http://10.0.2.2:8765 (external harnesses only). */
+    public String harnessEndpoint = "";
+    /** Bearer token for the host bridge; wrapped by OxVault at rest. */
+    public String harnessToken = "";
+    /** Working directory the harness should run in on the bridge host. */
+    public String harnessCwd = "";
+    /** Optional provider/model override interpreted by the harness itself. */
+    public String harnessModel = "";
+    /** OpenClaw agent id (optional; other harnesses ignore it). */
+    public String harnessAgent = "";
     // tool name -> "auto" | "ask" | "deny"; missing entries fall back to the tool default
     public JSONObject toolsPolicy = new JSONObject();
 
@@ -96,6 +106,11 @@ public class OxAgent {
         a.harness = o.optString("harness", "api");
         a.harnessSession = o.optString("harness_session", "");
         a.harnessCompactCommand = o.optString("harness_compact_command", "");
+        a.harnessEndpoint = o.optString("harness_endpoint", "");
+        a.harnessToken = o.optString("harness_token", "");
+        a.harnessCwd = o.optString("harness_cwd", "");
+        a.harnessModel = o.optString("harness_model", "");
+        a.harnessAgent = o.optString("harness_agent", "");
         JSONObject tp = o.optJSONObject("tools_policy");
         a.toolsPolicy = tp == null ? new JSONObject() : tp;
         return a;
@@ -140,6 +155,11 @@ public class OxAgent {
         o.put("harness_session", harnessSession == null ? "" : harnessSession);
         o.put("harness_compact_command",
                 harnessCompactCommand == null ? "" : harnessCompactCommand);
+        o.put("harness_endpoint", harnessEndpoint == null ? "" : harnessEndpoint);
+        o.put("harness_token", harnessToken == null ? "" : harnessToken);
+        o.put("harness_cwd", harnessCwd == null ? "" : harnessCwd);
+        o.put("harness_model", harnessModel == null ? "" : harnessModel);
+        o.put("harness_agent", harnessAgent == null ? "" : harnessAgent);
         o.put("tools_policy", toolsPolicy);
         return o;
     }
@@ -149,12 +169,21 @@ public class OxAgent {
         return p == null || p.isEmpty() ? tool.defaultPolicy() : p;
     }
 
-    // Echo mode only when no backend at all - local backends (Ollama & friends) need no key.
+    // Echo mode only when no backend at all. External harnesses deliberately
+    // have no baseUrl - the host bridge owns the model - so they must never be
+    // treated as offline echo mode.
     public boolean isEchoMode() {
+        if (!OxHarnessAdapter.isLocalApi(this)) return false;
         return baseUrl == null || baseUrl.trim().isEmpty();
     }
 
     public String statusLine() {
+        if (!OxHarnessAdapter.isLocalApi(this)) {
+            String line = OxHarnessAdapter.label(harness);
+            if (harnessModel != null && !harnessModel.isEmpty()) line += " · " + harnessModel;
+            if (harnessSession != null && !harnessSession.isEmpty()) line += " · " + harnessSession;
+            return line;
+        }
         if (isEchoMode()) {
             return "offline · echo mode";
         }

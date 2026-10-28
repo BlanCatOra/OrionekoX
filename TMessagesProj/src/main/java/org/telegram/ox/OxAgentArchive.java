@@ -47,6 +47,7 @@ public class OxAgentArchive {
         JSONObject o = agent.toJson();
         o.put("format", "oxagent");
         o.put("api_key", "");
+        o.put("harness_token", "");
         o.put("built_in", false);
         o.put("memory", memory == null ? "" : memory);
 

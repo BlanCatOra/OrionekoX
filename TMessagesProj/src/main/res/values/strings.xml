@@ -11827,9 +11827,24 @@
     <string name="OxAgentMemoryThreshold">Compression threshold (messages)</string>
     <string name="OxAgentMemoryThresholdHint">Default 45</string>
     <string name="OxAgentHarness">Connection / harness</string>
-    <string name="OxAgentHarnessInfo">API direct uses local compact. External harnesses run their own compact; local memory is not injected.</string>
-    <string name="OxAgentHarnessSessionHint">Harness session or task id (used by /compact)</string>
-    <string name="OxAgentHarnessCompactHint">Compact command template; {session} and {cwd} are replaced</string>
+    <string name="OxAgentHarnessInfo">API direct uses local compact. External harnesses need the host bridge and run their own compact; bridge errors are shown as errors, never as fake replies.</string>
+    <string name="OxAgentHarnessSessionHint">Bridge session id (auto-created; clear to start a new native session)</string>
+    <string name="OxAgentHarnessCompactHint">Compact command template for OxLinux/generic; {session} and {cwd} are replaced</string>
+    <string name="OxAgentHarnessEndpoint">Bridge URL</string>
+    <string name="OxAgentHarnessEndpointHint">http://10.0.2.2:8765</string>
+    <string name="OxAgentHarnessToken">Bridge token</string>
+    <string name="OxAgentHarnessTokenHint">Bearer token</string>
+    <string name="OxAgentHarnessCwd">Working directory</string>
+    <string name="OxAgentHarnessCwdHint">On the bridge host (optional)</string>
+    <string name="OxAgentHarnessModel">Harness model</string>
+    <string name="OxAgentHarnessModelHint">provider/model (optional)</string>
+    <string name="OxAgentHarnessAgent">OpenClaw agent</string>
+    <string name="OxAgentHarnessAgentHint">Agent id (optional)</string>
+    <string name="OxAgentHarnessTest">Test harness bridge</string>
+    <string name="OxAgentHarnessTestIdle">Not tested</string>
+    <string name="OxAgentHarnessTesting">Testing…</string>
+    <string name="OxAgentHarnessTestOk">Connected</string>
+    <string name="OxAgentHarnessTestFail">Failed</string>
     <string name="OxAgentAutoHint">0 = auto</string>
     <string name="OxAgentPresencePenalty">Presence penalty</string>
     <string name="OxAgentFrequencyPenalty">Frequency penalty</string>

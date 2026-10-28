@@ -2014,9 +2014,11 @@ public class OxAgentsBridge {
         int size = history == null ? 0 : history.size();
         int defaultFrom = Math.max(0, size - 20);
         String mode = agent.memoryMode == null ? OxMemoryStore.MODE_NORMAL : agent.memoryMode;
-        if (OxMemoryStore.MODE_OFF.equals(mode)) return defaultFrom;
         int threshold = agent.memoryThreshold > 0 ? agent.memoryThreshold : 45;
         if (!OxHarnessAdapter.isLocalApi(agent)) {
+            // Harness ownership is independent of the local memory switch: a
+            // user may disable local memory and still expect the harness to
+            // compact its own context.
             OxHarnessAdapter.maybeCompact(agent, history, threshold);
             if (system.length() > 0) system.append("\n\n");
             system.append("# 外部 Harness\n上下文与 compact 由「")
@@ -2024,6 +2026,7 @@ public class OxAgentsBridge {
                     .append("」管理，本地不注入压缩摘要或记忆库。");
             return defaultFrom;
         }
+        if (OxMemoryStore.MODE_OFF.equals(mode)) return defaultFrom;
         int estimatedTokens = OxContextCompactor.estimateTokens(history);
         boolean tokenPressure = agent.contextLength > 0
                 && estimatedTokens > agent.contextLength * 45 / 100;
@@ -2138,6 +2141,10 @@ public class OxAgentsBridge {
     private static void runRound(final Stream s, final int depth) {
         s.depth = depth;
         log("runRound dialog=" + s.dialogId + " depth=" + depth);
+        if (!OxHarnessAdapter.isLocalApi(s.agent)) {
+            runHarnessRound(s);
+            return;
+        }
         if (depth >= MAX_TOOL_ROUNDS) {
             finishTurn(s, "⚠ 工具调用轮数达上限（" + MAX_TOOL_ROUNDS + "）");
             return;
@@ -2166,6 +2173,113 @@ public class OxAgentsBridge {
                 finishTurn(s, "⚠ " + message);
             }
         });
+    }
+
+    /**
+     * External harness path. The harness (through the host bridge) owns context,
+     * tools and compact; this method only forwards the current user turn and
+     * renders the normalized events it returns. It never falls back to the local
+     * model, because that would silently change who owns the session.
+     */
+    private static void runHarnessRound(final Stream s) {
+        final OxAgent agent = s.agent;
+        if (!OxHarnessTransport.supports(agent.harness)) {
+            finishTurn(s, "⚠ 「" + OxHarnessAdapter.label(agent.harness)
+                    + "」还没有可用的桥接适配（transport-not-connected）");
+            return;
+        }
+        if (!OxHarnessTransport.isConfigured(agent)) {
+            finishTurn(s, "⚠ Harness 未连接：请在 Agent 设置里填写桥接地址并测试连接"
+                    + "（transport-not-connected）");
+            return;
+        }
+        String system = "";
+        if (s.messages != null) {
+            for (int i = 0; i < s.messages.length(); i++) {
+                JSONObject m = s.messages.optJSONObject(i);
+                if (m != null && "system".equals(m.optString("role"))) {
+                    system = m.optString("content", "");
+                    break;
+                }
+            }
+        }
+        log("runHarnessRound harness=" + agent.harness + " session=" + agent.harnessSession
+                + " image=" + (s.imagePath != null));
+        OxHarnessTransport.turn(agent, system, s.userText, s.imagePath,
+                new OxHarnessTransport.Callback() {
+            @Override
+            public void onText(String piece) {
+                streamAppend(s, piece);
+            }
+
+            @Override
+            public void onToolCall(String name, String args) {
+                String pretty = clipForChat(args, 600);
+                injectAgentReply(s.dialogId, s.senderTgId,
+                        "🔧 " + name + "(" + pretty + ") …");
+                s.acc.add(new OxChatEntry("tool",
+                        "🔧 " + name + "(" + clipForChat(args, 2000) + ")",
+                        System.currentTimeMillis()));
+            }
+
+            @Override
+            public void onToolResult(String name, String content, boolean error) {
+                String text = content == null || content.trim().isEmpty()
+                        ? "(无输出)" : content.trim();
+                injectAgentReply(s.dialogId, s.senderTgId,
+                        (error ? "⚠ " : "↳ ") + clipForChat(text, 1200));
+                s.acc.add(new OxChatEntry("tool",
+                        "↳ " + name + " → " + clipForChat(text, 4000),
+                        System.currentTimeMillis()));
+            }
+
+            @Override
+            public void onStatus(String state, String message) {
+                if ("command_output".equals(state) && message != null
+                        && !message.trim().isEmpty()) {
+                    String text = message.trim();
+                    injectAgentReply(s.dialogId, s.senderTgId,
+                            "⌨ " + clipForChat(text, 1500));
+                    s.acc.add(new OxChatEntry("tool", "⌨ " + clipForChat(text, 4000),
+                            System.currentTimeMillis()));
+                } else if (("retrying".equals(state) || "notice".equals(state))
+                        && message != null && !message.trim().isEmpty()) {
+                    injectAgentReply(s.dialogId, s.senderTgId,
+                            "ℹ " + clipForChat(message.trim(), 300));
+                } else {
+                    log("harness status " + state + " " + message);
+                }
+            }
+
+            @Override
+            public void onAttachment(String url, String kind) {
+                if (url == null || url.isEmpty()) return;
+                injectAgentReply(s.dialogId, s.senderTgId,
+                        "📎 " + clipForChat(url, 500));
+                s.acc.add(new OxChatEntry("tool", "📎 " + url,
+                        System.currentTimeMillis()));
+            }
+
+            @Override
+            public void onSession(String nativeSession) {
+                log("harness native session " + nativeSession);
+            }
+
+            @Override
+            public void onError(String message) {
+                finishTurn(s, "⚠ " + (message == null ? "Harness 调用失败" : message));
+            }
+
+            @Override
+            public void onDone(String text, String nativeSession) {
+                finishTurn(s, text == null ? "" : text);
+            }
+        });
+    }
+
+    private static String clipForChat(String s, int max) {
+        if (s == null) return "";
+        return s.length() <= max ? s : s.substring(0, max) + "…";
     }
 
     private static void recordAssistantToolCalls(Stream s, OxModelHub.Round round) {
