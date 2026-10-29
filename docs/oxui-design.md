@@ -133,6 +133,11 @@ The only entrance animation is the conversation fade/rise on first render.
   is prefixed with 〔转发〕 and delivered through the normal local turn path.
   Group media entries now record filePath/fileName, so group chats render
   the same paper file bubble as 1:1.
+- Reverse delete sync (0.77): when a message is deleted from Telegram UI in
+  an agent dialog, OxUI's chat store is pruned in the same operation
+  (body prefix match, or nearest timestamp for media without a caption).
+  Only the agent-dialog path is wired; local-group chat rendering is
+  currently blocked by an emulator crash when opening those chats.
 - Local reactions (0.76): long-press any bubble (assistant, user, photo,
   file) and choose React… for an anchored six-emoji bar; the current
   reaction is highlighted with a Remove reaction row, tapping it again

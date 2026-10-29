@@ -9319,6 +9319,7 @@ public class MessagesController extends BaseController implements NotificationCe
         // deletes by bare id and could hit unrelated real messages with the same id.
         if (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId)) {
             cacheOnly = true;
+            org.telegram.ox.OxAgentsBridge.onNativeMessagesDeleted(dialogId, messages);
             android.util.Log.i("OxBridge", "deleteMessages local-only did=" + dialogId + " count=" + (messages == null ? 0 : messages.size()) + " cacheOnly=" + cacheOnly);
         }
         ArrayList<Integer> toSend = null;

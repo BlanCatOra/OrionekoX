@@ -4469,3 +4469,19 @@ debug `e567d8b4b87ce66bf4984d431fbd435ed300c129628f6796049efbc6b0e34fd4`。
 
 **产物**：release `d7889a723d795ded7abb316a3e07f0c75b08992eed8407e9d3a37a55743865a4`；
 debug `7c8269c76b7eaa62211690a85fe0b504f7105a58ba05dbf9723c2f78b81e4c43`。
+## 5.199 alpha 0.77.0 —— Telegram UI 删除反向同步（Agent 会话）（2026-10-29 15:58–16:12）
+
+- 新增 OxAgentsBridge.onNativeMessagesDeleted：在 MessagesController 删除
+  agent 会话消息前，按 mid 读取 messages_v2 的 date+data 取正文，按前
+  24 字符匹配或 10 分钟时间近邻移除对应 OxChatEntry（removeChatEntry），
+  日志 onNativeMessagesDeleted did/mids/removed。
+- 接入 MessagesController.deleteMessages 的 agent-dialog cacheOnly 分支，
+  实现“Telegram 删了，OxUI 不再幽灵”的双向一致。
+- 群组路径未接线：本地群聊天窗口在该模拟器上打开即 qemu 退出（两次复现），
+  为避免上线未验证行为，最终构建只保留 Agent 会话；群组处理留在桥接内待用。
+- 设备：1:1 发送 revdel077_a → Telegram 长按删除 → removed=1、chat.json
+  用户条目消失、assistant/tool 保留；清理测试数据后首页干净。
+- 版本规则：功能新增 → **0.77.0**（7709），patch 清零。
+
+**产物**：release `963fe98b68a923927cdad3a0dbae43bcc8883a64ad8adf6be9296b54ac8ae8b8`；
+debug `b61a0d2769af5ace2bd4f462f5ff7e900e3964c1836494ff0b55fbf8896410eb`。
