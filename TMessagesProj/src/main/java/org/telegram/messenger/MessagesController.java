@@ -9317,10 +9317,17 @@ public class MessagesController extends BaseController implements NotificationCe
         }
         // Local agent message ids do not exist on the server; messages.deleteMessages
         // deletes by bare id and could hit unrelated real messages with the same id.
+        // Locally-created groups are equally offline: when a message is deleted from
+        // Telegram UI we prune the matching OxUI group chat entry here and keep the
+        // delete cache-only so nothing is sent to Telegram's servers.
         if (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId)) {
             cacheOnly = true;
             org.telegram.ox.OxAgentsBridge.onNativeMessagesDeleted(dialogId, messages);
             android.util.Log.i("OxBridge", "deleteMessages local-only did=" + dialogId + " count=" + (messages == null ? 0 : messages.size()) + " cacheOnly=" + cacheOnly);
+        } else if (dialogId < 0 && org.telegram.ox.OxGroupStore.isLocalGroup(-dialogId)) {
+            cacheOnly = true;
+            org.telegram.ox.OxAgentsBridge.onNativeMessagesDeleted(dialogId, messages);
+            android.util.Log.i("OxBridge", "deleteMessages local-group did=" + dialogId + " count=" + (messages == null ? 0 : messages.size()) + " cacheOnly=" + cacheOnly);
         }
         ArrayList<Integer> toSend = null;
         long channelId;
