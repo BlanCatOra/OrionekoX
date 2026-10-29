@@ -2559,14 +2559,19 @@ public class OxAgentsBridge {
         String mode = agent.memoryMode == null ? OxMemoryStore.MODE_NORMAL : agent.memoryMode;
         int threshold = agent.memoryThreshold > 0 ? agent.memoryThreshold : 45;
         if (!OxHarnessAdapter.isLocalApi(agent)) {
-            // Harness ownership is independent of the local memory switch: a
-            // user may disable local memory and still expect the harness to
-            // compact its own context.
+            // Harness owns its own context compaction; we only bridge memory in
+            // (no compact ownership fight). See OxMemoryBridge for the contract.
             OxHarnessAdapter.maybeCompact(agent, history, threshold);
-            if (system.length() > 0) system.append("\n\n");
-            system.append("# 外部 Harness\n上下文与 compact 由「")
-                    .append(OxHarnessAdapter.label(agent.harness))
-                    .append("」管理，本地不注入压缩摘要或记忆库。");
+            String bridge = OxMemoryBridge.harnessContext(agent.id, query);
+            if (!bridge.isEmpty()) {
+                if (system.length() > 0) system.append("\n\n");
+                system.append(bridge);
+            } else {
+                if (system.length() > 0) system.append("\n\n");
+                system.append("# 外部 Harness\n上下文与 compact 由「")
+                        .append(OxHarnessAdapter.label(agent.harness))
+                        .append("」管理。本地记忆桥接可用，但当前无记忆可注入。");
+            }
             return defaultFrom;
         }
         if (OxMemoryStore.MODE_OFF.equals(mode)) return defaultFrom;
