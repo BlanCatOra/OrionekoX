@@ -4435,3 +4435,20 @@ debug `af2dd3e67008948b6dc939c5fcd0740a904b09c21857fa79a1fb493338477e5d`。
 
 **产物**：release `c4686060f2cefaa6b2f736c3d7e22a7731b0d54b41c20f3999b8938122c7eaf0`；
 debug `00cf1a3f1782630d453f5149638b232323fe31c2c4127a0506f7b0e8b2edc0dd`。
+## 5.197 alpha 0.75.0 —— OxUI 消息编辑 + 群组面板冷启动修复（2026-10-29 14:45–15:12）
+
+- 编辑：OxAgentStore.updateChatEntry / OxGroupStore.updateEntry 改写条目；
+  editOxEntry 复用删除的 mid 定位，原地重写 messages_v2 data（文本、
+  entities=空表、FLAG_15+edit_date，不改 mid/date），再
+  replaceMessagesObjects + dialogsNeedReload；OxUI 用户气泡菜单加
+  Edit message（pending 不显示），in-design 编辑器预填/多行/空文本拒绝。
+- 真 bug（本轮自造并修复）：首版把 entities 置 null，MessageObject
+  applyEntities NPE（TL 已写但 UI 不刷新）→ 改为空 ArrayList 后复测。
+- 面板：loadGroupsAsync 加 loading/loaded 防重入，showAgentPanel 主动
+  触发加载并在完成后重绘，修复冷启动“先开面板后加载”导致 Groups 缺失。
+- 设备验证：1:1 编辑 store+TL+OxUI+Telegram UI“已编辑”；本地群
+  1800000009 编辑 store+TL 成功；清理 QA 群与本轮 1:1 测试消息后首页干净。
+- 版本规则：功能新增 → **0.75.0**（7509），patch 清零。
+
+**产物**：release `131a6414bf10e85dd0353ce8a61653a92e315fab000aedfca555e6696984a8a5`；
+debug `e567d8b4b87ce66bf4984d431fbd435ed300c129628f6796049efbc6b0e34fd4`。

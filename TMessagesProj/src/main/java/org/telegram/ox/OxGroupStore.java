@@ -142,6 +142,26 @@ public class OxGroupStore {
         return false;
     }
 
+    /** Replaces the content of the first entry matching ts+role (OxUI edit). */
+    public static synchronized boolean updateEntry(long chatId, long ts, String role, String content) {
+        if (content == null || content.trim().isEmpty()) return false;
+        try {
+            List<OxChatEntry> chat = loadChat(chatId);
+            for (int i = 0; i < chat.size(); i++) {
+                OxChatEntry e = chat.get(i);
+                if (e.ts == ts && (role == null || role.equals(e.role))) {
+                    e.content = content;
+                    prefs().edit().putString("log_" + key(chatId),
+                            OxChatEntry.toJsonArray(chat).toString()).apply();
+                    return true;
+                }
+            }
+        } catch (Throwable t) {
+            FileLog.e("OxGroupStore.updateEntry", t);
+        }
+        return false;
+    }
+
     /** Entry-based append: lets callers carry quote fields without stacking
      *  positional parameters. sender overrides entry.sender when non-null. */
     public static synchronized void appendEntry(long chatId, OxChatEntry entry, String sender) {

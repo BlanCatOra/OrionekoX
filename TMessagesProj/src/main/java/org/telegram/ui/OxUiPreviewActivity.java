@@ -182,6 +182,9 @@ public class OxUiPreviewActivity extends Activity {
     private String failedFileName;
     private String failedTargetKey;
     private final List<GroupItem> groupItems = new ArrayList<>();
+    private boolean groupsLoaded;
+    private boolean groupsLoading;
+    private boolean agentPanelOpen;
     private LinearLayout attachRow;
     private ImageView attachPreview;
     private TextView attachName;
@@ -1168,6 +1171,111 @@ public class OxUiPreviewActivity extends Activity {
                                     Toast.LENGTH_SHORT).show();
                         },
                         () -> {}});
+    }
+
+    /** In-design editor for a local user message (text only). */
+    private void showEditMessage(final long ts, final String oldText) {
+        if (overlay == null || oldText == null) return;
+        hideKeyboard();
+        overlay.removeAllViews();
+        overlay.setVisibility(View.VISIBLE);
+        if (animationsEnabled()) {
+            overlay.setAlpha(0f);
+            overlay.animate().alpha(1f).setDuration(150).start();
+        } else {
+            overlay.setAlpha(1f);
+        }
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackgroundColor(BONE);
+        panel.setPadding(dp(22), dp(18), dp(22), dp(14));
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = new TextView(this);
+        title.setText("Edit message");
+        title.setTextSize(26);
+        title.setTypeface(serif());
+        title.setTextColor(INK);
+        head.addView(title, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView close = new TextView(this);
+        close.setText("×");
+        close.setTextSize(22);
+        close.setTextColor(INK);
+        close.setGravity(Gravity.CENTER);
+        close.setContentDescription("Close");
+        close.setOnClickListener(v -> hideOverlay());
+        head.addView(close, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        panel.addView(head);
+        final EditText editor = new EditText(this);
+        editor.setText(oldText);
+        editor.setSelection(oldText.length());
+        editor.setTextSize(16);
+        editor.setTypeface(sans());
+        editor.setTextColor(INK);
+        editor.setHintTextColor(MUTED);
+        editor.setGravity(Gravity.TOP | Gravity.START);
+        editor.setPadding(dp(14), dp(12), dp(14), dp(12));
+        editor.setMinHeight(dp(140));
+        editor.setMaxLines(8);
+        editor.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        editor.setBackground(plate(PAPER, 12, LINE, 1));
+        LinearLayout.LayoutParams elp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        elp.topMargin = dp(14);
+        panel.addView(editor, elp);
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setGravity(Gravity.END);
+        actions.setPadding(0, dp(14), 0, 0);
+        TextView cancel = new TextView(this);
+        cancel.setText("Cancel");
+        cancel.setTextSize(14);
+        cancel.setTypeface(sans());
+        cancel.setTextColor(INK);
+        cancel.setGravity(Gravity.CENTER);
+        cancel.setPadding(dp(18), dp(10), dp(18), dp(10));
+        cancel.setBackground(plate(0, 20, LINE, 1));
+        cancel.setContentDescription("Cancel edit");
+        cancel.setOnClickListener(v -> hideOverlay());
+        actions.addView(cancel);
+        TextView save = new TextView(this);
+        save.setText("Save");
+        save.setTextSize(14);
+        save.setTypeface(sansMedium());
+        save.setTextColor(BONE);
+        save.setGravity(Gravity.CENTER);
+        save.setPadding(dp(20), dp(10), dp(20), dp(10));
+        save.setBackground(plate(INK, 20, 0, 0));
+        save.setContentDescription("Save edit");
+        save.setOnClickListener(v -> {
+            String next = editor.getText() == null ? "" : editor.getText().toString().trim();
+            if (next.isEmpty()) {
+                Toast.makeText(this, "Message cannot be empty", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (next.equals(oldText.trim())) {
+                hideOverlay();
+                return;
+            }
+            boolean ok = OxAgentsBridge.editOxEntry(
+                    targetDialogId(), ts, "user", oldText, next);
+            hideOverlay();
+            refresh(true);
+            Toast.makeText(this, ok ? "Message edited" : "Message not found",
+                    Toast.LENGTH_SHORT).show();
+        });
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        slp.leftMargin = dp(10);
+        actions.addView(save, slp);
+        panel.addView(actions);
+        overlay.addView(panel, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.START));
     }
 
     /** Forward a message's text to another agent or local group. */
@@ -2356,6 +2464,7 @@ public class OxUiPreviewActivity extends Activity {
 
     private void hideOverlay() {
         hideKeyboard();
+        agentPanelOpen = false;
         scanGen++;
         if (pendingScan != null) {
             handler.removeCallbacks(pendingScan);
@@ -2369,6 +2478,8 @@ public class OxUiPreviewActivity extends Activity {
 
     private void showAgentPanel() {
         if (overlay == null) return;
+        agentPanelOpen = true;
+        if (!groupsLoaded && !groupsLoading) loadGroupsAsync();
         overlay.removeAllViews();
         overlay.setVisibility(View.VISIBLE);
         if (animationsEnabled()) {
@@ -3898,6 +4009,7 @@ public class OxUiPreviewActivity extends Activity {
 
     private void showAgentDetail(OxAgent a) {
         if (overlay == null) return;
+        agentPanelOpen = false;
         hideKeyboard();
         overlay.removeAllViews();
         overlay.setVisibility(View.VISIBLE);
@@ -4073,6 +4185,8 @@ public class OxUiPreviewActivity extends Activity {
     }
 
     private void loadGroupsAsync() {
+        if (groupsLoading) return;
+        groupsLoading = true;
         new Thread(() -> {
             List<GroupItem> out = new ArrayList<>();
             try {
@@ -4091,12 +4205,16 @@ public class OxUiPreviewActivity extends Activity {
                             ? chat.title : ("Group " + chatId);
                     out.add(item);
                 }
-            } catch (Throwable ignored) {
+            } catch (Throwable t) {
+                android.util.Log.e("OxUI", "loadGroups failed", t);
             }
             List<GroupItem> finalOut = out;
             runOnUiThread(() -> {
                 groupItems.clear();
                 groupItems.addAll(finalOut);
+                groupsLoaded = true;
+                groupsLoading = false;
+                if (agentPanelOpen) showAgentPanel();
             });
         }, "oxui-groups").start();
     }
@@ -4520,13 +4638,25 @@ public class OxUiPreviewActivity extends Activity {
             bubble.setBackground(bg);
             bubble.setTextIsSelectable(false);
             bubble.setOnLongClickListener(v -> {
-                showMessageMenu(v,
-                        new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
-                                "Forward to…",
-                                "Delete message"},
-                        new int[]{0, 0, CORAL},
-                        new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
-                                () -> confirmDelete(v, ts, "user", text)});
+                if (sending) {
+                    showMessageMenu(v,
+                            new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
+                                    "Forward to…",
+                                    "Delete message"},
+                            new int[]{0, 0, CORAL},
+                            new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
+                                    () -> confirmDelete(v, ts, "user", text)});
+                } else {
+                    showMessageMenu(v,
+                            new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
+                                    "Forward to…",
+                                    "Edit message",
+                                    "Delete message"},
+                            new int[]{0, 0, 0, CORAL},
+                            new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
+                                    () -> showEditMessage(ts, text),
+                                    () -> confirmDelete(v, ts, "user", text)});
+                }
                 return true;
             });
             quoteWrap.addView(bubble, new LinearLayout.LayoutParams(
@@ -4555,13 +4685,25 @@ public class OxUiPreviewActivity extends Activity {
         bubble.setBackground(bg);
         bubble.setTextIsSelectable(false);
         bubble.setOnLongClickListener(v -> {
-            showMessageMenu(v,
-                    new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
-                            "Forward to…",
-                            "Delete message"},
-                    new int[]{0, 0, CORAL},
-                    new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
-                            () -> confirmDelete(v, ts, "user", text)});
+            if (sending) {
+                showMessageMenu(v,
+                        new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
+                                "Forward to…",
+                                "Delete message"},
+                        new int[]{0, 0, CORAL},
+                        new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
+                                () -> confirmDelete(v, ts, "user", text)});
+            } else {
+                showMessageMenu(v,
+                        new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
+                                "Forward to…",
+                                "Edit message",
+                                "Delete message"},
+                        new int[]{0, 0, 0, CORAL},
+                        new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
+                                () -> showEditMessage(ts, text),
+                                () -> confirmDelete(v, ts, "user", text)});
+            }
             return true;
         });
         LinearLayout wrap = new LinearLayout(this);
