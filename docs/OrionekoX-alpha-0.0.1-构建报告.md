@@ -4396,3 +4396,21 @@ debug `8738b14ef56473710c0a93943f81cff3eca96b2e89e9a1c7f73461287c8ccc09`。
 
 **产物**：release `209554bc3c30b003fc0384f502edc33d0b33c222ea25636992791fb0459f761e`；
 debug `c40d434cd464a49c319c3dd01040aa4e40f41868266cc776a932b5051c768ac5`。
+## 5.195 alpha 0.73.0 —— 群组文件气泡 + 消息转发 + 发送键修复（2026-10-29 13:45–14:10）
+
+- 群组文件：handleOutgoingGroupMedia 记录首文件；onGroupMessage/
+  startGroupTurn 文件重载；群用户条目写 filePath/fileName，OxUI 群历史
+  复用文件气泡（PAPER 胶囊+大小+说明+时间戳）。
+- 转发：助手行菜单 Copy / Reply / Forward to…（1:1 Copy / Forward），
+  用户气泡加 Forward；目标面板列 Agent（单字头像）与本地群（👥），
+  发送 `〔转发〕\n正文`（Agent 走 sendFromOxUi 真实回合，群走
+  sendLocalGroupText 并切换）。
+- 真 bug 修复：updateSendVisual 未计 pendingFilePath，纯文件无文字时
+  发送键禁用（0.72 文本+文件用例掩盖）；修复并复测。
+- 设备验证：群 id=1800000000 内文件发送（修复前禁用/修复后 TL doc +
+  runRound + OxUI 文件气泡）；长按菜单与转发面板、Echo 收到〔转发〕
+  消息并回复（id=100006/100007）。release 7309 无 FATAL。
+- 版本规则：功能新增 → **0.73.0**（7309），patch 清零。
+
+**产物**：release `508b935b2bbbe4ad6c9336751d33f87f8e0c1002cb597c28b304ae20768a3bd3`；
+debug `af2dd3e67008948b6dc939c5fcd0740a904b09c21857fa79a1fb493338477e5d`。

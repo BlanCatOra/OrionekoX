@@ -816,3 +816,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
   预览/打开；25MB 上限。
 - 附注：Yuki 会话历史中 `recallnullnull…` 工具名条目属旧构建数据，现行
   流式解析已过滤 null 名片段，非现行 bug。
+
+## 0.73.0 群组文件气泡与转发 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-173 | 0.72 遗留 | 群组文件在 OxUI 显示文本占位而非文件气泡 | handleOutgoingGroupMedia 记录首文件；onGroupMessage/startGroupTurn 文件重载；群条目写 filePath/fileName；复用文件气泡 | 已实现并设备验证 |
+| R2-174 | 主线对标 | OxUI 无转发功能 | 助手行菜单加 Forward to…（1:1 同样两行菜单）；用户气泡菜单加 Forward；目标面板列 Agent/本地群；`〔转发〕` 前缀发送 | 已实现并设备验证（Echo 收到并回复） |
+| R2-175 | 0.73 QA | 纯文件（无文字）发送键保持禁用——updateSendVisual 只算 pendingImagePath | ready 判定加入 pendingFilePath；复测群文件无文字发送成功 | 已修复并设备验证 |
+
+- 遗留：转发不含媒体、无来源标注；文件气泡无长按菜单；群文件重名序号前缀属预期。
