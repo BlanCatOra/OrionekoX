@@ -756,6 +756,10 @@ public class OxMemoryStore {
                     ? sha256("mirror\n" + kind + "\n" + role + "\n" + normalized)
                     : sha256(kind + "\n" + role + "\n" + normalized
                             + ("turn".equals(kind) ? "\n" + createdAt : ""));
+            // Stage B (0.79): extract people/topics locally so the 6.3 filters
+            // operate on real data instead of always-empty columns.
+            String people = extractPeople(normalized);
+            String topics = extractTopics(normalized);
             // Stage A (0.78): Markdown is the single source of truth. Persist the
             // entry to memory.md first; SQLite stays a rebuildable derived index.
             String publicId = OxMemoryOntology.newPublicId();
@@ -766,6 +770,8 @@ public class OxMemoryStore {
             ont.status = "active";
             ont.source = source == null ? "tool" : source;
             ont.contentHash = hash;
+            ont.people = people;
+            ont.topics = topics;
             // A fact that supersedes a just-invalidated one records the link so
             // the Markdown source of truth carries the version chain.
             String pend = pendingSupersedes.get();
@@ -795,8 +801,8 @@ public class OxMemoryStore {
             v.put("source", source);
             v.put("hash", hash);
             v.put("public_id", publicId);
-            v.put("people", "");
-            v.put("topics", "");
+            v.put("people", people);
+            v.put("topics", topics);
             v.put("status", "active");
             v.put("supersedes", "");
             if (withVector) v.put("vec", bytes(embed(normalized)));
@@ -1094,6 +1100,80 @@ public class OxMemoryStore {
             "is", "are", "was", "were", "am", "be", "like", "likes", "love", "loves",
             "prefer", "prefers", "use", "uses", "live", "lives", "work", "works",
             "have", "has", "do", "does", "can", "will", "now", "also", "and", "as"));
+
+    // ---------------- stage B 6.3: people / topics extraction ----------------
+    // Lightweight, fully local extraction so the people/topics/status filters
+    // (6.3) operate on real data instead of always-empty columns. No network.
+
+    private static final Set<String> SURNAMES = new HashSet<>(java.util.Arrays.asList(
+            "王", "李", "张", "刘", "陈", "杨", "黄", "赵", "吴", "周", "徐", "孙", "马", "朱", "胡",
+            "郭", "何", "高", "林", "罗", "郑", "梁", "谢", "宋", "唐", "许", "韩", "冯", "邓", "曹",
+            "彭", "曾", "萧", "田", "董", "袁", "潘", "于", "蒋", "蔡", "余", "杜", "叶", "程", "苏",
+            "魏", "吕", "丁", "任", "沈", "姚", "卢", "傅", "钟", "姜", "崔", "谭", "廖", "范", "汪",
+            "陆", "金", "石", "覃", "贾", "夏", "韦", "方", "白", "邹", "孟", "熊", "秦", "邱", "江",
+            "尹", "薛", "闫", "段", "雷", "侯", "龙", "史", "陶", "黎", "贺", "顾", "毛", "郝", "龚",
+            "邵", "万", "钱", "严", "武", "戴", "莫", "孔", "向", "汤"));
+
+    /** Best-effort person extraction: explicit self/other name cues, Chinese
+     *  surname-led 2-4 char runs, and Mr/Ms/Mrs/Dr + Latin proper nouns. */
+    private static String extractPeople(String text) {
+        if (text == null) return "";
+        Set<String> out = new java.util.LinkedHashSet<>();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                "(?:我叫|我是|我找|我联系|我给|我跟|my friend|my colleague|talk to|called|named|with|"
+                        + "i am|i'm|name is|my name is|call me)\\s*"
+                        + "([\\u4e00-\\u9fff]{1,4}|[A-Z][a-z]{1,20})").matcher(text);
+        while (m.find()) {
+            String n = m.group(1).trim();
+            if (!n.isEmpty()) out.add(n.toLowerCase(Locale.ROOT));
+        }
+        java.util.regex.Matcher title = java.util.regex.Pattern
+                .compile("(?:mr|ms|mrs|dr)\\.?\\s+([A-Z][a-z]{1,20})").matcher(text);
+        while (title.find()) out.add(title.group(1).toLowerCase(Locale.ROOT));
+        java.util.regex.Matcher cjk = java.util.regex.Pattern
+                .compile("[\\u4e00-\\u9fff]{1,4}").matcher(text);
+        while (cjk.find()) {
+            String run = cjk.group();
+            if (run.length() >= 2 && run.length() <= 4
+                    && SURNAMES.contains(run.substring(0, 1))) {
+                out.add(run);
+            }
+        }
+        if (out.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String p : out) {
+            if (sb.length() > 0) sb.append(';');
+            sb.append(p);
+        }
+        return sb.toString();
+    }
+
+    private static final Set<String> TOPIC_KEYWORDS = new HashSet<>(java.util.Arrays.asList(
+            "生日", "偏好", "习惯", "工作", "项目", "城市", "家人", "宠物", "饮食", "过敏",
+            "会议", "旅行", "学习", "健身", "账户", "密码", "手机号", "地址", "纪念日", "学校",
+            "birthday", "preference", "habit", "work", "project", "city", "family",
+            "pet", "diet", "allergy", "meeting", "travel", "study", "account",
+            "password", "phone", "address", "school", "anniversary"));
+
+    /** Topic extraction: reuse subjectKey (subject of a fact) plus any recognized
+     *  domain keywords so people/topics/status filters can narrow by theme. */
+    private static String extractTopics(String text) {
+        if (text == null) return "";
+        Set<String> out = new java.util.LinkedHashSet<>();
+        String subj = subjectKey(text);
+        if (subj != null && !subj.trim().isEmpty()) out.add(subj.trim());
+        String lower = text.toLowerCase(Locale.ROOT);
+        for (String kw : TOPIC_KEYWORDS) {
+            if (lower.contains(kw.toLowerCase(Locale.ROOT))) out.add(kw);
+        }
+        if (out.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String t : out) {
+            if (sb.length() > 0) sb.append(';');
+            sb.append(t);
+        }
+        return sb.toString();
+    }
 
 
     private static List<Mem> load(String agentId, int limit) {
