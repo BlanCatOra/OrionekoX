@@ -769,7 +769,7 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 | R2-156 | 用户 | 舍弃方案应沉淀为预设，预设要优雅多样 | OxUiSkin 9 套预设（前 7 套为擂台方案）+ 设置页 APPEARANCE 列表 + 即时换肤 | 已实现并设备验证 |
 | R2-157 | 用户 | 所见皆 DIY：组件级可定制 | 外壳层 v1：Navigation（rail/bottom/floating）、Material（solid/acrylic/mica/glass）、Dock position（top/aboveInput/bottom）、组件开关；全部进皮肤 JSON 可导出 | 已实现并设备验证 |
 | R2-158 | 用户 | 陶土色人文气息 | 调色板加 clay（#D97757/#E08963），只用于用户气泡与引用记号；signal 与 clay 语义分工 | 已实现并设备验证 |
-| R2-159 | 用户 | 终端要参考 Termius/Termux | Termux 实机安装+深度使用（extra-keys/properties/绿色提示/键帽），Termius 公开设计借鉴；终端 v3：会话 tab/状态行/分组键帽/↑↓历史/Tab 补全/^L/Aa 字号 | 已实现并设备验证（Termius APK 未能安装） |
+| R2-159 | 用户 | 终端要参考 Termius/Termux | Termux 实机安装+深度使用（extra-keys/properties/绿色提示/键帽）；Termius 7.5.5 APK 实装并使用（设置页 Font & colours/Hotkeys/autocomplete/pinch）；终端 v3：会话 tab/状态行/分组键帽/↑↓历史/Tab 补全/^L/Aa/主题三选/捏合缩放 | 已实现并设备验证 |
 | R2-160 | 用户 | dock 在输入框上方别扭，位置应可自定义 | dock 改流式插入 + Position 三选（top/aboveInput/bottom）+ 材质 | 已实现并设备验证（top/floating/glass） |
 | R2-161 | QA 事故 | 最小 prefs 覆盖导致 agent_only 等键丢失 | 立即重建恢复并验证 agent-only 首页；之后统一"读取-合并-推送" | 已恢复 |
 | R2-162 | 环境 | 宿主 X server 丢失致 qemu 退出 | 改 `-no-window -gpu off` 无窗口运行，adb 截图正常 | 已恢复 |
