@@ -4,6 +4,26 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.69.0 — 2026-10-29
+
+- Turns a seven-model design battle (claude-haiku-5.5, gpt-6-luna in three
+  directions, gpt-6-sol, gpt-5.6-sol, plus the existing implementation) into
+  an OxUiSkin system: nine presets distilled from those directions, each
+  carrying eight color tokens plus radius and type scales, with a token
+  editor (hex fields, radius/type segmented, JSON export) and an APPEARANCE
+  list that applies instantly.
+- Adds a clay human-voice accent (user bubbles and quote markers) while
+  chartreuse remains the single action signal; monogram avatars with model
+  tags, a monogram chip on assistant meta and an IMG/WxH label on image cards.
+- Shell DIY: navigation rail / bottom bar / floating dock, surface material
+  solid / acrylic / mica / glass, dock position top / above input / bottom,
+  and rail/footer toggles, all persisted in the skin JSON and laid out in
+  flow instead of covering the composer.
+- Terminal v3 after installing and using Termux on the device and studying
+  Termius: underline session tabs with independent logs and history, a LOCAL
+  status line, grouped quick keys, command history, Tab completion, Ctrl-L
+  clearing, an Aa type cycle and honest local-only commands.
+
 ## 0.68.0 — 2026-10-29
 
 - In-app theme override: an oxui_theme preference (follow system / light /

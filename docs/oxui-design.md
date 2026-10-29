@@ -111,6 +111,18 @@ The only entrance animation is the conversation fade/rise on first render.
   form for name, remark, model, persona and multi-select SKILL.md
   association, saved back through OxAgentStore. BACK now closes overlays
   (menu, sheets) before leaving the conversation.
+- Skins and shell (0.69): nine named skins (the seven directions from the
+  model design battle plus reading/ink-blue variants) each carrying eight
+  color tokens, radius and type scales; a Customize editor edits raw hex
+  tokens, radius and type scale and can copy the skin JSON. The shell layer
+  makes navigation and chrome first-class settings: rail / bottom bar /
+  floating dock, solid / acrylic / mica / glass surfaces, dock position
+  (top / above input / bottom) and rail/footer visibility. Clay is the human
+  voice (user bubbles, quotes); chartreuse stays the single action signal.
+- Terminal (0.69): a dedicated dark surface with underline session tabs,
+  a LOCAL status line, grouped quick keys, command history, Tab completion,
+  an Aa size cycle and honest local commands; aesthetics follow Termux's
+  real-device terminal and Termius's session chrome.
 
 ## Not done yet / next
 

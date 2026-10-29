@@ -1428,9 +1428,21 @@ These confirm the feature directions rather than relying on guesses. Checked
    and persisted immediately, plus version/about) reached from the Agents
    footer, and an agent editor (name, remark, model, persona, multi-select
    SKILL.md association) opened from the agent detail, with BACK closing
-   overlays instead of leaving the app. Still open: avatar creation via
-   emoji markup in agent-only mode, user-avatar RPC family, offline title
-   editing, cross-chat search aggregation, menu scrolling beyond five rows,
-   video/GIF/file attachments, avatar/provider/sampling/tool-policy fields
-   in the agent editor, tablet layout, a full TalkBack pass, token-level
-   streaming. It is not yet a complete replacement for Telegram UI.
+   overlays instead of leaving the app. 0.69.0 turns the multi-model design
+   battle (7 model-designed variants archived in design-battle-shots/) into a
+   skin system: nine presets distilled from those directions plus a token
+   editor (7 colors, radius and type scale, JSON export), a human-voice clay
+   accent alongside the chartreuse action signal, monogram avatars with model
+   tags, and a shell layer toggling navigation (rail / bottom / floating
+   dock), surface material (solid/acrylic/mica/glass), dock position (top /
+   above input / bottom) and rail/footer visibility, all persisted in the
+   skin JSON. The terminal is a first-class surface with Termux/Termius-
+   inspired session tabs, grouped quick keys, history, Tab completion, a mono
+   type-scale cycle and honest local-only commands. Still open: finer
+   per-component toggles (message rows, composer form, bubble shapes), real
+   blur-backed materials, avatar creation via emoji markup in agent-only
+   mode, user-avatar RPC family, offline title editing, cross-chat search
+   aggregation, video/GIF/file attachments, avatar/provider/sampling/tool-
+   policy fields in the agent editor, tablet layout, a full TalkBack pass,
+   token-level streaming. It is not yet a complete replacement for Telegram
+   UI.

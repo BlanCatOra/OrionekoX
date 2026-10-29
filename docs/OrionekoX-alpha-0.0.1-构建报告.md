@@ -4292,3 +4292,38 @@ debug `dist/OrionekoX-0.68.0-debug-arm64-x64.apk`（sha256
 `50ef0815b4a6bdbadc42747f62a77f65398660254eb5bf9e71c0811f80a0794d`）；
 构建日志 `/tmp/ox-build-0680-final.log`；QA 详见
 [docs/qa-0.68.0.md](qa-0.68.0.md)。
+## 5.191 alpha 0.69.0 —— 多模型设计擂台合成：皮肤系统 + 外壳层 + 终端 v3（2026-10-29 10:00–12:05）
+
+- 多模型设计擂台：7 版 4 屏设计（claude-haiku-5.5 / gpt-6-luna ×3 方向 /
+  gpt-6-sol / gpt-5.6-sol / oxui-ds），简报从零、渲染截图对比；gpt-6-pro
+  账号不可用、glm-5.3-flash 网关 524×3、astra 按指示避开；结论与截图存
+  `design-battle-shots/`。
+- 合成落地：青墨调色板（bone/paper/深青墨）+ 陶土 clay 专用于用户气泡与
+  引用（signal=动作，clay=人声）；Agent 行与搜索改单字头像 + 模型标签；
+  assistant meta 单字徽 + 图片卡 IMG·WxH 角标。
+- **OxUiSkin 皮肤系统**：9 套预设（前 7 套即擂台方案沉淀）+ 自定义 token
+  编辑器（7 色 hex、radiusSharp/Soft/Round、字号 Compact/Normal/Large、
+  Copy JSON 导出）；plate 圆角与关键字号按皮肤缩放；设置页 APPEARANCE
+  列表即时换肤并落盘。
+- **外壳层 DIY**：Navigation（Rail/Bottom/Floating）、Material（Solid/
+  Acrylic/Mica/Glass）、Dock position（Top/Above input/Bottom）、组件开关
+  Rail chips/Footer status，全部进皮肤 JSON；dock 改为流式插入（不再覆盖
+  输入区），玻璃材质为半透明+信号描边。
+- **终端 v3**：按 Termux 实机学习（全屏黑底白 mono/绿色提示/双行键帽/
+  properties 宏与 cursor/session 快捷键）+ Termius 公开设计（下划线 tab/
+  状态行/键帽分组/状态脚注）重做：会话 tab（≤4、独立 log/history）、
+  LOCAL 状态行、分组快捷键（Esc/^L/Tab|↑↓|符号）、↑↓历史、Tab 补全、^L
+  清屏、Aa 字号（写皮肤）、13sp/3dp 行距、荧光 ↵ 与底部状态行；
+  Termius APK 环境内无法安装（Play/APK 镜像均被拦），如实记录。
+- 事故与恢复：验证 dock 顶部时曾以最小 prefs 覆盖 orioneko_config 导致
+  agent_only 等键丢失，立即重建恢复并验证 agent-only 首页；模拟器宿主
+  X server 丢失致 qemu 退出，改 `-no-window -gpu off` 恢复。
+- 清理：皮肤/主题恢复默认（Follow system），interface_mode=telegram；
+  Termux 留在模拟器供对照（非用户数据）。
+- 版本规则：按 minor 从 0.68.0 → **0.69.0**（6909），patch 清零。
+
+**产物**：`dist/OrionekoX-0.69.0-alpha-arm64-x64.apk`（versionCode 6909，
+sha256 `bfc8473ad3a4900fbe3893d1c1f37d1ae42d905ef03c218a158b6b4e30e52686`）；
+debug `dist/OrionekoX-0.69.0-debug-arm64-x64.apk`（sha256
+`04f4b751dd68b41ea3b5b94a684912c0d78a5dc3339eab61affcb9b9bf5a1472`）；
+QA 详见 [docs/qa-0.69.0.md](qa-0.69.0.md)。
