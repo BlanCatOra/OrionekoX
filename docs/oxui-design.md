@@ -122,7 +122,12 @@ The only entrance animation is the conversation fade/rise on first render.
 - Terminal (0.69): a dedicated dark surface with underline session tabs,
   a LOCAL status line, grouped quick keys, command history, Tab completion,
   an Aa size cycle and honest local commands; aesthetics follow Termux's
-  real-device terminal and Termius's session chrome.
+  real-device terminal and Termius's session chrome. 0.71.0 audited every
+  palette against WCAG contrast (text >= 6.6, dim >= 4.0, accent >= 4.75)
+  and stopped dimming indented command output, which fixed the "unreadable
+  Nord" class of bugs. Credentials follow Termius's uniform key row: PWD
+  and PST are text keys like the rest, backed by a local-only terminal
+  secret that never enters the exported skin JSON.
 - Component DIY and materials (0.70): the skin now also carries component
   toggles (message density, timestamps, assistant accent rule, dock item
   visibility) and can be imported as JSON, not just exported. Floating docks
