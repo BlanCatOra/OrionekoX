@@ -412,6 +412,9 @@ public class OxMemoryStore {
         String topics;
         String status;
         String exact;
+        long dateFrom = 0;
+        long dateTo = 0;
+        long dateExact = 0;
     }
 
     private static RecallFilters parseRecallFilters(String raw) {
@@ -431,15 +434,22 @@ public class OxMemoryStore {
                 f.people = val.toLowerCase(Locale.ROOT);
             } else if (key.equals("topic") || key.equals("topics") || key.equals("tag")) {
                 f.topics = val.toLowerCase(Locale.ROOT);
-            } else if (key.equals("status")) {
+            }             else if (key.equals("status")) {
                 f.status = val;
+            } else if (key.equals("date") || key.equals("on")) {
+                f.dateExact = parseLocalDate(val);
+            } else if (key.equals("after") || key.equals("since")) {
+                f.dateFrom = parseLocalDate(val);
+            } else if (key.equals("before") || key.equals("until")) {
+                f.dateTo = parseLocalDate(val);
             }
         }
         return f;
     }
 
     private static void applyRecallFilters(List<Mem> active, RecallFilters f) {
-        if (f.people == null && f.topics == null && f.status == null) return;
+        if (f.people == null && f.topics == null && f.status == null
+                && f.dateFrom == 0 && f.dateTo == 0 && f.dateExact == 0) return;
         for (java.util.Iterator<Mem> it = active.iterator(); it.hasNext(); ) {
             Mem m = it.next();
             boolean drop = false;
@@ -453,8 +463,42 @@ public class OxMemoryStore {
                     || !m.status.equalsIgnoreCase(f.status))) {
                 drop = true;
             }
+            if (!drop && f.dateExact > 0 && dayStart(m.createdAt) != f.dateExact) drop = true;
+            if (!drop && f.dateFrom > 0 && m.createdAt < f.dateFrom) drop = true;
+            if (!drop && f.dateTo > 0 && m.createdAt >= f.dateTo + DAY_MS) drop = true;
             if (drop) it.remove();
         }
+    }
+
+    /** Parse a local ISO date (YYYY-MM-DD) to the epoch millis of its start. */
+    private static long parseLocalDate(String s) {
+        if (s == null) return 0;
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("(\\d{4})-(\\d{2})-(\\d{2})").matcher(s);
+        if (!m.find()) return 0;
+        try {
+            int y = Integer.parseInt(m.group(1));
+            int mo = Integer.parseInt(m.group(2)) - 1;
+            int d = Integer.parseInt(m.group(3));
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            cal.set(y, mo, d, 0, 0, 0);
+            cal.set(java.util.Calendar.MILLISECOND, 0);
+            return cal.getTimeInMillis();
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
+    /** Start-of-day epoch millis for a timestamp (local timezone). */
+    private static long dayStart(long ts) {
+        if (ts <= 0) return 0;
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.setTimeInMillis(ts);
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        return cal.getTimeInMillis();
     }
 
     private static String recallById(String agentId, String id, String mode) {
