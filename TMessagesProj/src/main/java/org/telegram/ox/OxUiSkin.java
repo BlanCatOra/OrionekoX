@@ -40,6 +40,12 @@ public class OxUiSkin {
     public boolean termAutocomplete = true;
     public String dockPosition = "aboveInput"; // top | aboveInput | bottom
 
+    // Component layer: density, element visibility and dock composition.
+    public String density = "cozy";      // cozy | compact
+    public boolean showTimestamps = true;
+    public boolean showAccent = true;
+    public int dockItems = 15;           // bit0 agents, 1 search, 2 terminal, 3 settings
+
     public boolean isDark() {
         int lum = (int) (0.299 * ((bone >> 16) & 0xFF) + 0.587 * ((bone >> 8) & 0xFF)
                 + 0.114 * (bone & 0xFF));
@@ -70,6 +76,10 @@ public class OxUiSkin {
             o.put("termQuickKeys", termQuickKeys);
             o.put("termAutocomplete", termAutocomplete);
             o.put("dockPosition", dockPosition);
+            o.put("density", density);
+            o.put("showTimestamps", showTimestamps);
+            o.put("showAccent", showAccent);
+            o.put("dockItems", dockItems);
             return o;
         } catch (Exception e) {
             return new JSONObject();
@@ -99,6 +109,10 @@ public class OxUiSkin {
         s.termQuickKeys = o.optBoolean("termQuickKeys", true);
         s.termAutocomplete = o.optBoolean("termAutocomplete", true);
         s.dockPosition = o.optString("dockPosition", "aboveInput");
+        s.density = o.optString("density", "cozy");
+        s.showTimestamps = o.optBoolean("showTimestamps", true);
+        s.showAccent = o.optBoolean("showAccent", true);
+        s.dockItems = o.optInt("dockItems", 15);
         return s;
     }
 

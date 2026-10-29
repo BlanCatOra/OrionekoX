@@ -779,3 +779,15 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
   均实测；release 无 FATAL。
 - 遗留：更细粒度组件开关（消息行/输入栏/气泡样式）与真实模糊材质；Termius
   需 APK/Play 账号；终端未接 PTY。
+
+## 0.70.0 组件 DIY、真实模糊与终端配色 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-163 | 0.70 功能 | 组件级 DIY 不足（只能换整皮） | density/timestamps/accent/dockItems 四类组件开关进皮肤 JSON + 设置 COMPONENTS 小节 | 已实现（逐项截图待补） |
+| R2-164 | 0.70 功能 | 皮肤无法导入分享 | Customize → Import JSON…（粘贴→fromJson→custom）；与 Copy JSON 对称 | 已实现（端到端待补） |
+| R2-165 | 0.70 功能 | 材质只是半透明近似 | floating dock 覆盖层 + 快照 1/6 降采样两遍 box blur + 材质 tint + 圆角裁剪；滚动防抖 | 已实现并设备验证 |
+| R2-166 | 用户 | 要内置 Termius 的背景色等设定 | 11 套终端配色（bg/text/dim/accent）全接入并持久化；选项面板可滚动+swatch；浅色 tab 文字色修复 | 已实现并设备验证（Termius Light/Solarized Light/Nord） |
+
+- 遗留：density 未覆盖输入栏/列表；模糊为 box blur 近似；导入无文件分享；
+  ANSI 16 色未做。
