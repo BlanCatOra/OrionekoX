@@ -5,6 +5,19 @@
 > also the WorkBuddy agent). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.85.0 — 2026-10-30
+
+- OxUI stage 9.1: video / GIF attachments.
+  - The composer's ＋ menu now offers Photo / **Video** / File; picking a video
+    imports it into `oxui_media` with its original name.
+  - A video or GIF file renders as a video bubble instead of a 📄 file chip: a
+    poster frame decoded with `MediaMetadataRetriever`, a ▶ affordance, and a
+    `VIDEO`/`GIF · WxH · M:SS · size` meta line. Tapping opens the system player
+    through the app's FileProvider.
+  - Pending (in-flight) sends show the same video bubble at reduced alpha.
+  - The agent bridge already understood video/GIF uploads, so existing chats
+    with video attachments now render correctly too.
+
 ## 0.84.0 — 2026-10-30
 
 - OxTerminal 支持 ANSI-16 颜色渲染（9.4）：终端输出此前为纯 `TextView`，shell

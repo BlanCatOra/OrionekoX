@@ -205,6 +205,7 @@ public class OxUiPreviewActivity extends Activity {
 
     private static final int REQ_PICK_IMAGE = 1001;
     private static final int REQ_PICK_FILE = 1002;
+    private static final int REQ_PICK_VIDEO = 1003;
 
     private final Runnable poll = new Runnable() {
         @Override
@@ -604,9 +605,9 @@ public class OxUiPreviewActivity extends Activity {
         attach.setGravity(Gravity.CENTER);
         attach.setContentDescription(LocaleController.getString(R.string.OxUiAttach));
         attach.setOnClickListener(v -> showMessageMenu(v,
-                new CharSequence[]{"Photo", "File"},
-                new int[]{0, 0},
-                new Runnable[]{this::pickImage, this::pickFile}));
+                new CharSequence[]{"Photo", "Video", "File"},
+                new int[]{0, 0, 0},
+                new Runnable[]{this::pickImage, this::pickVideo, this::pickFile}));
         composer.addView(attach, new LinearLayout.LayoutParams(dp(40), dp(44)));
 
         input = new EditText(this);
@@ -849,6 +850,80 @@ public class OxUiPreviewActivity extends Activity {
         }
     }
 
+    private void pickVideo() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("video/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(Intent.createChooser(intent, "Video"), REQ_PICK_VIDEO);
+        } catch (Throwable t) {
+            Toast.makeText(this, R.string.OxUiNoAgentTitle, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** True for videos and GIFs, so they get a video-style bubble instead of a file chip. */
+    private static boolean isVideoOrGif(String path) {
+        if (path == null) return false;
+        String l = path.toLowerCase();
+        return l.endsWith(".mp4") || l.endsWith(".mov") || l.endsWith(".mkv")
+                || l.endsWith(".webm") || l.endsWith(".3gp") || l.endsWith(".gif");
+    }
+
+    /** "WxH · M:SS · 1.2 MB" meta line for a video/GIF bubble. */
+    private String videoMetaText(String path) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            android.media.MediaMetadataRetriever r = new android.media.MediaMetadataRetriever();
+            r.setDataSource(path);
+            String d = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION);
+            String w = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH);
+            String h = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
+            r.release();
+            if (w != null && h != null) sb.append(w).append('×').append(h).append("  ·  ");
+            if (d != null) {
+                long sec = Math.max(0, Long.parseLong(d)) / 1000;
+                sb.append(String.format(java.util.Locale.US, "%d:%02d", sec / 60, sec % 60))
+                        .append("  ·  ");
+            }
+        } catch (Throwable ignored) {
+        }
+        return sb.toString() + fileSizeText(path);
+    }
+
+    /** First decodable frame, scaled down; null when the file cannot be read. */
+    private android.graphics.Bitmap videoPoster(String path) {
+        try {
+            android.media.MediaMetadataRetriever r = new android.media.MediaMetadataRetriever();
+            r.setDataSource(path);
+            android.graphics.Bitmap b = r.getFrameAtTime(
+                    1_000_000L, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+            r.release();
+            if (b == null) return null;
+            int tw = dp(300);
+            int th = Math.max(1, b.getHeight() * tw / Math.max(1, b.getWidth()));
+            return android.graphics.Bitmap.createScaledBitmap(b, tw, th, true);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /** Hand the file to the system player / gallery via the app's FileProvider. */
+    private void openVideo(String path) {
+        if (path == null) return;
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            android.net.Uri uri = androidx.core.content.FileProvider.getUriForFile(this,
+                    org.telegram.messenger.ApplicationLoader.getApplicationId() + ".provider",
+                    new File(path));
+            intent.setDataAndType(uri,
+                    path.toLowerCase().endsWith(".gif") ? "image/gif" : "video/*");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(intent);
+        } catch (Throwable t) {
+            Toast.makeText(this, "无法打开该视频", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private String[] importPickedFile(android.net.Uri uri) {
         try {
             String name = "file";
@@ -906,6 +981,22 @@ public class OxUiPreviewActivity extends Activity {
             attachPreview.setVisibility(View.GONE);
             attachName.setText("📄 " + file[1]);
             attachMeta.setText(fileSizeText(file[0]));
+            updateSendVisual();
+            return;
+        }
+        if (requestCode == REQ_PICK_VIDEO) {
+            String[] v = importPickedFile(data.getData());
+            if (v == null) {
+                Toast.makeText(this, R.string.OxUiNoAgentTitle, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            pendingFilePath = v[0];
+            pendingFileName = v[1];
+            pendingImagePath = null;
+            attachRow.setVisibility(View.VISIBLE);
+            attachPreview.setVisibility(View.GONE);
+            attachName.setText("🎬 " + v[1]);
+            attachMeta.setText(videoMetaText(v[0]));
             updateSendVisual();
             return;
         }
@@ -4616,9 +4707,13 @@ public class OxUiPreviewActivity extends Activity {
             if (!hasText && !hasImage && !hasFile) continue;
             if ("user".equals(e.role)) {
                 if (hasFile) {
-                    addUserFile(e.fileName == null || e.fileName.isEmpty()
-                            ? new File(e.filePath).getName() : e.fileName,
-                            e.filePath, e.content, e.ts, false);
+                    if (isVideoOrGif(e.filePath)) {
+                        addUserVideo(e.filePath, e.ts, e.content, false);
+                    } else {
+                        addUserFile(e.fileName == null || e.fileName.isEmpty()
+                                ? new File(e.filePath).getName() : e.fileName,
+                                e.filePath, e.content, e.ts, false);
+                    }
                     if (e.reaction != null && !e.reaction.isEmpty()) {
                         addReactionRow(e.reaction, true);
                     }
@@ -4640,7 +4735,12 @@ public class OxUiPreviewActivity extends Activity {
         }
         if (pendingText != null || pendingImagePath != null || pendingFilePath != null) {
             if (pendingFilePath != null) {
-                addUserFile(pendingFileName, pendingFilePath, pendingText, System.currentTimeMillis(), true);
+                if (isVideoOrGif(pendingFilePath)) {
+                    addUserVideo(pendingFilePath, System.currentTimeMillis(), pendingText, true);
+                } else {
+                    addUserFile(pendingFileName, pendingFilePath, pendingText,
+                            System.currentTimeMillis(), true);
+                }
             } else {
                 addUser(pendingText, System.currentTimeMillis(), true, pendingImagePath,
                         replyQuoteSender, replyQuoteText, false);
@@ -4669,6 +4769,85 @@ public class OxUiPreviewActivity extends Activity {
                 messages.animate().alpha(1f).translationY(0f).setDuration(260).start();
             }
         });
+    }
+
+    /** Video / GIF bubble: a poster frame with a play affordance; tap opens the
+     *  system player. Falls back to a plain frame when no poster can be decoded. */
+    private void addUserVideo(String path, long ts, String caption, boolean sending) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.END);
+        row.setPadding(0, rowGap(12), 0, 0);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setBackground(plate(INK, 17, 0, 0));
+        card.setClipToOutline(true);
+
+        int maxW = (int) (getResources().getDisplayMetrics().widthPixels * 0.7f);
+        android.graphics.Bitmap poster = videoPoster(path);
+        int w = maxW;
+        int h = (int) (maxW * 9f / 16f);
+        if (poster != null) {
+            h = w * poster.getHeight() / Math.max(1, poster.getWidth());
+        }
+        FrameLayout frame = new FrameLayout(this);
+        if (poster != null) {
+            ImageView iv = new ImageView(this);
+            iv.setImageBitmap(poster);
+            iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            frame.addView(iv, new FrameLayout.LayoutParams(w, h));
+        }
+        TextView play = new TextView(this);
+        play.setText("▶");
+        play.setTextSize(26);
+        play.setTypeface(sans());
+        play.setTextColor(BONE);
+        play.setGravity(Gravity.CENTER);
+        play.setBackground(plate(0x66000000, 28, 0, 0));
+        frame.addView(play, new FrameLayout.LayoutParams(dp(54), dp(54), Gravity.CENTER));
+        card.addView(frame, new LinearLayout.LayoutParams(w, h));
+
+        TextView meta = new TextView(this);
+        boolean gif = path != null && path.toLowerCase().endsWith(".gif");
+        meta.setText((gif ? "GIF" : "VIDEO") + "  ·  " + videoMetaText(path));
+        meta.setTextSize(10.5f);
+        meta.setTypeface(mono());
+        meta.setTextColor(0xCCF1EBDD);
+        meta.setLetterSpacing(0.06f);
+        boolean hasCaption = caption != null && !caption.trim().isEmpty();
+        meta.setPadding(dp(15), dp(7), dp(15), hasCaption ? 0 : dp(9));
+        card.addView(meta, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        if (hasCaption) {
+            TextView cap = new TextView(this);
+            cap.setText(styled(caption));
+            cap.setTextSize(16);
+            cap.setTypeface(sans());
+            cap.setTextColor(BONE);
+            cap.setLineSpacing(dp(2), 1.05f);
+            cap.setPadding(dp(15), dp(9), dp(15), dp(12));
+            card.addView(cap, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+        card.setContentDescription(hasCaption ? caption : (gif ? "GIF" : "Video"));
+        card.setOnClickListener(v -> openVideo(path));
+        card.setOnLongClickListener(v -> {
+            showMessageMenu(v,
+                    new CharSequence[]{"React…", "Delete message"},
+                    new int[]{0, CORAL},
+                    new Runnable[]{() -> showReactionPicker(v, ts, "user"),
+                            () -> confirmDelete(v, ts, "user", caption)});
+            return true;
+        });
+        if (sending) card.getBackground().setAlpha(SENDING_ALPHA);
+        row.addView(card, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        row.setTag(ts);
+        messages.addView(row, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
     /** File attachment bubble: a paper capsule with glyph, name and size, plus
