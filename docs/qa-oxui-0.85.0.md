@@ -34,7 +34,20 @@ OxUI 此前只有两类附件：图片（Photo）与文件（File）。但 `OxAg
 
 - `taskset -c 0-7 ./gradlew :TMessagesProj_AppStandalone:assembleAfatDebug` → BUILD SUCCESSFUL。
 
-## 诚实缺口
+## 模拟器实测取证（2026-10-30 01:05–01:08，emulator-5554，debug 包 0.85.0/850）
 
-1. **模拟器实测待补**：需先 `adb push` 一个测试视频到 `/sdcard/Movies`，再经系统文件选择器选中——选择器是外部 UI，脚本自动化不稳。本轮至少可验证「＋ 菜单出现 Video」与「已存在的视频附件渲染为视频气泡」。
-2. GIF 气泡内动画未实现（见「行为边界」）。
+1. Settings → Ox Settings → Interface → **OxUI preview**。
+2. 点 composer ＋ → 菜单出现 **Photo / Video / File**（uiautomator 实测三项齐全）。
+   截图：`dist/iter-shots/oxui-9.1-attach-menu.png`。
+3. 用 ffmpeg 生成 2 秒红屏测试视频 → `adb push` 到 `/sdcard/Movies` → MediaStore 索引成功。
+4. 点 **Video** → 系统照片选择器列出该视频（缩略图 `00:02`）→ 选中。
+5. 附件条显示元信息 `320×240 · 0:02 · 3 KB`（`videoMetaText` 正确读出分辨率/时长/大小）。
+6. 点发送 → 气泡渲染为**视频形态**：红色海报帧 + ▶ + `VIDEO · 320×240 · 0:02 · 3 KB`，`Agent is replying...` 说明已进入 agent 通道。
+   截图：`dist/iter-shots/oxui-9.1-video-bubble.png`。
+7. logcat 无 FATAL。
+
+## 诚实缺口（实测后更新）
+
+1. ✅ 原「模拟器实测待补」已补齐（上表，入口 → 选片 → 元信息 → 发送 → 渲染全链路）。
+2. GIF 气泡内逐帧动画未实现（见「行为边界」），GIF 目前以首帧海报 + 系统相册打开代替。
+3. 未验证「点气泡后系统播放器是否正常起播」（需要可靠的可播视频与外部播放器状态，留待下一轮）。
