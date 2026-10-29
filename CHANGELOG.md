@@ -5,6 +5,16 @@
 > also the WorkBuddy agent). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.84.0 — 2026-10-30
+
+- OxTerminal 支持 ANSI-16 颜色渲染（9.4）：终端输出此前为纯 `TextView`，shell
+  程序的着色转义序列（如 `ls --color`、`grep --color`、`git` 着色）会以乱码显示。
+  新增 SGR 解析与 `Spannable` 渲染，支持 16 色前景/背景、粗体、下划线；其余 CSI
+  （光标移动、清屏）与 OSC（窗口标题）序列被剥离，不再污染显示。跨流式分块沿用
+  着色状态，refresh / clear / restart 时正确重置。扩展色（256/真彩）做安全剥离，
+  不渲染。详见 `docs/qa-oxui-0.84.0.md`。诚实缺口：真机着色截图缺实证，列为
+  ⚠️ 待端到端验证（ESC 序列无法经软键盘/adb 输入）。
+
 ## 0.83.0 — 2026-10-29
 
 - OxUI stage 8.3: 群组反向同步（group reverse sync）。
