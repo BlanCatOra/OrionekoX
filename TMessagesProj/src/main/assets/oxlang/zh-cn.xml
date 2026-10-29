@@ -6768,11 +6768,13 @@
     <string name="OxUiNoAgentBody">先在 Ox 设置里创建一个 Agent，再回到预览。</string>
     <string name="OxUiAgents">Agents</string>
     <string name="OxUiSearchAgents">搜索 Agent</string>
+    <string name="OxUiSearchAll">搜索 Agent 和消息</string>
+    <string name="OxUiSearchMessages">消息</string>
     <string name="OxUiAgentsHint">点击进入对话，长按查看详情与记忆。</string>
     <string name="OxUiMemory">记忆库</string>
     <string name="OxUiNoMemory">还没有记忆条目。</string>
     <string name="OxUiChat">进入对话</string>
-    <string name="OxUiNoResults">没有匹配的 Agent。</string>
+    <string name="OxUiNoResults">没有匹配的内容。</string>
     <string name="OxUiCopyDone">已复制</string>
     <string name="OxUiAttach">附加图片</string>
     <string name="OxUiGroups">群组</string>

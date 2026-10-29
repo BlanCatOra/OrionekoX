@@ -1407,10 +1407,20 @@ These confirm the feature directions rather than relying on guesses. Checked
    visual review: unified image+caption card, 0.6-viewport image height cap
    with center-crop, post-send scroll re-alignment, removal of the Preview
    badge, rail fade, full-height assistant accent rule, and
-   markdown-stripped list subtitles. Still open: avatar creation via emoji
-   markup in agent-only mode, user-avatar RPC family, offline title editing,
-   the custom long-press menu, user-bubble timestamps, type scale snapping,
-   attachment row container, tall-screenshot card rendering, video/GIF/file
-   attachments, chat search, settings, agent editing, tablet layout, dark
-   variant, reduced-motion/accessibility sweep, token-level streaming. It is
-   not yet a complete replacement for Telegram UI.
+   markdown-stripped list subtitles. 0.66.0 closes the rest of the third
+   review's list: in-design long-press menu (bone card, SIGNAL reply dot,
+   anchored with back-key/render dismissal), user-bubble timestamps and
+   copy menu, a snapped type scale (11/12/14/16/17/28 across 30 sites with
+   RIPPLE/SENDING_ALPHA constants), an attachment capsule with a
+   dimensions/size mono line, and confirmation that the tall-screenshot
+   "split card" was a screenshot-reading mistake (bounds prove image and
+   caption share one ink card; image now centers in the wider card). It also
+   adds v1 session search: the panel query scans local agent chats and
+   group logs off-thread (3 per target, 12 total, 220 ms debounce) and
+   renders SIGNAL-highlighted message hits under a "Messages" section.
+   Still open: avatar creation via emoji markup in agent-only mode,
+   user-avatar RPC family, offline title editing, in-conversation search
+   with hit navigation, menu scrolling beyond five rows, video/GIF/file
+   attachments, settings, agent editing, tablet layout, dark variant,
+   reduced-motion/accessibility sweep, token-level streaming. It is not yet
+   a complete replacement for Telegram UI.

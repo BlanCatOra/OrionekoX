@@ -4,6 +4,26 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.66.0 — 2026-10-29
+
+- In-design long-press menu replacing the platform AlertDialog and the
+  direct-copy handlers: transparent menu host, bone card with LINE stroke,
+  48dp rows at 15sp sans-serif-medium, a SIGNAL dot on the Reply row, anchor
+  placement above/below the pressed view, and dismissal on back or
+  conversation rebuild. User bubbles gain a right-aligned mono timestamp and
+  a Copy menu.
+- Type scale snapped to 11/12/14/16/17/28 across 30 audited sites, with
+  RIPPLE/SENDING_ALPHA constants and a sansMedium helper. The staged
+  attachment becomes a PAPER capsule with a WxH/KB mono line.
+- Tall-screenshot card clarified: view bounds prove the caption already sits
+  inside the same ink card as the image (the 0.65 report's "split card" was a
+  screenshot-reading mistake); the image now centers when the caption row is
+  wider.
+- Session search v1: the Agents-panel query also scans local agent chats and
+  group logs off-thread (3 hits per target, 12 total, 220 ms debounce) and
+  lists SIGNAL-highlighted message hits under a Messages section; tapping a
+  hit opens that conversation.
+
 ## 0.65.0 — 2026-10-29
 
 - Offline avatar edit/remove for existing local groups: ChatEditActivity

@@ -88,20 +88,29 @@ The only entrance animation is the conversation fade/rise on first render.
   targeted `Reply <agent>` from the long-press menu (chip + forced member turn).
 - Attachments (0.62): SAF image picker → `files/oxui_media` → real photo
   message; image bubbles with a 16 MB import cap and a coral retry row when a
-  send never lands (120 s).
+  send never lands (120 s). 0.66.0 shows the staged attachment as a PAPER
+  capsule with a `WxH · KB` mono line and renders image+caption as one ink
+  card with a 0.6-viewport height cap.
+- Message surfaces (0.66): long-press opens an in-design menu (bone card,
+  48dp rows, SIGNAL dot on Reply) for group assistant rows (Copy / Reply
+  <name>), 1:1 assistant rows (Copy) and user bubbles (Copy); user bubbles
+  carry a right-aligned mono timestamp.
+- Session search (0.66): the Agents-panel query also scans local chat
+  histories off-thread and lists SIGNAL-highlighted message hits under a
+  "Messages" section; tapping a hit opens that conversation.
 
 ## Not done yet / next
 
 - Root switch only applies to plain launcher starts; deep links/shares keep the
   Telegram path.
-- Editing the avatar of an existing local group, video/GIF/file attachments,
-  chat search, settings, agent editing and full memory pages are still
-  Telegram-UI-only (or absent) in OxUI.
+- Avatar editing moved offline in 0.65; chat search exists at panel level
+  but there is no in-conversation search bar or hit navigation yet.
+  Video/GIF/file attachments, settings, agent editing and full memory pages
+  are still Telegram-UI-only (or absent) in OxUI.
 - Targeted replies have no quote semantics yet (the chip forces the member, but
   the quoted message is not embedded in the turn context).
 - The preview is phone-first; no tablet two-pane layout yet.
 - Dynamic theme variants, reduced-motion handling and accessibility sweep are
   still to do.
-- Next round: a third visual pass over groups/media polish from the subagent
-  review list, chat/session search inside OxUI, then settings and agent
-  editing.
+- Next round: dark variant and reduced-motion/accessibility sweep, then
+  settings and agent editing inside OxUI.

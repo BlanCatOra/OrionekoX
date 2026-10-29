@@ -4205,3 +4205,36 @@ debug `dist/OrionekoX-0.65.0-debug-arm64-x64.apk`（sha256
 `9be0280b77349d98930bd837ee9baa7df129ca4c0c4c333536d47c020eb4a336`）；
 构建日志 `/tmp/ox-build-0650-final.log`；QA 详见
 [docs/qa-0.65.0.md](qa-0.65.0.md)。
+## 5.188 alpha 0.66.0 —— 视觉遗留 5 项 + OxUI 会话搜索（2026-10-29 04:05–09:40）
+
+- 本轮起按用户 2026-10-29 指示：模型回 opendesign/deepseek-v4.1-flash、
+  取消多并发子代理策略，单主线推进（automation prompt 与 memory 已同步）。
+- 视觉遗留 5 项全部落地：①自定义长按菜单（menuHost + bone 卡片、SIGNAL
+  Reply 圆点、锚点定位/返回键/重建自动关闭，替换三处 AlertDialog/直接
+  copy）；②用户气泡时间戳（两分支右对齐 11sp mono）与长按菜单；③类型
+  尺度吸附（审计 52 站点→30 处修改，全部向 11/12/14/16/17/28 吸附，
+  RIPPLE/SENDING_ALPHA 常量 + sansMedium helper）；④附件行 PAPER 胶囊
+  + `WxH · KB` mono 副行；⑤竖长截图卡片异常定位——设备 dump 证实
+  ImageView 与 caption 左缘对齐、垂直零间隙，caption 本就在同一 ink 卡
+  内，0.65 的“图文割裂”为读图误判；另做图片卡内水平居中观感修正。
+- OxUI 会话搜索 v1（设计注实现）：面板搜索框同时检索 agent 名/备注/群
+  标题与本地聊天内容（worker 线程扫描 OxAgentStore/OxGroupStore，每目标
+  ≤3、全局 ≤12、220ms 防抖 + scanGen 丢弃过期），Messages 小节 + SIGNAL
+  底色高亮命中 + mono 时间，点击打开会话；空态仅在全无命中时出现；新增
+  OxUiSearchAll/OxUiSearchMessages（中文包 125）。
+- 设备验证：1:1 菜单/时间戳、blue 搜索两条高亮命中、附件胶囊
+  `1080x2400 · 302 KB`、图卡 bounds 对齐、群菜单 Copy/●Reply、chip 引用
+  摘要、TARGET-660Q → `groupReply forced agentId=echo dialog=-1800000004`
+  且气泡渲染引用行；release 6609 无 FATAL。
+- 自造回归并修复：类型尺度批量替换误伤 `sansMedium()` 定义导致
+  StackOverflowError（启动即崩），修复后复测；批量替换须排除定义处。
+- 清理：QA 群 1800000004 全 0、Sakura chat 仅移除本轮条目、oxui_media/
+  tall660.png 删除、interface_mode=telegram。
+- 版本规则：按 minor 从 0.65.0 → **0.66.0**（6609），patch 清零。
+
+**产物**：`dist/OrionekoX-0.66.0-alpha-arm64-x64.apk`（versionCode 6609，
+sha256 `f4f3a1bf985fc07f7af369ab335adde20c3370c7ceb371c6198f83892bc121f0`）；
+debug `dist/OrionekoX-0.66.0-debug-arm64-x64.apk`（sha256
+`1bda0bd9ee635b6d2ece7b932bc86b1cd48c9f39a623050d340af9beb9008881`）；
+构建日志 `/tmp/ox-build-0660-final.log`；QA 详见
+[docs/qa-0.66.0.md](qa-0.66.0.md)。
