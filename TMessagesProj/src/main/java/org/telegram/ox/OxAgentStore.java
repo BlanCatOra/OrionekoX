@@ -200,6 +200,24 @@ public class OxAgentStore {
         return false;
     }
 
+    /** Sets or clears the single local reaction on the ts+role entry. */
+    public static synchronized boolean updateReaction(String id, long ts, String role, String reaction) {
+        try {
+            List<OxChatEntry> chat = loadChat(id);
+            for (int i = 0; i < chat.size(); i++) {
+                OxChatEntry e = chat.get(i);
+                if (e.ts == ts && (role == null || role.equals(e.role))) {
+                    e.reaction = reaction == null || reaction.isEmpty() ? null : reaction;
+                    saveChat(id, chat);
+                    return true;
+                }
+            }
+        } catch (Throwable t) {
+            org.telegram.messenger.FileLog.e("OxAgentStore.updateReaction", t);
+        }
+        return false;
+    }
+
     public static void saveChat(String id, List<OxChatEntry> chat) {
         try {
             File dir = agentDir(id);

@@ -1473,5 +1473,12 @@ These confirm the feature directions rather than relying on guesses. Checked
    OxChatEntry and the messages_v2 data blob in place (same mid/date), so
    Telegram UI shows the new text with its edited marker; the Agents panel
    also no longer loses its Groups section when a cold start finishes loading
-   after the panel opened. It is not yet a complete replacement for Telegram
-   UI.
+   after the panel opened. 0.76.0 adds local emoji reactions: assistant,
+   user, photo and file menus gain React… with an anchored six-emoji bar
+   (current reaction highlighted, Remove reaction, tapping the same emoji
+   clears it) and a small emoji chip under the bubble, persisted in
+   OxChatEntry. Reactions are intentionally OxUI-only: Telegram's offline
+   reaction catalogue is empty, so writing TL reactions rendered blank
+   circles in the Telegram UI. The group list now reloads on resume, so a
+   group created in Telegram UI appears when returning to OxUI. It is not
+   yet a complete replacement for Telegram UI.

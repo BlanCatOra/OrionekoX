@@ -162,6 +162,25 @@ public class OxGroupStore {
         return false;
     }
 
+    /** Sets or clears the single local reaction on the ts+role entry. */
+    public static synchronized boolean updateReaction(long chatId, long ts, String role, String reaction) {
+        try {
+            List<OxChatEntry> chat = loadChat(chatId);
+            for (int i = 0; i < chat.size(); i++) {
+                OxChatEntry e = chat.get(i);
+                if (e.ts == ts && (role == null || role.equals(e.role))) {
+                    e.reaction = reaction == null || reaction.isEmpty() ? null : reaction;
+                    prefs().edit().putString("log_" + key(chatId),
+                            OxChatEntry.toJsonArray(chat).toString()).apply();
+                    return true;
+                }
+            }
+        } catch (Throwable t) {
+            FileLog.e("OxGroupStore.updateReaction", t);
+        }
+        return false;
+    }
+
     /** Entry-based append: lets callers carry quote fields without stacking
      *  positional parameters. sender overrides entry.sender when non-null. */
     public static synchronized void appendEntry(long chatId, OxChatEntry entry, String sender) {

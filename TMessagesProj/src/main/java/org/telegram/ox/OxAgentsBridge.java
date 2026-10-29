@@ -112,6 +112,44 @@ public class OxAgentsBridge {
         return updated;
     }
 
+    /**
+     * Sets or clears one local emoji reaction on an OxUI message. Reactions stay in
+     * the OxChatEntry only: Telegram UI renders reaction chips through the server
+     * reactions catalogue (emoji icon documents), which is empty offline and shows
+     * blank circles, so nothing is written into messages_v2.
+     */
+    public static boolean reactOxEntry(long dialogId, long ts, String role, String emoji) {
+        if (dialogId == 0 || ts == 0) return false;
+        String value = emoji == null ? "" : emoji.trim();
+        boolean updated;
+        if (isAgentDialog(dialogId)) {
+            OxAgent a = agentByTgId(dialogId);
+            updated = a != null && OxAgentStore.updateReaction(a.id, ts, role, value);
+        } else if (dialogId < 0) {
+            updated = OxGroupStore.updateReaction(-dialogId, ts, role, value);
+        } else {
+            return false;
+        }
+        log("reactOxEntry did=" + dialogId + " role=" + role + " emoji=" + value
+                + " store=" + updated);
+        return updated;
+    }
+
+    private static void notifyMessageChanged(long dialogId, final TLRPC.Message message) {
+        AndroidUtilities.runOnUIThread(() -> {
+            try {
+                ArrayList<MessageObject> objs = new ArrayList<>();
+                objs.add(new MessageObject(0, message, true, false));
+                NotificationCenter.getInstance(0).postNotificationName(
+                        NotificationCenter.replaceMessagesObjects, dialogId, objs);
+                NotificationCenter.getInstance(0).postNotificationName(
+                        NotificationCenter.dialogsNeedReload);
+            } catch (Throwable t) {
+                logErr("notifyMessageChanged UI failed did=" + dialogId, t);
+            }
+        });
+    }
+
     private static boolean updateLocalMessageText(long dialogId, int mid, String newText) {
         try {
             org.telegram.SQLite.SQLiteDatabase db = MessagesStorage.getInstance(0).getDatabase();
@@ -156,19 +194,7 @@ public class OxAgentsBridge {
                 st.dispose();
                 out.reuse();
             }
-            final TLRPC.Message edited = message;
-            AndroidUtilities.runOnUIThread(() -> {
-                try {
-                    ArrayList<MessageObject> objs = new ArrayList<>();
-                    objs.add(new MessageObject(0, edited, true, false));
-                    NotificationCenter.getInstance(0).postNotificationName(
-                            NotificationCenter.replaceMessagesObjects, dialogId, objs);
-                    NotificationCenter.getInstance(0).postNotificationName(
-                            NotificationCenter.dialogsNeedReload);
-                } catch (Throwable t) {
-                    logErr("editOxEntry UI failed did=" + dialogId, t);
-                }
-            });
+            notifyMessageChanged(dialogId, message);
             return true;
         } catch (Throwable t) {
             logErr("updateLocalMessageText failed did=" + dialogId + " mid=" + mid, t);

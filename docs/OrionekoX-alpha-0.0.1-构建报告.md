@@ -4452,3 +4452,20 @@ debug `00cf1a3f1782630d453f5149638b232323fe31c2c4127a0506f7b0e8b2edc0dd`。
 
 **产物**：release `131a6414bf10e85dd0353ce8a61653a92e315fab000aedfca555e6696984a8a5`；
 debug `e567d8b4b87ce66bf4984d431fbd435ed300c129628f6796049efbc6b0e34fd4`。
+## 5.198 alpha 0.76.0 —— OxUI 消息反应 + 群组列表常刷新（2026-10-29 15:20–15:46）
+
+- 反应：OxChatEntry.reaction + OxAgentStore/OxGroupStore.updateReaction；
+  reactOxEntry 仅写本地条目；OxUI 助手/用户/图片/文件菜单加 React…，
+  锚定 6 emoji 选择条（当前项高亮 + Remove reaction，再点同项清除），
+  气泡下渲染 `emoji 1` 胶囊。
+- 反例与回退：写入 messages_v2 的 TL reactions 在离线环境缺少
+  MediaDataController reactions 目录，Telegram UI 只渲染空白圆形 chip；
+  已回退为 OxUI 本地反应并记录原因，不污染 Telegram 数据。
+- 群组刷新：新增 onResume → loadGroupsAsync（loading 防重入），修复
+  Activity 存活期间新建群返回 OxUI 后面板缺群。
+- 设备：1:1 👍/❤️/🎉 与本地群 😂 均 store=true 且重启保留；群 1800000010
+  创建后返回 OxUI 面板可见；清理 QA 群与本轮 1:1 测试消息后首页干净。
+- 版本规则：功能新增 → **0.76.0**（7609），patch 清零。
+
+**产物**：release `d7889a723d795ded7abb316a3e07f0c75b08992eed8407e9d3a37a55743865a4`；
+debug `7c8269c76b7eaa62211690a85fe0b504f7105a58ba05dbf9723c2f78b81e4c43`。
