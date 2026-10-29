@@ -69,15 +69,48 @@ import java.util.Locale;
  */
 public class OxUiPreviewActivity extends Activity {
 
-    private static final int BONE = 0xFFF1EBDD;
-    private static final int PAPER = 0xFFE5DCCB;
-    private static final int INK = 0xFF14211C;
-    private static final int MUTED = 0xFF566259;
-    private static final int SIGNAL = 0xFFC8EF6A;
-    private static final int LINE = 0x8C14211C;
-    private static final int CORAL = 0xFFCE6549;
-    private static final int RIPPLE = 0x1814211C;
+    // Palette is resolved in onCreate from the system night mode; the fields
+    // stay instance-scoped so the whole screen re-themes on recreation.
+    private int BONE;
+    private int PAPER;
+    private int INK;
+    private int MUTED;
+    private int SIGNAL;
+    private int LINE;
+    private int CORAL;
+    private int RIPPLE;
+    private int MENU_PAPER;
     private static final int SENDING_ALPHA = 190;
+
+    private boolean darkPalette;
+
+    private void resolvePalette() {
+        boolean dark = (getResources().getConfiguration().uiMode
+                & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        darkPalette = dark;
+        if (dark) {
+            BONE = 0xFF141917;
+            PAPER = 0xFF1E2521;
+            INK = 0xFFEDE6D6;
+            MUTED = 0xFF9AA69D;
+            SIGNAL = 0xFFC8EF6A;
+            LINE = 0x8CEDE6D6;
+            CORAL = 0xFFE07A62;
+            RIPPLE = 0x18EDE6D6;
+            MENU_PAPER = 0xFF202724;
+        } else {
+            BONE = 0xFFF1EBDD;
+            PAPER = 0xFFE5DCCB;
+            INK = 0xFF14211C;
+            MUTED = 0xFF566259;
+            SIGNAL = 0xFFC8EF6A;
+            LINE = 0x8C14211C;
+            CORAL = 0xFFCE6549;
+            RIPPLE = 0x1814211C;
+            MENU_PAPER = 0xFFF7F3EA;
+        }
+    }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<OxAgent> agents = new ArrayList<>();
@@ -94,6 +127,12 @@ public class OxUiPreviewActivity extends Activity {
     private String panelQuery = "";
     private Runnable pendingScan;
     private int scanGen;
+    private LinearLayout chatSearchRow;
+    private EditText chatSearchInput;
+    private TextView chatSearchCount;
+    private final List<Long> chatHits = new ArrayList<>();
+    private int chatHitIndex = -1;
+    private Runnable pendingChatSearch;
 
     private String pendingText;
     private String pendingAgentId;
@@ -140,12 +179,17 @@ public class OxUiPreviewActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        resolvePalette();
         Window w = getWindow();
         w.setStatusBarColor(BONE);
         w.setNavigationBarColor(BONE);
         if (Build.VERSION.SDK_INT >= 23) {
             int flags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
             if (Build.VERSION.SDK_INT >= 26) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            if (darkPalette) flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            if (darkPalette && Build.VERSION.SDK_INT >= 26) {
+                flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            }
             w.getDecorView().setSystemUiVisibility(flags);
         }
         if (Build.VERSION.SDK_INT >= 21) {
@@ -180,6 +224,16 @@ public class OxUiPreviewActivity extends Activity {
     protected void onDestroy() {
         handler.removeCallbacksAndMessages(null);
         super.onDestroy();
+    }
+
+    /** Respects the system animator scale for reduced-motion users. */
+    private boolean animationsEnabled() {
+        try {
+            return android.provider.Settings.Global.getFloat(getContentResolver(),
+                    android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f;
+        } catch (Throwable t) {
+            return true;
+        }
     }
 
     private int dp(float v) {
@@ -249,6 +303,19 @@ public class OxUiPreviewActivity extends Activity {
         title.addView(sub);
         header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
+        TextView chatSearchButton = new TextView(this);
+        chatSearchButton.setText("⌕");
+        chatSearchButton.setTextSize(16);
+        chatSearchButton.setTypeface(serif());
+        chatSearchButton.setTextColor(INK);
+        chatSearchButton.setGravity(Gravity.CENTER);
+        chatSearchButton.setContentDescription("Search this chat");
+        chatSearchButton.setBackground(plate(0, 18, LINE, 1));
+        chatSearchButton.setOnClickListener(v -> toggleChatSearch());
+        LinearLayout.LayoutParams cslp = new LinearLayout.LayoutParams(dp(38), dp(30));
+        cslp.rightMargin = dp(6);
+        header.addView(chatSearchButton, cslp);
+
         TextView agentsButton = new TextView(this);
         agentsButton.setText(LocaleController.getString(R.string.OxUiAgents));
         agentsButton.setTextSize(11);
@@ -287,6 +354,65 @@ public class OxUiPreviewActivity extends Activity {
         View rule = new View(this);
         rule.setBackgroundColor(LINE);
         root.addView(rule, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+        // In-conversation search bar (v1.5): hidden until the header ⌕ toggles it.
+        chatSearchRow = new LinearLayout(this);
+        chatSearchRow.setOrientation(LinearLayout.HORIZONTAL);
+        chatSearchRow.setGravity(Gravity.CENTER_VERTICAL);
+        chatSearchRow.setPadding(dp(18), dp(8), dp(18), dp(6));
+        chatSearchRow.setVisibility(View.GONE);
+        chatSearchInput = new EditText(this);
+        chatSearchInput.setSingleLine(true);
+        chatSearchInput.setHint("Search this chat");
+        chatSearchInput.setHintTextColor(MUTED);
+        chatSearchInput.setTextColor(INK);
+        chatSearchInput.setTextSize(14);
+        chatSearchInput.setTypeface(sans());
+        chatSearchInput.setBackground(plate(PAPER, 16, LINE, 1));
+        chatSearchInput.setPadding(dp(12), dp(6), dp(12), dp(6));
+        chatSearchInput.setContentDescription("Search this chat");
+        chatSearchRow.addView(chatSearchInput, new LinearLayout.LayoutParams(0, dp(40), 1f));
+        chatSearchInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s2, int a, int b, int c) {}
+            @Override public void onTextChanged(CharSequence s2, int a, int b, int c) {
+                scheduleChatSearch(s2 == null ? "" : s2.toString());
+            }
+            @Override public void afterTextChanged(Editable s2) {}
+        });
+        chatSearchCount = new TextView(this);
+        chatSearchCount.setTextSize(11);
+        chatSearchCount.setTypeface(mono());
+        chatSearchCount.setTextColor(MUTED);
+        chatSearchCount.setGravity(Gravity.CENTER);
+        chatSearchCount.setPadding(dp(8), 0, dp(4), 0);
+        chatSearchRow.addView(chatSearchCount, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView chatSearchPrev = new TextView(this);
+        chatSearchPrev.setText("↑");
+        chatSearchPrev.setTextSize(16);
+        chatSearchPrev.setTextColor(INK);
+        chatSearchPrev.setGravity(Gravity.CENTER);
+        chatSearchPrev.setContentDescription("Previous match");
+        chatSearchPrev.setOnClickListener(v -> navigateChatHit(-1));
+        chatSearchRow.addView(chatSearchPrev, new LinearLayout.LayoutParams(dp(34), dp(40)));
+        TextView chatSearchNext = new TextView(this);
+        chatSearchNext.setText("↓");
+        chatSearchNext.setTextSize(16);
+        chatSearchNext.setTextColor(INK);
+        chatSearchNext.setGravity(Gravity.CENTER);
+        chatSearchNext.setContentDescription("Next match");
+        chatSearchNext.setOnClickListener(v -> navigateChatHit(1));
+        chatSearchRow.addView(chatSearchNext, new LinearLayout.LayoutParams(dp(34), dp(40)));
+        TextView chatSearchClose = new TextView(this);
+        chatSearchClose.setText("×");
+        chatSearchClose.setTextSize(20);
+        chatSearchClose.setTextColor(MUTED);
+        chatSearchClose.setGravity(Gravity.CENTER);
+        chatSearchClose.setContentDescription("Close search");
+        chatSearchClose.setOnClickListener(v -> closeChatSearch());
+        chatSearchRow.addView(chatSearchClose, new LinearLayout.LayoutParams(dp(34), dp(40)));
+        root.addView(chatSearchRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         HorizontalScrollView railScroll = new HorizontalScrollView(this);
         railScroll.setHorizontalScrollBarEnabled(false);
@@ -338,6 +464,7 @@ public class OxUiPreviewActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView replyCancel = new TextView(this);
         replyCancel.setText("×");
+        replyCancel.setContentDescription("Cancel reply");
         replyCancel.setTextSize(20);
         replyCancel.setTextColor(MUTED);
         replyCancel.setGravity(Gravity.CENTER);
@@ -380,6 +507,7 @@ public class OxUiPreviewActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView attachCancel = new TextView(this);
         attachCancel.setText("×");
+        attachCancel.setContentDescription("Remove attachment");
         attachCancel.setTextSize(20);
         attachCancel.setTextColor(MUTED);
         attachCancel.setGravity(Gravity.CENTER);
@@ -400,6 +528,7 @@ public class OxUiPreviewActivity extends Activity {
 
         TextView attach = new TextView(this);
         attach.setText("＋");
+        attach.setContentDescription("Attach image");
         attach.setTextSize(20);
         attach.setTypeface(sans());
         attach.setTextColor(INK);
@@ -426,6 +555,7 @@ public class OxUiPreviewActivity extends Activity {
 
         send = new TextView(this);
         send.setText("↑");
+        send.setContentDescription("Send message");
         send.setTextSize(20);
         send.setTypeface(sans());
         send.setTextColor(INK);
@@ -507,7 +637,7 @@ public class OxUiPreviewActivity extends Activity {
         hideKeyboard();
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(plate(0xFFF7F3EA, 16, LINE, 1));
+        card.setBackground(plate(MENU_PAPER, 16, LINE, 1));
         card.setElevation(dp(12));
         card.setClickable(true);
         int cardW = Math.min(dp(280),
@@ -537,6 +667,7 @@ public class OxUiPreviewActivity extends Activity {
                 spacer.setMinWidth(dp(9));
                 rowView.addView(spacer);
             }
+            rowView.setContentDescription(labels[i]);
             TextView label = new TextView(this);
             label.setText(labels[i]);
             label.setTextSize(15);
@@ -724,9 +855,12 @@ public class OxUiPreviewActivity extends Activity {
             card.addView(cap, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         }
+        card.setContentDescription(caption != null && !caption.trim().isEmpty()
+                ? caption : "Image");
         if (sending) card.getBackground().setAlpha(SENDING_ALPHA);
         row.addView(card, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        row.setTag(ts);
         messages.addView(row, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         return true;
@@ -907,8 +1041,12 @@ public class OxUiPreviewActivity extends Activity {
         if (overlay == null) return;
         overlay.removeAllViews();
         overlay.setVisibility(View.VISIBLE);
-        overlay.setAlpha(0f);
-        overlay.animate().alpha(1f).setDuration(160).start();
+        if (animationsEnabled()) {
+            overlay.setAlpha(0f);
+            overlay.animate().alpha(1f).setDuration(160).start();
+        } else {
+            overlay.setAlpha(1f);
+        }
 
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
@@ -1010,6 +1148,89 @@ public class OxUiPreviewActivity extends Activity {
                 imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
             }
         } catch (Throwable ignored) {
+        }
+    }
+
+    private void toggleChatSearch() {
+        if (chatSearchRow == null) return;
+        if (chatSearchRow.getVisibility() == View.VISIBLE) {
+            closeChatSearch();
+            return;
+        }
+        chatSearchRow.setVisibility(View.VISIBLE);
+        chatSearchInput.requestFocus();
+        try {
+            InputMethodManager imm = (InputMethodManager)
+                    getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(chatSearchInput, 0);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void closeChatSearch() {
+        if (chatSearchRow == null) return;
+        chatSearchRow.setVisibility(View.GONE);
+        chatSearchInput.setText("");
+        chatHits.clear();
+        chatHitIndex = -1;
+        chatSearchCount.setText("");
+        hideKeyboard();
+    }
+
+    /** Debounced scan of the CURRENT conversation; hits are entry timestamps. */
+    private void scheduleChatSearch(final String query) {
+        if (pendingChatSearch != null) handler.removeCallbacks(pendingChatSearch);
+        final String q = query == null ? "" : query.trim();
+        if (q.isEmpty()) {
+            chatHits.clear();
+            chatHitIndex = -1;
+            chatSearchCount.setText("");
+            return;
+        }
+        pendingChatSearch = () -> {
+            List<OxChatEntry> entries = history();
+            List<Long> found = new ArrayList<>();
+            for (OxChatEntry e : entries) {
+                if (e == null || e.content == null) continue;
+                if (!"user".equals(e.role) && !"assistant".equals(e.role)) continue;
+                if (e.content.toLowerCase(Locale.ROOT).contains(q.toLowerCase(Locale.ROOT))) {
+                    found.add(e.ts);
+                }
+            }
+            chatHits.clear();
+            chatHits.addAll(found);
+            chatHitIndex = chatHits.isEmpty() ? -1 : 0;
+            chatSearchCount.setText(chatHits.isEmpty()
+                    ? "0/0" : (chatHitIndex + 1) + "/" + chatHits.size());
+            if (chatHitIndex >= 0) scrollToChatHit(chatHitIndex);
+        };
+        handler.postDelayed(pendingChatSearch, 150);
+    }
+
+    private void navigateChatHit(int delta) {
+        if (chatHits.isEmpty()) return;
+        chatHitIndex = (chatHitIndex + delta + chatHits.size()) % chatHits.size();
+        chatSearchCount.setText((chatHitIndex + 1) + "/" + chatHits.size());
+        scrollToChatHit(chatHitIndex);
+    }
+
+    private void scrollToChatHit(int index) {
+        if (messages == null || index < 0 || index >= chatHits.size()) return;
+        Long ts = chatHits.get(index);
+        View target = null;
+        for (int i = 0; i < messages.getChildCount(); i++) {
+            View child = messages.getChildAt(i);
+            if (ts.equals(child.getTag())) {
+                target = child;
+                break;
+            }
+        }
+        if (target == null) return;
+        final View hit = target;
+        scroll.smoothScrollTo(0, Math.max(0, hit.getTop() - dp(80)));
+        if (animationsEnabled()) {
+            hit.setBackgroundColor(0x33C8EF6A);
+            handler.postDelayed(() -> hit.setBackground(null), 900);
         }
     }
 
@@ -1326,8 +1547,12 @@ public class OxUiPreviewActivity extends Activity {
         hideKeyboard();
         overlay.removeAllViews();
         overlay.setVisibility(View.VISIBLE);
-        overlay.setAlpha(0f);
-        overlay.animate().alpha(1f).setDuration(160).start();
+        if (animationsEnabled()) {
+            overlay.setAlpha(0f);
+            overlay.animate().alpha(1f).setDuration(160).start();
+        } else {
+            overlay.setAlpha(1f);
+        }
 
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
@@ -1575,6 +1800,7 @@ public class OxUiPreviewActivity extends Activity {
         if (isGroupTarget()) {
             TextView groupChip = new TextView(this);
             groupChip.setText("👥  " + selectedGroupTitle);
+            groupChip.setContentDescription(selectedGroupTitle);
             groupChip.setTextSize(12);
             groupChip.setTypeface(sansMedium());
             groupChip.setTextColor(BONE);
@@ -1594,6 +1820,7 @@ public class OxUiPreviewActivity extends Activity {
             String label = (a.emoji == null || a.emoji.isEmpty() ? "" : a.emoji + "  ")
                     + (a.name == null ? "Agent" : a.name);
             chip.setText(label);
+            chip.setContentDescription(a.name);
             chip.setTextSize(12);
             chip.setTypeface(active ? sansMedium() : sans());
             chip.setTextColor(active ? BONE : INK);
@@ -1743,7 +1970,7 @@ public class OxUiPreviewActivity extends Activity {
                 messages.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
             }
             userJustSent = false;
-            if (animate) {
+            if (animate && animationsEnabled()) {
                 messages.setAlpha(0f);
                 messages.setTranslationY(dp(10));
                 messages.animate().alpha(1f).translationY(0f).setDuration(260).start();
@@ -1797,6 +2024,7 @@ public class OxUiPreviewActivity extends Activity {
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             row.addView(quoteWrap, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            row.setTag(ts);
             messages.addView(row, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             return;
@@ -1830,6 +2058,7 @@ public class OxUiPreviewActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         row.addView(wrap, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        row.setTag(ts);
         messages.addView(row, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
@@ -1887,6 +2116,7 @@ public class OxUiPreviewActivity extends Activity {
         body.addView(t);
         row.addView(body, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        row.setTag(ts);
         messages.addView(row, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }

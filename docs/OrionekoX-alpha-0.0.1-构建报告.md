@@ -4238,3 +4238,30 @@ debug `dist/OrionekoX-0.66.0-debug-arm64-x64.apk`（sha256
 `1bda0bd9ee635b6d2ece7b932bc86b1cd48c9f39a623050d340af9beb9008881`）；
 构建日志 `/tmp/ox-build-0660-final.log`；QA 详见
 [docs/qa-0.66.0.md](qa-0.66.0.md)。
+## 5.189 alpha 0.67.0 —— 暗色变体 + reduced-motion/可访问性 + 会话内搜索（2026-10-29 09:40–10:15）
+
+- 暗色调色板：颜色常量 static final → 实例字段，onCreate 按系统 night mode
+  解析两套（暗色 BONE #141917 / INK #EDE6D6 / MENU_PAPER #202724 等，
+  SIGNAL 共用）；语义不变（INK=气泡/正文 → 暗色为奶油泡深字），状态栏
+  图标随暗色去 LIGHT_* 标志；菜单纸色字面量并入 MENU_PAPER。
+- reduced-motion：animationsEnabled() 读系统 ANIMATOR_DURATION_SCALE，
+  两处 overlay 淡入与首渲染 fade 关闭时直接落终态。
+- 可访问性：补纯符号控件 contentDescription（取消/移除附件/附件/发送/
+  header 搜索/rail chips/菜单行/图片卡= caption）。
+- 会话内搜索 v1.5：header ⌕ → 搜索条（输入 + n/N + ↑/↓ + ✕），150ms
+  防抖扫描当前会话 user/assistant，命中按 ts 存序、循环导航、滚动留
+  80dp、动画开启时整行 900ms SIGNAL 闪烁；行以 ts 为 tag；窗口外命中
+  不跳转（计数仍准）。
+- 设备验证：night yes 暗色截图（炭黑底/奶油泡/信号色保留/状态栏反色）、
+  night no 无回归；animator scale 0 面板秒开无 FATAL；"blue" 搜索
+  1/2→↓→2/2 整行高亮闪烁；uiautomator dump 确认 a11y 描述齐全；
+  release 6709 无 FATAL。
+- 清理：本轮只读搜索未产生 QA 数据；interface_mode/night/animator 复原。
+- 版本规则：按 minor 从 0.66.0 → **0.67.0**（6709），patch 清零。
+
+**产物**：`dist/OrionekoX-0.67.0-alpha-arm64-x64.apk`（versionCode 6709，
+sha256 `32a58b343168ad5bebaf4a3a32e80186ca1e7e2572c9bad937bd84276749c2d8`）；
+debug `dist/OrionekoX-0.67.0-debug-arm64-x64.apk`（sha256
+`97c3c988eb96ac278df5cc626c496d4334ad99ac9580d487eb98cb65a56d25b1`）；
+构建日志 `/tmp/ox-build-0670-final.log`；QA 详见
+[docs/qa-0.67.0.md](qa-0.67.0.md)。

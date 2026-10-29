@@ -97,7 +97,14 @@ The only entrance animation is the conversation fade/rise on first render.
   carry a right-aligned mono timestamp.
 - Session search (0.66): the Agents-panel query also scans local chat
   histories off-thread and lists SIGNAL-highlighted message hits under a
-  "Messages" section; tapping a hit opens that conversation.
+  "Messages" section; tapping a hit opens that conversation. 0.67.0 adds
+  in-conversation search: the header magnifier opens a bar with an n/N
+  counter, cyclic up/down navigation, an 80dp scroll lead and a SIGNAL row
+  flash.
+- Themes and motion (0.67): the palette resolves from the system night mode
+  (charcoal ground, cream ink bubbles, unchanged chartreuse signal, status
+  bar icons inverted) and all code animations honour the system animator
+  scale. Symbol-only controls carry content descriptions.
 
 ## Not done yet / next
 

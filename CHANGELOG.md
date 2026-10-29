@@ -4,6 +4,20 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.67.0 — 2026-10-29
+
+- Dark variant: the palette resolves from the system night mode (charcoal
+  ground, cream ink bubbles and text, unchanged chartreuse signal, inverted
+  status-bar icons); light mode is unchanged.
+- Reduced-motion: all OxUI code animations honour the system animator scale,
+  jumping straight to their final state when animations are disabled.
+- Accessibility: content descriptions on every symbol-only control (cancel,
+  remove attachment, attach, send, header search, rail chips, menu rows,
+  image cards use their caption).
+- In-conversation search v1.5: the header magnifier opens a bar with an n/N
+  counter and cyclic up/down navigation; hits scroll with an 80dp lead and
+  flash the row in SIGNAL.
+
 ## 0.66.0 — 2026-10-29
 
 - In-design long-press menu replacing the platform AlertDialog and the
