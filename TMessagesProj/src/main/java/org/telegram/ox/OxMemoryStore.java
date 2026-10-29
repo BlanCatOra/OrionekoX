@@ -24,15 +24,19 @@ import java.util.Set;
 
 /**
  * Local, per-agent memory library with two recall modes:
- * normal (keyword/token overlap) and vector (a local hashed n-gram vector).
+ * normal (keyword/token overlap) and vector (a local hashed n-gram projection —
+ * NOT a semantic embedding; the UI labels it 词面混合).
  * Both use a forgetting curve: short-term entries decay quickly, frequently
  * recalled or important entries are promoted to long-term. Context compression
  * writes readable turn notes, extracted facts and a chunk summary here.
+ *
+ * Stage A (0.78): Markdown (memory.md) is the single source of truth; SQLite is a
+ * rebuildable derived index (see OxMemoryOntology + ensureOntology).
  */
 public class OxMemoryStore {
 
     private static final String DB_NAME = "oxmemory.db";
-    private static final int DB_VERSION = 2;
+    private static final int DB_VERSION = 3;
     private static final int VEC_DIM = 128;
     private static final int MAX_ROWS_PER_AGENT = 4000;
     private static final long DAY_MS = 24L * 60 * 60 * 1000;
@@ -67,6 +71,7 @@ public class OxMemoryStore {
         long validFrom;
         long invalidAt;
         String subject;
+        String publicId = "";
         float[] vector;
         double score;
     }
@@ -111,6 +116,14 @@ public class OxMemoryStore {
                 d.execSQL("ALTER TABLE memories ADD COLUMN invalid_at INTEGER NOT NULL DEFAULT 0");
                 d.execSQL("ALTER TABLE memories ADD COLUMN subject TEXT");
                 d.execSQL("UPDATE memories SET valid_from=created_at WHERE valid_from=0");
+            }
+            if (oldVersion < 3) {
+                // Stage A (0.78): schema v3 — Markdown is the single source of truth.
+                d.execSQL("ALTER TABLE memories ADD COLUMN public_id TEXT");
+                d.execSQL("ALTER TABLE memories ADD COLUMN people TEXT");
+                d.execSQL("ALTER TABLE memories ADD COLUMN topics TEXT");
+                d.execSQL("ALTER TABLE memories ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
+                d.execSQL("ALTER TABLE memories ADD COLUMN supersedes TEXT");
             }
         }
     }
@@ -212,6 +225,7 @@ public class OxMemoryStore {
     /** A compact, natural-language view used in the system prompt. */
     public static synchronized String digest(String agentId, int maxChars) {
         if (agentId == null) return "";
+        ensureOntology(agentId);
         StringBuilder sb = new StringBuilder();
         sb.append("注意：摘要按时间记录，可能包含后来被更新的事实；有冲突时以最新的“事实”条目为准。\n");
         try {
@@ -244,6 +258,7 @@ public class OxMemoryStore {
     /** Ranked recall with forgetting curve and access promotion. */
     public static synchronized String recall(String agentId, String query, int limit, String mode) {
         if (agentId == null) return "";
+        ensureOntology(agentId);
         List<Mem> rows = load(agentId, 3000);
         if (rows.isEmpty()) return "";
         String q = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
@@ -615,6 +630,7 @@ public class OxMemoryStore {
     private static void insert(String agentId, String kind, String role, String text,
             long createdAt, double importance, String type, String source, boolean withVector) {
         if (text == null || text.trim().isEmpty()) return;
+        ensureOntology(agentId);
         try {
             String normalized = text.trim();
             String subject = "fact".equals(kind) ? subjectKey(normalized) : "";
@@ -624,6 +640,25 @@ public class OxMemoryStore {
                     ? sha256("mirror\n" + kind + "\n" + role + "\n" + normalized)
                     : sha256(kind + "\n" + role + "\n" + normalized
                             + ("turn".equals(kind) ? "\n" + createdAt : ""));
+            // Stage A (0.78): Markdown is the single source of truth. Persist the
+            // entry to memory.md first; SQLite stays a rebuildable derived index.
+            String publicId = OxMemoryOntology.newPublicId();
+            OxMemoryOntology.Entry ont = new OxMemoryOntology.Entry();
+            ont.id = publicId;
+            ont.createdAt = createdAt;
+            ont.type = kind;
+            ont.status = "active";
+            ont.source = source == null ? "tool" : source;
+            ont.contentHash = hash;
+            // A fact that supersedes a just-invalidated one records the link so
+            // the Markdown source of truth carries the version chain.
+            String pend = pendingSupersedes.get();
+            if (pend != null && "fact".equals(kind)) {
+                ont.supersedes = pend;
+                pendingSupersedes.remove();
+            }
+            ont.content = normalized;
+            OxMemoryOntology.appendEntry(agentId, ont);
             ContentValues v = new ContentValues();
             v.put("agent_id", agentId);
             v.put("kind", kind);
@@ -643,6 +678,11 @@ public class OxMemoryStore {
             v.put("subject", subject);
             v.put("source", source);
             v.put("hash", hash);
+            v.put("public_id", publicId);
+            v.put("people", "");
+            v.put("topics", "");
+            v.put("status", "active");
+            v.put("supersedes", "");
             if (withVector) v.put("vec", bytes(embed(normalized)));
             db().insertWithOnConflict("memories", null, v, SQLiteDatabase.CONFLICT_IGNORE);
         } catch (Throwable t) {
@@ -668,6 +708,10 @@ public class OxMemoryStore {
             boolean oldCoversNew = oldTokens.containsAll(newMeaningful);
             if (contradicts(old.text, text)
                     || (sameSubject && !newCoversOld && !oldCoversNew)) {
+                if (old.publicId != null && !old.publicId.isEmpty()) {
+                    OxMemoryOntology.markSuperseded(agentId, old.publicId);
+                    pendingSupersedes.set(old.publicId);
+                }
                 invalidateFact(agentId, old.id, now, old.text);
                 return false;
             }
@@ -680,6 +724,10 @@ public class OxMemoryStore {
                     v.put("valid_from", now);
                     v.put("importance", Math.max(old.importance, importance));
                     v.put("vec", bytes(embed(text)));
+                    if (old.publicId != null && !old.publicId.isEmpty()) {
+                        OxMemoryOntology.updateEntry(agentId, old.publicId,
+                                clip(text, 8000), sha256("fact\nuser\n" + text), now);
+                    }
                 }
                 v.put("last_access", now);
                 v.put("access_count", old.accessCount + 1);
@@ -739,7 +787,7 @@ public class OxMemoryStore {
             Cursor c = db().rawQuery(
                     "SELECT id,kind,role,text,created_at,last_access,access_count,"
                             + "importance,stability,difficulty,memory_type,valid_from,"
-                            + "invalid_at,subject,vec FROM memories "
+                            + "invalid_at,subject,public_id,vec FROM memories "
                             + "WHERE agent_id=? AND kind='fact' AND invalid_at=0 "
                             + "ORDER BY created_at DESC LIMIT 500",
                     new String[]{agentId});
@@ -760,7 +808,8 @@ public class OxMemoryStore {
                     m.validFrom = c.getLong(11);
                     m.invalidAt = c.getLong(12);
                     m.subject = c.getString(13);
-                    m.vector = floats(c.getBlob(14));
+                    m.publicId = c.getString(14);
+                    m.vector = floats(c.getBlob(15));
                     out.add(m);
                 }
             } finally {
@@ -1231,5 +1280,102 @@ public class OxMemoryStore {
         float[] v = new float[data.length / 4];
         for (int i = 0; i < v.length; i++) v[i] = bb.getFloat();
         return v;
+    }
+
+    // ---------------- Stage A (0.78): Markdown ontology bridge ----------------
+
+    private static final java.util.Set<String> migratedAgents =
+            java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<String, Boolean>());
+
+    /** Stages the old public_id so the immediately-following fact insert can
+     *  record it in supersedes (consolidateFact -> insert, same thread/call). */
+    private static final ThreadLocal<String> pendingSupersedes = new ThreadLocal<>();
+
+    /** Lazy one-time migration of legacy SQLite + memory.txt into memory.md. */
+    public static synchronized void ensureOntology(String agentId) {
+        if (agentId == null || migratedAgents.contains(agentId)) return;
+        migratedAgents.add(agentId);
+        try {
+            OxMemoryOntology.migrateLegacy(agentId);
+            OxMemoryOntology.ensureCore(agentId);
+        } catch (Throwable t) {
+            FileLog.e("OxMemoryStore", t);
+        }
+    }
+
+    /** Pinned read-always layer content (CORE / ABOUT_USER / ABOUT_AGENT / CURRENT). */
+    public static synchronized String coreSection(String agentId, String section) {
+        return OxMemoryOntology.readSection(agentId, section);
+    }
+
+    /** Rebuild the derived SQLite index from the markdown source of truth. */
+    public static synchronized void rebuildFromMarkdown(String agentId) {
+        OxMemoryOntology.rebuildIndex(agentId);
+    }
+
+    /** Export every legacy row for migration into the ontology (idempotent via hash). */
+    synchronized static List<OxMemoryOntology.LegacyRow> exportLegacyRows(String agentId) {
+        List<OxMemoryOntology.LegacyRow> out = new ArrayList<>();
+        try {
+            Cursor c = db().rawQuery(
+                    "SELECT kind,role,text,created_at,invalid_at,source,hash FROM memories "
+                            + "WHERE agent_id=?", new String[]{agentId});
+            try {
+                while (c.moveToNext()) {
+                    OxMemoryOntology.LegacyRow r = new OxMemoryOntology.LegacyRow();
+                    r.kind = c.getString(0);
+                    r.role = c.getString(1);
+                    r.text = c.getString(2);
+                    r.createdAt = c.getLong(3);
+                    r.invalidAt = c.getLong(4);
+                    r.source = c.getString(5);
+                    r.hash = c.getString(6);
+                    out.add(r);
+                }
+            } finally {
+                c.close();
+            }
+        } catch (Throwable t) {
+            FileLog.e("OxMemoryStore", t);
+        }
+        return out;
+    }
+
+    /** Replace the agent's derived index with entries from the markdown source.
+     *  Forgetting-curve counters (access_count/stability/difficulty) reset to fixed
+     *  defaults on rebuild — this behavior is documented in docs/qa-0.78.0.md
+     *  (acceptance #5: data attribution is explicit, not silently lost). */
+    synchronized static void upsertFromOntology(String agentId,
+            List<OxMemoryOntology.Entry> entries) {
+        try {
+            db().delete("memories", "agent_id=?", new String[]{agentId});
+            for (OxMemoryOntology.Entry e : entries) {
+                ContentValues v = new ContentValues();
+                v.put("agent_id", agentId);
+                v.put("kind", e.type);
+                v.put("role", "");
+                v.put("text", e.content == null ? "" : e.content);
+                v.put("created_at", e.createdAt);
+                v.put("last_access", e.createdAt);
+                v.put("access_count", 0);
+                v.put("importance", 0.5);
+                v.put("stability", 3.0);
+                v.put("difficulty", 5.0);
+                v.put("memory_type", "short");
+                v.put("valid_from", e.createdAt);
+                v.put("invalid_at", "superseded".equals(e.status) ? e.createdAt : 0L);
+                v.put("subject", "");
+                v.put("source", e.source);
+                v.put("hash", e.contentHash);
+                v.put("public_id", e.id);
+                v.put("people", e.people);
+                v.put("topics", e.topics);
+                v.put("status", e.status);
+                v.put("supersedes", e.supersedes);
+                db().insertWithOnConflict("memories", null, v, SQLiteDatabase.CONFLICT_IGNORE);
+            }
+        } catch (Throwable t) {
+            FileLog.e("OxMemoryStore", t);
+        }
     }
 }

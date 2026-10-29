@@ -2512,6 +2512,21 @@ public class OxAgentsBridge {
                 || t.contains("image") || t.contains("photo") || t.contains("picture");
     }
 
+    /** Injects the pinned CORE / ABOUT_USER / ABOUT_AGENT / CURRENT layers, which
+     *  are fixed-read at every session start (Stage A / 0.78). */
+    private static void appendCoreLayers(StringBuilder system, String agentId) {
+        if (agentId == null) return;
+        OxMemoryStore.ensureOntology(agentId);
+        String[] sections = {"CORE", "ABOUT_USER", "ABOUT_AGENT", "CURRENT"};
+        String[] labels = {"核心设定", "关于用户", "关于助手", "当前状态"};
+        for (int i = 0; i < sections.length; i++) {
+            String body = OxMemoryStore.coreSection(agentId, sections[i]);
+            if (body == null || body.trim().isEmpty()) continue;
+            if (system.length() > 0) system.append("\n\n");
+            system.append("# ").append(labels[i]).append("\n").append(body.trim());
+        }
+    }
+
     /** Injects the text of the Operit SKILL.md packages the user enabled for this agent. */
     private static void appendSkills(StringBuilder system, OxAgent agent) {
         if (agent == null || agent.skillIds == null || agent.skillIds.length() == 0) return;
@@ -2587,7 +2602,7 @@ public class OxAgentsBridge {
         }
         if (!digest.isEmpty()) {
             if (system.length() > 0) system.append("\n\n");
-            system.append("# 记忆库摘要（").append(OxMemoryStore.MODE_VECTOR.equals(mode) ? "向量模式" : "普通模式")
+            system.append("# 记忆库摘要（").append(OxMemoryStore.MODE_VECTOR.equals(mode) ? "词面混合（哈希投影，非语义向量）" : "普通模式")
                     .append("）\n").append(digest);
         }
         String recall = OxMemoryStore.recall(agent.id, query, Math.max(1, Math.min(12,
@@ -2607,11 +2622,7 @@ public class OxAgentsBridge {
         JSONArray messages = new JSONArray();
         StringBuilder system = new StringBuilder();
         if (agent.agentsMd != null) system.append(agent.agentsMd.trim());
-        String memory = OxAgentStore.loadMemory(agent.id, 6000);
-        if (!memory.isEmpty()) {
-            if (system.length() > 0) system.append("\n\n");
-            system.append("# 长期记忆（用户允许你记住的事实）\n").append(memory);
-        }
+        appendCoreLayers(system, agent.id);
         appendSkills(system, agent);
         List<OxChatEntry> history = OxAgentStore.loadChat(agentId);
         int from = appendMemoryContext(system, agent, query, history);

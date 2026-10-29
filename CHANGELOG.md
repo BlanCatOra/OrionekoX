@@ -1,8 +1,28 @@
 # Changelog
 
 > AI disclosure: entries after 2026-10-24 were produced by the AI coding agent
-> **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
+> **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`; since 2026-10-29
+> also the WorkBuddy agent). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
+
+## 0.78.0 — 2026-10-29
+
+- Memory stage A: `memory.md` (Markdown) is now the single source of truth for
+  agent memory; SQLite (`oxmemory.db`) is a fully rebuildable derived index
+  (schema v3: `public_id/people/topics/status/supersedes`). All writes go
+  Markdown-first with atomic append (fsync) / temp+rename rewrites.
+- Pinned read-always layers: CORE / ABOUT_USER / ABOUT_AGENT / CURRENT are
+  seeded into `core.md` (ABOUT_USER prefilled from legacy `memory.txt`) and
+  injected at every session start, replacing the raw `memory.txt` block.
+- Fact consolidation now records a `supersedes` version chain in the Markdown
+  source of truth; richer replacements update the entry in place, so review
+  and rebuild stay consistent.
+- Honest labelling: the "向量模式" recall mode is now labelled 词面混合
+  (hashed n-gram projection, NOT a semantic embedding).
+- Legacy migration (SQLite rows + `memory.txt`) is lazy, idempotent and
+  hash-deduplicated; the index can be rebuilt from Markdown at any time.
+  Forgetting-curve counters reset to fixed documented defaults on rebuild.
+- See `docs/qa-0.78.0.md` for acceptance evidence and known gaps.
 
 ## 0.8.103 — 2026-10-26
 
