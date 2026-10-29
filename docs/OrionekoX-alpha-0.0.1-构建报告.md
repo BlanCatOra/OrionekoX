@@ -4376,3 +4376,23 @@ QA 详见 [docs/qa-0.70.0.md](qa-0.70.0.md)。
 
 **产物**：release `ea48e84b7b289c6ac807e6e9ac6447656f954754e0f618ceaa8151b16aeca7a3`；
 debug `8738b14ef56473710c0a93943f81cff3eca96b2e89e9a1c7f73461287c8ccc09`。
+## 5.194 alpha 0.72.0 —— OxUI 对标：普通文件附件端到端（2026-10-29 13:10–13:40）
+
+- 主线切到「OxUI 补全与打磨」后的首个对标项：OxUI 之前只能发图片，
+  本轮补齐普通文件（document）发送与渲染。
+- 桥接：`handleOutgoingMedia` 新增普通文件分支（扩展名→MIME、
+  buildLocalDocument + injectDocument、prompt 占位与大小），Stream/turn
+  历史/echo 条目写入 filePath/fileName；startTurn/startMediaTurn 文件重载。
+- OxUI：＋ 改为 Photo/File 设计菜单；File 走 GET_CONTENT */* + 原名拷贝
+  到 oxui_media（25MB、重名序号）；预览胶囊 📄+名称+大小；dispatchSend
+  支持 filePath；renderConversation 渲染 PAPER 文件气泡（名称/大小/说明/
+  时间戳），pending 与失败重试同步支持。
+- 设备验证：Echo 1:1 选 txt → 胶囊 → 发送 → logcat TL document
+  （type=9）+ Echo 回复，OxUI 文件气泡与 prompt 文本正确；force-stop
+  重启后气泡仍在。release 7209 无 FATAL。
+- 附带发现：Yuki 历史中的 `recallnull…` 工具名条目为旧构建产物，现行
+  流式解析已过滤 null 名称片段。
+- 版本规则：功能新增 → **0.72.0**（7209），patch 清零。
+
+**产物**：release `209554bc3c30b003fc0384f502edc33d0b33c222ea25636992791fb0459f761e`；
+debug `c40d434cd464a49c319c3dd01040aa4e40f41868266cc776a932b5051c768ac5`。

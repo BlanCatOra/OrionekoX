@@ -802,3 +802,17 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 遗留：PWD secret 明文存储（未接入 Keystore）；未实现 Termius 的连接
   密码提示/自动填充（本控制台无 SSH/shell）。
+
+## 0.72.0 OxUI 文件附件对标 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-170 | 主线对标 | OxUI 只能发图片，Telegram UI 可发普通文件 | 1:1 媒体路径新增 document 分支（MIME 映射/本地文档/prompt 占位）；OxChatEntry filePath/fileName 落盘 | 已实现并设备验证 |
+| R2-171 | 0.72 功能 | 附件入口只有图片 | ＋ 改为 Photo/File 菜单；File 走 GET_CONTENT */*、原名拷贝、25MB、重名序号；胶囊 📄+名称+大小 | 已实现并设备验证 |
+| R2-172 | 0.72 功能 | 历史/失败重试不识别文件 | renderConversation 文件气泡（PAPER 胶囊+说明+时间戳）；pending 与 120s 失败重试保留文件字段 | 已实现并设备验证（重启持久） |
+
+- 设备：debug 7209，Echo 1:1 txt 端到端 + 重启复查；release 无 FATAL。
+- 遗留：群组文件在 OxUI 仍显示文本占位（群条目未写 filePath）；文件不可
+  预览/打开；25MB 上限。
+- 附注：Yuki 会话历史中 `recallnullnull…` 工具名条目属旧构建数据，现行
+  流式解析已过滤 null 名片段，非现行 bug。

@@ -173,9 +173,13 @@ public class OxUiPreviewActivity extends Activity {
     private long selectedChatId;
     private String selectedGroupTitle = "";
     private String pendingImagePath;
+    private String pendingFilePath;
+    private String pendingFileName;
     private boolean userJustSent;
     private String failedText;
     private String failedImagePath;
+    private String failedFilePath;
+    private String failedFileName;
     private String failedTargetKey;
     private final List<GroupItem> groupItems = new ArrayList<>();
     private LinearLayout attachRow;
@@ -196,6 +200,7 @@ public class OxUiPreviewActivity extends Activity {
     }
 
     private static final int REQ_PICK_IMAGE = 1001;
+    private static final int REQ_PICK_FILE = 1002;
 
     private final Runnable poll = new Runnable() {
         @Override
@@ -562,6 +567,9 @@ public class OxUiPreviewActivity extends Activity {
         attachCancel.setGravity(Gravity.CENTER);
         attachCancel.setOnClickListener(v -> {
             pendingImagePath = null;
+            pendingFilePath = null;
+            pendingFileName = null;
+            attachPreview.setVisibility(View.VISIBLE);
             attachRow.setVisibility(View.GONE);
             updateSendVisual();
         });
@@ -583,7 +591,10 @@ public class OxUiPreviewActivity extends Activity {
         attach.setTextColor(INK);
         attach.setGravity(Gravity.CENTER);
         attach.setContentDescription(LocaleController.getString(R.string.OxUiAttach));
-        attach.setOnClickListener(v -> pickImage());
+        attach.setOnClickListener(v -> showMessageMenu(v,
+                new CharSequence[]{"Photo", "File"},
+                new boolean[]{false, false},
+                new Runnable[]{this::pickImage, this::pickFile}));
         composer.addView(attach, new LinearLayout.LayoutParams(dp(40), dp(44)));
 
         input = new EditText(this);
@@ -815,18 +826,88 @@ public class OxUiPreviewActivity extends Activity {
         }
     }
 
+    private void pickFile() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("*/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(Intent.createChooser(intent, "File"), REQ_PICK_FILE);
+        } catch (Throwable t) {
+            Toast.makeText(this, R.string.OxUiNoAgentTitle, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String[] importPickedFile(android.net.Uri uri) {
+        try {
+            String name = "file";
+            try (android.database.Cursor c = getContentResolver().query(uri, null, null, null, null)) {
+                if (c != null && c.moveToFirst()) {
+                    int idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                    if (idx >= 0) {
+                        String raw = c.getString(idx);
+                        if (raw != null && !raw.trim().isEmpty()) name = raw.trim();
+                    }
+                }
+            }
+            String safe = name.replaceAll("[^a-zA-Z0-9._\u4e00-\u9fa5-]", "_");
+            if (safe.isEmpty()) safe = "file";
+            File dir = new File(getFilesDir(), "oxui_media");
+            dir.mkdirs();
+            File dest = new File(dir, safe);
+            int n = 1;
+            while (dest.exists() && n < 50) {
+                dest = new File(dir, (n++) + "_" + safe);
+            }
+            try (InputStream in = getContentResolver().openInputStream(uri)) {
+                if (in == null) return null;
+                java.io.FileOutputStream out = new java.io.FileOutputStream(dest);
+                byte[] buf = new byte[16384];
+                int read;
+                long total = 0;
+                while ((read = in.read(buf)) > 0) {
+                    total += read;
+                    out.write(buf, 0, read);
+                    if (total > 25L * 1024 * 1024) break;
+                }
+                out.close();
+            }
+            return new String[]{dest.getAbsolutePath(), dest.getName()};
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != REQ_PICK_IMAGE || resultCode != RESULT_OK || data == null
-                || data.getData() == null) return;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        if (requestCode == REQ_PICK_FILE) {
+            String[] file = importPickedFile(data.getData());
+            if (file == null) {
+                Toast.makeText(this, R.string.OxUiNoAgentTitle, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            pendingFilePath = file[0];
+            pendingFileName = file[1];
+            pendingImagePath = null;
+            attachRow.setVisibility(View.VISIBLE);
+            attachPreview.setVisibility(View.GONE);
+            attachName.setText("📄 " + file[1]);
+            attachMeta.setText(fileSizeText(file[0]));
+            updateSendVisual();
+            return;
+        }
+        if (requestCode != REQ_PICK_IMAGE) return;
         String path = importPickedImage(data.getData());
         if (path == null) {
             Toast.makeText(this, R.string.OxUiNoAgentTitle, Toast.LENGTH_SHORT).show();
             return;
         }
         pendingImagePath = path;
+        pendingFilePath = null;
+        pendingFileName = null;
         attachRow.setVisibility(View.VISIBLE);
+        attachPreview.setVisibility(View.VISIBLE);
         Bitmap bmp = decodeScaled(path, dp(240));
         if (bmp != null) attachPreview.setImageBitmap(bmp);
         attachName.setText(new File(path).getName());
@@ -848,6 +929,18 @@ public class OxUiPreviewActivity extends Activity {
                     o.outWidth, o.outHeight, bytes / 1024f);
         } catch (Throwable t) {
             return null;
+        }
+    }
+
+    private String fileSizeText(String path) {
+        try {
+            long bytes = new File(path).length();
+            if (bytes >= 1024 * 1024) {
+                return String.format(java.util.Locale.US, "%.1f MB", bytes / 1048576f);
+            }
+            return String.format(java.util.Locale.US, "%.0f KB", Math.max(1, bytes / 1024f));
+        } catch (Throwable t) {
+            return "";
         }
     }
 
@@ -952,19 +1045,23 @@ public class OxUiPreviewActivity extends Activity {
         text.setTextColor(CORAL);
         text.setPadding(dp(10), 0, 0, 0);
         text.setOnClickListener(v -> {
-            if (failedText == null && failedImagePath == null) return;
+            if (failedText == null && failedImagePath == null && failedFilePath == null) return;
             pendingText = failedText;
             pendingImagePath = failedImagePath;
+            pendingFilePath = failedFilePath;
+            pendingFileName = failedFileName;
             pendingAgentId = failedTargetKey;
             pendingAt = System.currentTimeMillis();
             pendingBaseSize = history().size();
             userJustSent = true;
             failedText = null;
             failedImagePath = null;
+            failedFilePath = null;
+            failedFileName = null;
             failedTargetKey = null;
             lastSignature = "";
             refresh(true);
-            dispatchSend(pendingText, pendingImagePath);
+            dispatchSend(pendingText, pendingImagePath, pendingFilePath);
         });
         row.addView(text, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -972,12 +1069,13 @@ public class OxUiPreviewActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
-    private void dispatchSend(String text, String imagePath) {
+    private void dispatchSend(String text, String imagePath, String filePath) {
+        String mediaPath = imagePath != null ? imagePath : filePath;
         if (isGroupTarget()) {
-            if (imagePath != null) {
+            if (mediaPath != null) {
                 ArrayList<SendMessagesHelper.SendingMediaInfo> infos = new ArrayList<>();
                 SendMessagesHelper.SendingMediaInfo info = new SendMessagesHelper.SendingMediaInfo();
-                info.path = imagePath;
+                info.path = mediaPath;
                 info.caption = text == null ? "" : text;
                 infos.add(info);
                 OxAgentsBridge.handleOutgoingGroupMedia(targetDialogId(), infos);
@@ -990,10 +1088,10 @@ public class OxUiPreviewActivity extends Activity {
             return;
         }
         if (selected == null || selected.tgId == 0) return;
-        if (imagePath != null) {
+        if (mediaPath != null) {
             ArrayList<SendMessagesHelper.SendingMediaInfo> infos = new ArrayList<>();
             SendMessagesHelper.SendingMediaInfo info = new SendMessagesHelper.SendingMediaInfo();
-            info.path = imagePath;
+            info.path = mediaPath;
             info.caption = text == null ? "" : text;
             infos.add(info);
             OxAgentsBridge.handleOutgoingMedia(selected.tgId, infos);
@@ -3991,16 +4089,24 @@ public class OxUiPreviewActivity extends Activity {
             if (chat.size() > pendingBaseSize && containsUser(chat, pendingText, pendingBaseSize)) {
                 pendingText = null;
                 pendingAgentId = null;
+                pendingFilePath = null;
+                pendingFileName = null;
                 failedText = null;
                 failedImagePath = null;
+                failedFilePath = null;
+                failedFileName = null;
                 failedTargetKey = null;
             } else if (System.currentTimeMillis() - pendingAt > 120_000) {
                 failedText = pendingText;
                 failedImagePath = pendingImagePath;
+                failedFilePath = pendingFilePath;
+                failedFileName = pendingFileName;
                 failedTargetKey = key;
                 pendingText = null;
                 pendingAgentId = null;
                 pendingImagePath = null;
+                pendingFilePath = null;
+                pendingFileName = null;
                 updateSendVisual();
             }
         }
@@ -4066,8 +4172,15 @@ public class OxUiPreviewActivity extends Activity {
             if (e == null) continue;
             boolean hasText = e.content != null && !e.content.trim().isEmpty();
             boolean hasImage = e.imagePath != null && new File(e.imagePath).isFile();
-            if (!hasText && !hasImage) continue;
+            boolean hasFile = e.filePath != null && new File(e.filePath).isFile();
+            if (!hasText && !hasImage && !hasFile) continue;
             if ("user".equals(e.role)) {
+                if (hasFile) {
+                    addUserFile(e.fileName == null || e.fileName.isEmpty()
+                            ? new File(e.filePath).getName() : e.fileName,
+                            e.filePath, e.content, e.ts, false);
+                    continue;
+                }
                 addUser(e.content, e.ts, false, hasImage ? e.imagePath : null,
                         e.replyToSender, e.replyToText);
             } else if ("assistant".equals(e.role)) {
@@ -4076,9 +4189,13 @@ public class OxUiPreviewActivity extends Activity {
                 addTool(e.content);
             }
         }
-        if (pendingText != null || pendingImagePath != null) {
-            addUser(pendingText, System.currentTimeMillis(), true, pendingImagePath,
-                    replyQuoteSender, replyQuoteText);
+        if (pendingText != null || pendingImagePath != null || pendingFilePath != null) {
+            if (pendingFilePath != null) {
+                addUserFile(pendingFileName, pendingFilePath, pendingText, System.currentTimeMillis(), true);
+            } else {
+                addUser(pendingText, System.currentTimeMillis(), true, pendingImagePath,
+                        replyQuoteSender, replyQuoteText);
+            }
             addWorking();
         }
         if (failedText != null && targetKey().equals(failedTargetKey)) {
@@ -4103,6 +4220,71 @@ public class OxUiPreviewActivity extends Activity {
                 messages.animate().alpha(1f).translationY(0f).setDuration(260).start();
             }
         });
+    }
+
+    /** File attachment bubble: a paper capsule with glyph, name and size, plus
+     *  an optional caption underneath; timestamps follow the skin toggle. */
+    private void addUserFile(String name, String filePath, String caption, long ts,
+            boolean sending) {
+        if (name == null || name.isEmpty()) name = "file";
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.END);
+        row.setPadding(0, rowGap(12), 0, 0);
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        wrap.setGravity(Gravity.END);
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(14), dp(11), dp(16), dp(11));
+        GradientDrawable bg = plate(PAPER, 14, LINE, 1);
+        if (sending) bg.setAlpha(SENDING_ALPHA);
+        card.setBackground(bg);
+        card.setContentDescription(name);
+        TextView glyph = new TextView(this);
+        glyph.setText("📄");
+        glyph.setTextSize(18);
+        card.addView(glyph, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.setPadding(dp(10), 0, 0, 0);
+        TextView nameView = new TextView(this);
+        nameView.setText(name);
+        nameView.setTextSize(14);
+        nameView.setTypeface(sansMedium());
+        nameView.setTextColor(INK);
+        nameView.setSingleLine(true);
+        nameView.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+        nameView.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.6f));
+        texts.addView(nameView);
+        TextView meta = new TextView(this);
+        meta.setText(fileSizeText(filePath));
+        meta.setTextSize(11);
+        meta.setTypeface(mono());
+        meta.setTextColor(MUTED);
+        texts.addView(meta);
+        card.addView(texts);
+        wrap.addView(card);
+        if (caption != null && !caption.trim().isEmpty()) {
+            TextView cap = new TextView(this);
+            cap.setText(styled(caption));
+            cap.setTextSize(15);
+            cap.setTypeface(sans());
+            cap.setTextColor(INK);
+            cap.setPadding(0, dp(4), dp(2), 0);
+            cap.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.78f));
+            cap.setGravity(Gravity.END);
+            wrap.addView(cap);
+        }
+        if (!sending && (skin == null || skin.showTimestamps)) {
+            wrap.addView(userTimestamp(ts));
+        }
+        row.addView(wrap);
+        row.setTag(ts);
+        messages.addView(row, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
     private void addUser(String text, long ts, boolean sending, String imagePath,
@@ -4339,7 +4521,7 @@ public class OxUiPreviewActivity extends Activity {
             return;
         }
         String text = input.getText() == null ? "" : input.getText().toString().trim();
-        if (text.isEmpty() && pendingImagePath == null) return;
+        if (text.isEmpty() && pendingImagePath == null && pendingFilePath == null) return;
         pendingText = text;
         pendingAgentId = targetKey();
         pendingAt = System.currentTimeMillis();
@@ -4349,8 +4531,10 @@ public class OxUiPreviewActivity extends Activity {
         input.setText("");
         attachRow.setVisibility(View.GONE);
         refresh(true);
-        dispatchSend(pendingText, pendingImagePath);
+        dispatchSend(pendingText, pendingImagePath, pendingFilePath);
         pendingImagePath = null;
+        pendingFilePath = null;
+        pendingFileName = null;
         // Clear only after dispatch: dispatchSend reads replyAgentId to route
         // the targeted reply through sendLocalGroupTextTo.
         clearReplyTarget();

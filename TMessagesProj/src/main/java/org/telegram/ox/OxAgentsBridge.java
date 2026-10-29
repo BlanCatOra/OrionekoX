@@ -1464,6 +1464,11 @@ public class OxAgentsBridge {
     }
 
     private static void startMediaTurn(OxAgent agent, long dialogId, String prompt, String imagePath, String displayText) {
+        startMediaTurn(agent, dialogId, prompt, imagePath, null, null, displayText);
+    }
+
+    private static void startMediaTurn(OxAgent agent, long dialogId, String prompt, String imagePath,
+            String filePath, String fileName, String displayText) {
         if (agent == null) {
             return;
         }
@@ -1473,7 +1478,13 @@ public class OxAgentsBridge {
             injectAgentReply(dialogId, reply);
             try {
                 List<OxChatEntry> chat = OxAgentStore.loadChat(agent.id);
-                chat.add(new OxChatEntry("user", displayText, System.currentTimeMillis(), imagePath));
+                OxChatEntry userEntry = new OxChatEntry("user", displayText,
+                        System.currentTimeMillis(), imagePath);
+                if (filePath != null) {
+                    userEntry.filePath = filePath;
+                    userEntry.fileName = fileName;
+                }
+                chat.add(userEntry);
                 chat.add(new OxChatEntry("assistant", reply, System.currentTimeMillis()));
                 OxAgentStore.saveChat(agent.id, chat);
             } catch (Throwable t) {
@@ -1481,7 +1492,7 @@ public class OxAgentsBridge {
             }
             return;
         }
-        startTurn(agent, dialogId, prompt, imagePath);
+        startTurn(agent, dialogId, prompt, imagePath, filePath, fileName);
     }
 
     // ---------------- media (photos/videos) to agents ----------------
@@ -1494,7 +1505,8 @@ public class OxAgentsBridge {
         final OxAgent agent = agentByTgId(dialogId);
         StringBuilder prompt = new StringBuilder();
         String firstImagePath = null;
-        int images = 0, videos = 0, gifs = 0;
+        String firstFilePath = null, firstFileName = null;
+        int images = 0, videos = 0, gifs = 0, files = 0;
         if (infos != null) {
             for (SendMessagesHelper.SendingMediaInfo info : infos) {
                 String path = info.path;
@@ -1522,6 +1534,28 @@ public class OxAgentsBridge {
                         gifs++;
                         prompt.append("用户发送了一张动图（GIF）：").append(name);
                         if (info.caption != null && !info.caption.trim().isEmpty()) prompt.append("\n附带说明：").append(info.caption.trim());
+                    } else if (!(lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+                            || lower.endsWith(".png") || lower.endsWith(".webp")
+                            || lower.endsWith(".heic"))) {
+                        String mime = "application/octet-stream";
+                        if (lower.endsWith(".pdf")) mime = "application/pdf";
+                        else if (lower.endsWith(".txt") || lower.endsWith(".md")) mime = "text/plain";
+                        else if (lower.endsWith(".json")) mime = "application/json";
+                        else if (lower.endsWith(".zip")) mime = "application/zip";
+                        else if (lower.endsWith(".apk")) mime = "application/vnd.android.package-archive";
+                        TLRPC.TL_document doc = buildLocalDocument(path, name, mime, false, false, 0, 0, 0);
+                        injectDocument(dialogId, doc, path, info.caption);
+                        files++;
+                        if (firstFilePath == null) {
+                            firstFilePath = archiveMedia(agent, path, 0);
+                            firstFileName = name;
+                        }
+                        long size = new File(path).length();
+                        prompt.append("用户发送了文件：").append(name)
+                                .append("（").append(mime).append(", ").append(size).append(" 字节）");
+                        if (info.caption != null && !info.caption.trim().isEmpty()) {
+                            prompt.append("\n附带说明：").append(info.caption.trim());
+                        }
                     } else {
                         SendMessagesHelper smh = SendMessagesHelper.getInstance(0);
                         TLRPC.TL_photo photo = smh.generatePhotoSizes(path, null);
@@ -1558,7 +1592,8 @@ public class OxAgentsBridge {
         String text = prompt.toString().trim();
         if (text.isEmpty()) text = "用户发送了媒体内容";
         if (images > 1) text = text + "\n（共 " + images + " 张图片）";
-        startMediaTurn(agent, dialogId, text, firstImagePath, text);
+        startMediaTurn(agent, dialogId, text, firstImagePath,
+                firstFilePath, firstFileName, text);
     }
 
     /**
@@ -1818,6 +1853,8 @@ public class OxAgentsBridge {
         int depth;
         String userText;
         String imagePath;
+        String filePath;
+        String fileName;
         TLRPC.TL_message msg;
         final StringBuilder text = new StringBuilder();
         final List<OxChatEntry> acc = new ArrayList<>();
@@ -1914,7 +1951,13 @@ public class OxAgentsBridge {
     }
 
     private static void startTurn(OxAgent agent, long dialogId, String userText, String imagePath) {
-        log("startTurn agent=" + agent.id + " dialog=" + dialogId + " image=" + (imagePath != null));
+        startTurn(agent, dialogId, userText, imagePath, null, null);
+    }
+
+    private static void startTurn(OxAgent agent, long dialogId, String userText, String imagePath,
+            String filePath, String fileName) {
+        log("startTurn agent=" + agent.id + " dialog=" + dialogId + " image=" + (imagePath != null)
+                + " file=" + (filePath != null));
         Stream s = new Stream();
         s.dialogId = dialogId;
         s.senderTgId = dialogId;
@@ -1922,6 +1965,8 @@ public class OxAgentsBridge {
         s.agent = agent;
         s.userText = userText;
         s.imagePath = imagePath;
+        s.filePath = filePath;
+        s.fileName = fileName;
         try {
             s.messages = baseMessages(agent, agent.id, userText);
             if (imagePath != null && new File(imagePath).exists()) {
@@ -2961,7 +3006,13 @@ public class OxAgentsBridge {
                         s.agent == null ? null : s.agent.id);
             } else {
                 List<OxChatEntry> chat = OxAgentStore.loadChat(s.agent.id);
-                chat.add(new OxChatEntry("user", s.userText, System.currentTimeMillis(), s.imagePath));
+                OxChatEntry userEntry = new OxChatEntry("user", s.userText,
+                        System.currentTimeMillis(), s.imagePath);
+                if (s.filePath != null) {
+                    userEntry.filePath = s.filePath;
+                    userEntry.fileName = s.fileName;
+                }
+                chat.add(userEntry);
                 chat.addAll(s.acc);
                 chat.add(new OxChatEntry("assistant", finalText, System.currentTimeMillis()));
                 OxAgentStore.saveChat(s.agent.id, chat);
