@@ -35,6 +35,9 @@ public class OxUiSkin {
     public boolean showRail = true;
     public boolean showFooter = true;
     public float termScale = 1f;
+    public String termTheme = "dark";     // dark | black | solarized
+    public boolean termQuickKeys = true;
+    public boolean termAutocomplete = true;
     public String dockPosition = "aboveInput"; // top | aboveInput | bottom
 
     public boolean isDark() {
@@ -63,6 +66,9 @@ public class OxUiSkin {
             o.put("showRail", showRail);
             o.put("showFooter", showFooter);
             o.put("termScale", termScale);
+            o.put("termTheme", termTheme);
+            o.put("termQuickKeys", termQuickKeys);
+            o.put("termAutocomplete", termAutocomplete);
             o.put("dockPosition", dockPosition);
             return o;
         } catch (Exception e) {
@@ -89,6 +95,9 @@ public class OxUiSkin {
         s.showRail = o.optBoolean("showRail", true);
         s.showFooter = o.optBoolean("showFooter", true);
         s.termScale = (float) o.optDouble("termScale", 1);
+        s.termTheme = o.optString("termTheme", "dark");
+        s.termQuickKeys = o.optBoolean("termQuickKeys", true);
+        s.termAutocomplete = o.optBoolean("termAutocomplete", true);
         s.dockPosition = o.optString("dockPosition", "aboveInput");
         return s;
     }

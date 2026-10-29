@@ -24,6 +24,11 @@
   status line, grouped quick keys, command history, Tab completion, Ctrl-L
   clearing, an Aa type cycle and honest local-only commands.
 
+- Terminal options learned from an installed Termius 7.5.5: three terminal
+  palettes (Termius dark / pure black / solarized), quick-keys visibility,
+  autocomplete toggle, an Aa size cycle and pinch-to-zoom (0.8-1.4x), all
+  persisted in the skin JSON.
+
 ## 0.68.0 — 2026-10-29
 
 - In-app theme override: an oxui_theme preference (follow system / light /

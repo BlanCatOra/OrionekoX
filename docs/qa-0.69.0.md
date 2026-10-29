@@ -26,6 +26,9 @@
   正常）；本机 GPT 用 `/usr/lib/chatgpt/resources/codex exec`（chatgpt OAuth，
   代理 7890），`gpt-6-pro` 对 ChatGPT 账号 model_not_found；`glm-5.3-flash`
   经网关连续 3 次 524 超时（弃用）；`gpt-6-astra` 按早前指示避开。
+- **Termius 最终已装**：用户随后提供了 7.5.5 APK，已装模拟器并深度使用（见
+  §3），terminal options（FONT & COLOURS/Quick keys/Autocomplete）即其设置页
+  的本地化映射。
 - 评审结论：夜色与 Sol 并列最好看；工作台/56-Sol 最可用；oxui-ds 唯一真机
   实现、交互全验证。合成方向由我拍板：**oxui-ds 骨架 × Sol 字体声线 ×
   陶土"人声"色 × 无底栏 × 终端首等公民**。
@@ -72,11 +75,15 @@
   `termux-reload-settings` 且部分项要重启进程（本轮实测到其 extra-keys
   JSON 转义错误提示 "Could not load ... org.json.JS…"）；session 通过抽屉/
   新建会话而非 tab。
-- **Termius**：环境内无法安装——Play 商店需账号，APKMirror 最终下载需
-  JS/Cloudflare 挑战（headless 渲染亦未产出直链），APKPure/APKCombo/
-  APKMonk/APKSprt 均 404/403/连接失败。已从公开资料采用其设计要点：
-  下划线式 session tab、状态行、圆角键帽分组、低调的 9.5sp 状态脚注。
-  如需真机对照，请提供 APK 或在模拟器登录 Play 账号。
+- **Termius**（用户提供 7.5.5 APK，已装模拟器并深度使用）：引导页「Modern
+  SSH Client」→ 免登录「Continue without Sync and AI」→ Vaults/Hosts 主页
+  （底部 Tab、圆角大 FAB、Create host 卡）；设置页 Terminal 组：Font &
+  colours（Termius Dark / 8 / Source Code Pro Medium）、Terminal type
+  xterm-256color、Hotkeys settings（Use Ctrl）、Customize keyboard、
+  Terminal back buffer 1000 lines、Bell、Enable autocomplete、Pinch to zoom。
+  已映射进 OxUI 终端 options：FONT & COLOURS（Termius Dark / Pure black /
+  Solarized）、Quick keys 开关、Autocomplete 开关、Aa 字号循环、捏合缩放
+  （0.8–1.4×，写回皮肤 JSON）、下划线 session tab、9.5sp 状态脚注。
 - 学习结论已落进终端 v3（见 §2.5），未照搬：保留 OxUI 的 dark surface、
   mono 体系与本地命令诚实性。
 
@@ -103,9 +110,9 @@
 ## 5. 产物
 
 - release：`dist/OrionekoX-0.69.0-alpha-arm64-x64.apk`，sha256
-  `bfc8473ad3a4900fbe3893d1c1f37d1ae42d905ef03c218a158b6b4e30e52686`
+  `fcb0a90b36102eafaac72e97f615c71ea116d982e1c231b4686d724c13a37b3b`
 - debug：`dist/OrionekoX-0.69.0-debug-arm64-x64.apk`，sha256
-  `04f4b751dd68b41ea3b5b94a684912c0d78a5dc3339eab61affcb9b9bf5a1472`
+  `b0a29643f5801b98ff3b9ae12de07c9afc81e210991ec4fea1d6b7c1ecdabf48`
 - 构建日志 `/tmp/ox-build-0690-final.log`；设计擂台截图
   `design-battle-shots/`；Termux 学习截图 `/tmp/term-apps/`。
 

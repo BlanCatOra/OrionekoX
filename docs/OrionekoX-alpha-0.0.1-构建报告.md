@@ -4318,12 +4318,18 @@ debug `dist/OrionekoX-0.68.0-debug-arm64-x64.apk`（sha256
 - 事故与恢复：验证 dock 顶部时曾以最小 prefs 覆盖 orioneko_config 导致
   agent_only 等键丢失，立即重建恢复并验证 agent-only 首页；模拟器宿主
   X server 丢失致 qemu 退出，改 `-no-window -gpu off` 恢复。
+- Termius 7.5.5（用户提供 APK）实装并使用：引导页→免登录本地模式→
+  Vaults/Hosts→设置页 Terminal 组（Font & colours: Termius Dark/8/Source
+  Code Pro Medium、Hotkeys、Customize keyboard、autocomplete、pinch to
+  zoom、back buffer）；据此补充终端 options：主题三选（Termius Dark/
+  Pure black/Solarized）、Quick keys 开关、Autocomplete 开关、捏合缩放
+  0.8–1.4×（写回皮肤 JSON），Solarized 实测生效。
 - 清理：皮肤/主题恢复默认（Follow system），interface_mode=telegram；
   Termux 留在模拟器供对照（非用户数据）。
 - 版本规则：按 minor 从 0.68.0 → **0.69.0**（6909），patch 清零。
 
 **产物**：`dist/OrionekoX-0.69.0-alpha-arm64-x64.apk`（versionCode 6909，
-sha256 `bfc8473ad3a4900fbe3893d1c1f37d1ae42d905ef03c218a158b6b4e30e52686`）；
+sha256 `fcb0a90b36102eafaac72e97f615c71ea116d982e1c231b4686d724c13a37b3b`）；
 debug `dist/OrionekoX-0.69.0-debug-arm64-x64.apk`（sha256
-`04f4b751dd68b41ea3b5b94a684912c0d78a5dc3339eab61affcb9b9bf5a1472`）；
+`b0a29643f5801b98ff3b9ae12de07c9afc81e210991ec4fea1d6b7c1ecdabf48`）；
 QA 详见 [docs/qa-0.69.0.md](qa-0.69.0.md)。

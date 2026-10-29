@@ -1158,6 +1158,150 @@ public class OxUiPreviewActivity extends Activity {
         return d;
     }
 
+    /** Terminal options, mirroring Termius's Font & colours / hotkeys / input
+     *  settings but scoped to our local console. */
+    private void openTerminalOptions() {
+        if (overlay == null) return;
+        overlay.removeAllViews();
+        overlay.setVisibility(View.VISIBLE);
+        if (animationsEnabled()) {
+            overlay.setAlpha(0f);
+            overlay.animate().alpha(1f).setDuration(140).start();
+        } else {
+            overlay.setAlpha(1f);
+        }
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackgroundColor(BONE);
+        panel.setPadding(dp(22), dp(18), dp(22), dp(18));
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = new TextView(this);
+        title.setText("Terminal options");
+        title.setTextSize(24);
+        title.setTypeface(serif());
+        title.setTextColor(INK);
+        head.addView(title, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView close = new TextView(this);
+        close.setText("×");
+        close.setTextSize(22);
+        close.setTextColor(INK);
+        close.setGravity(Gravity.CENTER);
+        close.setContentDescription("Close");
+        close.setOnClickListener(v -> hideOverlay());
+        head.addView(close, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        panel.addView(head);
+
+        TextView themeLabel = new TextView(this);
+        themeLabel.setText("FONT & COLOURS");
+        themeLabel.setTextSize(11);
+        themeLabel.setTypeface(mono());
+        themeLabel.setTextColor(MUTED);
+        themeLabel.setLetterSpacing(0.08f);
+        themeLabel.setPadding(dp(4), dp(16), dp(4), dp(6));
+        panel.addView(themeLabel);
+        String curTheme = skin == null ? "dark" : skin.termTheme;
+        String[][] themes = {
+                {"Termius Dark", "dark"},
+                {"Pure black", "black"},
+                {"Solarized", "solarized"}
+        };
+        for (String[] t : themes) {
+            boolean active = t[1].equals(curTheme);
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(4), dp(11), dp(4), dp(11));
+            row.setBackground(new android.graphics.drawable.RippleDrawable(
+                    ColorStateList.valueOf(RIPPLE), null, null));
+            row.setContentDescription(t[0]);
+            View dot = new View(this);
+            dot.setBackground(active ? plate(SIGNAL, 6, 0, 0) : plate(0, 6, LINE, 1));
+            LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(12), dp(12));
+            dlp.rightMargin = dp(14);
+            row.addView(dot, dlp);
+            TextView label = new TextView(this);
+            label.setText(t[0]);
+            label.setTextSize(14);
+            label.setTypeface(sans());
+            label.setTextColor(INK);
+            row.addView(label, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            if (active) {
+                TextView check = new TextView(this);
+                check.setText("active");
+                check.setTextSize(11);
+                check.setTypeface(mono());
+                check.setTextColor(MUTED);
+                row.addView(check);
+            }
+            final String v = t[1];
+            row.setOnClickListener(view -> {
+                org.telegram.ox.OxUiSkin copy = copyActiveSkin();
+                copy.termTheme = v;
+                org.telegram.ox.OxUiSkin.apply(copy);
+                skin = copy;
+                hideOverlay();
+                openTerminal();
+            });
+            panel.addView(row);
+        }
+        panel.addView(termToggleRow("Quick keys", skin == null || skin.termQuickKeys, true));
+        panel.addView(termToggleRow("Autocomplete (Tab)", skin == null || skin.termAutocomplete, false));
+        TextView note = new TextView(this);
+        note.setText("Pinch to zoom · Aa cycles the size · Copy JSON in the skin editor exports these settings");
+        note.setTextSize(11);
+        note.setTypeface(sans());
+        note.setTextColor(MUTED);
+        note.setPadding(dp(4), dp(16), dp(4), 0);
+        panel.addView(note);
+        overlay.addView(panel, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private LinearLayout termToggleRow(String label, boolean on, boolean quickKeys) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(4), dp(11), dp(4), dp(11));
+        row.setBackground(new android.graphics.drawable.RippleDrawable(
+                ColorStateList.valueOf(RIPPLE), null, null));
+        row.setContentDescription(label);
+        View dot = new View(this);
+        dot.setBackground(on ? plate(SIGNAL, 6, 0, 0) : plate(0, 6, LINE, 1));
+        LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(12), dp(12));
+        dlp.rightMargin = dp(14);
+        row.addView(dot, dlp);
+        TextView text = new TextView(this);
+        text.setText(label);
+        text.setTextSize(14);
+        text.setTypeface(sans());
+        text.setTextColor(INK);
+        row.addView(text, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView state = new TextView(this);
+        state.setText(on ? "on" : "off");
+        state.setTextSize(11);
+        state.setTypeface(mono());
+        state.setTextColor(MUTED);
+        row.addView(state);
+        row.setOnClickListener(v -> {
+            org.telegram.ox.OxUiSkin copy = copyActiveSkin();
+            if (quickKeys) {
+                copy.termQuickKeys = !on;
+            } else {
+                copy.termAutocomplete = !on;
+            }
+            org.telegram.ox.OxUiSkin.apply(copy);
+            skin = copy;
+            hideOverlay();
+            openTerminal();
+        });
+        return row;
+    }
+
     /** OxUI terminal: a local command console with Termius/Termux-inspired
      *  chrome — underline session tabs, a status line, grouped key caps and a
      *  calm mono reading rhythm. It is explicitly not a shell. */
@@ -1171,9 +1315,23 @@ public class OxUiPreviewActivity extends Activity {
         } else {
             overlay.setAlpha(1f);
         }
-        final int termBg = 0xFF0B1110;
-        final int termText = 0xFFDCE6DE;
-        final int termDim = 0xFF6E7F76;
+        String termTheme = skin == null ? "dark" : skin.termTheme;
+        final int termBg;
+        final int termText;
+        final int termDim;
+        if ("black".equals(termTheme)) {
+            termBg = 0xFF000000;
+            termText = 0xFFE8E8E8;
+            termDim = 0xFF707070;
+        } else if ("solarized".equals(termTheme)) {
+            termBg = 0xFF002B36;
+            termText = 0xFF93A1A1;
+            termDim = 0xFF586E75;
+        } else {
+            termBg = 0xFF0B1110;
+            termText = 0xFFDCE6DE;
+            termDim = 0xFF6E7F76;
+        }
         final int keyBg = 0x12FFFFFF;
 
         LinearLayout panel = new LinearLayout(this);
@@ -1192,6 +1350,18 @@ public class OxUiPreviewActivity extends Activity {
         title.setLetterSpacing(0.02f);
         head.addView(title, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView optionsBtn = new TextView(this);
+        optionsBtn.setText("⋯");
+        optionsBtn.setTextSize(16);
+        optionsBtn.setTypeface(mono());
+        optionsBtn.setTextColor(termDim);
+        optionsBtn.setGravity(Gravity.CENTER);
+        optionsBtn.setBackground(plate(0, 6, 0x22FFFFFF, 1));
+        optionsBtn.setContentDescription("Terminal options");
+        LinearLayout.LayoutParams obp = new LinearLayout.LayoutParams(dp(34), dp(26));
+        obp.rightMargin = dp(8);
+        optionsBtn.setOnClickListener(v -> openTerminalOptions());
+        head.addView(optionsBtn, obp);
         TextView fontBtn = new TextView(this);
         fontBtn.setText("Aa");
         fontBtn.setTextSize(12);
@@ -1243,6 +1413,27 @@ public class OxUiPreviewActivity extends Activity {
         panel.addView(status);
 
         terminalScroll = new ScrollView(this);
+        final android.view.ScaleGestureDetector scaleDetector =
+                new android.view.ScaleGestureDetector(this,
+                        new android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                            @Override
+                            public boolean onScale(android.view.ScaleGestureDetector detector) {
+                                float base = termScale();
+                                float next = Math.max(0.8f, Math.min(1.4f,
+                                        base * detector.getScaleFactor()));
+                                if (Math.abs(next - base) < 0.005f) return true;
+                                org.telegram.ox.OxUiSkin copy = copyActiveSkin();
+                                copy.termScale = next;
+                                org.telegram.ox.OxUiSkin.apply(copy);
+                                skin = copy;
+                                renderTerminalLog(0xFFDCE6DE, 0xFF6E7F76);
+                                return true;
+                            }
+                        });
+        terminalScroll.setOnTouchListener((v, ev) -> {
+            scaleDetector.onTouchEvent(ev);
+            return false;
+        });
         terminalOutput = new LinearLayout(this);
         terminalOutput.setOrientation(LinearLayout.VERTICAL);
         terminalOutput.setPadding(0, dp(8), 0, dp(6));
@@ -1285,8 +1476,10 @@ public class OxUiPreviewActivity extends Activity {
         }
         keysScroll.addView(keys, new HorizontalScrollView.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        panel.addView(keysScroll, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        if (skin == null || skin.termQuickKeys) {
+            panel.addView(keysScroll, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
 
         LinearLayout inputRow = new LinearLayout(this);
         inputRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -1395,6 +1588,10 @@ public class OxUiPreviewActivity extends Activity {
             return;
         }
         if ("\u0000TAB".equals(value)) {
+            if (skin != null && !skin.termAutocomplete) {
+                input.append("  ");
+                return;
+            }
             String cur = input.getText().toString();
             String[] cmds = {"help", "agents", "groups", "search ", "theme ", "version",
                     "telegram", "clear", "echo "};
