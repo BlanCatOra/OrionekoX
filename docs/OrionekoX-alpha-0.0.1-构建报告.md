@@ -4359,3 +4359,20 @@ QA 详见 [docs/qa-0.69.0.md](qa-0.69.0.md)。
 debug `dist/OrionekoX-0.70.0-debug-arm64-x64.apk`（sha256
 `86b9ba1f15b62ede0d9697438040bbfd62c8b2c1dd9fa939af7d732a706c5aa9`）；
 QA 详见 [docs/qa-0.70.0.md](qa-0.70.0.md)。
+## 5.193 alpha 0.71.0 —— 终端配色对比度重调 + PWD/PST（2026-10-29 12:50–13:05）
+
+- 用户反馈 Nord 等预设看不清字、且 Termius 有一键输密码快捷键、钥匙
+  按钮突兀。用 WCAG 对比度公式审计 11 套配色：dim 普遍不足（Nord 1.69、
+  One Dark 2.32、Solarized Light 2.48），且渲染逻辑把缩进输出误当 dim。
+- 重调全部 11 套：text ≥6.59、dim ≥4.06、accent ≥4.75；渲染改为仅
+  `session ...` 横幅使用 dim，命令输出恢复正常色；Nord 实机复查清晰。
+- 参考 Termius：热键行全为等宽文本键。移除 emoji 🔑/⧉，改为 PWD/PST
+  文本键（同字号同键帽、行尾滚动可达）；选项面板新增本地 TERMINAL
+  SECRET（密码输入 + Save，prefs 明文存储、不入皮肤 JSON）；PWD 一键
+  填入、PST 粘贴剪贴板；未设置时 Toast 引导。
+- 设备验证：Nord 可读；PWD 填入 abc123 成功；键行滚动后风格统一；release
+  7109 无 FATAL。
+- 版本规则：功能新增 → **0.71.0**（7109），patch 清零。
+
+**产物**：release `ea48e84b7b289c6ac807e6e9ac6447656f954754e0f618ceaa8151b16aeca7a3`；
+debug `8738b14ef56473710c0a93943f81cff3eca96b2e89e9a1c7f73461287c8ccc09`。
