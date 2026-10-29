@@ -746,3 +746,17 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
   a11y dump 全部通过；release 无 FATAL。
 - 遗留：应用内手动主题切换、跨会话搜索聚合排序、82 行窗口外命中跳转、
   TalkBack 全流程走查、设置/Agent 编辑 OxUI 化。
+
+## 0.68.0 OxUI 设置页与 Agent 编辑 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-151 | 0.68 功能 | 应用内无法切换亮/暗主题（只能跟随系统） | OxMode `oxui_theme` 偏好 + resolvePalette 优先级 + 设置页三行单选，选择即 recreate 换肤 | 已实现并设备验证（dark/light 均落盘） |
+| R2-152 | 0.68 功能 | 无 OxUI 设置页 | Agents footer “Settings” 入口；THEME + ABOUT（BuildConfig 版本、local-first 说明）；header ⚙ 因 360dp 换行问题回退 | 已实现并设备验证 |
+| R2-153 | 0.68 功能 | Agent 只能看不能改 | 详情 Edit → name/remark/model/persona + SKILLS 多选（OxSkillStore）+ Save 写回 + 列表刷新；名称为空拦截 | 已实现并设备验证（remark/skill_ids 落盘并还原） |
+| R2-154 | 0.68 QA | 编辑页按 BACK 直接退出应用 | onBackPressed 增 overlay 优先关闭（菜单→overlay→rootMode） | 已修复并设备验证 |
+
+- 设备：debug 6809，主题即时切换、Agent 编辑回填/保存/回显/取消、
+  BACK 行为全部通过；release 无 FATAL。
+- 遗留：Agent 编辑未含头像/provider/采样/开场白/工具策略；设置页 v1 只有
+  主题与关于；主题切换会丢滚动位置（可接受）。
