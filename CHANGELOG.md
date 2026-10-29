@@ -4,6 +4,16 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.71.0 — 2026-10-29
+
+- Audited all eleven terminal palettes against WCAG contrast and retuned
+  them: text >= 6.6, dim >= 4.0, accent >= 4.75; command output is no longer
+  dimmed by its indentation, which was the main readability bug (Nord was
+  1.69:1 for dim).
+- One-tap credentials in the Termius manner: uniform PWD and PST text keys
+  (replacing the emoji keys), backed by a local-only terminal secret that is
+  stored in prefs and excluded from the exported skin JSON.
+
 ## 0.70.0 — 2026-10-29
 
 - Component-level DIY on top of skins: message density, timestamp and

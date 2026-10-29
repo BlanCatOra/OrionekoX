@@ -1444,7 +1444,11 @@ These confirm the feature directions rather than relying on guesses. Checked
    export, a genuinely blurred floating dock (snapshot downscale + box blur
    + material tint, refreshed on scroll) and eleven built-in terminal
    palettes in the Termius/Solarized/Dracula/Nord family with an
-   accent-driven prompt, session underline and send key. Still open:
+   accent-driven prompt, session underline and send key. 0.71.0 rebuilt the
+   eleven palettes around measured WCAG contrast (text >= 6.6, dim >= 4.0,
+   accent >= 4.75; output lines no longer dimmed by indentation) and replaced
+   the emoji secret key with uniform Termius-style PWD/PST text keys backed by
+   a local-only terminal secret kept out of the exported skin JSON. Still open:
    density for the composer and lists, file/QR skin sharing, ANSI-16
    terminal colours, avatar creation via emoji markup in agent-only mode,
    user-avatar RPC family, offline title editing, cross-chat search

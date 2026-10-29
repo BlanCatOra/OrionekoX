@@ -1317,17 +1317,17 @@ public class OxUiPreviewActivity extends Activity {
     private int[] termPalette(String id) {
         if (id == null) id = "termius-dark";
         switch (id) {
-            case "termius-light": return new int[]{0xFFF5F7F6, 0xFF16211C, 0xFF6B7A72, 0xFF176F6B};
-            case "solarized-dark": return new int[]{0xFF002B36, 0xFF93A1A1, 0xFF586E75, 0xFF2AA198};
-            case "solarized-light": return new int[]{0xFFFDF6E3, 0xFF657B83, 0xFF93A1A1, 0xFF268BD2};
-            case "dracula": return new int[]{0xFF282A36, 0xFFF8F8F2, 0xFF6272A4, 0xFFBD93F9};
-            case "one-dark": return new int[]{0xFF282C34, 0xFFABB2BF, 0xFF5C6370, 0xFF98C379};
-            case "nord": return new int[]{0xFF2E3440, 0xFFD8DEE9, 0xFF4C566A, 0xFF88C0D0};
-            case "gruvbox-dark": return new int[]{0xFF282828, 0xFFEBDBB2, 0xFF928374, 0xFFFABD2F};
-            case "tokyo-night": return new int[]{0xFF1A1B26, 0xFFA9B1D6, 0xFF565F89, 0xFF7AA2F7};
-            case "monokai": return new int[]{0xFF272822, 0xFFF8F8F2, 0xFF75715E, 0xFFA6E22E};
-            case "black": return new int[]{0xFF000000, 0xFFE8E8E8, 0xFF707070, 0xFFC8EF6A};
-            case "solarized": return new int[]{0xFF002B36, 0xFF93A1A1, 0xFF586E75, 0xFF2AA198};
+            case "termius-light": return new int[]{0xFFF5F7F6, 0xFF16211C, 0xFF5F6F68, 0xFF0F5F5B};
+            case "solarized-dark": return new int[]{0xFF002B36, 0xFFB7C2BF, 0xFF7A9A99, 0xFF2AA198};
+            case "solarized-light": return new int[]{0xFFFDF6E3, 0xFF4E5A60, 0xFF6E7A70, 0xFF1F6FA8};
+            case "dracula": return new int[]{0xFF282A36, 0xFFF8F8F2, 0xFF8B95B8, 0xFFBD93F9};
+            case "one-dark": return new int[]{0xFF282C34, 0xFFD7DAE0, 0xFF828B99, 0xFF98C379};
+            case "nord": return new int[]{0xFF2E3440, 0xFFE5E9F0, 0xFF8794A8, 0xFF88C0D0};
+            case "gruvbox-dark": return new int[]{0xFF282828, 0xFFEBDBB2, 0xFFA89984, 0xFFFABD2F};
+            case "tokyo-night": return new int[]{0xFF1A1B26, 0xFFC0CAF5, 0xFF7C87AA, 0xFF7AA2F7};
+            case "monokai": return new int[]{0xFF272822, 0xFFF8F8F2, 0xFF9A9784, 0xFFA6E22E};
+            case "black": return new int[]{0xFF000000, 0xFFE8E8E8, 0xFF9A9A9A, 0xFFC8EF6A};
+            case "solarized": return new int[]{0xFF002B36, 0xFFB7C2BF, 0xFF7A9A99, 0xFF2AA198};
             case "dark":
             case "termius-dark":
             default: return new int[]{0xFF0B1110, 0xFFDCE6DE, 0xFF6E7F76, 0xFFC8EF6A};
@@ -1451,6 +1451,52 @@ public class OxUiPreviewActivity extends Activity {
         }
         panel.addView(termToggleRow("Quick keys", skin == null || skin.termQuickKeys, true));
         panel.addView(termToggleRow("Autocomplete (Tab)", skin == null || skin.termAutocomplete, false));
+
+        TextView secretLabel = new TextView(this);
+        secretLabel.setText("TERMINAL SECRET (LOCAL)");
+        secretLabel.setTextSize(11);
+        secretLabel.setTypeface(mono());
+        secretLabel.setTextColor(MUTED);
+        secretLabel.setLetterSpacing(0.08f);
+        secretLabel.setPadding(dp(4), dp(18), dp(4), dp(6));
+        panel.addView(secretLabel);
+        final EditText secretIn = new EditText(this);
+        secretIn.setText(org.telegram.ox.OxMode.getTermSecret());
+        secretIn.setTextSize(13);
+        secretIn.setTypeface(mono());
+        secretIn.setTextColor(INK);
+        secretIn.setHintTextColor(MUTED);
+        secretIn.setHint("password / token");
+        secretIn.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        secretIn.setBackground(plate(PAPER, 12, LINE, 1));
+        secretIn.setPadding(dp(12), dp(8), dp(12), dp(8));
+        secretIn.setContentDescription("Terminal secret");
+        panel.addView(secretIn, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+        TextView secretSave = new TextView(this);
+        secretSave.setText("Save secret");
+        secretSave.setTextSize(12);
+        secretSave.setTypeface(sansMedium());
+        secretSave.setTextColor(INK);
+        secretSave.setGravity(Gravity.CENTER);
+        secretSave.setBackground(plate(0, 14, LINE, 1));
+        secretSave.setPadding(dp(14), dp(8), dp(14), dp(8));
+        LinearLayout.LayoutParams sslp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        sslp.topMargin = dp(8);
+        secretSave.setOnClickListener(v -> {
+            org.telegram.ox.OxMode.setTermSecret(secretIn.getText().toString());
+            Toast.makeText(this, "Terminal secret saved", Toast.LENGTH_SHORT).show();
+        });
+        panel.addView(secretSave, sslp);
+        TextView secretNote = new TextView(this);
+        secretNote.setText("The PWD quick key types this into the local console. Stored in local prefs, never in the exported skin JSON.");
+        secretNote.setTextSize(11);
+        secretNote.setTypeface(sans());
+        secretNote.setTextColor(MUTED);
+        secretNote.setPadding(dp(4), dp(8), dp(4), 0);
+        panel.addView(secretNote);
         TextView note = new TextView(this);
         note.setText("Pinch to zoom · Aa cycles the size · Copy JSON in the skin editor exports these settings");
         note.setTextSize(11);
@@ -1646,7 +1692,8 @@ public class OxUiPreviewActivity extends Activity {
         String[][] groups = {
                 {"Esc", "\u0000ESC", "^L", "\u0000CLEAR", "Tab", "\u0000TAB"},
                 {"↑", "\u0000UP", "↓", "\u0000DOWN"},
-                {"/", "/", "-", "-", "|", "|", ">", ">", "~", "~", ":", ":"}
+                {"/", "/", "-", "-", "|", "|", ">", ">", "~", "~", ":", ":",
+                        "PWD", "\u0000SECRET", "PST", "\u0000PASTE"}
         };
         for (String[] group : groups) {
             for (int i = 0; i < group.length; i += 2) {
@@ -1798,6 +1845,27 @@ public class OxUiPreviewActivity extends Activity {
             input.append("  ");
             return;
         }
+        if ("\u0000SECRET".equals(value)) {
+            String secret = org.telegram.ox.OxMode.getTermSecret();
+            if (secret == null || secret.isEmpty()) {
+                Toast.makeText(this, "Set a terminal secret in ⋯ options", Toast.LENGTH_SHORT).show();
+            } else {
+                input.append(secret);
+            }
+            return;
+        }
+        if ("\u0000PASTE".equals(value)) {
+            try {
+                android.content.ClipboardManager cm = (android.content.ClipboardManager)
+                        getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cm != null && cm.hasPrimaryClip() && cm.getPrimaryClip().getItemCount() > 0) {
+                    CharSequence text = cm.getPrimaryClip().getItemAt(0).coerceToText(this);
+                    if (text != null) input.append(text);
+                }
+            } catch (Throwable ignored) {
+            }
+            return;
+        }
         if ("\u0000UP".equals(value) || "\u0000DOWN".equals(value)) {
             if (ts.history.isEmpty()) return;
             boolean up = "\u0000UP".equals(value);
@@ -1876,8 +1944,7 @@ public class OxUiPreviewActivity extends Activity {
             tv.setTextSize(13f * termScale());
             tv.setTypeface(mono());
             boolean isPrompt = line.startsWith("❯ ");
-            boolean isDim = line.startsWith("#") || line.startsWith("  ")
-                    || line.startsWith("session ");
+            boolean isDim = line.startsWith("session ");
             tv.setTextColor(isPrompt ? termAccentStatic() : (isDim ? dimColor : textColor));
             tv.setLineSpacing(dp(3), 1.06f);
             tv.setPadding(0, dp(first ? 0 : 2), 0, dp(isPrompt ? 2 : 0));

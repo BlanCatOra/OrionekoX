@@ -34,6 +34,29 @@ public class OxMode {
         }
     }
 
+    /** Local terminal secret for the one-tap key. Stored in plain prefs and
+     *  deliberately excluded from the exported skin JSON. */
+    public static String getTermSecret() {
+        try {
+            Context ctx = ApplicationLoader.applicationContext;
+            if (ctx == null) return "";
+            return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .getString("term_secret", "");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    public static void setTermSecret(String value) {
+        try {
+            Context ctx = ApplicationLoader.applicationContext;
+            if (ctx == null) return;
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .edit().putString("term_secret", value == null ? "" : value).apply();
+        } catch (Exception ignored) {
+        }
+    }
+
     public static void setOxTheme(String value) {
         try {
             Context ctx = ApplicationLoader.applicationContext;
