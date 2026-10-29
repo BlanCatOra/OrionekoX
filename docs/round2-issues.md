@@ -732,3 +732,17 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
   Copy/●Reply、chip 引用摘要、groupReply forced -1800000004、气泡引用行。
 - 遗留：会话内搜索条/上下导航/图片检索（v1.5）、菜单 >5 行滚动、暗色/
   reduced-motion/平板/可访问性清扫、设置/Agent 编辑 OxUI 化。
+
+## 0.67.0 暗色 + reduced-motion/可访问性 + 会话内搜索 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-147 | 0.67 功能 | OxUI 只有亮色；暗色系统下仍为骨纸底 | 颜色常量改实例字段，resolvePalette 按 night mode 解析双调色板（语义保持：INK=气泡/正文），状态栏图标随暗色反转，菜单纸色并入 MENU_PAPER | 已实现并设备验证（night yes/no） |
+| R2-148 | 0.67 功能 | 系统关闭动画时仍有 overlay/首渲染动画 | animationsEnabled() 读 ANIMATOR_DURATION_SCALE，关闭时直接落终态 | 已实现并设备验证（scale 0 面板秒开） |
+| R2-149 | 0.67 功能 | 纯符号控件无 a11y 描述 | ✕/＋/↑/⌕/rail chips/菜单行/图片卡 补 contentDescription；dump 验证齐全 | 已实现并设备验证 |
+| R2-150 | 0.67 功能 | 会话内无法检索消息 | v1.5：header ⌕ 搜索条 + n/N + ↑/↓ 循环导航 + 80dp 留白滚动 + 900ms SIGNAL 整行闪烁；150ms 防抖；行 ts tag | 已实现并设备验证（blue 1/2→2/2） |
+
+- 设备：debug 6709，暗色/日间截图、reduced-motion、搜索命中导航、
+  a11y dump 全部通过；release 无 FATAL。
+- 遗留：应用内手动主题切换、跨会话搜索聚合排序、82 行窗口外命中跳转、
+  TalkBack 全流程走查、设置/Agent 编辑 OxUI 化。
