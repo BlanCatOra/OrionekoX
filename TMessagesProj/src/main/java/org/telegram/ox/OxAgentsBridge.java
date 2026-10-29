@@ -171,6 +171,10 @@ public class OxAgentsBridge {
                     : OxAgentStore.removeChatEntry(agent.id, e.ts, e.role);
             if (ok) removed++;
         }
+        // Refresh the conversation list row so the pruned dialog (agent or local
+        // group) updates immediately in Telegram UI — parity with the agent path
+        // that deletes through MessagesController.
+        refreshDialogRow(dialogId);
         log("onNativeMessagesDeleted did=" + dialogId + " mids=" + mids.size()
                 + " removed=" + removed);
     }
