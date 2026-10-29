@@ -5,6 +5,16 @@
 > also the WorkBuddy agent). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.79.0 — 2026-10-29
+
+- Memory stage B (precise recall + Harness bridge):
+  - Precise recall channels: `id:`/`mem:` fetch a single memory by public_id; a quoted `"exact phrase"` is pinned to top score.
+  - Structured filters `who:`/`people:`, `topic:`/`topics:`, `status:` narrow the candidate set before scoring.
+  - Harness Memory Bridge: external (non-local) harnesses now receive the pinned CORE layers + a query-driven recall + recall/memory_verify entry points, without taking over context compaction (honors harness ownership). New `OxMemoryBridge.harnessContext`.
+  - Metrics surface: `OxMemoryStore.metricsJson()` reports last recall latency, hit count, injected token count and mode.
+  - Tokenizer already supports Chinese unigram+bigram and English word segmentation (local, no network dependency).
+- See `docs/qa-0.79.0.md` for acceptance notes and known gaps (6.6 baseline comparison pending end-to-end data).
+
 ## 0.78.0 — 2026-10-29
 
 - Memory stage A: `memory.md` (Markdown) is now the single source of truth for
