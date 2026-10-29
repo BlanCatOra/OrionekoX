@@ -11596,6 +11596,11 @@
     <string name="OxAgentInListStatus">Local agent · tap to chat</string>
     <string name="OxPinAgent">Pin to top</string>
     <string name="OxUnpinAgent">Unpin</string>
+    <string name="OxArchiveAgent">Archive</string>
+    <string name="OxUnarchiveAgent">Unarchive</string>
+    <string name="OxArchivedSection">Archived (%1$d)</string>
+    <string name="OxRenameAgent">Rename agent</string>
+    <string name="OxRenameEmpty">Name cannot be empty</string>
     <string name="OxEditAgent">Edit settings</string>
     <string name="OxDeleteAgentConfirm">Delete agent %1$s and its chat history?</string>
     <string name="OxImportAgent">Import .oxagent</string>

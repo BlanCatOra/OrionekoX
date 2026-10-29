@@ -8,6 +8,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -37,6 +38,7 @@ import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.LayoutHelper;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -58,6 +60,7 @@ public class OxAgentsActivity extends BaseFragment {
     private String pendingExportKelivoId;
     private String pendingExportCardId;
     private boolean pendingExportCardPng;
+    private boolean showArchived;
 
     @Override
     public View createView(Context context) {
@@ -120,7 +123,13 @@ public class OxAgentsActivity extends BaseFragment {
         intro.setPadding(AndroidUtilities.dp(21), AndroidUtilities.dp(12), AndroidUtilities.dp(21), AndroidUtilities.dp(10));
         listContainer.addView(intro, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
-        List<OxAgent> agents = OxAgentStore.listAgents();
+        List<OxAgent> all = OxAgentStore.listAgents();
+        List<OxAgent> agents = new ArrayList<>();
+        List<OxAgent> archived = new ArrayList<>();
+        for (OxAgent a : all) {
+            if (a.archived) archived.add(a);
+            else agents.add(a);
+        }
         LinearLayout group = new LinearLayout(context);
         group.setOrientation(LinearLayout.VERTICAL);
         group.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
@@ -129,6 +138,33 @@ public class OxAgentsActivity extends BaseFragment {
             group.addView(agentRow(context, agent, i < agents.size() - 1), LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         }
         listContainer.addView(group, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        if (!archived.isEmpty()) {
+            TextSettingsCell header = new TextSettingsCell(context);
+            header.setText(LocaleController.formatString("OxArchivedSection",
+                    R.string.OxArchivedSection, archived.size()), false);
+            header.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlueText));
+            header.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+            header.setOnClickListener(v -> {
+                showArchived = !showArchived;
+                rebuild();
+            });
+            LinearLayout.LayoutParams hlp = LayoutHelper.createLinear(
+                    LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 12, 0, 0);
+            listContainer.addView(header, hlp);
+            if (showArchived) {
+                LinearLayout archGroup = new LinearLayout(context);
+                archGroup.setOrientation(LinearLayout.VERTICAL);
+                archGroup.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                for (int i = 0; i < archived.size(); i++) {
+                    OxAgent agent = archived.get(i);
+                    archGroup.addView(agentRow(context, agent, i < archived.size() - 1),
+                            LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+                }
+                listContainer.addView(archGroup, LayoutHelper.createLinear(
+                        LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            }
+        }
 
         LinearLayout actions = new LinearLayout(context);
         actions.setOrientation(LinearLayout.VERTICAL);
@@ -312,6 +348,14 @@ public class OxAgentsActivity extends BaseFragment {
             OxAgentStore.saveAgent(agent);
             rebuild();
         });
+        items.add(LocaleController.getString(agent.archived ? R.string.OxUnarchiveAgent : R.string.OxArchiveAgent));
+        actions.add(() -> {
+            agent.archived = !agent.archived;
+            OxAgentStore.saveAgent(agent);
+            rebuild();
+        });
+        items.add(LocaleController.getString(R.string.OxRenameAgent));
+        actions.add(() -> showRenameDialog(agent));
         items.add(LocaleController.getString(R.string.OxDuplicateAgent));
         actions.add(() -> duplicateAgent(agent));
         items.add(LocaleController.getString(R.string.OxEditAgent));
@@ -641,6 +685,31 @@ public class OxAgentsActivity extends BaseFragment {
         if (getParentActivity() != null) {
             Toast.makeText(getParentActivity(), s, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void showRenameDialog(OxAgent agent) {
+        if (getParentActivity() == null) return;
+        Context context = getParentActivity();
+        EditText input = new EditText(context);
+        input.setSingleLine(true);
+        input.setText(agent.name == null ? "" : agent.name);
+        input.setSelection(input.getText().length());
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle(LocaleController.getString(R.string.OxRenameAgent));
+        builder.setView(input);
+        builder.setPositiveButton(LocaleController.getString(R.string.Done), (dialog, which) -> {
+            String name = input.getText().toString().trim();
+            if (name.isEmpty()) {
+                toast(LocaleController.getString(R.string.OxRenameEmpty));
+                return;
+            }
+            agent.name = name;
+            OxAgentStore.saveAgent(agent);
+            OxAgentsBridge.syncAgents(false);
+            rebuild();
+        });
+        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+        builder.show();
     }
 
     private void showDeleteDialog(OxAgent agent) {

@@ -84,6 +84,7 @@ public class OxAgentStore {
             }
         }
         out.sort((x, y) -> {
+            if (x.archived != y.archived) return x.archived ? 1 : -1;
             if (x.pinned != y.pinned) return x.pinned ? -1 : 1;
             int b = Boolean.compare(x.builtIn, y.builtIn);
             if (b != 0) return b;

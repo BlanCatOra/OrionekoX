@@ -19,6 +19,7 @@ public class OxAgent {
     public String model;
     public boolean builtIn;
     public boolean pinned;    // sticks to the top of the agents block in the chat list
+    public boolean archived;  // hidden from the main agents block; lives in an Archived section
     public long tgId;         // synthetic Telegram user id when running in local-account mode (0 = not yet assigned)
     public String remark;     // note line, mirrored into the synthetic user's last name
     public String firstMes = ""; // optional card greeting; used instead of the generic hello
@@ -81,6 +82,7 @@ public class OxAgent {
         a.model = o.optString("model", "");
         a.builtIn = o.optBoolean("built_in", false);
         a.pinned = o.optBoolean("pinned", false);
+        a.archived = o.optBoolean("archived", false);
         a.tgId = o.optLong("tg_id", 0);
         a.remark = o.optString("remark", "");
         a.firstMes = o.optString("first_mes", "");
@@ -132,6 +134,7 @@ public class OxAgent {
         o.put("model", model);
         o.put("built_in", builtIn);
         o.put("pinned", pinned);
+        o.put("archived", archived);
         o.put("tg_id", tgId);
         o.put("remark", remark == null ? "" : remark);
         o.put("first_mes", firstMes == null ? "" : firstMes);

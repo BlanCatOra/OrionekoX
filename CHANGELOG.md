@@ -5,6 +5,18 @@
 > also the WorkBuddy agent). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.81.0 — 2026-10-29
+
+- OxUI stage 8.1: agent list management.
+  - Archive / unarchive an agent from the long-press menu. Archived agents leave
+    the main block and collect under a collapsible `Archived (N)` section, so they
+    stay one tap away without cluttering the list.
+  - Rename an agent inline from the same menu (empty names rejected); the
+    synthetic Telegram dialog name is resynced afterwards.
+  - List ordering now sorts archived last, then pinned, then built-in, then name.
+  - New `OxAgent.archived` persisted in `agent.json` (`archived`), backwards
+    compatible (missing -> false).
+
 ## 0.80.0 — 2026-10-29
 
 - Memory stage C (real offline semantic embeddings): unblocked without an external
