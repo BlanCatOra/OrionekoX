@@ -1468,5 +1468,10 @@ These confirm the feature directions rather than relying on guesses. Checked
    photo and file bubbles; a second-step Delete/Cancel menu removes the
    OxChatEntry and the matching local messages_v2 row through the
    agent-dialog cacheOnly path) and Agent pin/unpin in the detail page,
-   which reorders the rail and survives restarts. It is not yet a complete
-   replacement for Telegram UI.
+   which reorders the rail and survives restarts. 0.75.0 adds user-message
+   editing (1:1 and local groups): an in-design prefilled editor rewrites the
+   OxChatEntry and the messages_v2 data blob in place (same mid/date), so
+   Telegram UI shows the new text with its edited marker; the Agents panel
+   also no longer loses its Groups section when a cold start finishes loading
+   after the panel opened. It is not yet a complete replacement for Telegram
+   UI.

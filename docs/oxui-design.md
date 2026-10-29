@@ -133,6 +133,13 @@ The only entrance animation is the conversation fade/rise on first render.
   is prefixed with 〔转发〕 and delivered through the normal local turn path.
   Group media entries now record filePath/fileName, so group chats render
   the same paper file bubble as 1:1.
+- Message editing (0.75): long-press a user text bubble to open a prefilled
+  in-design editor; saving rewrites the local entry and the Telegram cache
+  row in place (same message id), so both UIs show the edited text and the
+  Telegram side's "edited" marker. Media captions are not editable yet.
+  The Agents panel now loads groups defensively: opening it during a cold
+  start triggers the load and redraws once instead of silently showing no
+  Groups section.
 - Message management (0.74): every bubble (assistant, user, photo, file)
   gains a Delete message action behind a second-step Delete/Cancel menu;
   deletion removes the local OxChatEntry and the matching messages_v2 row,

@@ -87,6 +87,95 @@ public class OxAgentsBridge {
         return removed;
     }
 
+    /**
+     * Edits one OxUI text message: rewrites the OxChatEntry and the matching
+     * messages_v2 body in place, keeping the message id/date so history order is
+     * preserved. Only the local cache is touched; nothing is sent to Telegram.
+     */
+    public static boolean editOxEntry(long dialogId, long ts, String role,
+            String oldText, String newText) {
+        if (dialogId == 0 || ts == 0 || newText == null || newText.trim().isEmpty()) return false;
+        boolean updated;
+        if (isAgentDialog(dialogId)) {
+            OxAgent a = agentByTgId(dialogId);
+            updated = a != null && OxAgentStore.updateChatEntry(a.id, ts, role, newText);
+        } else if (dialogId < 0) {
+            updated = OxGroupStore.updateEntry(-dialogId, ts, role, newText);
+        } else {
+            return false;
+        }
+        ArrayList<Integer> ids = findLocalMessageIds(dialogId, ts, oldText);
+        boolean tl = !ids.isEmpty() && updateLocalMessageText(dialogId, ids.get(0), newText);
+        refreshDialogRow(dialogId);
+        log("editOxEntry did=" + dialogId + " role=" + role + " store=" + updated
+                + " mid=" + (ids.isEmpty() ? 0 : ids.get(0)) + " tl=" + tl);
+        return updated;
+    }
+
+    private static boolean updateLocalMessageText(long dialogId, int mid, String newText) {
+        try {
+            org.telegram.SQLite.SQLiteDatabase db = MessagesStorage.getInstance(0).getDatabase();
+            TLRPC.Message message = null;
+            org.telegram.SQLite.SQLiteCursor cur = db.queryFinalized(
+                    "SELECT data FROM messages_v2 WHERE uid = " + dialogId
+                            + " AND mid = " + mid + " LIMIT 1");
+            try {
+                if (cur.next()) {
+                    org.telegram.tgnet.NativeByteBuffer data = cur.byteBufferValue(0);
+                    if (data != null) {
+                        try {
+                            message = TLRPC.Message.TLdeserialize(
+                                    data, data.readInt32(false), false);
+                        } finally {
+                            data.reuse();
+                        }
+                    }
+                }
+            } finally {
+                cur.dispose();
+            }
+            if (message == null) return false;
+            message.message = newText;
+            message.entities = new ArrayList<>();
+            message.flags &= ~org.telegram.tgnet.TLObject.FLAG_7;
+            message.flags |= org.telegram.tgnet.TLObject.FLAG_15;
+            message.edit_date = (int) (System.currentTimeMillis() / 1000);
+            MessageObject.normalizeFlags(message);
+            org.telegram.tgnet.NativeByteBuffer out =
+                    new org.telegram.tgnet.NativeByteBuffer(message.getObjectSize());
+            message.serializeToStream(out);
+            org.telegram.SQLite.SQLitePreparedStatement st = db.executeFast(
+                    "UPDATE messages_v2 SET data = ? WHERE mid = ? AND uid = ?");
+            try {
+                st.requery();
+                st.bindByteBuffer(1, out);
+                st.bindInteger(2, mid);
+                st.bindLong(3, dialogId);
+                st.step();
+            } finally {
+                st.dispose();
+                out.reuse();
+            }
+            final TLRPC.Message edited = message;
+            AndroidUtilities.runOnUIThread(() -> {
+                try {
+                    ArrayList<MessageObject> objs = new ArrayList<>();
+                    objs.add(new MessageObject(0, edited, true, false));
+                    NotificationCenter.getInstance(0).postNotificationName(
+                            NotificationCenter.replaceMessagesObjects, dialogId, objs);
+                    NotificationCenter.getInstance(0).postNotificationName(
+                            NotificationCenter.dialogsNeedReload);
+                } catch (Throwable t) {
+                    logErr("editOxEntry UI failed did=" + dialogId, t);
+                }
+            });
+            return true;
+        } catch (Throwable t) {
+            logErr("updateLocalMessageText failed did=" + dialogId + " mid=" + mid, t);
+            return false;
+        }
+    }
+
     private static ArrayList<Integer> findLocalMessageIds(long dialogId, long ts, String text) {
         ArrayList<Integer> result = new ArrayList<>();
         long around = ts / 1000L;

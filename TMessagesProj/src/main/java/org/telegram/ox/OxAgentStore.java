@@ -181,6 +181,25 @@ public class OxAgentStore {
         return false;
     }
 
+    /** Replaces the content of the first entry matching ts+role (OxUI edit). */
+    public static synchronized boolean updateChatEntry(String id, long ts, String role, String content) {
+        if (content == null || content.trim().isEmpty()) return false;
+        try {
+            List<OxChatEntry> chat = loadChat(id);
+            for (int i = 0; i < chat.size(); i++) {
+                OxChatEntry e = chat.get(i);
+                if (e.ts == ts && (role == null || role.equals(e.role))) {
+                    e.content = content;
+                    saveChat(id, chat);
+                    return true;
+                }
+            }
+        } catch (Throwable t) {
+            org.telegram.messenger.FileLog.e("OxAgentStore.updateChatEntry", t);
+        }
+        return false;
+    }
+
     public static void saveChat(String id, List<OxChatEntry> chat) {
         try {
             File dir = agentDir(id);

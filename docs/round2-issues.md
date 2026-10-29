@@ -837,3 +837,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 
 - 遗留：删除依赖 ts+正文前 24 字符启发式；Telegram UI 侧删除不会反向
   清理 OxUI chat.json；置顶只影响 OxUI rail，不影响 Telegram 联系人列表。
+
+## 0.75.0 消息编辑与群组面板 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-179 | 主线对标 | OxUI 无编辑消息能力（Telegram UI 可编辑自己消息） | updateChatEntry/updateEntry；editOxEntry 原地重写 messages_v2 data + 通知；用户文本菜单 Edit + in-design 编辑器 | 已实现并设备验证（1:1 + 群） |
+| R2-180 | 0.75 自造 | 编辑时 entities=null 使 MessageObject.applyEntities NPE，TL 已写但 UI 不刷新 | 改为空 ArrayList，重新编辑验证；Telegram UI 显示“已编辑” | 已修复并设备验证 |
+| R2-181 | 0.75 观察 | 冷启动立即打开 Agents 面板时 Groups 区可能缺失 | groupsLoading/groupsLoaded 防重入；面板打开时触发加载，完成后重绘；异常改为 Log.e | 已实现，冷启动面板可见群组 |
+
+- 遗留：仅文本消息可编辑；OxUI 无“已编辑”角标；mid 定位仍为启发式。

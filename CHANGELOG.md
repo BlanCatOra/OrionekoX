@@ -4,6 +4,20 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.75.0 — 2026-10-29
+
+- OxUI message editing: long-press a user text bubble (1:1 or local group)
+  to open a prefilled in-design editor. Saving rewrites the OxChatEntry and
+  the messages_v2 data blob in place, preserving the message id and date, so
+  Telegram UI shows the new text with its "edited" marker while OxUI updates
+  immediately.
+- The Agents panel now loads local groups defensively: opening it during a
+  cold start triggers the load and redraws once when it finishes, instead of
+  silently showing no Groups section.
+- Fixed a self-introduced crash risk found in QA: setting a message's
+  entities to null made MessageObject fail while building the edited row;
+  the edit now stores an empty entity list.
+
 ## 0.74.0 — 2026-10-29
 
 - OxUI message deletion: assistant, user, photo and file bubbles gain a
