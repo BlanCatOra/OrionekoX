@@ -19,6 +19,13 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
+import android.text.style.UnderlineSpan;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.LocaleController;
@@ -67,6 +74,9 @@ public class OxTerminalActivity extends BaseFragment {
     private int schemeBg = 0xFF0E1116;
     private int schemeFg = 0xFFD7E0EA;
     private int schemeAccent = 0xFF2E9E5B;
+
+    /** Carried ANSI style state so coloring continues correctly across streamed chunks. */
+    private final AnsiState ansiState = new AnsiState();
 
     private final SharedPreferences.OnSharedPreferenceChangeListener appearanceListener =
             (prefs, key) -> {
@@ -377,7 +387,7 @@ public class OxTerminalActivity extends BaseFragment {
         if (outputView == null) return;
         AndroidUtilities.runOnUIThread(() -> {
             if (outputView == null) return;
-            outputView.append(text);
+            outputView.append(ansiToSpannable(text, ansiState));
             if (scrollView != null) {
                 scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
             }
@@ -427,6 +437,9 @@ public class OxTerminalActivity extends BaseFragment {
             if (clearBuffer || session.buffer.length() == 0) {
                 session.buffer.setLength(0);
             }
+        }
+        if (clearBuffer) {
+            ansiState.reset();
         }
         final int generation = ++sessionGeneration;
         session.generation = generation;
@@ -504,6 +517,7 @@ public class OxTerminalActivity extends BaseFragment {
                 session.buffer.setLength(0);
             }
         }
+        ansiState.reset();
         if (outputView != null) outputView.setText("");
         updateTabStrip();
     }
@@ -578,9 +592,182 @@ public class OxTerminalActivity extends BaseFragment {
         synchronized (session.buffer) {
             text = session.buffer.toString();
         }
-        outputView.setText(text);
+        AnsiState fresh = new AnsiState();
+        outputView.setText(ansiToSpannable(text, fresh));
+        ansiState.reset();
+        ansiState.fg = fresh.fg;
+        ansiState.bg = fresh.bg;
+        ansiState.bold = fresh.bold;
+        ansiState.underline = fresh.underline;
         if (scrollView != null) {
             scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
+        }
+    }
+
+    /** 16-colour ANSI palette (xterm / Windows Terminal dark set), indices 0-15. */
+    private static final int[] ANSI_16 = {
+            0xFF0C0C0C, 0xFFC50F1F, 0xFF13A10E, 0xFFC19C00, // 0-3  black red green yellow
+            0xFF0037DA, 0xFF881798, 0xFF3A96DD, 0xFFCCCCCC, // 4-7  blue magenta cyan white
+            0xFF767676, 0xFFE74856, 0xFF16C60C, 0xFFF9F1A5, // 8-11 bright black red green yellow
+            0xFF3B78FF, 0xFFB4009E, 0xFF61D6D6, 0xFFF2F2F2  // 12-15 bright blue magenta cyan white
+    };
+
+    private static final class AnsiState {
+        int fg = -1;
+        int bg = -1;
+        boolean bold;
+        boolean underline;
+        void reset() {
+            fg = -1;
+            bg = -1;
+            bold = false;
+            underline = false;
+        }
+    }
+
+    private void flushAnsiRun(SpannableStringBuilder ssb, StringBuilder run,
+                              int fg, int bg, boolean bold, boolean underline) {
+        if (run.length() == 0) return;
+        int start = ssb.length();
+        ssb.append(run);
+        int end = ssb.length();
+        if (fg != -1) {
+            ssb.setSpan(new ForegroundColorSpan(fg), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (bg != -1) {
+            ssb.setSpan(new BackgroundColorSpan(bg), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (bold) {
+            ssb.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (underline) {
+            ssb.setSpan(new UnderlineSpan(), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        run.setLength(0);
+    }
+
+    /**
+     * Convert raw shell output into a {@link SpannableStringBuilder}, honouring the
+     * 16-colour ANSI SGR palette (foreground/background, bold, underline) and
+     * stripping control sequences (cursor moves, erase, OSC titles) that would
+     * otherwise render as literal garbage inside the TextView.
+     */
+    private SpannableStringBuilder ansiToSpannable(String raw, AnsiState state) {
+        SpannableStringBuilder ssb = new SpannableStringBuilder();
+        int n = raw == null ? 0 : raw.length();
+        StringBuilder run = new StringBuilder();
+        int runFg = state.fg;
+        int runBg = state.bg;
+        boolean runBold = state.bold;
+        boolean runUnderline = state.underline;
+        int i = 0;
+        while (i < n) {
+            char c = raw.charAt(i);
+            if (c == 0x1B) { // ESC
+                flushAnsiRun(ssb, run, runFg, runBg, runBold, runUnderline);
+                if (i + 1 < n && raw.charAt(i + 1) == '[') { // CSI
+                    int j = i + 2;
+                    StringBuilder params = new StringBuilder();
+                    while (j < n) {
+                        char d = raw.charAt(j);
+                        if ((d >= '0' && d <= '9') || d == ';' || d == ':') {
+                            params.append(d);
+                            j++;
+                        } else {
+                            break;
+                        }
+                    }
+                    if (j < n) {
+                        char fin = raw.charAt(j);
+                        if (fin == 'm') {
+                            applyAnsiSgr(params.toString(), state);
+                        }
+                        i = j + 1; // any other CSI sequence is stripped, never rendered
+                    } else {
+                        i = j;
+                    }
+                    runFg = state.fg;
+                    runBg = state.bg;
+                    runBold = state.bold;
+                    runUnderline = state.underline;
+                    continue;
+                } else if (i + 1 < n && raw.charAt(i + 1) == ']') { // OSC (e.g. window title)
+                    int j = i + 2;
+                    while (j < n && raw.charAt(j) != 0x07) {
+                        if (raw.charAt(j) == 0x1B && j + 1 < n && raw.charAt(j + 1) == '\\') {
+                            j += 2;
+                            break;
+                        }
+                        j++;
+                    }
+                    i = (j < n) ? j + 1 : j;
+                    continue;
+                } else {
+                    i++; // lone ESC
+                    continue;
+                }
+            }
+            run.append(c);
+            i++;
+        }
+        flushAnsiRun(ssb, run, runFg, runBg, runBold, runUnderline);
+        return ssb;
+    }
+
+    private void applyAnsiSgr(String params, AnsiState state) {
+        if (params.isEmpty()) {
+            state.reset();
+            return;
+        }
+        String[] parts = params.split(";");
+        for (int k = 0; k < parts.length; k++) {
+            String p = parts[k];
+            if (p.isEmpty()) p = "0";
+            int code;
+            try {
+                code = Integer.parseInt(p);
+            } catch (NumberFormatException ignored) {
+                continue;
+            }
+            if (code == 0) {
+                state.reset();
+            } else if (code == 1) {
+                state.bold = true;
+            } else if (code == 4) {
+                state.underline = true;
+            } else if (code == 22) {
+                state.bold = false;
+            } else if (code == 24) {
+                state.underline = false;
+            } else if (code >= 30 && code <= 37) {
+                state.fg = ANSI_16[code - 30];
+            } else if (code >= 40 && code <= 47) {
+                state.bg = ANSI_16[code - 40];
+            } else if (code >= 90 && code <= 97) {
+                state.fg = ANSI_16[code - 90 + 8];
+            } else if (code >= 100 && code <= 107) {
+                state.bg = ANSI_16[code - 100 + 8];
+            } else if (code == 39) {
+                state.fg = -1;
+            } else if (code == 49) {
+                state.bg = -1;
+            } else if (code == 38 || code == 48) {
+                // Extended colour (38;5;n or 38;2;r;g;b): accepted and skipped so the
+                // following text keeps the previous style instead of rendering garbage.
+                if (k + 1 < parts.length) {
+                    int mode;
+                    try {
+                        mode = Integer.parseInt(parts[k + 1]);
+                    } catch (NumberFormatException ignored) {
+                        mode = -1;
+                    }
+                    if (mode == 5 && k + 2 < parts.length) {
+                        k += 2;
+                    } else if (mode == 2 && k + 4 < parts.length) {
+                        k += 4;
+                    }
+                }
+            }
         }
     }
 }
