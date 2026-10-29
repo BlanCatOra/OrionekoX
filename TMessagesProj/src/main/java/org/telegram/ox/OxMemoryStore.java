@@ -45,6 +45,13 @@ public class OxMemoryStore {
     public static final String MODE_NORMAL = "normal";
     public static final String MODE_VECTOR = "vector";
 
+    // metrics (stage B 6.5): last recall observation for harness/QA inspection
+    private static volatile long lastRecallMs = 0;
+    private static volatile int lastRecallTokens = 0;
+    private static volatile int lastRecallCount = 0;
+    private static volatile String lastRecallMode = "";
+    private static volatile long lastRecallAt = 0;
+
     private static Helper helper;
     private static SQLiteDatabase db;
 
@@ -259,8 +266,9 @@ public class OxMemoryStore {
     public static synchronized String recall(String agentId, String query, int limit, String mode) {
         if (agentId == null) return "";
         ensureOntology(agentId);
+        long t0 = System.currentTimeMillis();
         List<Mem> rows = load(agentId, 3000);
-        if (rows.isEmpty()) return "";
+        if (rows.isEmpty()) { recordRecall(t0, mode, 0, 0); return ""; }
         String q = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         boolean vectorMode = MODE_VECTOR.equals(mode);
         boolean temporal = isTemporalQuery(q);
@@ -282,7 +290,7 @@ public class OxMemoryStore {
                 df.put(t, n == null ? 1 : n + 1);
             }
         }
-        if (active.isEmpty()) return "";
+        if (active.isEmpty()) { recordRecall(t0, mode, 0, 0); return ""; }
         int n = active.size();
         double avgdl = 0;
         for (List<String> d : docs) avgdl += d.size();
@@ -320,7 +328,7 @@ public class OxMemoryStore {
         for (java.util.Iterator<Mem> it = active.iterator(); it.hasNext(); ) {
             if (it.next().score <= 0) it.remove();
         }
-        if (active.isEmpty()) return "";
+        if (active.isEmpty()) { recordRecall(t0, mode, 0, 0); return ""; }
         active.sort((a, b) -> Double.compare(b.score, a.score));
 
         // MMR: keep the result set diverse so repeated small talk does not
@@ -358,7 +366,32 @@ public class OxMemoryStore {
                     .append(m.invalidAt > 0 ? " · 历史" : "")
                     .append("] ").append(clip(m.text, 600)).append('\n');
         }
-        return sb.toString().trim();
+        String out = sb.toString().trim();
+        recordRecall(t0, mode, chosen.size(), out.length() / 4);
+        return out;
+    }
+
+    /** Last recall observation as JSON (stage B 6.5 metric surface). */
+    public static synchronized String metricsJson() {
+        JSONObject o = new JSONObject();
+        try {
+            o.put("last_recall_ms", lastRecallMs);
+            o.put("last_recall_tokens", lastRecallTokens);
+            o.put("last_recall_count", lastRecallCount);
+            o.put("last_recall_mode", lastRecallMode);
+            o.put("last_recall_at", lastRecallAt);
+        } catch (Throwable t) {
+            FileLog.e("OxMemoryStore", t);
+        }
+        return o.toString();
+    }
+
+    private static void recordRecall(long t0, String mode, int count, int tokens) {
+        lastRecallMs = System.currentTimeMillis() - t0;
+        lastRecallCount = count;
+        lastRecallTokens = tokens;
+        lastRecallMode = mode == null ? "" : mode;
+        lastRecallAt = System.currentTimeMillis();
     }
 
     private static List<String> meaningfulTokens(String text) {
