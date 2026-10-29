@@ -5,6 +5,18 @@
 > also the WorkBuddy agent). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.83.0 — 2026-10-29
+
+- OxUI stage 8.3: 群组反向同步（group reverse sync）。
+  - 此前「反向删除同步」(0.77) 仅接入 agent 对话；本地群（dialogId<0 且
+    `OxGroupStore.isLocalGroup`）消息在 Telegram UI 被删除时，OxUI 群记忆存储
+    未同步裁剪。本轮在 `MessagesController.deleteMessages` 的 shunt 中为本地群
+    新增分支：置 `cacheOnly=true` 并调用 `OxAgentsBridge.onNativeMessagesDeleted`，
+    对齐 agent 路径。真实 Telegram 群（非本地创建）不命中分支，行为不变。
+  - `onNativeMessagesDeleted` 裁剪后调用 `refreshDialogRow`，使会话列表即时更新。
+  - 诚实缺口：打开本地群聊天页在模拟器中曾致 qemu 退出，无法做端到端取证；
+    本项仅构建验证 + 代码审查通过，标注 ⚠️ 待端到端验证。
+
 ## 0.82.0 — 2026-10-29
 
 - OxUI stage 8.2: "edited" marker parity. Messages edited in OxUI now carry an
