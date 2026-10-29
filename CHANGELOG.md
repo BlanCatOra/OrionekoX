@@ -5,6 +5,15 @@
 > also the WorkBuddy agent). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.82.0 — 2026-10-29
+
+- OxUI stage 8.2: "edited" marker parity. Messages edited in OxUI now carry an
+  `edited` flag on their OxChatEntry (`chat.json` / group log) and render a
+  ` · edited` label beside the timestamp, matching the Telegram side's edited
+  marker — previously only Telegram showed it (the OxUI entry was rewritten in
+  place but stayed unmarked). Covers user and assistant text bubbles in 1:1 and
+  local groups. Media captions are not editable yet, so they remain unmarked.
+
 ## 0.81.0 — 2026-10-29
 
 - OxUI stage 8.1: agent list management.

@@ -191,6 +191,7 @@ public class OxAgentStore {
                 OxChatEntry e = chat.get(i);
                 if (e.ts == ts && (role == null || role.equals(e.role))) {
                     e.content = content;
+                    e.edited = true;
                     saveChat(id, chat);
                     return true;
                 }

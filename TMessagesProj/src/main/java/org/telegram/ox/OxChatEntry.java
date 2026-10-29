@@ -20,6 +20,7 @@ public class OxChatEntry {
     public String replyToSender; // optional: quoted entry's agent id (targeted group replies)
     public String replyToText;   // optional: truncated snapshot of the quoted text
     public String reaction;      // optional: one emoji reaction chosen locally
+    public boolean edited;       // true once the user edited this message in place
 
     public OxChatEntry(String role, String content, long ts) {
         this.role = role;
@@ -54,6 +55,7 @@ public class OxChatEntry {
             }
             String reaction = o.optString("reaction", "");
             if (!reaction.isEmpty()) e.reaction = reaction;
+            if (o.optBoolean("edited", false)) e.edited = true;
             out.add(e);
         }
         return out;
@@ -75,6 +77,7 @@ public class OxChatEntry {
             if (e.replyToSender != null && !e.replyToSender.isEmpty()) o.put("reply_to_sender", e.replyToSender);
             if (e.replyToText != null && !e.replyToText.isEmpty()) o.put("reply_to_text", e.replyToText);
             if (e.reaction != null && !e.reaction.isEmpty()) o.put("reaction", e.reaction);
+            if (e.edited) o.put("edited", true);
             a.put(o);
         }
         return a;

@@ -151,6 +151,7 @@ public class OxGroupStore {
                 OxChatEntry e = chat.get(i);
                 if (e.ts == ts && (role == null || role.equals(e.role))) {
                     e.content = content;
+                    e.edited = true;
                     prefs().edit().putString("log_" + key(chatId),
                             OxChatEntry.toJsonArray(chat).toString()).apply();
                     return true;

@@ -4625,12 +4625,12 @@ public class OxUiPreviewActivity extends Activity {
                     continue;
                 }
                 addUser(e.content, e.ts, false, hasImage ? e.imagePath : null,
-                        e.replyToSender, e.replyToText);
+                        e.replyToSender, e.replyToText, e.edited);
                 if (e.reaction != null && !e.reaction.isEmpty()) {
                     addReactionRow(e.reaction, true);
                 }
             } else if ("assistant".equals(e.role)) {
-                addAssistant(e.content, e.ts, e.sender);
+                addAssistant(e.content, e.ts, e.sender, e.edited);
                 if (e.reaction != null && !e.reaction.isEmpty()) {
                     addReactionRow(e.reaction, false);
                 }
@@ -4643,7 +4643,7 @@ public class OxUiPreviewActivity extends Activity {
                 addUserFile(pendingFileName, pendingFilePath, pendingText, System.currentTimeMillis(), true);
             } else {
                 addUser(pendingText, System.currentTimeMillis(), true, pendingImagePath,
-                        replyQuoteSender, replyQuoteText);
+                        replyQuoteSender, replyQuoteText, false);
             }
             addWorking();
         }
@@ -4736,7 +4736,7 @@ public class OxUiPreviewActivity extends Activity {
             wrap.addView(cap);
         }
         if (!sending && (skin == null || skin.showTimestamps)) {
-            wrap.addView(userTimestamp(ts));
+            wrap.addView(userTimestamp(ts, false));
         }
         row.addView(wrap);
         row.setTag(ts);
@@ -4745,7 +4745,7 @@ public class OxUiPreviewActivity extends Activity {
     }
 
     private void addUser(String text, long ts, boolean sending, String imagePath,
-            String quoteSender, String quoteText) {
+            String quoteSender, String quoteText, boolean edited) {
         if (imagePath != null && addUserImage(imagePath, ts, text, sending)) return;
         if (text == null || text.trim().isEmpty()) return;
         LinearLayout row = new LinearLayout(this);
@@ -4808,7 +4808,7 @@ public class OxUiPreviewActivity extends Activity {
             quoteWrap.addView(bubble, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             if (!sending && (skin == null || skin.showTimestamps)) {
-                quoteWrap.addView(userTimestamp(ts), new LinearLayout.LayoutParams(
+                quoteWrap.addView(userTimestamp(ts, edited), new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             }
             row.addView(quoteWrap, new LinearLayout.LayoutParams(
@@ -4864,7 +4864,7 @@ public class OxUiPreviewActivity extends Activity {
         wrap.addView(bubble, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         if (!sending && (skin == null || skin.showTimestamps)) {
-            wrap.addView(userTimestamp(ts), new LinearLayout.LayoutParams(
+            wrap.addView(userTimestamp(ts, edited), new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         }
         row.addView(wrap, new LinearLayout.LayoutParams(
@@ -4876,9 +4876,9 @@ public class OxUiPreviewActivity extends Activity {
 
     /** Right-aligned mono timestamp under a user bubble (skipped while the
      *  send is still pending). */
-    private TextView userTimestamp(long ts) {
+    private TextView userTimestamp(long ts, boolean edited) {
         TextView tv = new TextView(this);
-        tv.setText(time(ts));
+        tv.setText(time(ts) + (edited ? "  ·  edited" : ""));
         tv.setTextSize(11);
         tv.setTypeface(mono());
         tv.setTextColor(MUTED);
@@ -4887,7 +4887,7 @@ public class OxUiPreviewActivity extends Activity {
         return tv;
     }
 
-    private void addAssistant(String text, long ts, String senderId) {
+    private void addAssistant(String text, long ts, String senderId, boolean edited) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.TOP);
@@ -4922,7 +4922,7 @@ public class OxUiPreviewActivity extends Activity {
         metaRow.addView(senderGlyph, glp);
         TextView meta = new TextView(this);
         meta.setText((isGroupTarget() && senderName != null ? senderName : targetName())
-                + "  ·  " + time(ts));
+                + "  ·  " + time(ts) + (edited ? "  ·  edited" : ""));
         meta.setTextSize(ts(11));
         meta.setTypeface(mono());
         meta.setTextColor(MUTED);
