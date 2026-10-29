@@ -1605,6 +1605,7 @@ public class OxAgentsBridge {
         if (dialogId >= 0 || infos == null || !OxGroupStore.isLocalGroup(dialogId)) return;
         StringBuilder prompt = new StringBuilder();
         String firstImagePath = null;
+        String firstFilePath = null, firstFileName = null;
         for (SendMessagesHelper.SendingMediaInfo info : infos) {
             String path = info.path;
             if (path == null || path.isEmpty()) continue;
@@ -1661,6 +1662,10 @@ public class OxAgentsBridge {
                     msg.media = new TLRPC.TL_messageMediaDocument();
                     msg.media.flags |= 1;
                     msg.media.document = doc;
+                    if (firstFilePath == null) {
+                        firstFilePath = path;
+                        firstFileName = name;
+                    }
                     prompt.append("用户发送了文件：").append(name);
                 }
                 if (!caption.trim().isEmpty()) prompt.append("\n附带说明：").append(caption.trim());
@@ -1671,7 +1676,8 @@ public class OxAgentsBridge {
             }
         }
         if (prompt.length() > 0) {
-            onGroupMessage(dialogId, prompt.toString().trim(), null, firstImagePath);
+            onGroupMessage(dialogId, prompt.toString().trim(), null, firstImagePath,
+                    firstFilePath, firstFileName);
         }
     }
 
@@ -2056,7 +2062,13 @@ public class OxAgentsBridge {
         onGroupMessage(dialogId, text, replyTo, null);
     }
 
-    public static void onGroupMessage(long dialogId, String text, MessageObject replyTo, String imagePath) {
+    public static void onGroupMessage(long dialogId, String text, MessageObject replyTo,
+            String imagePath) {
+        onGroupMessage(dialogId, text, replyTo, imagePath, null, null);
+    }
+
+    public static void onGroupMessage(long dialogId, String text, MessageObject replyTo,
+            String imagePath, String filePath, String fileName) {
         try {
             if (dialogId >= 0 || text == null || text.trim().isEmpty()) return;
             List<OxAgent> agents = OxGroupStore.agents(dialogId);
@@ -2101,7 +2113,8 @@ public class OxAgentsBridge {
                     qText = excerpt(quoted);
                 }
             }
-            startGroupTurn(chosen, dialogId, text.trim(), imagePath, qSender, qText);
+            startGroupTurn(chosen, dialogId, text.trim(), imagePath, qSender, qText,
+                    filePath, fileName);
         } catch (Throwable t) {
             logErr("onGroupMessage failed", t);
         }
@@ -2125,6 +2138,12 @@ public class OxAgentsBridge {
 
     private static void startGroupTurn(OxAgent agent, long dialogId, String userText,
             String imagePath, String replyToSender, String replyToText) {
+        startGroupTurn(agent, dialogId, userText, imagePath, replyToSender, replyToText, null, null);
+    }
+
+    private static void startGroupTurn(OxAgent agent, long dialogId, String userText,
+            String imagePath, String replyToSender, String replyToText,
+            String filePath, String fileName) {
         Stream s = new Stream();
         s.dialogId = dialogId;
         s.senderTgId = agent.tgId;
@@ -2138,6 +2157,10 @@ public class OxAgentsBridge {
             return;
         }
         OxChatEntry userEntry = new OxChatEntry("user", userText, System.currentTimeMillis(), imagePath);
+        if (filePath != null) {
+            userEntry.filePath = filePath;
+            userEntry.fileName = fileName;
+        }
         if (replyToSender != null && !replyToSender.isEmpty()) {
             userEntry.replyToSender = replyToSender;
             userEntry.replyToText = replyToText;

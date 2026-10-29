@@ -1453,7 +1453,12 @@ These confirm the feature directions rather than relying on guesses. Checked
    now send from OxUI with a Photo/File attach menu, a 📄 capsule preview and
    a paper file bubble (name, size, caption, timestamp) that survives
    restarts, backed by real TL document messages and a file placeholder in
-   the agent prompt. Still open:
+   the agent prompt. 0.73.0 extends documents to local
+   groups (group entries now record filePath/fileName so the same paper
+   bubble renders there) and adds message forwarding: menus gain
+   "Forward to…" and a picker delivers "〔转发〕\n<text>" to any agent
+   (real turn) or local group (switching to it); the send button is now
+   enabled for file-only sends (a 0.72 bug found during this QA). Still open:
    density for the composer and lists, file/QR skin sharing, ANSI-16
    terminal colours, avatar creation via emoji markup in agent-only mode,
    user-avatar RPC family, offline title editing, cross-chat search

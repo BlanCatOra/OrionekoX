@@ -4,6 +4,16 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.73.0 — 2026-10-29
+
+- Group media entries now record filePath/fileName, so local group chats in
+  OxUI render the same paper file bubble as 1:1 instead of a text
+  placeholder.
+- Message forwarding: assistant and user menus gain "Forward to…" with a
+  target picker (agents and local groups); the text travels as
+  "〔转发〕\n<body>" through the normal local turn path, and the send
+  button is now enabled for file-only sends (a 0.72 bug found during QA).
+
 ## 0.72.0 — 2026-10-29
 
 - OxUI parity backlog starts with documents: the composer ＋ now opens a

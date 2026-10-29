@@ -128,6 +128,11 @@ The only entrance animation is the conversation fade/rise on first render.
   Nord" class of bugs. Credentials follow Termius's uniform key row: PWD
   and PST are text keys like the rest, backed by a local-only terminal
   secret that never enters the exported skin JSON.
+- Forwarding and group files (0.73): message menus gain Forward to… with a
+  target picker (agents with monograms, groups with 👥); the forwarded text
+  is prefixed with 〔转发〕 and delivered through the normal local turn path.
+  Group media entries now record filePath/fileName, so group chats render
+  the same paper file bubble as 1:1.
 - File attachments (0.72): the composer ＋ opens a Photo / File menu and
   files travel through the same local pipeline as photos — a 📄 capsule
   preview, a real TL document message, a paper file bubble with name/size/

@@ -776,7 +776,7 @@ public class OxUiPreviewActivity extends Activity {
         CharSequence text = input == null ? "" : input.getText();
         boolean ready = (selected != null && selected.tgId != 0) || isGroupTarget();
         ready = ready && ((text != null && text.toString().trim().length() > 0)
-                || pendingImagePath != null);
+                || pendingImagePath != null || pendingFilePath != null);
         send.setEnabled(ready);
         send.setAlpha(ready ? 1f : 0.9f);
         send.setTextColor(ready ? INK : MUTED);
@@ -1110,31 +1110,163 @@ public class OxUiPreviewActivity extends Activity {
     }
 
     private void showAssistantActions(View anchor, String text, String senderId) {
-        if (isGroupTarget() && senderId != null) {
-            String resolved = resolveAgentName(senderId);
-            final String name = resolved == null ? senderId : resolved;
-            showMessageMenu(anchor,
-                    new CharSequence[]{
-                            LocaleController.getString(R.string.OxUiCopy),
-                            LocaleController.getString(R.string.OxUiReply) + " " + name
-                    },
-                    new boolean[]{false, true},
-                    new Runnable[]{
-                            () -> copy(text),
-                            () -> {
-                                replyAgentId = senderId;
-                                replyAgentName = name;
-                                replyQuoteSender = senderId;
-                                String snap = text == null ? "" :
-                                        text.replaceAll("\\s+", " ").trim();
-                                if (snap.length() > 160) snap = snap.substring(0, 160) + "…";
-                                replyQuoteText = snap;
-                                showReplyRow();
-                            }
-                    });
-            return;
+        boolean group = isGroupTarget() && senderId != null;
+        String resolved = senderId == null ? null : resolveAgentName(senderId);
+        final String name = resolved == null ? (senderId == null ? "" : senderId) : resolved;
+        CharSequence[] labels = group
+                ? new CharSequence[]{
+                        LocaleController.getString(R.string.OxUiCopy),
+                        LocaleController.getString(R.string.OxUiReply) + " " + name,
+                        "Forward to…"}
+                : new CharSequence[]{
+                        LocaleController.getString(R.string.OxUiCopy),
+                        "Forward to…"};
+        boolean[] accents = group ? new boolean[]{false, true, false}
+                : new boolean[]{false, false};
+        Runnable[] actions = group
+                ? new Runnable[]{
+                        () -> copy(text),
+                        () -> {
+                            replyAgentId = senderId;
+                            replyAgentName = name;
+                            replyQuoteSender = senderId;
+                            String snap = text == null ? "" :
+                                    text.replaceAll("\\s+", " ").trim();
+                            if (snap.length() > 160) snap = snap.substring(0, 160) + "…";
+                            replyQuoteText = snap;
+                            showReplyRow();
+                        },
+                        () -> showForwardPicker(text)}
+                : new Runnable[]{
+                        () -> copy(text),
+                        () -> showForwardPicker(text)};
+        showMessageMenu(anchor, labels, accents, actions);
+    }
+
+    /** Forward a message's text to another agent or local group. */
+    private void showForwardPicker(final String text) {
+        if (overlay == null || text == null || text.trim().isEmpty()) return;
+        hideKeyboard();
+        overlay.removeAllViews();
+        overlay.setVisibility(View.VISIBLE);
+        if (animationsEnabled()) {
+            overlay.setAlpha(0f);
+            overlay.animate().alpha(1f).setDuration(150).start();
+        } else {
+            overlay.setAlpha(1f);
         }
-        copy(text);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackgroundColor(BONE);
+        panel.setPadding(dp(22), dp(18), dp(22), dp(14));
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = new TextView(this);
+        title.setText("Forward to");
+        title.setTextSize(26);
+        title.setTypeface(serif());
+        title.setTextColor(INK);
+        head.addView(title, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView close = new TextView(this);
+        close.setText("×");
+        close.setTextSize(22);
+        close.setTextColor(INK);
+        close.setGravity(Gravity.CENTER);
+        close.setContentDescription("Close");
+        close.setOnClickListener(v -> hideOverlay());
+        head.addView(close, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        panel.addView(head);
+        TextView preview = new TextView(this);
+        String snap = text.replaceAll("\\s+", " ").trim();
+        if (snap.length() > 80) snap = snap.substring(0, 80) + "…";
+        preview.setText("「" + snap + "」");
+        preview.setTextSize(12);
+        preview.setTypeface(sans());
+        preview.setTextColor(MUTED);
+        preview.setPadding(dp(4), dp(6), dp(4), dp(8));
+        panel.addView(preview);
+        ScrollView listScroll = new ScrollView(this);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        listScroll.addView(list, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        panel.addView(listScroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        for (final OxAgent a : agents) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(4), dp(11), dp(4), dp(11));
+            row.setBackground(new android.graphics.drawable.RippleDrawable(
+                    ColorStateList.valueOf(RIPPLE), null, null));
+            row.setContentDescription("Forward to " + (a.name == null ? "Agent" : a.name));
+            TextView badge = new TextView(this);
+            badge.setText(monogram(a));
+            badge.setTextSize(15);
+            badge.setTypeface(serif());
+            badge.setTextColor(INK);
+            badge.setGravity(Gravity.CENTER);
+            badge.setBackground(plate(PAPER, 20, LINE, 1));
+            row.addView(badge, new LinearLayout.LayoutParams(dp(34), dp(34)));
+            TextView label = new TextView(this);
+            label.setText(a.name == null ? "Agent" : a.name);
+            label.setTextSize(14);
+            label.setTypeface(sans());
+            label.setTextColor(INK);
+            label.setPadding(dp(12), 0, 0, 0);
+            row.addView(label, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            row.setOnClickListener(v -> {
+                hideOverlay();
+                OxAgentsBridge.sendFromOxUi(a, "〔转发〕\n" + text.trim());
+                Toast.makeText(this, "已转发给 " + (a.name == null ? "Agent" : a.name),
+                        Toast.LENGTH_SHORT).show();
+            });
+            list.addView(row);
+        }
+        for (final GroupItem g : groupItems) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(4), dp(11), dp(4), dp(11));
+            row.setBackground(new android.graphics.drawable.RippleDrawable(
+                    ColorStateList.valueOf(RIPPLE), null, null));
+            row.setContentDescription("Forward to group " + g.title);
+            TextView badge = new TextView(this);
+            badge.setText("👥");
+            badge.setTextSize(14);
+            badge.setGravity(Gravity.CENTER);
+            badge.setBackground(plate(PAPER, 20, LINE, 1));
+            row.addView(badge, new LinearLayout.LayoutParams(dp(34), dp(34)));
+            TextView label = new TextView(this);
+            label.setText(g.title);
+            label.setTextSize(14);
+            label.setTypeface(sans());
+            label.setTextColor(INK);
+            label.setPadding(dp(12), 0, 0, 0);
+            row.addView(label, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            row.setOnClickListener(v -> {
+                hideOverlay();
+                OxAgentsBridge.sendLocalGroupText(-g.chatId, "〔转发〕\n" + text.trim(), null);
+                Toast.makeText(this, "已转发到 " + g.title, Toast.LENGTH_SHORT).show();
+                if (g.chatId != 0) selectGroup(g);
+            });
+            list.addView(row);
+        }
+        if (agents.isEmpty() && groupItems.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("No agents or groups to forward to.");
+            empty.setTextSize(13);
+            empty.setTypeface(sans());
+            empty.setTextColor(MUTED);
+            empty.setPadding(dp(4), dp(20), dp(4), 0);
+            list.addView(empty);
+        }
+        overlay.addView(panel, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     private void showReplyRow() {
@@ -4322,9 +4454,10 @@ public class OxUiPreviewActivity extends Activity {
             bubble.setTextIsSelectable(false);
             bubble.setOnLongClickListener(v -> {
                 showMessageMenu(v,
-                        new CharSequence[]{LocaleController.getString(R.string.OxUiCopy)},
-                        new boolean[]{false},
-                        new Runnable[]{() -> copy(text)});
+                        new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
+                                "Forward to…"},
+                        new boolean[]{false, false},
+                        new Runnable[]{() -> copy(text), () -> showForwardPicker(text)});
                 return true;
             });
             quoteWrap.addView(bubble, new LinearLayout.LayoutParams(
@@ -4354,9 +4487,10 @@ public class OxUiPreviewActivity extends Activity {
         bubble.setTextIsSelectable(false);
         bubble.setOnLongClickListener(v -> {
             showMessageMenu(v,
-                    new CharSequence[]{LocaleController.getString(R.string.OxUiCopy)},
-                    new boolean[]{false},
-                    new Runnable[]{() -> copy(text)});
+                    new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
+                            "Forward to…"},
+                    new boolean[]{false, false},
+                    new Runnable[]{() -> copy(text), () -> showForwardPicker(text)});
             return true;
         });
         LinearLayout wrap = new LinearLayout(this);
