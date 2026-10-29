@@ -88,6 +88,7 @@ public class OxUiPreviewActivity extends Activity {
     private FrameLayout dockHost;
     private Runnable pendingDockBlur;
     private static final int SENDING_ALPHA = 190;
+    private static final String[] REACTION_EMOJIS = {"👍", "❤️", "😂", "🎉", "🤔", "👀"};
 
     private boolean darkPalette;
 
@@ -260,6 +261,14 @@ public class OxUiPreviewActivity extends Activity {
             return;
         }
         super.onBackPressed();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Groups created in Telegram UI while this activity stayed alive must show
+        // up when the user comes back, so refresh the cached list on every resume.
+        loadGroupsAsync();
     }
 
     @Override
@@ -1026,9 +1035,10 @@ public class OxUiPreviewActivity extends Activity {
                 ? caption : "Image");
         card.setOnLongClickListener(v -> {
             showMessageMenu(v,
-                    new CharSequence[]{"Delete message"},
-                    new int[]{CORAL},
-                    new Runnable[]{() -> confirmDelete(v, ts, "user", caption)});
+                    new CharSequence[]{"React…", "Delete message"},
+                    new int[]{0, CORAL},
+                    new Runnable[]{() -> showReactionPicker(v, ts, "user"),
+                            () -> confirmDelete(v, ts, "user", caption)});
             return true;
         });
         if (sending) card.getBackground().setAlpha(SENDING_ALPHA);
@@ -1127,14 +1137,16 @@ public class OxUiPreviewActivity extends Activity {
                 ? new CharSequence[]{
                         LocaleController.getString(R.string.OxUiCopy),
                         LocaleController.getString(R.string.OxUiReply) + " " + name,
+                        "React…",
                         "Forward to…",
                         "Delete message"}
                 : new CharSequence[]{
                         LocaleController.getString(R.string.OxUiCopy),
+                        "React…",
                         "Forward to…",
                         "Delete message"};
-        int[] accents = group ? new int[]{0, SIGNAL, 0, CORAL}
-                : new int[]{0, 0, CORAL};
+        int[] accents = group ? new int[]{0, SIGNAL, 0, 0, CORAL}
+                : new int[]{0, 0, 0, CORAL};
         Runnable[] actions = group
                 ? new Runnable[]{
                         () -> copy(text),
@@ -1148,10 +1160,12 @@ public class OxUiPreviewActivity extends Activity {
                             replyQuoteText = snap;
                             showReplyRow();
                         },
+                        () -> showReactionPicker(anchor, ts, "assistant"),
                         () -> showForwardPicker(text),
                         () -> confirmDelete(anchor, ts, "assistant", text)}
                 : new Runnable[]{
                         () -> copy(text),
+                        () -> showReactionPicker(anchor, ts, "assistant"),
                         () -> showForwardPicker(text),
                         () -> confirmDelete(anchor, ts, "assistant", text)};
         showMessageMenu(anchor, labels, accents, actions);
@@ -1171,6 +1185,122 @@ public class OxUiPreviewActivity extends Activity {
                                     Toast.LENGTH_SHORT).show();
                         },
                         () -> {}});
+    }
+
+    /** Small anchored emoji bar for one-tap local reactions. */
+    private void showReactionPicker(View anchor, final long ts, final String role) {
+        if (menuHost == null) return;
+        final String current = reactionFor(ts, role);
+        menuHost.removeAllViews();
+        menuHost.setVisibility(View.VISIBLE);
+        int[] loc = new int[2];
+        anchor.getLocationOnScreen(loc);
+        int[] hostLoc = new int[2];
+        menuHost.getLocationOnScreen(hostLoc);
+        int anchorX = loc[0] - hostLoc[0];
+        int anchorBottom = loc[1] - hostLoc[1] + anchor.getHeight();
+        hideKeyboard();
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(plate(MENU_PAPER, 16, LINE, 1));
+        card.setElevation(dp(12));
+        card.setClickable(true);
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setPadding(dp(6), dp(6), dp(6), dp(6));
+        for (final String emoji : REACTION_EMOJIS) {
+            TextView key = new TextView(this);
+            key.setText(emoji);
+            key.setTextSize(22);
+            key.setGravity(Gravity.CENTER);
+            key.setPadding(dp(6), dp(8), dp(6), dp(8));
+            key.setContentDescription("React " + emoji);
+            if (emoji.equals(current)) {
+                key.setBackground(plate(PAPER, 10, LINE, 1));
+            } else {
+                key.setBackground(new android.graphics.drawable.RippleDrawable(
+                        ColorStateList.valueOf(RIPPLE), null, null));
+            }
+            key.setOnClickListener(v -> applyReaction(ts, role,
+                    emoji.equals(current) ? "" : emoji));
+            bar.addView(key, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        }
+        card.addView(bar);
+        if (!current.isEmpty()) {
+            View divider = new View(this);
+            divider.setBackgroundColor(LINE);
+            card.addView(divider, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, dp(1))));
+            TextView remove = new TextView(this);
+            remove.setText("Remove reaction");
+            remove.setTextSize(14);
+            remove.setTypeface(sans());
+            remove.setTextColor(CORAL);
+            remove.setPadding(dp(18), dp(11), dp(18), dp(11));
+            remove.setContentDescription("Remove reaction");
+            remove.setBackground(new android.graphics.drawable.RippleDrawable(
+                    ColorStateList.valueOf(RIPPLE), null, null));
+            remove.setOnClickListener(v -> applyReaction(ts, role, ""));
+            card.addView(remove);
+        }
+        int cardW = Math.min(dp(300),
+                getResources().getDisplayMetrics().widthPixels - 2 * dp(16));
+        int cardH = dp(56) + (current.isEmpty() ? 0 : dp(45));
+        int hostH = menuHost.getHeight() > 0 ? menuHost.getHeight()
+                : getResources().getDisplayMetrics().heightPixels;
+        int top = anchorBottom + dp(8);
+        if (top + cardH > hostH - dp(16)) {
+            top = Math.max(dp(16), loc[1] - hostLoc[1] - cardH - dp(8));
+        }
+        int left = Math.max(dp(16), Math.min(anchorX,
+                getResources().getDisplayMetrics().widthPixels - cardW - dp(16)));
+        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(cardW,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        clp.leftMargin = left;
+        clp.topMargin = top;
+        clp.gravity = Gravity.TOP | Gravity.START;
+        menuHost.addView(card, clp);
+    }
+
+    private void applyReaction(long ts, String role, String emoji) {
+        boolean ok = OxAgentsBridge.reactOxEntry(targetDialogId(), ts, role, emoji);
+        hideMessageMenu();
+        refresh(true);
+        if (!ok) {
+            Toast.makeText(this, "Message not found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String reactionFor(long ts, String role) {
+        for (OxChatEntry e : history()) {
+            if (e != null && e.ts == ts && role.equals(e.role)) {
+                return e.reaction == null ? "" : e.reaction;
+            }
+        }
+        return "";
+    }
+
+    /** One local reaction chip under a bubble (user rows align right). */
+    private void addReactionRow(String emoji, boolean alignEnd) {
+        if (emoji == null || emoji.isEmpty()) return;
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(alignEnd ? Gravity.END : Gravity.START);
+        row.setPadding(alignEnd ? 0 : dp(15), rowGap(3), alignEnd ? dp(2) : 0, 0);
+        TextView chip = new TextView(this);
+        chip.setText(emoji + "  1");
+        chip.setTextSize(12);
+        chip.setTypeface(sans());
+        chip.setTextColor(INK);
+        chip.setPadding(dp(9), dp(3), dp(9), dp(3));
+        chip.setBackground(plate(PAPER, 12, LINE, 1));
+        chip.setContentDescription("Reaction " + emoji);
+        row.addView(chip, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        messages.addView(row, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
     /** In-design editor for a local user message (text only). */
@@ -4489,12 +4619,21 @@ public class OxUiPreviewActivity extends Activity {
                     addUserFile(e.fileName == null || e.fileName.isEmpty()
                             ? new File(e.filePath).getName() : e.fileName,
                             e.filePath, e.content, e.ts, false);
+                    if (e.reaction != null && !e.reaction.isEmpty()) {
+                        addReactionRow(e.reaction, true);
+                    }
                     continue;
                 }
                 addUser(e.content, e.ts, false, hasImage ? e.imagePath : null,
                         e.replyToSender, e.replyToText);
+                if (e.reaction != null && !e.reaction.isEmpty()) {
+                    addReactionRow(e.reaction, true);
+                }
             } else if ("assistant".equals(e.role)) {
                 addAssistant(e.content, e.ts, e.sender);
+                if (e.reaction != null && !e.reaction.isEmpty()) {
+                    addReactionRow(e.reaction, false);
+                }
             } else if ("tool".equals(e.role)) {
                 addTool(e.content);
             }
@@ -4554,9 +4693,10 @@ public class OxUiPreviewActivity extends Activity {
         card.setContentDescription(name);
         card.setOnLongClickListener(v -> {
             showMessageMenu(v,
-                    new CharSequence[]{"Delete message"},
-                    new int[]{CORAL},
-                    new Runnable[]{() -> confirmDelete(v, ts, "user", caption)});
+                    new CharSequence[]{"React…", "Delete message"},
+                    new int[]{0, CORAL},
+                    new Runnable[]{() -> showReactionPicker(v, ts, "user"),
+                            () -> confirmDelete(v, ts, "user", caption)});
             return true;
         });
         TextView glyph = new TextView(this);
@@ -4641,19 +4781,25 @@ public class OxUiPreviewActivity extends Activity {
                 if (sending) {
                     showMessageMenu(v,
                             new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
+                                    "React…",
                                     "Forward to…",
                                     "Delete message"},
-                            new int[]{0, 0, CORAL},
-                            new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
+                            new int[]{0, 0, 0, CORAL},
+                            new Runnable[]{() -> copy(text),
+                                    () -> showReactionPicker(v, ts, "user"),
+                                    () -> showForwardPicker(text),
                                     () -> confirmDelete(v, ts, "user", text)});
                 } else {
                     showMessageMenu(v,
                             new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
+                                    "React…",
                                     "Forward to…",
                                     "Edit message",
                                     "Delete message"},
-                            new int[]{0, 0, 0, CORAL},
-                            new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
+                            new int[]{0, 0, 0, 0, CORAL},
+                            new Runnable[]{() -> copy(text),
+                                    () -> showReactionPicker(v, ts, "user"),
+                                    () -> showForwardPicker(text),
                                     () -> showEditMessage(ts, text),
                                     () -> confirmDelete(v, ts, "user", text)});
                 }
@@ -4688,19 +4834,25 @@ public class OxUiPreviewActivity extends Activity {
             if (sending) {
                 showMessageMenu(v,
                         new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
+                                "React…",
                                 "Forward to…",
                                 "Delete message"},
-                        new int[]{0, 0, CORAL},
-                        new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
+                        new int[]{0, 0, 0, CORAL},
+                        new Runnable[]{() -> copy(text),
+                                () -> showReactionPicker(v, ts, "user"),
+                                () -> showForwardPicker(text),
                                 () -> confirmDelete(v, ts, "user", text)});
             } else {
                 showMessageMenu(v,
                         new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
+                                "React…",
                                 "Forward to…",
                                 "Edit message",
                                 "Delete message"},
-                        new int[]{0, 0, 0, CORAL},
-                        new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
+                        new int[]{0, 0, 0, 0, CORAL},
+                        new Runnable[]{() -> copy(text),
+                                () -> showReactionPicker(v, ts, "user"),
+                                () -> showForwardPicker(text),
                                 () -> showEditMessage(ts, text),
                                 () -> confirmDelete(v, ts, "user", text)});
             }

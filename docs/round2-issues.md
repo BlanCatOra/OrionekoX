@@ -847,3 +847,13 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 | R2-181 | 0.75 观察 | 冷启动立即打开 Agents 面板时 Groups 区可能缺失 | groupsLoading/groupsLoaded 防重入；面板打开时触发加载，完成后重绘；异常改为 Log.e | 已实现，冷启动面板可见群组 |
 
 - 遗留：仅文本消息可编辑；OxUI 无“已编辑”角标；mid 定位仍为启发式。
+
+## 0.76.0 消息反应与群组刷新 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-182 | 主线对标 | OxUI 无消息表情反应 | OxChatEntry.reaction + store updateReaction；React… 锚定 6 emoji 选择条；气泡下 emoji 胶囊；同项再点清除 | 已实现并设备验证（1:1 + 群，重启保留） |
+| R2-183 | 0.76 尝试 | TL reactions 写入 messages_v2 后 Telegram UI 显示无 emoji 的空白圆形 chip（离线无 reactions 目录） | 回退为 OxUI 本地反应，不写 messages_v2；文档记录原因 | 已回退并验证 |
+| R2-184 | 0.76 观察 | OxUI 存活期间在 Telegram UI 新建群，返回后面板看不到 | onResume 触发 loadGroupsAsync（loading 防重入） | 已实现并设备验证（群 1800000010） |
+
+- 遗留：反应不同步 Telegram UI；每条消息仅一个 emoji、计数固定 1；英文文案未中文化。

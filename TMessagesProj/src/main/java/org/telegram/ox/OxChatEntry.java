@@ -19,6 +19,7 @@ public class OxChatEntry {
     public String sender;      // optional: agent id that produced this entry (group chats)
     public String replyToSender; // optional: quoted entry's agent id (targeted group replies)
     public String replyToText;   // optional: truncated snapshot of the quoted text
+    public String reaction;      // optional: one emoji reaction chosen locally
 
     public OxChatEntry(String role, String content, long ts) {
         this.role = role;
@@ -51,6 +52,8 @@ public class OxChatEntry {
                 e.filePath = file;
                 e.fileName = o.optString("file_name", "");
             }
+            String reaction = o.optString("reaction", "");
+            if (!reaction.isEmpty()) e.reaction = reaction;
             out.add(e);
         }
         return out;
@@ -71,6 +74,7 @@ public class OxChatEntry {
             if (e.sender != null && !e.sender.isEmpty()) o.put("sender", e.sender);
             if (e.replyToSender != null && !e.replyToSender.isEmpty()) o.put("reply_to_sender", e.replyToSender);
             if (e.replyToText != null && !e.replyToText.isEmpty()) o.put("reply_to_text", e.replyToText);
+            if (e.reaction != null && !e.reaction.isEmpty()) o.put("reaction", e.reaction);
             a.put(o);
         }
         return a;

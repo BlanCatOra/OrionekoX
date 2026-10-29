@@ -133,6 +133,14 @@ The only entrance animation is the conversation fade/rise on first render.
   is prefixed with 〔转发〕 and delivered through the normal local turn path.
   Group media entries now record filePath/fileName, so group chats render
   the same paper file bubble as 1:1.
+- Local reactions (0.76): long-press any bubble (assistant, user, photo,
+  file) and choose React… for an anchored six-emoji bar; the current
+  reaction is highlighted with a Remove reaction row, tapping it again
+  clears it, and a small paper chip (`👍 1`) sits under the bubble. State
+  lives in OxChatEntry and survives restarts. Reactions stay OxUI-only on
+  purpose — offline Telegram has no reaction icon catalogue and renders
+  blank circles for TL reactions. The group list also refreshes on resume,
+  so groups created in Telegram UI show up on return.
 - Message editing (0.75): long-press a user text bubble to open a prefilled
   in-design editor; saving rewrites the local entry and the Telegram cache
   row in place (same message id), so both UIs show the edited text and the

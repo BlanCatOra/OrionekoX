@@ -4,6 +4,18 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.76.0 — 2026-10-29
+
+- Local emoji reactions in OxUI: assistant, user, photo and file bubbles gain
+  React… with an anchored six-emoji bar (current reaction highlighted, a
+  Remove reaction row, and tapping the same emoji clears it). A small paper
+  chip (`👍 1`) sits under the bubble and the choice persists in OxChatEntry.
+- Reactions stay OxUI-only by design. Offline Telegram has no reactions
+  catalogue, so writing TL reactions made Telegram UI render blank circles;
+  the write path was reverted rather than leaving broken chips.
+- The group list now reloads on activity resume, so a group created in
+  Telegram UI appears in OxUI's Agents panel when the user returns.
+
 ## 0.75.0 — 2026-10-29
 
 - OxUI message editing: long-press a user text bubble (1:1 or local group)
