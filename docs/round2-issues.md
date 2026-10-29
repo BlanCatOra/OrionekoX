@@ -826,3 +826,14 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
 | R2-175 | 0.73 QA | 纯文件（无文字）发送键保持禁用——updateSendVisual 只算 pendingImagePath | ready 判定加入 pendingFilePath；复测群文件无文字发送成功 | 已修复并设备验证 |
 
 - 遗留：转发不含媒体、无来源标注；文件气泡无长按菜单；群文件重名序号前缀属预期。
+
+## 0.74.0 消息删除与 Agent 置顶 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-176 | 主线对标 | OxUI 无删除消息能力（Telegram UI 可长按删除） | deleteOxEntry（store + messages_v2 定位 mid，agent dialog cacheOnly）；助手/用户/图片/文件菜单 Delete message + 二次确认 | 已实现并设备验证 |
+| R2-177 | 0.74 QA | messages_v2 没有 message 列，首版按正文定位抛 SQLiteException（mids=0） | 改为反序列化 data blob 取正文；窗口 300s 内正文优先、8s 内时间兜底 | 已修复并设备验证 |
+| R2-178 | 主线对标 | Agent 无法置顶，rail 顺序固定 | 详情页 Pin/Unpin 切换 OxAgent.pinned，saveAgent + 重载排序 | 已实现并设备验证（重启保持） |
+
+- 遗留：删除依赖 ts+正文前 24 字符启发式；Telegram UI 侧删除不会反向
+  清理 OxUI chat.json；置顶只影响 OxUI rail，不影响 Telegram 联系人列表。

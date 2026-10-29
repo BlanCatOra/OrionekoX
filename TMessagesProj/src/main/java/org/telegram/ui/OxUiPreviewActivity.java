@@ -593,7 +593,7 @@ public class OxUiPreviewActivity extends Activity {
         attach.setContentDescription(LocaleController.getString(R.string.OxUiAttach));
         attach.setOnClickListener(v -> showMessageMenu(v,
                 new CharSequence[]{"Photo", "File"},
-                new boolean[]{false, false},
+                new int[]{0, 0},
                 new Runnable[]{this::pickImage, this::pickFile}));
         composer.addView(attach, new LinearLayout.LayoutParams(dp(40), dp(44)));
 
@@ -687,7 +687,7 @@ public class OxUiPreviewActivity extends Activity {
 
     /** In-design message menu replacing the platform AlertDialog: a bone card
      *  anchored to the pressed row, dimmed host, click-outside dismiss. */
-    private void showMessageMenu(View anchor, CharSequence[] labels, boolean[] accents,
+    private void showMessageMenu(View anchor, CharSequence[] labels, int[] accentColors,
             Runnable[] actions) {
         if (menuHost == null || labels.length != actions.length) return;
         menuHost.removeAllViews();
@@ -724,9 +724,9 @@ public class OxUiPreviewActivity extends Activity {
             rowView.setPadding(dp(18), dp(14), dp(18), dp(14));
             rowView.setBackground(new android.graphics.drawable.RippleDrawable(
                     android.content.res.ColorStateList.valueOf(RIPPLE), null, null));
-            if (accents[i]) {
+            if (accentColors[i] != 0) {
                 View dot = new View(this);
-                dot.setBackground(plate(SIGNAL, 4, 0, 0));
+                dot.setBackground(plate(accentColors[i], 4, 0, 0));
                 rowView.addView(dot, new LinearLayout.LayoutParams(dp(7), dp(7)));
                 TextView spacer = new TextView(this);
                 spacer.setMinWidth(dp(9));
@@ -1021,6 +1021,13 @@ public class OxUiPreviewActivity extends Activity {
         }
         card.setContentDescription(caption != null && !caption.trim().isEmpty()
                 ? caption : "Image");
+        card.setOnLongClickListener(v -> {
+            showMessageMenu(v,
+                    new CharSequence[]{"Delete message"},
+                    new int[]{CORAL},
+                    new Runnable[]{() -> confirmDelete(v, ts, "user", caption)});
+            return true;
+        });
         if (sending) card.getBackground().setAlpha(SENDING_ALPHA);
         row.addView(card, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -1109,7 +1116,7 @@ public class OxUiPreviewActivity extends Activity {
         return stored == null ? null : stored.name;
     }
 
-    private void showAssistantActions(View anchor, String text, String senderId) {
+    private void showAssistantActions(View anchor, String text, String senderId, long ts) {
         boolean group = isGroupTarget() && senderId != null;
         String resolved = senderId == null ? null : resolveAgentName(senderId);
         final String name = resolved == null ? (senderId == null ? "" : senderId) : resolved;
@@ -1117,12 +1124,14 @@ public class OxUiPreviewActivity extends Activity {
                 ? new CharSequence[]{
                         LocaleController.getString(R.string.OxUiCopy),
                         LocaleController.getString(R.string.OxUiReply) + " " + name,
-                        "Forward to…"}
+                        "Forward to…",
+                        "Delete message"}
                 : new CharSequence[]{
                         LocaleController.getString(R.string.OxUiCopy),
-                        "Forward to…"};
-        boolean[] accents = group ? new boolean[]{false, true, false}
-                : new boolean[]{false, false};
+                        "Forward to…",
+                        "Delete message"};
+        int[] accents = group ? new int[]{0, SIGNAL, 0, CORAL}
+                : new int[]{0, 0, CORAL};
         Runnable[] actions = group
                 ? new Runnable[]{
                         () -> copy(text),
@@ -1136,11 +1145,29 @@ public class OxUiPreviewActivity extends Activity {
                             replyQuoteText = snap;
                             showReplyRow();
                         },
-                        () -> showForwardPicker(text)}
+                        () -> showForwardPicker(text),
+                        () -> confirmDelete(anchor, ts, "assistant", text)}
                 : new Runnable[]{
                         () -> copy(text),
-                        () -> showForwardPicker(text)};
+                        () -> showForwardPicker(text),
+                        () -> confirmDelete(anchor, ts, "assistant", text)};
         showMessageMenu(anchor, labels, accents, actions);
+    }
+
+    /** Second-step confirmation so a single long-press can never delete. */
+    private void confirmDelete(View anchor, long ts, String role, String text) {
+        showMessageMenu(anchor,
+                new CharSequence[]{"Delete", "Cancel"},
+                new int[]{CORAL, 0},
+                new Runnable[]{
+                        () -> {
+                            boolean ok = OxAgentsBridge.deleteOxEntry(
+                                    targetDialogId(), ts, role, text);
+                            refresh(true);
+                            Toast.makeText(this, ok ? "Message deleted" : "Message not found",
+                                    Toast.LENGTH_SHORT).show();
+                        },
+                        () -> {}});
     }
 
     /** Forward a message's text to another agent or local group. */
@@ -4006,6 +4033,39 @@ public class OxUiPreviewActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         elp.leftMargin = dp(10);
         actionsRow.addView(edit, elp);
+        TextView pin = new TextView(this);
+        pin.setText(editTarget.pinned ? "Unpin" : "Pin");
+        pin.setTextSize(14);
+        pin.setTypeface(sans());
+        pin.setTextColor(INK);
+        pin.setGravity(Gravity.CENTER);
+        pin.setPadding(dp(18), dp(11), dp(18), dp(11));
+        pin.setBackground(plate(0, 20, LINE, 1));
+        pin.setContentDescription(editTarget.pinned ? "Unpin agent" : "Pin agent");
+        pin.setOnClickListener(v -> {
+            OxAgent stored = OxAgentStore.loadAgent(editTarget.id);
+            if (stored == null) return;
+            stored.pinned = !stored.pinned;
+            OxAgentStore.saveAgent(stored);
+            boolean wasSelected = selected != null && selected.id.equals(stored.id);
+            loadAgents();
+            if (wasSelected) {
+                for (OxAgent x : agents) {
+                    if (x.id.equals(stored.id)) {
+                        selected = x;
+                        break;
+                    }
+                }
+            }
+            renderAgents();
+            showAgentDetail(stored);
+            Toast.makeText(this, stored.pinned ? "Pinned" : "Unpinned",
+                    Toast.LENGTH_SHORT).show();
+        });
+        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        plp.leftMargin = dp(10);
+        actionsRow.addView(pin, plp);
         panel.addView(actionsRow);
 
         overlay.addView(panel, new FrameLayout.LayoutParams(
@@ -4374,6 +4434,13 @@ public class OxUiPreviewActivity extends Activity {
         if (sending) bg.setAlpha(SENDING_ALPHA);
         card.setBackground(bg);
         card.setContentDescription(name);
+        card.setOnLongClickListener(v -> {
+            showMessageMenu(v,
+                    new CharSequence[]{"Delete message"},
+                    new int[]{CORAL},
+                    new Runnable[]{() -> confirmDelete(v, ts, "user", caption)});
+            return true;
+        });
         TextView glyph = new TextView(this);
         glyph.setText("📄");
         glyph.setTextSize(18);
@@ -4455,9 +4522,11 @@ public class OxUiPreviewActivity extends Activity {
             bubble.setOnLongClickListener(v -> {
                 showMessageMenu(v,
                         new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
-                                "Forward to…"},
-                        new boolean[]{false, false},
-                        new Runnable[]{() -> copy(text), () -> showForwardPicker(text)});
+                                "Forward to…",
+                                "Delete message"},
+                        new int[]{0, 0, CORAL},
+                        new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
+                                () -> confirmDelete(v, ts, "user", text)});
                 return true;
             });
             quoteWrap.addView(bubble, new LinearLayout.LayoutParams(
@@ -4488,9 +4557,11 @@ public class OxUiPreviewActivity extends Activity {
         bubble.setOnLongClickListener(v -> {
             showMessageMenu(v,
                     new CharSequence[]{LocaleController.getString(R.string.OxUiCopy),
-                            "Forward to…"},
-                    new boolean[]{false, false},
-                    new Runnable[]{() -> copy(text), () -> showForwardPicker(text)});
+                            "Forward to…",
+                            "Delete message"},
+                    new int[]{0, 0, CORAL},
+                    new Runnable[]{() -> copy(text), () -> showForwardPicker(text),
+                            () -> confirmDelete(v, ts, "user", text)});
             return true;
         });
         LinearLayout wrap = new LinearLayout(this);
@@ -4573,7 +4644,7 @@ public class OxUiPreviewActivity extends Activity {
         t.setPadding(0, dp(3), 0, 0);
         t.setTextIsSelectable(false);
         t.setOnLongClickListener(v -> {
-            showAssistantActions(v, text, senderId);
+            showAssistantActions(v, text, senderId, ts);
             return true;
         });
         body.addView(t);

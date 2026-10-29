@@ -133,6 +133,12 @@ The only entrance animation is the conversation fade/rise on first render.
   is prefixed with 〔转发〕 and delivered through the normal local turn path.
   Group media entries now record filePath/fileName, so group chats render
   the same paper file bubble as 1:1.
+- Message management (0.74): every bubble (assistant, user, photo, file)
+  gains a Delete message action behind a second-step Delete/Cancel menu;
+  deletion removes the local OxChatEntry and the matching messages_v2 row,
+  so OxUI and Telegram UI stay in sync without touching the network. The
+  agent detail page gains Pin/Unpin, which reorders the rail and persists.
+  Destructive actions use the coral dot in the menu's accent slot.
 - File attachments (0.72): the composer ＋ opens a Photo / File menu and
   files travel through the same local pipeline as photos — a 📄 capsule
   preview, a real TL document message, a paper file bubble with name/size/
@@ -153,13 +159,14 @@ The only entrance animation is the conversation fade/rise on first render.
   Telegram path.
 - Avatar editing moved offline in 0.65; chat search exists at panel level
   but there is no in-conversation search bar or hit navigation yet.
-  Video/GIF/file attachments, settings, agent editing and full memory pages
-  are still Telegram-UI-only (or absent) in OxUI.
-- Targeted replies have no quote semantics yet (the chip forces the member, but
-  the quoted message is not embedded in the turn context).
+  Video/GIF attachments and full memory pages are still Telegram-UI-only
+  (or absent) in OxUI; files, agent editing and message deletion are now
+  native OxUI features.
+- Targeted replies carry a quoted excerpt into the turn context (0.65); there
+  is no full Telegram-style nested quote UI beyond that chip.
 - The preview is phone-first; no tablet two-pane layout yet.
-- Dynamic theme variants, reduced-motion handling and accessibility sweep are
-  still to do.
+- Reduced-motion handling and a first accessibility pass landed in 0.67;
+  dynamic per-conversation variants and a full TalkBack audit remain.
 - Next round: the remaining agent-editor fields (avatar, provider, sampling,
   tool policy) and richer settings (backup/import, bridge), then tablet
   layout and a full TalkBack pass.

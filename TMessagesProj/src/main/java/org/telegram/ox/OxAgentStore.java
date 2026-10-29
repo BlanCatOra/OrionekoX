@@ -163,6 +163,24 @@ public class OxAgentStore {
         }
     }
 
+    /** Removes the first chat entry matching ts+role (used by OxUI delete). */
+    public static synchronized boolean removeChatEntry(String id, long ts, String role) {
+        try {
+            List<OxChatEntry> chat = loadChat(id);
+            for (int i = 0; i < chat.size(); i++) {
+                OxChatEntry e = chat.get(i);
+                if (e.ts == ts && (role == null || role.equals(e.role))) {
+                    chat.remove(i);
+                    saveChat(id, chat);
+                    return true;
+                }
+            }
+        } catch (Throwable t) {
+            org.telegram.messenger.FileLog.e("OxAgentStore.removeChatEntry", t);
+        }
+        return false;
+    }
+
     public static void saveChat(String id, List<OxChatEntry> chat) {
         try {
             File dir = agentDir(id);

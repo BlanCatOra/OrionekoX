@@ -4,6 +4,21 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.74.0 — 2026-10-29
+
+- OxUI message deletion: assistant, user, photo and file bubbles gain a
+  "Delete message" action with a second-step Delete/Cancel menu. Deletion
+  removes the local OxChatEntry and the matching messages_v2 row (mid
+  located by timestamp plus a 24-character body prefix), so Telegram UI and
+  OxUI stay in sync without any network request.
+- Agent pinning: the agent detail page gains Pin/Unpin. The flag persists in
+  agent.json and reorders the OxUI rail; it survives restarts.
+- docs/memory-architecture-report.md evaluates a Markdown-body + keyword/
+  vector hybrid memory design against the existing OxMemoryStore (BM25,
+  forgetting curve, MMR, invalid_at history), lists the five gaps and a
+  phased 0.75–0.77 plan, and states plainly that the current `embed()` is an
+  FNV hash projection rather than a semantic embedding.
+
 ## 0.73.0 — 2026-10-29
 
 - Group media entries now record filePath/fileName, so local group chats in
