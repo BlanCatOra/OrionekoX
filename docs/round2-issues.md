@@ -715,3 +715,20 @@ C 报告的两项 P1 在受控复验中**未复现**，暂不按 App 代码缺�
   竖长截图卡片渲染异常（疑 pending/历史渲染交互）。
 - 评审另发现 backlog：群 emoji 头像创建在 agent-only 下静默丢头像；
   用户头像族 RPC 与 PhotoViewer 主图操作未守护；changeChatTitle 离线回滚。
+
+## 0.66.0 视觉遗留收口与 OxUI 会话搜索 QA 记录
+
+| ID | 来源 | 问题 | 处理 | 状态 |
+|---|---|---|---|---|
+| R2-140 | 视觉三轮 P1-3 | 长按菜单为系统 AlertDialog，与 OxUI 语言脱节 | menuHost 透明层 + bone 卡片（plate(0xFFF7F3EA,16,LINE)、elevation 12dp、48dp 行高、15sp sans-serif-medium、Ripple、SIGNAL Reply 圆点、锚点定位/返回键/重建自动关闭） | 已实现并设备验证 |
+| R2-141 | 视觉三轮 P2-3 | 用户气泡无时间戳、长按仅静默 copy | 两分支右对齐 11sp mono 时间（发送中不显示）+ 长按弹出同款菜单（仅 Copy） | 已实现并设备验证 |
+| R2-142 | 视觉三轮 P2-1 | 字号散乱（mono 10.5/11/11.2/11.5、气泡 15.5 vs 16.2 等） | 按审计表 30 处向 11/12/14/16/17/28 吸附；RIPPLE/SENDING_ALPHA 常量；sansMedium helper | 已实现并设备验证 |
+| R2-143 | 视觉三轮 P2-4 | 附件行裸贴文件名 | PAPER 胶囊容器 + 文件名 12sp + `WxH · KB` 11sp mono 副行 | 已实现并设备验证 |
+| R2-144 | 0.65 遗留 | “竖长截图卡片图文割裂” | 设备 dump 证实 caption 与 ImageView 左缘对齐、垂直零间隙——同一卡内，属读图误判；补图片卡内水平居中 | 已澄清（非 bug）+ 观感修正 |
+| R2-145 | 0.66 功能 | 面板搜索只能匹配 agent 名/备注 | 会话搜索 v1：本地聊天扫描（每目标≤3/全局≤12、220ms 防抖、scanGen 防过期）+ Messages 小节 + SIGNAL 高亮 + 点击打开 | 已实现并设备验证 |
+| R2-146 | 0.66 QA | 批量替换误伤 sansMedium() 定义 → StackOverflowError 启动崩 | 修复方法体；记录“批量替换必须排除定义处” | 已修复并复测 |
+
+- 设备：debug 6609，1:1 菜单/时间戳、blue 搜索高亮、附件胶囊、群菜单
+  Copy/●Reply、chip 引用摘要、groupReply forced -1800000004、气泡引用行。
+- 遗留：会话内搜索条/上下导航/图片检索（v1.5）、菜单 >5 行滚动、暗色/
+  reduced-motion/平板/可访问性清扫、设置/Agent 编辑 OxUI 化。

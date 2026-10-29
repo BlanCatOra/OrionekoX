@@ -11859,11 +11859,13 @@
     <string name="OxUiNoAgentBody">Create an agent in Ox settings first, then return to this preview.</string>
     <string name="OxUiAgents">Agents</string>
     <string name="OxUiSearchAgents">Search agents</string>
+    <string name="OxUiSearchAll">Search agents and messages</string>
+    <string name="OxUiSearchMessages">Messages</string>
     <string name="OxUiAgentsHint">Tap an agent to chat; long-press for details and memory.</string>
     <string name="OxUiMemory">Memory library</string>
     <string name="OxUiNoMemory">No memory entries yet.</string>
     <string name="OxUiChat">Chat</string>
-    <string name="OxUiNoResults">No agents match this search.</string>
+    <string name="OxUiNoResults">Nothing matches this search.</string>
     <string name="OxUiCopyDone">Copied</string>
     <string name="OxUiAttach">Attach an image</string>
     <string name="OxUiGroups">Groups</string>
