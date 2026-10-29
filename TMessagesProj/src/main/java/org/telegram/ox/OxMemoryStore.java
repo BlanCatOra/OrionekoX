@@ -79,6 +79,9 @@ public class OxMemoryStore {
         long invalidAt;
         String subject;
         String publicId = "";
+        String people = "";
+        String topics = "";
+        String status = "active";
         float[] vector;
         double score;
     }
@@ -270,6 +273,8 @@ public class OxMemoryStore {
         List<Mem> rows = load(agentId, 3000);
         if (rows.isEmpty()) { recordRecall(t0, mode, 0, 0); return ""; }
         String q = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        RecallFilters filters = parseRecallFilters(query == null ? "" : query);
+        if (filters.id != null) return recallById(agentId, filters.id, mode);
         boolean vectorMode = MODE_VECTOR.equals(mode);
         boolean temporal = isTemporalQuery(q);
         List<String> qTokens = meaningfulTokens(q);
@@ -290,6 +295,8 @@ public class OxMemoryStore {
                 df.put(t, n == null ? 1 : n + 1);
             }
         }
+        if (active.isEmpty()) { recordRecall(t0, mode, 0, 0); return ""; }
+        applyRecallFilters(active, filters);
         if (active.isEmpty()) { recordRecall(t0, mode, 0, 0); return ""; }
         int n = active.size();
         double avgdl = 0;
@@ -324,6 +331,10 @@ public class OxMemoryStore {
             if (m.invalidAt > 0) score *= 0.55;
             if (!q.isEmpty() && lexical < 0.04 && cosineScore < 0.10) score = 0;
             m.score = Math.max(0, Math.min(1.5, score));
+            if (filters.exact != null && m.text != null
+                    && m.text.toLowerCase(Locale.ROOT).contains(filters.exact)) {
+                m.score = 1.5;
+            }
         }
         for (java.util.Iterator<Mem> it = active.iterator(); it.hasNext(); ) {
             if (it.next().score <= 0) it.remove();
@@ -392,6 +403,78 @@ public class OxMemoryStore {
         lastRecallTokens = tokens;
         lastRecallMode = mode == null ? "" : mode;
         lastRecallAt = System.currentTimeMillis();
+    }
+
+    // ---------------- stage B 6.2/6.3: precise recall + filters ----------------
+    private static class RecallFilters {
+        String id;
+        String people;
+        String topics;
+        String status;
+        String exact;
+    }
+
+    private static RecallFilters parseRecallFilters(String raw) {
+        RecallFilters f = new RecallFilters();
+        if (raw == null) return f;
+        java.util.regex.Matcher mq =
+                java.util.regex.Pattern.compile("\"([^\"]+)\"").matcher(raw);
+        if (mq.find()) f.exact = mq.group(1).toLowerCase(Locale.ROOT);
+        for (String kv : raw.split("\\s+")) {
+            int idx = kv.indexOf(':');
+            if (idx <= 0) continue;
+            String key = kv.substring(0, idx).toLowerCase(Locale.ROOT);
+            String val = kv.substring(idx + 1).trim();
+            if (val.isEmpty()) continue;
+            if (key.equals("id") || key.equals("mem")) f.id = val;
+            else if (key.equals("who") || key.equals("people") || key.equals("person")) {
+                f.people = val.toLowerCase(Locale.ROOT);
+            } else if (key.equals("topic") || key.equals("topics") || key.equals("tag")) {
+                f.topics = val.toLowerCase(Locale.ROOT);
+            } else if (key.equals("status")) {
+                f.status = val;
+            }
+        }
+        return f;
+    }
+
+    private static void applyRecallFilters(List<Mem> active, RecallFilters f) {
+        if (f.people == null && f.topics == null && f.status == null) return;
+        for (java.util.Iterator<Mem> it = active.iterator(); it.hasNext(); ) {
+            Mem m = it.next();
+            boolean drop = false;
+            if (f.people != null && (m.people == null
+                    || !m.people.toLowerCase(Locale.ROOT).contains(f.people))) {
+                drop = true;
+            } else if (f.topics != null && (m.topics == null
+                    || !m.topics.toLowerCase(Locale.ROOT).contains(f.topics))) {
+                drop = true;
+            } else if (f.status != null && (m.status == null
+                    || !m.status.equalsIgnoreCase(f.status))) {
+                drop = true;
+            }
+            if (drop) it.remove();
+        }
+    }
+
+    private static String recallById(String agentId, String id, String mode) {
+        long t0 = System.currentTimeMillis();
+        List<Mem> rows = load(agentId, 3000);
+        for (Mem m : rows) {
+            if (id != null && id.equals(m.publicId)) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("# 记忆 ").append(m.publicId).append(" [").append(m.kind).append("]\n")
+                        .append(m.text).append('\n');
+                if (m.invalidAt > 0) sb.append("(该记忆条目已失效/被取代，仅供溯源)\n");
+                touch(m);
+                String out = sb.toString().trim();
+                recordRecall(t0, mode, 1, out.length() / 4);
+                return out;
+            }
+        }
+        String out = "未在本地记忆库中找到 public_id 为「" + id + "」的记录。";
+        recordRecall(t0, mode, 0, 0);
+        return out;
     }
 
     private static List<String> meaningfulTokens(String text) {
@@ -1019,8 +1102,8 @@ public class OxMemoryStore {
             Cursor c = db().rawQuery(
                     "SELECT id,kind,role,text,created_at,last_access,access_count,"
                             + "importance,stability,difficulty,memory_type,valid_from,"
-                            + "invalid_at,subject,vec FROM memories "
-                            + "WHERE agent_id=? ORDER BY created_at DESC LIMIT ?",
+                    + "invalid_at,subject,vec,public_id,people,topics,status FROM memories "
+                    + "WHERE agent_id=? ORDER BY created_at DESC LIMIT ?",
                     new String[]{agentId, String.valueOf(limit)});
             try {
                 while (c.moveToNext()) {
@@ -1040,6 +1123,10 @@ public class OxMemoryStore {
                     m.invalidAt = c.getLong(12);
                     m.subject = c.getString(13);
                     m.vector = floats(c.getBlob(14));
+                    m.publicId = c.getString(15) == null ? "" : c.getString(15);
+                    m.people = c.getString(16) == null ? "" : c.getString(16);
+                    m.topics = c.getString(17) == null ? "" : c.getString(17);
+                    m.status = c.getString(18) == null ? "active" : c.getString(18);
                     out.add(m);
                 }
             } finally {
