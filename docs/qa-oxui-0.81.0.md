@@ -25,8 +25,27 @@
 - `taskset -c 0-7 ./gradlew :TMessagesProj_AppStandalone:assembleAfatDebug`
 - **BUILD SUCCESSFUL in 3m 44s**（含 `compileAfatDebugJavaWithJavac` 无错）。
 
-## 诚实缺口
+## 模拟器实测取证（2026-10-29 21:2x，emulator-5554，debug 包）
 
-1. **未做模拟器截图/交互取证**：本轮只验证编译与构建；「点开归档区、长按重命名、归档后回到主列表」的实际 UI 行为需在 `emulator-5554` 上手动或脚本取证。归档/重命名是纯本地状态 + 列表重绘，逻辑简单，但按诚信原则不谎称已端到端验证。
+在模拟器上用 uiautomator 驱动真机交互，逐步验证：
+
+| 步骤 | 操作 | 结果 |
+|---|---|---|
+| 1 | Settings → Ox Settings → Agents | 进入 agent 列表（5 个 agent） |
+| 2 | 长按 Sakura Waifu | 菜单含 `Pin to top / Archive / Rename agent / Duplicate / …`（Archive 与 Rename 为 8.1 新增，已确认出现） |
+| 3 | 点 Archive | Sakura 从主列表消失，底部出现 `Archived (1)` 标题 |
+| 4 | 点 `Archived (1)` | 展开后 Sakura 出现在归档区 |
+| 5 | 长按归档区 Sakura | 菜单变为 `Unarchive` |
+| 6 | 点 Unarchive | Sakura 回到主列表，归档区消失 |
+| 7 | 长按 → Rename agent | 弹出 `Rename agent` 对话框，EditText 预填 `Sakura Waifu`，有 Cancel/Done |
+| 8 | 清空改 `Sakura W` → Done | 列表行立即变为 `Sakura W`（持久化生效） |
+| 9 | 改回 `Sakura Waifu` → Done | 列表恢复原名 |
+
+截图：`dist/iter-shots/oxui-8.1-archived.png`（主列表 + `Archived (1)` 折叠区）。
+logcat 无 FATAL/异常。
+
+## 诚实缺口（实测后更新）
+
+1. ✅ 原「未做模拟器取证」已补齐（见上表）。
 2. **重命名后的会话名同步**依赖 `OxAgentsBridge.syncAgents(false)`，需在本地账号模式下确认合成用户 last name 真的更新（属 8.3「群组反向同步」相邻能力，下轮可一并验）。
 3. 归档区目前是单一折叠层，未做「归档分组/文件夹」，若 agent 数量大，后续可考虑分组（非 8.1 范围）。

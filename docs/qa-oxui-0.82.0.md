@@ -35,7 +35,18 @@
 
 - `taskset -c 0-7 ./gradlew :TMessagesProj_AppStandalone:assembleAfatDebug` → 结果见提交说明（本轮已跑，见 CHANGELOG/AUTOPILOT 日志）。
 
-## 诚实缺口
+## 模拟器实测取证（2026-10-29 21:29，emulator-5554，OxUI preview）
 
-1. **未做模拟器截图取证**：本项仅验证编译与构建；「编辑一条消息后气泡出现 · edited」需在 `emulator-5554` 的 OxUI 前端实测截图。逻辑为纯本地字段 + 文本拼接，但按诚信原则不谎称端到端已验证。
+1. Ox Settings → Interface → **OxUI preview**，进入 OxUI 前端；选中 Sakura Waifu 会话。
+2. 长按用户气泡 → 菜单出现 `Copy / React… / Forward to… / Edit message / Delete message`。
+3. 点 `Edit message` → 打开预填编辑器 → 末尾追加 ` [edit]` → `Save`。
+4. 气泡下方时间戳由 `17:52` 变为 **`17:52  ·  edited`**（uiautomator 实测读到该文本）。
+5. logcat：`OxBridge: editOxEntry did=555000009 role=user store=true mid=100022 tl=true`
+   —— OxUI 存储与 Telegram messages_v2 均写入成功，无 FATAL。
+
+截图：`dist/iter-shots/oxui-8.2-edited.png`（气泡下可见 `17:52 · edited`）。
+
+## 诚实缺口（实测后更新）
+
+1. ✅ 原「未做模拟器取证」已补齐（见上）。
 2. Telegram 侧与本地的「edited」是两套独立标记（Telegram 由 messages_v2 自身管理，OxUI 由 `OxChatEntry.edited` 管理）；若未来从 Telegram 侧编辑、再回 OxUI，OxUI 不会自动得知——本轮只在 OxUI 内编辑时置位，跨端回写标记留待 8.3 相邻能力。
