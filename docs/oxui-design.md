@@ -105,6 +105,12 @@ The only entrance animation is the conversation fade/rise on first render.
   (charcoal ground, cream ink bubbles, unchanged chartreuse signal, status
   bar icons inverted) and all code animations honour the system animator
   scale. Symbol-only controls carry content descriptions.
+- Settings and agent editing (0.68): an in-app settings sheet (Agents footer
+  → Settings) offers theme follow/light/dark with immediate recreate, plus a
+  version/about block; the agent detail gains an Edit action that opens a
+  form for name, remark, model, persona and multi-select SKILL.md
+  association, saved back through OxAgentStore. BACK now closes overlays
+  (menu, sheets) before leaving the conversation.
 
 ## Not done yet / next
 
@@ -119,5 +125,6 @@ The only entrance animation is the conversation fade/rise on first render.
 - The preview is phone-first; no tablet two-pane layout yet.
 - Dynamic theme variants, reduced-motion handling and accessibility sweep are
   still to do.
-- Next round: dark variant and reduced-motion/accessibility sweep, then
-  settings and agent editing inside OxUI.
+- Next round: the remaining agent-editor fields (avatar, provider, sampling,
+  tool policy) and richer settings (backup/import, bridge), then tablet
+  layout and a full TalkBack pass.

@@ -1423,10 +1423,14 @@ These confirm the feature directions rather than relying on guesses. Checked
    driven by the system animator scale, an accessibility pass over every
    symbol-only control (cancel/attach/send/search/rail/menu/image cards),
    and in-conversation search v1.5 (header magnifier, n/N counter, cyclic
-   up/down navigation, 80dp scroll lead and a SIGNAL row flash). Still open:
-   avatar creation via emoji markup in agent-only mode, user-avatar RPC
-   family, offline title editing, cross-chat search aggregation, menu
-   scrolling beyond five rows, video/GIF/file attachments, settings, agent
-   editing, tablet layout, an in-app theme override, a full TalkBack pass,
-   token-level streaming. It is not yet a complete replacement for Telegram
-   UI.
+   up/down navigation, 80dp scroll lead and a SIGNAL row flash). 0.68.0 adds
+   an in-app settings sheet (theme: follow system / light / dark, applied
+   and persisted immediately, plus version/about) reached from the Agents
+   footer, and an agent editor (name, remark, model, persona, multi-select
+   SKILL.md association) opened from the agent detail, with BACK closing
+   overlays instead of leaving the app. Still open: avatar creation via
+   emoji markup in agent-only mode, user-avatar RPC family, offline title
+   editing, cross-chat search aggregation, menu scrolling beyond five rows,
+   video/GIF/file attachments, avatar/provider/sampling/tool-policy fields
+   in the agent editor, tablet layout, a full TalkBack pass, token-level
+   streaming. It is not yet a complete replacement for Telegram UI.

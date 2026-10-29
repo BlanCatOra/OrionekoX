@@ -4265,3 +4265,30 @@ debug `dist/OrionekoX-0.67.0-debug-arm64-x64.apk`（sha256
 `97c3c988eb96ac278df5cc626c496d4334ad99ac9580d487eb98cb65a56d25b1`）；
 构建日志 `/tmp/ox-build-0670-final.log`；QA 详见
 [docs/qa-0.67.0.md](qa-0.67.0.md)。
+## 5.190 alpha 0.68.0 —— OxUI 设置页 + Agent 编辑 + 应用内主题切换（2026-10-29 10:00–10:30）
+
+- 主题偏好：OxMode 增 `oxui_theme`（system|light|dark）；resolvePalette
+  优先该偏好，缺省跟随系统 night mode。
+- 设置页：入口在 Agents 面板 footer “Settings”（header 曾加 ⚙ 但 360dp
+  屏 4 控件导致标题换行，已移除）；THEME 三行单选（SIGNAL 圆点 +
+  active 标记），选择即写偏好并 recreate 即时换肤；ABOUT 显示
+  BuildConfig 版本与 local-first 说明。
+- Agent 编辑：详情页 Edit 按钮 → NAME/REMARK/MODEL/PERSONA + SKILLS
+  多选（OxSkillStore.list()，空列表有提示）+ Cancel/Save；Save 经
+  loadAgent 写回 name/remark/model/agentsMd/skillIds 并刷新列表。
+- BACK 修复：onBackPressed 增加 overlay 优先关闭（此前编辑页按 BACK
+  直接退出应用）。
+- 设备验证：设置面板/主题双切换（dark/light 均落盘并即时重建）、
+  Agent 编辑回填→改 REMARK+勾技能→Save 落盘（remark/skill_ids 正确、
+  名称人设未动）→详情回显→Cancel 不落盘→还原数据归零；release 6809
+  无 FATAL。
+- 清理：agent.json 已还原（remark 空/skills 空）、oxui_theme=system、
+  interface_mode=telegram。
+- 版本规则：按 minor 从 0.67.0 → **0.68.0**（6809），patch 清零。
+
+**产物**：`dist/OrionekoX-0.68.0-alpha-arm64-x64.apk`（versionCode 6809，
+sha256 `3b9804b2789212057e9c348e362eee3a10bf3979c7bfc0d0652907b0375cffa1`）；
+debug `dist/OrionekoX-0.68.0-debug-arm64-x64.apk`（sha256
+`50ef0815b4a6bdbadc42747f62a77f65398660254eb5bf9e71c0811f80a0794d`）；
+构建日志 `/tmp/ox-build-0680-final.log`；QA 详见
+[docs/qa-0.68.0.md](qa-0.68.0.md)。

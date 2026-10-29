@@ -4,6 +4,18 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.68.0 — 2026-10-29
+
+- In-app theme override: an oxui_theme preference (follow system / light /
+  dark) takes precedence over the system night mode; the settings sheet
+  applies and persists it immediately via recreate.
+- OxUI settings sheet (Agents footer -> Settings): theme rows with a SIGNAL
+  active dot, version/about block, local-first note.
+- Agent editor from the agent detail: name, remark, model, multi-line
+  persona and multi-select SKILL.md association saved back through
+  OxAgentStore with list refresh; empty names rejected.
+- BACK now closes the message menu and overlays before leaving the app.
+
 ## 0.67.0 — 2026-10-29
 
 - Dark variant: the palette resolves from the system night mode (charcoal

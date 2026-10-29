@@ -18,6 +18,32 @@ public class OxMode {
     public static final String IFACE_TELEGRAM = "telegram";
     public static final String IFACE_OXUI = "oxui";
 
+    public static final String THEME_SYSTEM = "system";
+    public static final String THEME_LIGHT = "light";
+    public static final String THEME_DARK = "dark";
+
+    /** OxUI palette override: system | light | dark. */
+    public static String getOxTheme() {
+        try {
+            Context ctx = ApplicationLoader.applicationContext;
+            if (ctx == null) return THEME_SYSTEM;
+            return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .getString("oxui_theme", THEME_SYSTEM);
+        } catch (Exception e) {
+            return THEME_SYSTEM;
+        }
+    }
+
+    public static void setOxTheme(String value) {
+        try {
+            Context ctx = ApplicationLoader.applicationContext;
+            if (ctx == null) return;
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .edit().putString("oxui_theme", value).apply();
+        } catch (Exception ignored) {
+        }
+    }
+
     public static final int PENDING_NONE = 0;
     public static final int PENDING_LOGIN = 1;
     public static final int PENDING_OX = 2;

@@ -85,9 +85,17 @@ public class OxUiPreviewActivity extends Activity {
     private boolean darkPalette;
 
     private void resolvePalette() {
-        boolean dark = (getResources().getConfiguration().uiMode
-                & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
-                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        String theme = org.telegram.ox.OxMode.getOxTheme();
+        boolean dark;
+        if (org.telegram.ox.OxMode.THEME_LIGHT.equals(theme)) {
+            dark = false;
+        } else if (org.telegram.ox.OxMode.THEME_DARK.equals(theme)) {
+            dark = true;
+        } else {
+            dark = (getResources().getConfiguration().uiMode
+                    & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                    == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        }
         darkPalette = dark;
         if (dark) {
             BONE = 0xFF141917;
@@ -211,6 +219,10 @@ public class OxUiPreviewActivity extends Activity {
         }
         if (menuHost != null && menuHost.getVisibility() == View.VISIBLE) {
             hideMessageMenu();
+            return;
+        }
+        if (overlay != null && overlay.getVisibility() == View.VISIBLE) {
+            hideOverlay();
             return;
         }
         if (rootMode) {
@@ -1111,6 +1123,15 @@ public class OxUiPreviewActivity extends Activity {
         hint.setTextColor(MUTED);
         footer.addView(hint, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView settingsLink = new TextView(this);
+        settingsLink.setText("Settings");
+        settingsLink.setTextSize(11);
+        settingsLink.setTypeface(sans());
+        settingsLink.setTextColor(INK);
+        settingsLink.setContentDescription("Settings");
+        settingsLink.setPadding(0, 0, dp(14), 0);
+        settingsLink.setOnClickListener(v -> showSettingsPanel());
+        footer.addView(settingsLink);
         TextView telegram = new TextView(this);
         telegram.setText(LocaleController.getString(R.string.OxUiOpenTelegram));
         telegram.setTextSize(11);
@@ -1542,6 +1563,348 @@ public class OxUiPreviewActivity extends Activity {
         return harness;
     }
 
+    private void showSettingsPanel() {
+        if (overlay == null) return;
+        hideKeyboard();
+        overlay.removeAllViews();
+        overlay.setVisibility(View.VISIBLE);
+        if (animationsEnabled()) {
+            overlay.setAlpha(0f);
+            overlay.animate().alpha(1f).setDuration(160).start();
+        } else {
+            overlay.setAlpha(1f);
+        }
+
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackgroundColor(BONE);
+        panel.setPadding(dp(22), dp(18), dp(22), dp(18));
+
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = new TextView(this);
+        title.setText("Settings");
+        title.setTextSize(28);
+        title.setTypeface(serif());
+        title.setTextColor(INK);
+        head.addView(title, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView close = new TextView(this);
+        close.setText("×");
+        close.setTextSize(24);
+        close.setTextColor(INK);
+        close.setGravity(Gravity.CENTER);
+        close.setContentDescription("Close");
+        close.setOnClickListener(v -> hideOverlay());
+        head.addView(close, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        panel.addView(head);
+
+        TextView themeLabel = new TextView(this);
+        themeLabel.setText("THEME");
+        themeLabel.setTextSize(11);
+        themeLabel.setTypeface(mono());
+        themeLabel.setTextColor(MUTED);
+        themeLabel.setLetterSpacing(0.08f);
+        themeLabel.setPadding(dp(4), dp(18), dp(4), dp(6));
+        panel.addView(themeLabel);
+
+        String[] values = {org.telegram.ox.OxMode.THEME_SYSTEM,
+                org.telegram.ox.OxMode.THEME_LIGHT, org.telegram.ox.OxMode.THEME_DARK};
+        String[] labels = {"Follow system", "Light", "Dark"};
+        String current = org.telegram.ox.OxMode.getOxTheme();
+        for (int i = 0; i < values.length; i++) {
+            final String value = values[i];
+            boolean active = values[i].equals(current);
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(4), dp(13), dp(4), dp(13));
+            row.setBackground(new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(RIPPLE), null, null));
+            row.setContentDescription(labels[i]);
+            View dot = new View(this);
+            dot.setBackground(active ? plate(SIGNAL, 6, 0, 0) : plate(0, 6, LINE, 1));
+            LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(12), dp(12));
+            dlp.rightMargin = dp(14);
+            row.addView(dot, dlp);
+            TextView label = new TextView(this);
+            label.setText(labels[i]);
+            label.setTextSize(14);
+            label.setTypeface(sans());
+            label.setTextColor(INK);
+            row.addView(label, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            if (active) {
+                TextView check = new TextView(this);
+                check.setText("active");
+                check.setTextSize(11);
+                check.setTypeface(mono());
+                check.setTextColor(MUTED);
+                row.addView(check);
+            }
+            row.setOnClickListener(v -> {
+                org.telegram.ox.OxMode.setOxTheme(value);
+                recreate();
+            });
+            panel.addView(row, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+
+        View rule = sectionRule();
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 1);
+        rlp.topMargin = dp(18);
+        panel.addView(rule, rlp);
+
+        TextView aboutLabel = new TextView(this);
+        aboutLabel.setText("ABOUT");
+        aboutLabel.setTextSize(11);
+        aboutLabel.setTypeface(mono());
+        aboutLabel.setTextColor(MUTED);
+        aboutLabel.setLetterSpacing(0.08f);
+        aboutLabel.setPadding(dp(4), dp(16), dp(4), dp(6));
+        panel.addView(aboutLabel);
+
+        TextView version = new TextView(this);
+        version.setText("OrionekoX alpha " + org.telegram.messenger.BuildConfig.BUILD_VERSION_STRING
+                + "  ·  OxUI preview");
+        version.setTextSize(12);
+        version.setTypeface(mono());
+        version.setTextColor(MUTED);
+        version.setPadding(dp(4), 0, dp(4), dp(4));
+        panel.addView(version);
+
+        TextView privacy = new TextView(this);
+        privacy.setText("Local-first: chats, memory and settings stay on this device.");
+        privacy.setTextSize(12);
+        privacy.setTypeface(sans());
+        privacy.setTextColor(MUTED);
+        privacy.setPadding(dp(4), dp(2), dp(4), 0);
+        panel.addView(privacy);
+
+        overlay.addView(panel, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        if (animationsEnabled()) {
+            panel.setAlpha(0f);
+            panel.animate().alpha(1f).setDuration(160).start();
+        }
+    }
+
+    private EditText editField(LinearLayout panel, String label, String value, int heightDp,
+            boolean multiline) {
+        TextView caption = new TextView(this);
+        caption.setText(label);
+        caption.setTextSize(11);
+        caption.setTypeface(mono());
+        caption.setTextColor(MUTED);
+        caption.setLetterSpacing(0.04f);
+        caption.setPadding(dp(4), dp(14), dp(4), dp(5));
+        panel.addView(caption);
+        EditText input = new EditText(this);
+        input.setText(value == null ? "" : value);
+        input.setTextSize(14);
+        input.setTypeface(sans());
+        input.setTextColor(INK);
+        input.setHintTextColor(MUTED);
+        input.setBackground(plate(PAPER, 14, LINE, 1));
+        input.setPadding(dp(12), dp(9), dp(12), dp(9));
+        input.setSingleLine(!multiline);
+        if (multiline) {
+            input.setGravity(Gravity.TOP | Gravity.START);
+            input.setMinLines(3);
+        }
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(heightDp));
+        panel.addView(input, lp);
+        return input;
+    }
+
+    /** OxUI agent editor: name, remark, model, persona and skill association. */
+    private void showAgentEdit(final OxAgent a) {
+        if (overlay == null || a == null) return;
+        hideKeyboard();
+        overlay.removeAllViews();
+        overlay.setVisibility(View.VISIBLE);
+        if (animationsEnabled()) {
+            overlay.setAlpha(0f);
+            overlay.animate().alpha(1f).setDuration(160).start();
+        } else {
+            overlay.setAlpha(1f);
+        }
+
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackgroundColor(BONE);
+        panel.setPadding(dp(22), dp(18), dp(22), dp(18));
+
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = new TextView(this);
+        title.setText("Edit agent");
+        title.setTextSize(28);
+        title.setTypeface(serif());
+        title.setTextColor(INK);
+        head.addView(title, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView close = new TextView(this);
+        close.setText("×");
+        close.setTextSize(24);
+        close.setTextColor(INK);
+        close.setGravity(Gravity.CENTER);
+        close.setContentDescription("Close");
+        close.setOnClickListener(v -> hideOverlay());
+        head.addView(close, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        panel.addView(head);
+
+        ScrollView bodyScroll = new ScrollView(this);
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        bodyScroll.addView(body, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        panel.addView(bodyScroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        final EditText nameIn = editField(body, "NAME", a.name, 46, false);
+        final EditText remarkIn = editField(body, "REMARK", a.remark, 46, false);
+        final EditText modelIn = editField(body, "MODEL", a.model, 46, false);
+        final EditText personaIn = editField(body, "PERSONA (AGENTS.MD)", a.agentsMd, 150, true);
+
+        TextView skillsLabel = new TextView(this);
+        skillsLabel.setText("SKILLS");
+        skillsLabel.setTextSize(11);
+        skillsLabel.setTypeface(mono());
+        skillsLabel.setTextColor(MUTED);
+        skillsLabel.setLetterSpacing(0.04f);
+        skillsLabel.setPadding(dp(4), dp(16), dp(4), dp(6));
+        body.addView(skillsLabel);
+
+        final java.util.LinkedHashSet<String> selectedSkills = new java.util.LinkedHashSet<>();
+        try {
+            for (int i = 0; i < a.skillIds.length(); i++) {
+                selectedSkills.add(a.skillIds.getString(i));
+            }
+        } catch (Throwable ignored) {
+        }
+        List<org.telegram.ox.OxSkillStore.Skill> skills = org.telegram.ox.OxSkillStore.list();
+        if (skills.isEmpty()) {
+            TextView none = new TextView(this);
+            none.setText("No SKILL.md packages found (Download/Operit/skills).");
+            none.setTextSize(12);
+            none.setTypeface(sans());
+            none.setTextColor(MUTED);
+            none.setPadding(dp(4), 0, dp(4), 0);
+            body.addView(none);
+        }
+        for (final org.telegram.ox.OxSkillStore.Skill skill : skills) {
+            final boolean[] on = {selectedSkills.contains(skill.id)};
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(4), dp(11), dp(4), dp(11));
+            row.setBackground(new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(RIPPLE), null, null));
+            row.setContentDescription(skill.name);
+            final View dot = new View(this);
+            dot.setBackground(on[0] ? plate(SIGNAL, 6, 0, 0) : plate(0, 6, LINE, 1));
+            LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(12), dp(12));
+            dlp.rightMargin = dp(14);
+            row.addView(dot, dlp);
+            LinearLayout texts = new LinearLayout(this);
+            texts.setOrientation(LinearLayout.VERTICAL);
+            TextView name = new TextView(this);
+            name.setText(skill.name);
+            name.setTextSize(14);
+            name.setTypeface(sans());
+            name.setTextColor(INK);
+            texts.addView(name);
+            if (skill.description != null && !skill.description.isEmpty()) {
+                TextView desc = new TextView(this);
+                desc.setText(skill.description);
+                desc.setTextSize(11);
+                desc.setTypeface(sans());
+                desc.setTextColor(MUTED);
+                desc.setMaxLines(2);
+                desc.setEllipsize(TextUtils.TruncateAt.END);
+                texts.addView(desc);
+            }
+            row.addView(texts, new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            row.setOnClickListener(v -> {
+                on[0] = !on[0];
+                if (on[0]) {
+                    selectedSkills.add(skill.id);
+                } else {
+                    selectedSkills.remove(skill.id);
+                }
+                dot.setBackground(on[0] ? plate(SIGNAL, 6, 0, 0) : plate(0, 6, LINE, 1));
+            });
+            body.addView(row, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setPadding(0, dp(14), 0, 0);
+        TextView cancel = new TextView(this);
+        cancel.setText("Cancel");
+        cancel.setTextSize(14);
+        cancel.setTypeface(sans());
+        cancel.setTextColor(INK);
+        cancel.setGravity(Gravity.CENTER);
+        cancel.setBackground(plate(0, 18, LINE, 1));
+        cancel.setPadding(dp(18), dp(10), dp(18), dp(10));
+        cancel.setOnClickListener(v -> hideOverlay());
+        actions.addView(cancel);
+        TextView save = new TextView(this);
+        save.setText("Save");
+        save.setTextSize(14);
+        save.setTypeface(sansMedium());
+        save.setTextColor(BONE);
+        save.setGravity(Gravity.CENTER);
+        save.setBackground(plate(INK, 18, 0, 0));
+        save.setPadding(dp(22), dp(10), dp(22), dp(10));
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        slp.leftMargin = dp(10);
+        actions.addView(save, slp);
+        panel.addView(actions);
+
+        save.setOnClickListener(v -> {
+            String name = nameIn.getText().toString().trim();
+            if (name.isEmpty()) {
+                Toast.makeText(this, "Name cannot be empty", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            try {
+                OxAgent fresh = OxAgentStore.loadAgent(a.id);
+                if (fresh == null) fresh = a;
+                fresh.name = name;
+                fresh.remark = remarkIn.getText().toString().trim();
+                fresh.model = modelIn.getText().toString().trim();
+                fresh.agentsMd = personaIn.getText().toString();
+                org.json.JSONArray ids = new org.json.JSONArray();
+                for (String id : selectedSkills) ids.put(id);
+                fresh.skillIds = ids;
+                OxAgentStore.saveAgent(fresh);
+                loadAgents();
+                hideOverlay();
+                refresh(true);
+                Toast.makeText(this, "Agent saved", Toast.LENGTH_SHORT).show();
+            } catch (Throwable t) {
+                Toast.makeText(this, "Save failed", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        overlay.addView(panel, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        if (animationsEnabled()) {
+            panel.setAlpha(0f);
+            panel.animate().alpha(1f).setDuration(160).start();
+        }
+    }
+
     private void showAgentDetail(OxAgent a) {
         if (overlay == null) return;
         hideKeyboard();
@@ -1658,10 +2021,28 @@ public class OxUiPreviewActivity extends Activity {
             renderAgents();
             refresh(true);
         });
+        LinearLayout actionsRow = new LinearLayout(this);
+        actionsRow.setOrientation(LinearLayout.HORIZONTAL);
+        actionsRow.setPadding(0, dp(18), 0, 0);
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        clp.topMargin = dp(18);
-        panel.addView(chat, clp);
+        actionsRow.addView(chat, clp);
+        TextView edit = new TextView(this);
+        edit.setText("Edit");
+        edit.setTextSize(14);
+        edit.setTypeface(sans());
+        edit.setTextColor(INK);
+        edit.setGravity(Gravity.CENTER);
+        edit.setPadding(dp(18), dp(11), dp(18), dp(11));
+        edit.setBackground(plate(0, 20, LINE, 1));
+        edit.setContentDescription("Edit agent");
+        final OxAgent editTarget = a;
+        edit.setOnClickListener(v -> showAgentEdit(editTarget));
+        LinearLayout.LayoutParams elp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        elp.leftMargin = dp(10);
+        actionsRow.addView(edit, elp);
+        panel.addView(actionsRow);
 
         overlay.addView(panel, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
