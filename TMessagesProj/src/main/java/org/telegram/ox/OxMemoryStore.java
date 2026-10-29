@@ -286,7 +286,7 @@ public class OxMemoryStore {
         List<List<String>> docs = new ArrayList<>();
         Map<String, Integer> df = new HashMap<>();
         for (Mem m : rows) {
-            if (m.invalidAt > 0 && !temporal) continue;
+            if (m.invalidAt > 0 && !temporal && !filters.includeHistorical) continue;
             List<String> doc = meaningfulTokens(m.text);
             active.add(m);
             docs.add(doc);
@@ -415,6 +415,7 @@ public class OxMemoryStore {
         long dateFrom = 0;
         long dateTo = 0;
         long dateExact = 0;
+        boolean includeHistorical = false;
     }
 
     private static RecallFilters parseRecallFilters(String raw) {
@@ -436,6 +437,9 @@ public class OxMemoryStore {
                 f.topics = val.toLowerCase(Locale.ROOT);
             }             else if (key.equals("status")) {
                 f.status = val;
+                if ("historical".equals(val) || "all".equals(val) || "history".equals(val)) {
+                    f.includeHistorical = true;
+                }
             } else if (key.equals("date") || key.equals("on")) {
                 f.dateExact = parseLocalDate(val);
             } else if (key.equals("after") || key.equals("since")) {
@@ -459,9 +463,16 @@ public class OxMemoryStore {
             } else if (f.topics != null && (m.topics == null
                     || !m.topics.toLowerCase(Locale.ROOT).contains(f.topics))) {
                 drop = true;
-            } else if (f.status != null && (m.status == null
-                    || !m.status.equalsIgnoreCase(f.status))) {
-                drop = true;
+            } else if (f.status != null) {
+                if (f.includeHistorical) {
+                    if ("all".equals(f.status)) {
+                        // keep every entry regardless of status
+                    } else { // "historical" / "history" → keep only superseded
+                        if (m.invalidAt <= 0) drop = true;
+                    }
+                } else if (m.status == null || !m.status.equalsIgnoreCase(f.status)) {
+                    drop = true;
+                }
             }
             if (!drop && f.dateExact > 0 && dayStart(m.createdAt) != f.dateExact) drop = true;
             if (!drop && f.dateFrom > 0 && m.createdAt < f.dateFrom) drop = true;
