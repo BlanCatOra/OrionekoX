@@ -128,6 +128,10 @@ The only entrance animation is the conversation fade/rise on first render.
   Nord" class of bugs. Credentials follow Termius's uniform key row: PWD
   and PST are text keys like the rest, backed by a local-only terminal
   secret that never enters the exported skin JSON.
+- File attachments (0.72): the composer ＋ opens a Photo / File menu and
+  files travel through the same local pipeline as photos — a 📄 capsule
+  preview, a real TL document message, a paper file bubble with name/size/
+  caption in OxUI, and a size/mime placeholder in the agent prompt.
 - Component DIY and materials (0.70): the skin now also carries component
   toggles (message density, timestamps, assistant accent rule, dock item
   visibility) and can be imported as JSON, not just exported. Floating docks

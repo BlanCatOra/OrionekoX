@@ -1448,7 +1448,12 @@ These confirm the feature directions rather than relying on guesses. Checked
    eleven palettes around measured WCAG contrast (text >= 6.6, dim >= 4.0,
    accent >= 4.75; output lines no longer dimmed by indentation) and replaced
    the emoji secret key with uniform Termius-style PWD/PST text keys backed by
-   a local-only terminal secret kept out of the exported skin JSON. Still open:
+   a local-only terminal secret kept out of the exported skin JSON.
+   0.72.0 starts the OxUI parity backlog: documents (any non-image/video file)
+   now send from OxUI with a Photo/File attach menu, a 📄 capsule preview and
+   a paper file bubble (name, size, caption, timestamp) that survives
+   restarts, backed by real TL document messages and a file placeholder in
+   the agent prompt. Still open:
    density for the composer and lists, file/QR skin sharing, ANSI-16
    terminal colours, avatar creation via emoji markup in agent-only mode,
    user-avatar RPC family, offline title editing, cross-chat search

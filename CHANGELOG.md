@@ -4,6 +4,15 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.72.0 — 2026-10-29
+
+- OxUI parity backlog starts with documents: the composer ＋ now opens a
+  Photo / File menu, files are copied locally (25 MB cap, original name) and
+  sent as real TL document messages with a 📄 capsule preview, a paper file
+  bubble (name, mono size, caption, timestamp) that survives restarts, and a
+  name/mime/size placeholder in the agent prompt. Group sends already
+  supported files; OxUI group history still shows the placeholder text.
+
 ## 0.71.0 — 2026-10-29
 
 - Audited all eleven terminal palettes against WCAG contrast and retuned
