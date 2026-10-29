@@ -1438,10 +1438,16 @@ These confirm the feature directions rather than relying on guesses. Checked
    above input / bottom) and rail/footer visibility, all persisted in the
    skin JSON. The terminal is a first-class surface with Termux/Termius-
    inspired session tabs, grouped quick keys, history, Tab completion, a mono
-   type-scale cycle and honest local-only commands. Still open: finer
-   per-component toggles (message rows, composer form, bubble shapes), real
-   blur-backed materials, avatar creation via emoji markup in agent-only
-   mode, user-avatar RPC family, offline title editing, cross-chat search
+   type-scale cycle and honest local-only commands. 0.70.0 adds
+   component-level toggles to the skin (message density, timestamps,
+   assistant accent rule, dock item visibility), JSON import alongside
+   export, a genuinely blurred floating dock (snapshot downscale + box blur
+   + material tint, refreshed on scroll) and eleven built-in terminal
+   palettes in the Termius/Solarized/Dracula/Nord family with an
+   accent-driven prompt, session underline and send key. Still open:
+   density for the composer and lists, file/QR skin sharing, ANSI-16
+   terminal colours, avatar creation via emoji markup in agent-only mode,
+   user-avatar RPC family, offline title editing, cross-chat search
    aggregation, video/GIF/file attachments, avatar/provider/sampling/tool-
    policy fields in the agent editor, tablet layout, a full TalkBack pass,
    token-level streaming. It is not yet a complete replacement for Telegram

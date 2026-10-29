@@ -4333,3 +4333,29 @@ sha256 `fcb0a90b36102eafaac72e97f615c71ea116d982e1c231b4686d724c13a37b3b`）；
 debug `dist/OrionekoX-0.69.0-debug-arm64-x64.apk`（sha256
 `b0a29643f5801b98ff3b9ae12de07c9afc81e210991ec4fea1d6b7c1ecdabf48`）；
 QA 详见 [docs/qa-0.69.0.md](qa-0.69.0.md)。
+## 5.192 alpha 0.70.0 —— 组件级 DIY + 皮肤导入 + 真实模糊 dock + 终端配色（2026-10-29 12:25–13:05）
+
+- 组件级 DIY：OxUiSkin 增 density（cozy/compact，消息行距 0.62×）、
+  showTimestamps、showAccent、dockItems（bitmask）；设置页 COMPONENTS
+  小节（Density 二选、两个开关、Dock items 四个显隐）；全部进皮肤 JSON。
+- 皮肤导入：Customize → Import JSON…（粘贴面板默认带出当前 JSON）→
+  OxUiSkin.fromJson → custom 落盘 + recreate；非法 JSON 提示。
+- 真实模糊 dock：floating dock 改为覆盖层，updateDockBlur() 快照 dock
+  背后像素→1/6 降采样→两遍 box blur→按材质 tint（glass 荧光 20%/mica
+  骨纸 80%/acrylic 60%）→圆角 LayerDrawable；滚动 260ms 防抖更新；
+  失败回退 drawable。
+- Termius 风格终端配色内置 11 套（Termius Dark/Light、Solarized
+  Dark/Light、Dracula、One Dark、Nord、Gruvbox Dark、Tokyo Night、
+  Monokai、Pure black），每套 bg/text/dim/accent，提示符/↵/tab 下划线/
+  输入框描边随 accent；选项面板可滚动 + 三色 swatch；活动 tab 文字色
+  随主题（修浅色不可读）。
+- 设备验证：玻璃 dock 快照模糊可见；Termius Light / Solarized Light /
+  Nord 实测即时生效并持久化；release 7009 无 FATAL；组件开关与导入
+  UI 已接入（逐项截图下一轮补）。
+- 版本规则：按 minor 从 0.69.0 → **0.70.0**（7009），patch 清零。
+
+**产物**：`dist/OrionekoX-0.70.0-alpha-arm64-x64.apk`（sha256
+`02a220f9adf3ebd2387faa86b65e19b91cd8966feb0354633f9ae96dd39514b0`）；
+debug `dist/OrionekoX-0.70.0-debug-arm64-x64.apk`（sha256
+`86b9ba1f15b62ede0d9697438040bbfd62c8b2c1dd9fa939af7d732a706c5aa9`）；
+QA 详见 [docs/qa-0.70.0.md](qa-0.70.0.md)。

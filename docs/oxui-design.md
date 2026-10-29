@@ -123,6 +123,15 @@ The only entrance animation is the conversation fade/rise on first render.
   a LOCAL status line, grouped quick keys, command history, Tab completion,
   an Aa size cycle and honest local commands; aesthetics follow Termux's
   real-device terminal and Termius's session chrome.
+- Component DIY and materials (0.70): the skin now also carries component
+  toggles (message density, timestamps, assistant accent rule, dock item
+  visibility) and can be imported as JSON, not just exported. Floating docks
+  overlay content and are given a real blurred surface (snapshot, 1/6
+  downscale, two box-blur passes, material tint, rounded outline, refreshed
+  on scroll). The terminal offers eleven built-in palettes — Termius
+  Dark/Light, Solarized Dark/Light, Dracula, One Dark, Nord, Gruvbox Dark,
+  Tokyo Night, Monokai, pure black — where the accent colour drives the
+  prompt, session underline, send key and input border.
 
 ## Not done yet / next
 

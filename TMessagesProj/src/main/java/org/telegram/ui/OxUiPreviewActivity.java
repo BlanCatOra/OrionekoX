@@ -86,6 +86,7 @@ public class OxUiPreviewActivity extends Activity {
     private LinearLayout footerRow;
     private LinearLayout composerWrap;
     private FrameLayout dockHost;
+    private Runnable pendingDockBlur;
     private static final int SENDING_ALPHA = 190;
 
     private boolean darkPalette;
@@ -267,6 +268,14 @@ public class OxUiPreviewActivity extends Activity {
         } catch (Throwable t) {
             return true;
         }
+    }
+
+    private boolean compactDensity() {
+        return skin != null && "compact".equals(skin.density);
+    }
+
+    private int rowGap(int cozy) {
+        return dp(compactDensity() ? Math.max(6, cozy * 0.62f) : cozy);
     }
 
     /** Type scale: every skin can scale the whole reading system by +/-8%. */
@@ -642,11 +651,14 @@ public class OxUiPreviewActivity extends Activity {
         send.setEnabled(false);
         updateSendVisual();
 
-        attachDock(root);
-
         FrameLayout shell = new FrameLayout(this);
         shell.addView(root, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        dockHost = new FrameLayout(this);
+        dockHost.setVisibility(View.GONE);
+        shell.addView(dockHost, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        attachDock(root);
         menuHost = new FrameLayout(this);
         menuHost.setVisibility(View.GONE);
         menuHost.setClickable(true);
@@ -864,7 +876,7 @@ public class OxUiPreviewActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.END);
-        row.setPadding(0, dp(12), 0, 0);
+        row.setPadding(0, rowGap(12), 0, 0);
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         // Center the image when the caption row is wider than it, instead of
@@ -1068,6 +1080,48 @@ public class OxUiPreviewActivity extends Activity {
         boolean floating = "floating".equals(skin.navStyle);
         String pos = skin.dockPosition == null ? "aboveInput" : skin.dockPosition;
         LinearLayout dock = buildDock(floating);
+        if (dock.getChildCount() == 0) return;
+        if (floating && dockHost != null) {
+            // Floating docks overlay content so the material can actually blur
+            // what is behind it; a snapshot of the region is blurred and used
+            // as the dock surface.
+            LinearLayout holder = new LinearLayout(this);
+            holder.setOrientation(LinearLayout.VERTICAL);
+            holder.setPadding(dp(24), 0, dp(24), 0);
+            holder.addView(dock, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            flp.gravity = Gravity.BOTTOM;
+            if ("top".equals(pos)) {
+                flp.gravity = Gravity.TOP;
+                flp.topMargin = dp(72);
+            } else if ("bottom".equals(pos)) {
+                flp.bottomMargin = dp(40);
+            }
+            dockHost.addView(holder, flp);
+            dockHost.setVisibility(View.VISIBLE);
+            final View dockFinal = dock;
+            if (scroll != null) {
+                scroll.setOnScrollChangeListener((v, sx, sy, osx, osy) -> {
+                    if (pendingDockBlur != null) handler.removeCallbacks(pendingDockBlur);
+                    pendingDockBlur = () -> updateDockBlur(dockFinal);
+                    handler.postDelayed(pendingDockBlur, 260);
+                });
+            }
+            dockHost.post(() -> {
+                if ("aboveInput".equals(pos)) {
+                    int composerH = composerWrap == null ? 0 : composerWrap.getHeight();
+                    FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) holder.getLayoutParams();
+                    lp.bottomMargin = composerH + dp(10);
+                    holder.setLayoutParams(lp);
+                    dockHost.post(() -> updateDockBlur(dockFinal));
+                } else {
+                    updateDockBlur(dockFinal);
+                }
+            });
+            return;
+        }
         int index;
         if ("top".equals(pos)) {
             index = root.indexOfChild(railScroll);
@@ -1095,18 +1149,29 @@ public class OxUiPreviewActivity extends Activity {
         if (floating) {
             dock.setElevation(dp(8));
         }
-        String[][] items = {
+        String[][] allItems = {
                 {"Agents", "☰"},
                 {"Search", "⌕"},
                 {"Terminal", "❯_"},
                 {"Settings", "⚙"}
         };
-        Runnable[] actions = {
+        Runnable[] allActions = {
                 this::showAgentPanel,
                 this::toggleChatSearch,
                 this::openTerminal,
                 this::showSettingsPanel
         };
+        int mask = skin == null ? 15 : skin.dockItems;
+        java.util.List<Integer> enabled = new ArrayList<>();
+        for (int i = 0; i < allItems.length; i++) {
+            if ((mask & (1 << i)) != 0) enabled.add(i);
+        }
+        String[][] items = new String[enabled.size()][];
+        Runnable[] actions = new Runnable[enabled.size()];
+        for (int i = 0; i < enabled.size(); i++) {
+            items[i] = allItems[enabled.get(i)];
+            actions[i] = allActions[enabled.get(i)];
+        }
         for (int i = 0; i < items.length; i++) {
             final int index = i;
             LinearLayout item = new LinearLayout(this);
@@ -1138,6 +1203,95 @@ public class OxUiPreviewActivity extends Activity {
         return dock;
     }
 
+    /** Real frosted surface: snapshots the pixels behind the dock, downscales,
+     *  box-blurs and uses the result as the dock background with the selected
+     *  material tint. Works on every API; visually denser than a flat tint. */
+    private void updateDockBlur(final View dock) {
+        if (dock == null || dockHost == null || skin == null) return;
+        String mat = skin.navMaterial;
+        if ("solid".equals(mat)) return;
+        try {
+            final int[] loc = new int[2];
+            final int[] hostLoc = new int[2];
+            dock.getLocationInWindow(loc);
+            dockHost.getLocationInWindow(hostLoc);
+            int x = loc[0] - hostLoc[0];
+            int y = loc[1] - hostLoc[1];
+            int w = dock.getWidth();
+            int h = dock.getHeight();
+            if (w <= 0 || h <= 0) return;
+            View content = rootViewForBlur();
+            if (content == null) return;
+            int scale = 6;
+            int bw = Math.max(4, w / scale);
+            int bh = Math.max(4, h / scale);
+            android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(bw, bh,
+                    android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas c = new android.graphics.Canvas(small);
+            c.scale(1f / scale, 1f / scale);
+            c.translate(-x, -y);
+            content.draw(c);
+            boxBlur(small, 2);
+            android.graphics.Bitmap big = android.graphics.Bitmap.createScaledBitmap(
+                    small, w, h, true);
+            if (small != big) small.recycle();
+            float radius = 18 * (skin.radiusScale <= 0 ? 1 : skin.radiusScale);
+            androidx.core.graphics.drawable.RoundedBitmapDrawable rounded =
+                    androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
+                            .create(getResources(), big);
+            rounded.setCornerRadius(dp(radius));
+            int tint = "glass".equals(mat) ? (SIGNAL & 0x00FFFFFF) | 0x33000000
+                    : "mica".equals(mat) ? (BONE & 0x00FFFFFF) | 0xCC000000
+                    : (BONE & 0x00FFFFFF) | 0x99000000;
+            android.graphics.drawable.Drawable[] layers = {
+                    new android.graphics.drawable.ColorDrawable(tint), rounded};
+            dock.setBackground(new android.graphics.drawable.LayerDrawable(layers));
+            dock.setClipToOutline(true);
+            dock.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, android.graphics.Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), dp(radius));
+                }
+            });
+        } catch (Throwable t) {
+            // fall back to the drawable material
+        }
+    }
+
+    private View rootViewForBlur() {
+        if (dockHost == null) return null;
+        View parent = (View) dockHost.getParent();
+        return parent == null ? dockHost : parent;
+    }
+
+    private void boxBlur(android.graphics.Bitmap bmp, int passes) {
+        int w = bmp.getWidth(), h = bmp.getHeight();
+        int[] px = new int[w * h];
+        bmp.getPixels(px, 0, w, 0, 0, w, h);
+        for (int p = 0; p < passes; p++) {
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int a = 0, r = 0, g = 0, bl = 0, n = 0;
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dx = -1; dx <= 1; dx++) {
+                            int xx = x + dx, yy = y + dy;
+                            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+                            int v = px[yy * w + xx];
+                            a += (v >>> 24) & 0xFF;
+                            r += (v >> 16) & 0xFF;
+                            g += (v >> 8) & 0xFF;
+                            bl += v & 0xFF;
+                            n++;
+                        }
+                    }
+                    px[y * w + x] = ((a / n) << 24) | ((r / n) << 16)
+                            | ((g / n) << 8) | (bl / n);
+                }
+            }
+        }
+        bmp.setPixels(px, 0, w, 0, 0, w, h);
+    }
+
     /** Material layer for the dock: solid paper, acrylic, mica or a liquid-glass
      *  imitation. All are honest approximations built from drawable layers. */
     private GradientDrawable materialSurface(float radius) {
@@ -1156,6 +1310,36 @@ public class OxUiPreviewActivity extends Activity {
             d = plate(PAPER, r, LINE, 1);
         }
         return d;
+    }
+
+    /** Built-in terminal palettes inspired by Termius / popular schemes.
+     *  Returns {background, text, dim, accent}. */
+    private int[] termPalette(String id) {
+        if (id == null) id = "termius-dark";
+        switch (id) {
+            case "termius-light": return new int[]{0xFFF5F7F6, 0xFF16211C, 0xFF6B7A72, 0xFF176F6B};
+            case "solarized-dark": return new int[]{0xFF002B36, 0xFF93A1A1, 0xFF586E75, 0xFF2AA198};
+            case "solarized-light": return new int[]{0xFFFDF6E3, 0xFF657B83, 0xFF93A1A1, 0xFF268BD2};
+            case "dracula": return new int[]{0xFF282A36, 0xFFF8F8F2, 0xFF6272A4, 0xFFBD93F9};
+            case "one-dark": return new int[]{0xFF282C34, 0xFFABB2BF, 0xFF5C6370, 0xFF98C379};
+            case "nord": return new int[]{0xFF2E3440, 0xFFD8DEE9, 0xFF4C566A, 0xFF88C0D0};
+            case "gruvbox-dark": return new int[]{0xFF282828, 0xFFEBDBB2, 0xFF928374, 0xFFFABD2F};
+            case "tokyo-night": return new int[]{0xFF1A1B26, 0xFFA9B1D6, 0xFF565F89, 0xFF7AA2F7};
+            case "monokai": return new int[]{0xFF272822, 0xFFF8F8F2, 0xFF75715E, 0xFFA6E22E};
+            case "black": return new int[]{0xFF000000, 0xFFE8E8E8, 0xFF707070, 0xFFC8EF6A};
+            case "solarized": return new int[]{0xFF002B36, 0xFF93A1A1, 0xFF586E75, 0xFF2AA198};
+            case "dark":
+            case "termius-dark":
+            default: return new int[]{0xFF0B1110, 0xFFDCE6DE, 0xFF6E7F76, 0xFFC8EF6A};
+        }
+    }
+
+    private int[] termPaletteForSkin() {
+        return termPalette(skin == null ? "termius-dark" : skin.termTheme);
+    }
+
+    private int termAccentStatic() {
+        return termPalette(skin == null ? "termius-dark" : skin.termTheme)[3];
     }
 
     /** Terminal options, mirroring Termius's Font & colours / hotkeys / input
@@ -1202,11 +1386,19 @@ public class OxUiPreviewActivity extends Activity {
         themeLabel.setLetterSpacing(0.08f);
         themeLabel.setPadding(dp(4), dp(16), dp(4), dp(6));
         panel.addView(themeLabel);
-        String curTheme = skin == null ? "dark" : skin.termTheme;
+        String curTheme = skin == null ? "termius-dark" : skin.termTheme;
         String[][] themes = {
-                {"Termius Dark", "dark"},
-                {"Pure black", "black"},
-                {"Solarized", "solarized"}
+                {"Termius Dark", "termius-dark"},
+                {"Termius Light", "termius-light"},
+                {"Solarized Dark", "solarized-dark"},
+                {"Solarized Light", "solarized-light"},
+                {"Dracula", "dracula"},
+                {"One Dark", "one-dark"},
+                {"Nord", "nord"},
+                {"Gruvbox Dark", "gruvbox-dark"},
+                {"Tokyo Night", "tokyo-night"},
+                {"Monokai", "monokai"},
+                {"Pure black", "black"}
         };
         for (String[] t : themes) {
             boolean active = t[1].equals(curTheme);
@@ -1217,10 +1409,19 @@ public class OxUiPreviewActivity extends Activity {
             row.setBackground(new android.graphics.drawable.RippleDrawable(
                     ColorStateList.valueOf(RIPPLE), null, null));
             row.setContentDescription(t[0]);
+            int[] preview = termPalette(t[1]);
+            for (int ci = 0; ci < 3; ci++) {
+                View sw = new View(this);
+                sw.setBackground(plate(preview[ci == 0 ? 0 : (ci == 1 ? 1 : 3)], 4, LINE, 1));
+                LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(dp(10), dp(10));
+                slp.rightMargin = dp(4);
+                row.addView(sw, slp);
+            }
             View dot = new View(this);
             dot.setBackground(active ? plate(SIGNAL, 6, 0, 0) : plate(0, 6, LINE, 1));
             LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(12), dp(12));
-            dlp.rightMargin = dp(14);
+            dlp.leftMargin = dp(8);
+            dlp.rightMargin = dp(10);
             row.addView(dot, dlp);
             TextView label = new TextView(this);
             label.setText(t[0]);
@@ -1257,7 +1458,10 @@ public class OxUiPreviewActivity extends Activity {
         note.setTextColor(MUTED);
         note.setPadding(dp(4), dp(16), dp(4), 0);
         panel.addView(note);
-        overlay.addView(panel, new FrameLayout.LayoutParams(
+        ScrollView optionsScroll = new ScrollView(this);
+        optionsScroll.addView(panel, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        overlay.addView(optionsScroll, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
@@ -1315,23 +1519,12 @@ public class OxUiPreviewActivity extends Activity {
         } else {
             overlay.setAlpha(1f);
         }
-        String termTheme = skin == null ? "dark" : skin.termTheme;
-        final int termBg;
-        final int termText;
-        final int termDim;
-        if ("black".equals(termTheme)) {
-            termBg = 0xFF000000;
-            termText = 0xFFE8E8E8;
-            termDim = 0xFF707070;
-        } else if ("solarized".equals(termTheme)) {
-            termBg = 0xFF002B36;
-            termText = 0xFF93A1A1;
-            termDim = 0xFF586E75;
-        } else {
-            termBg = 0xFF0B1110;
-            termText = 0xFFDCE6DE;
-            termDim = 0xFF6E7F76;
-        }
+        String termTheme = skin == null ? "termius-dark" : skin.termTheme;
+        int[] palette = termPalette(termTheme);
+        final int termBg = palette[0];
+        final int termText = palette[1];
+        final int termDim = palette[2];
+        final int termAccent = palette[3];
         final int keyBg = 0x12FFFFFF;
 
         LinearLayout panel = new LinearLayout(this);
@@ -1346,7 +1539,7 @@ public class OxUiPreviewActivity extends Activity {
         title.setText("❯_ terminal");
         title.setTextSize(14);
         title.setTypeface(mono());
-        title.setTextColor(termText);
+        title.setTextColor(termAccent);
         title.setLetterSpacing(0.02f);
         head.addView(title, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -1484,13 +1677,13 @@ public class OxUiPreviewActivity extends Activity {
         LinearLayout inputRow = new LinearLayout(this);
         inputRow.setOrientation(LinearLayout.HORIZONTAL);
         inputRow.setGravity(Gravity.CENTER_VERTICAL);
-        inputRow.setBackground(plate(0, 10, 0x2FC8EF6A, 1));
+        inputRow.setBackground(plate(0, 10, (termAccent & 0x00FFFFFF) | 0x2F000000, 1));
         inputRow.setPadding(dp(12), dp(5), dp(5), dp(5));
         TextView prompt = new TextView(this);
         prompt.setText("❯");
         prompt.setTextSize(14);
         prompt.setTypeface(mono());
-        prompt.setTextColor(SIGNAL);
+        prompt.setTextColor(termAccent);
         inputRow.addView(prompt, new LinearLayout.LayoutParams(dp(18),
                 ViewGroup.LayoutParams.WRAP_CONTENT));
         final EditText input = new EditText(this);
@@ -1515,9 +1708,9 @@ public class OxUiPreviewActivity extends Activity {
         run.setText("↵");
         run.setTextSize(16);
         run.setTypeface(mono());
-        run.setTextColor(0xFF0B1110);
+        run.setTextColor(termBg);
         run.setGravity(Gravity.CENTER);
-        run.setBackground(plate(SIGNAL, 7, 0, 0));
+        run.setBackground(plate(termAccent, 7, 0, 0));
         run.setContentDescription("Run command");
         run.setOnClickListener(v -> {
             runTerminalCommand(input.getText().toString());
@@ -1636,10 +1829,10 @@ public class OxUiPreviewActivity extends Activity {
             label.setText(termSessions.get(i).name);
             label.setTextSize(12);
             label.setTypeface(mono());
-            label.setTextColor(active ? 0xFFDCE6DE : dimColor);
+            label.setTextColor(active ? termPaletteForSkin()[1] : dimColor);
             tab.addView(label);
             View underline = new View(this);
-            underline.setBackgroundColor(active ? SIGNAL : 0x00000000);
+            underline.setBackgroundColor(active ? (termAccentStatic()) : 0x00000000);
             LinearLayout.LayoutParams ulp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, dp(2));
             ulp.topMargin = dp(4);
@@ -1685,7 +1878,7 @@ public class OxUiPreviewActivity extends Activity {
             boolean isPrompt = line.startsWith("❯ ");
             boolean isDim = line.startsWith("#") || line.startsWith("  ")
                     || line.startsWith("session ");
-            tv.setTextColor(isPrompt ? SIGNAL : (isDim ? dimColor : textColor));
+            tv.setTextColor(isPrompt ? termAccentStatic() : (isDim ? dimColor : textColor));
             tv.setLineSpacing(dp(3), 1.06f);
             tv.setPadding(0, dp(first ? 0 : 2), 0, dp(isPrompt ? 2 : 0));
             first = false;
@@ -2521,6 +2714,15 @@ public class OxUiPreviewActivity extends Activity {
         note.setTextColor(MUTED);
         note.setPadding(dp(4), dp(14), dp(4), 0);
         body.addView(note);
+        TextView importLink = new TextView(this);
+        importLink.setText("Import JSON…");
+        importLink.setTextSize(12);
+        importLink.setTypeface(sansMedium());
+        importLink.setTextColor(CLAY);
+        importLink.setPadding(dp(4), dp(10), dp(4), 0);
+        importLink.setContentDescription("Import skin JSON");
+        importLink.setOnClickListener(v -> showSkinImport());
+        body.addView(importLink);
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
@@ -2670,6 +2872,9 @@ public class OxUiPreviewActivity extends Activity {
         if ("navStyle".equals(field)) copy.navStyle = value;
         if ("navMaterial".equals(field)) copy.navMaterial = value;
         if ("dockPosition".equals(field)) copy.dockPosition = value;
+        if ("density".equals(field)) copy.density = value;
+        if ("showTimestamps".equals(field)) copy.showTimestamps = Boolean.parseBoolean(value);
+        if ("showAccent".equals(field)) copy.showAccent = Boolean.parseBoolean(value);
         if ("showRail".equals(field)) copy.showRail = Boolean.parseBoolean(value);
         if ("showFooter".equals(field)) copy.showFooter = Boolean.parseBoolean(value);
         org.telegram.ox.OxUiSkin.apply(copy);
@@ -2718,8 +2923,9 @@ public class OxUiPreviewActivity extends Activity {
                 row.addView(check);
             }
             final String value = opt[1];
-            row.setOnClickListener(v -> setSkinField(
-                    "Navigation".equals(label) ? "navStyle" : "navMaterial", value));
+            final String fieldName = "Navigation".equals(label) ? "navStyle"
+                    : ("Density".equals(label) ? "density" : "navMaterial");
+            row.setOnClickListener(v -> setSkinField(fieldName, value));
             wrap.addView(row);
         }
         return wrap;
@@ -2753,6 +2959,143 @@ public class OxUiPreviewActivity extends Activity {
         row.addView(state);
         row.setOnClickListener(v -> setSkinField(field, String.valueOf(!on)));
         return row;
+    }
+
+    private LinearLayout dockItemToggle(String label, int bit, boolean on) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(4), dp(11), dp(4), dp(11));
+        row.setBackground(new android.graphics.drawable.RippleDrawable(
+                ColorStateList.valueOf(RIPPLE), null, null));
+        row.setContentDescription("Dock item " + label);
+        View dot = new View(this);
+        dot.setBackground(on ? plate(SIGNAL, 6, 0, 0) : plate(0, 6, LINE, 1));
+        LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(12), dp(12));
+        dlp.rightMargin = dp(14);
+        row.addView(dot, dlp);
+        TextView text = new TextView(this);
+        text.setText(label);
+        text.setTextSize(14);
+        text.setTypeface(sans());
+        text.setTextColor(INK);
+        row.addView(text, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView state = new TextView(this);
+        state.setText(on ? "shown" : "hidden");
+        state.setTextSize(11);
+        state.setTypeface(mono());
+        state.setTextColor(MUTED);
+        row.addView(state);
+        row.setOnClickListener(v -> {
+            org.telegram.ox.OxUiSkin copy = copyActiveSkin();
+            if (on) {
+                copy.dockItems &= ~(1 << bit);
+            } else {
+                copy.dockItems |= (1 << bit);
+            }
+            org.telegram.ox.OxUiSkin.apply(copy);
+            recreate();
+        });
+        return row;
+    }
+
+    /** Skin import: paste a JSON exported from another install (or shared
+     *  by someone else) and apply it as the custom skin. */
+    private void showSkinImport() {
+        if (overlay == null) return;
+        hideKeyboard();
+        overlay.removeAllViews();
+        overlay.setVisibility(View.VISIBLE);
+        if (animationsEnabled()) {
+            overlay.setAlpha(0f);
+            overlay.animate().alpha(1f).setDuration(140).start();
+        } else {
+            overlay.setAlpha(1f);
+        }
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackgroundColor(BONE);
+        panel.setPadding(dp(22), dp(18), dp(22), dp(18));
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = new TextView(this);
+        title.setText("Import skin JSON");
+        title.setTextSize(24);
+        title.setTypeface(serif());
+        title.setTextColor(INK);
+        head.addView(title, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView close = new TextView(this);
+        close.setText("×");
+        close.setTextSize(22);
+        close.setTextColor(INK);
+        close.setGravity(Gravity.CENTER);
+        close.setContentDescription("Close");
+        close.setOnClickListener(v -> hideOverlay());
+        head.addView(close, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        panel.addView(head);
+        TextView hint = new TextView(this);
+        hint.setText("Paste a skin JSON (from Copy JSON) and apply it as the custom skin.");
+        hint.setTextSize(12);
+        hint.setTypeface(sans());
+        hint.setTextColor(MUTED);
+        hint.setPadding(dp(4), dp(10), dp(4), dp(8));
+        panel.addView(hint);
+        final EditText input = new EditText(this);
+        input.setText((skin == null ? org.telegram.ox.OxUiSkin.byId("qingmo") : skin)
+                .toJson().toString());
+        input.setTextSize(11);
+        input.setTypeface(mono());
+        input.setTextColor(INK);
+        input.setBackground(plate(PAPER, 12, LINE, 1));
+        input.setPadding(dp(12), dp(10), dp(12), dp(10));
+        input.setGravity(Gravity.TOP | Gravity.START);
+        input.setMinLines(6);
+        input.setContentDescription("Skin JSON");
+        panel.addView(input, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setPadding(0, dp(12), 0, 0);
+        TextView cancel = new TextView(this);
+        cancel.setText("Cancel");
+        cancel.setTextSize(13);
+        cancel.setTypeface(sans());
+        cancel.setTextColor(INK);
+        cancel.setGravity(Gravity.CENTER);
+        cancel.setBackground(plate(0, 18, LINE, 1));
+        cancel.setPadding(dp(16), dp(10), dp(16), dp(10));
+        cancel.setOnClickListener(v -> hideOverlay());
+        actions.addView(cancel);
+        TextView apply = new TextView(this);
+        apply.setText("Apply");
+        apply.setTextSize(13);
+        apply.setTypeface(sansMedium());
+        apply.setTextColor(BONE);
+        apply.setGravity(Gravity.CENTER);
+        apply.setBackground(plate(SIGNAL, 18, 0, 0));
+        apply.setPadding(dp(20), dp(10), dp(20), dp(10));
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        alp.leftMargin = dp(10);
+        actions.addView(apply, alp);
+        apply.setOnClickListener(v -> {
+            try {
+                org.json.JSONObject o = new org.json.JSONObject(input.getText().toString().trim());
+                org.telegram.ox.OxUiSkin imported = org.telegram.ox.OxUiSkin.fromJson(o);
+                imported.id = "custom";
+                imported.name = o.optString("name", "Custom");
+                org.telegram.ox.OxUiSkin.apply(imported);
+                recreate();
+            } catch (Throwable t) {
+                Toast.makeText(this, "Invalid skin JSON", Toast.LENGTH_SHORT).show();
+            }
+        });
+        panel.addView(actions);
+        overlay.addView(panel, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     private void showSettingsPanel() {
@@ -2944,6 +3287,33 @@ public class OxUiPreviewActivity extends Activity {
         }, navMaterial, false));
         panel.addView(shellToggle("Rail chips", skin == null || skin.showRail, "showRail"));
         panel.addView(shellToggle("Footer status", skin == null || skin.showFooter, "showFooter"));
+
+        TextView componentsLabel = new TextView(this);
+        componentsLabel.setText("COMPONENTS");
+        componentsLabel.setTextSize(11);
+        componentsLabel.setTypeface(mono());
+        componentsLabel.setTextColor(MUTED);
+        componentsLabel.setLetterSpacing(0.08f);
+        componentsLabel.setPadding(dp(4), dp(18), dp(4), dp(6));
+        panel.addView(componentsLabel);
+        final String density = skin == null ? "cozy" : skin.density;
+        panel.addView(shellChoice("Density", new String[][]{
+                {"Cozy", "cozy"}, {"Compact", "compact"}
+        }, density, true));
+        panel.addView(shellToggle("Timestamps", skin == null || skin.showTimestamps, "showTimestamps"));
+        panel.addView(shellToggle("Assistant accent rule", skin == null || skin.showAccent, "showAccent"));
+        TextView dockLabel = new TextView(this);
+        dockLabel.setText("Dock items");
+        dockLabel.setTextSize(11);
+        dockLabel.setTypeface(mono());
+        dockLabel.setTextColor(MUTED);
+        dockLabel.setPadding(dp(4), dp(12), dp(4), dp(4));
+        panel.addView(dockLabel);
+        final int dockMask = skin == null ? 15 : skin.dockItems;
+        String[] dockNames = {"Agents", "Search", "Terminal", "Settings"};
+        for (int i = 0; i < 4; i++) {
+            panel.addView(dockItemToggle(dockNames[i], i, (dockMask & (1 << i)) != 0));
+        }
 
         View rule = sectionRule();
         LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
@@ -3675,7 +4045,7 @@ public class OxUiPreviewActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.END);
-        row.setPadding(0, dp(12), 0, 0);
+        row.setPadding(0, rowGap(12), 0, 0);
         if (quoteSender != null && quoteText != null && !quoteText.isEmpty()) {
             String name = resolveAgentName(quoteSender);
             TextView quoteLine = new TextView(this);
@@ -3710,8 +4080,10 @@ public class OxUiPreviewActivity extends Activity {
             });
             quoteWrap.addView(bubble, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            if (!sending) quoteWrap.addView(userTimestamp(ts), new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            if (!sending && (skin == null || skin.showTimestamps)) {
+                quoteWrap.addView(userTimestamp(ts), new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            }
             row.addView(quoteWrap, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             row.setTag(ts);
@@ -3743,9 +4115,10 @@ public class OxUiPreviewActivity extends Activity {
         wrap.setGravity(Gravity.END);
         wrap.addView(bubble, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        TextView stamp = userTimestamp(ts);
-        if (!sending) wrap.addView(stamp, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        if (!sending && (skin == null || skin.showTimestamps)) {
+            wrap.addView(userTimestamp(ts), new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
         row.addView(wrap, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         row.setTag(ts);
@@ -3770,14 +4143,16 @@ public class OxUiPreviewActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.TOP);
-        row.setPadding(0, dp(16), 0, 0);
+        row.setPadding(0, rowGap(16), 0, 0);
 
-        View accent = new View(this);
-        accent.setBackgroundColor(SIGNAL);
-        // Match_parent so the chartreuse rule spans the whole message on long
-        // replies instead of stopping after the meta line.
-        row.addView(accent, new LinearLayout.LayoutParams(dp(2),
-                ViewGroup.LayoutParams.MATCH_PARENT));
+        if (skin == null || skin.showAccent) {
+            View accent = new View(this);
+            accent.setBackgroundColor(SIGNAL);
+            // Match_parent so the chartreuse rule spans the whole message on
+            // long replies instead of stopping after the meta line.
+            row.addView(accent, new LinearLayout.LayoutParams(dp(2),
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        }
 
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);

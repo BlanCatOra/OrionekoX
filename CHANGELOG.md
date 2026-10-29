@@ -4,6 +4,21 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.70.0 — 2026-10-29
+
+- Component-level DIY on top of skins: message density, timestamp and
+  assistant-accent toggles, and dock item visibility, all persisted in the
+  skin JSON and editable from a new COMPONENTS section.
+- Skin import: paste a JSON exported elsewhere (Copy JSON) and apply it as
+  the custom skin.
+- Floating docks now use a genuinely blurred surface: the pixels behind the
+  dock are snapshotted, downscaled, box-blurred and tinted by the material,
+  refreshed on scroll.
+- Eleven built-in terminal palettes in the Termius family (Termius Dark /
+  Light, Solarized Dark / Light, Dracula, One Dark, Nord, Gruvbox Dark,
+  Tokyo Night, Monokai, pure black) with an accent-driven prompt, tabs and
+  send key, plus a scrollable options sheet with colour swatches.
+
 ## 0.69.0 — 2026-10-29
 
 - Turns a seven-model design battle (claude-haiku-5.5, gpt-6-luna in three
