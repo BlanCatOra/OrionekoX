@@ -88,6 +88,94 @@ public class OxAgentsBridge {
     }
 
     /**
+     * Reverse sync for deletes started in Telegram UI: before MessagesController
+     * removes the rows, map each mid to its text/date and drop the matching
+     * OxChatEntry (content prefix first, nearest timestamp for caption-less
+     * media). Called for agent dialogs and locally created groups only.
+     */
+    public static void onNativeMessagesDeleted(long dialogId, ArrayList<Integer> mids) {
+        if (mids == null || mids.isEmpty()) return;
+        OxAgent agent = isAgentDialog(dialogId) ? agentByTgId(dialogId) : null;
+        long groupId = dialogId < 0 ? -dialogId : 0;
+        boolean group = groupId != 0 && OxGroupStore.isLocalGroup(groupId);
+        if (agent == null && !group) return;
+        List<OxChatEntry> entries = group ? OxGroupStore.loadChat(groupId)
+                : OxAgentStore.loadChat(agent.id);
+        if (entries.isEmpty()) return;
+        ArrayList<String> needles = new ArrayList<>();
+        ArrayList<Long> dates = new ArrayList<>();
+        StringBuilder ids = new StringBuilder();
+        for (Integer mid : mids) {
+            if (mid == null || mid <= 0) continue;
+            if (ids.length() > 0) ids.append(',');
+            ids.append(mid);
+        }
+        if (ids.length() == 0) return;
+        try {
+            org.telegram.SQLite.SQLiteCursor cur = MessagesStorage.getInstance(0).getDatabase()
+                    .queryFinalized("SELECT date, data FROM messages_v2 WHERE uid = " + dialogId
+                            + " AND mid IN (" + ids + ")");
+            try {
+                while (cur.next()) {
+                    dates.add(cur.longValue(0) * 1000L);
+                    String text = "";
+                    org.telegram.tgnet.NativeByteBuffer data = cur.byteBufferValue(1);
+                    if (data != null) {
+                        try {
+                            TLRPC.Message m = TLRPC.Message.TLdeserialize(
+                                    data, data.readInt32(false), false);
+                            if (m != null && m.message != null) text = m.message;
+                        } catch (Throwable ignored) {
+                        } finally {
+                            data.reuse();
+                        }
+                    }
+                    String norm = text.replaceAll("\\s+", " ").trim();
+                    needles.add(norm.length() > 24 ? norm.substring(0, 24) : norm);
+                }
+            } finally {
+                cur.dispose();
+            }
+        } catch (Throwable t) {
+            logErr("onNativeMessagesDeleted query failed did=" + dialogId, t);
+            return;
+        }
+        boolean[] used = new boolean[entries.size()];
+        int removed = 0;
+        for (int d = 0; d < needles.size(); d++) {
+            String needle = needles.get(d);
+            long date = dates.get(d);
+            int pick = -1;
+            int nearest = -1;
+            long nearestDelta = Long.MAX_VALUE;
+            for (int i = 0; i < entries.size(); i++) {
+                if (used[i]) continue;
+                OxChatEntry e = entries.get(i);
+                if (e == null) continue;
+                String content = e.content == null ? "" : e.content.replaceAll("\\s+", " ").trim();
+                if (!needle.isEmpty() && content.startsWith(needle)) {
+                    pick = i;
+                    break;
+                }
+                long delta = Math.abs(e.ts - date);
+                if (needle.isEmpty() && delta < nearestDelta && delta <= 10 * 60 * 1000L) {
+                    nearestDelta = delta;
+                    nearest = i;
+                }
+            }
+            if (pick < 0) pick = nearest;
+            if (pick < 0) continue;
+            used[pick] = true;
+            OxChatEntry e = entries.get(pick);
+            boolean ok = group ? OxGroupStore.removeEntry(groupId, e.ts, e.role)
+                    : OxAgentStore.removeChatEntry(agent.id, e.ts, e.role);
+            if (ok) removed++;
+        }
+        log("onNativeMessagesDeleted did=" + dialogId + " mids=" + mids.size()
+                + " removed=" + removed);
+    }
+
+    /**
      * Edits one OxUI text message: rewrites the OxChatEntry and the matching
      * messages_v2 body in place, keeping the message id/date so history order is
      * preserved. Only the local cache is touched; nothing is sent to Telegram.

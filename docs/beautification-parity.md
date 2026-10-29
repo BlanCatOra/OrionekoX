@@ -1480,5 +1480,10 @@ These confirm the feature directions rather than relying on guesses. Checked
    OxChatEntry. Reactions are intentionally OxUI-only: Telegram's offline
    reaction catalogue is empty, so writing TL reactions rendered blank
    circles in the Telegram UI. The group list now reloads on resume, so a
-   group created in Telegram UI appears when returning to OxUI. It is not
-   yet a complete replacement for Telegram UI.
+   group created in Telegram UI appears when returning to OxUI. 0.77.0
+   closes the reverse-sync gap for agent dialogs: deleting a message in
+   Telegram UI now removes the matching OxChatEntry before the row is
+   dropped (body-prefix match, nearest-timestamp fallback for caption-less
+   media), so OxUI no longer shows ghost messages. Local groups are not
+   wired yet because this emulator's qemu process exits when their Telegram
+   chat is opened. It is not yet a complete replacement for Telegram UI.

@@ -4,6 +4,16 @@
 > **blancatora** (DeepSeek Harness, model `deepseek-v4.1-flash`). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.77.0 — 2026-10-29
+
+- Reverse delete sync for agent dialogs: deleting a message in Telegram UI
+  now prunes the matching OxChatEntry before the row is dropped, so OxUI no
+  longer shows ghost messages. Matching uses the first 24 body characters,
+  with a nearest-timestamp fallback (10 minutes) for caption-less media.
+- The local-group path is intentionally not wired yet: this emulator's qemu
+  process exits whenever a local group's Telegram chat is opened, so the
+  behavior could not be verified end to end.
+
 ## 0.76.0 — 2026-10-29
 
 - Local emoji reactions in OxUI: assistant, user, photo and file bubbles gain
