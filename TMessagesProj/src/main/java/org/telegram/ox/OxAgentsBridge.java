@@ -2607,7 +2607,10 @@ public class OxAgentsBridge {
         }
         if (!digest.isEmpty()) {
             if (system.length() > 0) system.append("\n\n");
-            system.append("# 记忆库摘要（").append(OxMemoryStore.MODE_VECTOR.equals(mode) ? "词面混合（哈希投影，非语义向量）" : "普通模式")
+            String modeLabel = OxMemoryStore.MODE_SEMANTIC.equals(mode)
+                    ? "本地语义（LSA 离线模型）"
+                    : (OxMemoryStore.MODE_VECTOR.equals(mode) ? "词面混合（哈希投影，非语义向量）" : "普通模式");
+            system.append("# 记忆库摘要（").append(modeLabel)
                     .append("）\n").append(digest);
         }
         String recall = OxMemoryStore.recall(agent.id, query, Math.max(1, Math.min(12,

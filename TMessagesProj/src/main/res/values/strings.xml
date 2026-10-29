@@ -11824,6 +11824,7 @@
     <string name="OxAgentMemoryModeOff">Off</string>
     <string name="OxAgentMemoryModeNormal">Normal (keywords)</string>
     <string name="OxAgentMemoryModeVector">Experimental (vector)</string>
+    <string name="OxAgentMemoryModeSemantic">Semantic (local LSA)</string>
     <string name="OxAgentMemoryThreshold">Compression threshold (messages)</string>
     <string name="OxAgentMemoryThresholdHint">Default 45</string>
     <string name="OxAgentHarness">Connection / harness</string>

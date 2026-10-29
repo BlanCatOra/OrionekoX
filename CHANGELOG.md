@@ -5,6 +5,28 @@
 > also the WorkBuddy agent). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.80.0 — 2026-10-29
+
+- Memory stage C (real offline semantic embeddings): unblocked without an external
+  embedding endpoint by adding a fully local LSA model (`OxEmbeddingProvider`).
+  - TF-IDF document-term matrix -> truncated SVD via a small-Gram Jacobi
+    eigendecomposition -> dense 48-dim latent vectors. Pure Java, no native
+    library, no bundled model asset, no network.
+  - New `MODE_SEMANTIC` ("semantic") recall mode: cosine over learned latent
+    semantics, fused with BM25 + forgetting curve; MMR diversity reuses the same
+    vectors. Selectable in the agent profile (off -> normal -> vector -> semantic).
+  - Independent `mem_embeddings` table (schema v4) keyed by (agent_id, mem_id),
+    stamped with model + dim so a model/dimension change or text edit is detected
+    and rebuilt (7.2). Rebuild is transaction-batched and throttled (5s).
+  - Honest fallback: when the corpus is too small (`MIN_DOCS=8`) the provider
+    returns null, recall falls back to lexical scoring and metrics record
+    `semantic-unavailable`. It never fabricates vectors; `semantic` stays opt-in
+    (default remains `normal`) until an end-to-end baseline comparison shows a
+    stable win (7.4).
+- Algorithm verified twice: a Python prototype and a standalone Java replica of
+  the same math both show same-topic similarity well above cross-topic
+  (see `docs/qa-0.80.0.md`). `assembleAfatDebug` BUILD SUCCESSFUL.
+
 ## 0.79.0 — 2026-10-29
 
 - Memory stage B (precise recall + Harness bridge):

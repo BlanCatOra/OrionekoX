@@ -973,12 +973,14 @@ public class OxAgentProfileActivity extends BaseFragment {
     private String memoryModeLabel() {
         if ("off".equals(memoryMode)) return LocaleController.getString(R.string.OxAgentMemoryModeOff);
         if ("vector".equals(memoryMode)) return LocaleController.getString(R.string.OxAgentMemoryModeVector);
+        if ("semantic".equals(memoryMode)) return LocaleController.getString(R.string.OxAgentMemoryModeSemantic);
         return LocaleController.getString(R.string.OxAgentMemoryModeNormal);
     }
 
     private String nextMemoryMode(String value) {
         if ("off".equals(value)) return "normal";
         if ("normal".equals(value)) return "vector";
+        if ("vector".equals(value)) return "semantic";
         return "off";
     }
 

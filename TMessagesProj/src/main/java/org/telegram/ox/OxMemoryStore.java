@@ -36,7 +36,7 @@ import java.util.Set;
 public class OxMemoryStore {
 
     private static final String DB_NAME = "oxmemory.db";
-    private static final int DB_VERSION = 3;
+    private static final int DB_VERSION = 4;
     private static final int VEC_DIM = 128;
     private static final int MAX_ROWS_PER_AGENT = 4000;
     private static final long DAY_MS = 24L * 60 * 60 * 1000;
@@ -44,6 +44,8 @@ public class OxMemoryStore {
     public static final String MODE_OFF = "off";
     public static final String MODE_NORMAL = "normal";
     public static final String MODE_VECTOR = "vector";
+    /** Stage C (0.80): real offline semantic embeddings via OxEmbeddingProvider. */
+    public static final String MODE_SEMANTIC = "semantic";
 
     // metrics (stage B 6.5): last recall observation for harness/QA inspection
     private static volatile long lastRecallMs = 0;
@@ -117,6 +119,15 @@ public class OxMemoryStore {
                     + "agent_id TEXT PRIMARY KEY,"
                     + "compressed_count INTEGER NOT NULL DEFAULT 0,"
                     + "last_compress_at INTEGER NOT NULL DEFAULT 0)");
+            // Stage C (0.80): independent table for the offline LSA embeddings.
+            d.execSQL("CREATE TABLE IF NOT EXISTS mem_embeddings ("
+                    + "agent_id TEXT NOT NULL,"
+                    + "mem_id INTEGER NOT NULL,"
+                    + "vec BLOB,"
+                    + "model TEXT NOT NULL,"
+                    + "dim INTEGER NOT NULL,"
+                    + "built_at INTEGER NOT NULL,"
+                    + "PRIMARY KEY(agent_id, mem_id))");
         }
 
         @Override public void onUpgrade(SQLiteDatabase d, int oldVersion, int newVersion) {
@@ -135,6 +146,17 @@ public class OxMemoryStore {
                 d.execSQL("ALTER TABLE memories ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
                 d.execSQL("ALTER TABLE memories ADD COLUMN supersedes TEXT");
             }
+            if (oldVersion < 4) {
+                // Stage C (0.80): independent embedding table (offline LSA model).
+                d.execSQL("CREATE TABLE IF NOT EXISTS mem_embeddings ("
+                        + "agent_id TEXT NOT NULL,"
+                        + "mem_id INTEGER NOT NULL,"
+                        + "vec BLOB,"
+                        + "model TEXT NOT NULL,"
+                        + "dim INTEGER NOT NULL,"
+                        + "built_at INTEGER NOT NULL,"
+                        + "PRIMARY KEY(agent_id, mem_id))");
+            }
         }
     }
 
@@ -145,6 +167,11 @@ public class OxMemoryStore {
         }
         db = helper.getWritableDatabase();
         return db;
+    }
+
+    /** Package-private handle so OxEmbeddingProvider can share this database. */
+    static SQLiteDatabase database() {
+        return db();
     }
 
     /** Ingests the oldest not-yet-compressed turns and returns a readable digest. */
@@ -276,10 +303,21 @@ public class OxMemoryStore {
         RecallFilters filters = parseRecallFilters(query == null ? "" : query);
         if (filters.id != null) return recallById(agentId, filters.id, mode);
         boolean vectorMode = MODE_VECTOR.equals(mode);
+        boolean semanticMode = MODE_SEMANTIC.equals(mode);
         boolean temporal = isTemporalQuery(q);
         List<String> qTokens = meaningfulTokens(q);
         Set<String> qSet = new HashSet<>(qTokens);
-        float[] qVec = vectorMode ? embed(q) : null;
+        float[] qVec = null;
+        boolean semanticOk = false;
+        if (semanticMode) {
+            // Real offline LSA embedding; null when the corpus is too small to
+            // learn a stable space -> we fall back to lexical, never fabricate.
+            qVec = OxEmbeddingProvider.embed(agentId, -1, q);
+            semanticOk = qVec != null;
+        } else if (vectorMode) {
+            qVec = embed(q);
+        }
+        boolean useVecScoring = vectorMode || (semanticMode && semanticOk);
         long now = System.currentTimeMillis();
 
         List<Mem> active = new ArrayList<>();
@@ -312,7 +350,16 @@ public class OxMemoryStore {
         for (int i = 0; i < n; i++) {
             Mem m = active.get(i);
             double lexical = maxBm25 <= 0 ? 0 : bm25[i] / maxBm25;
-            double cosineScore = vectorMode && qVec != null ? Math.max(0, cosine(qVec, m.vector)) : 0;
+            double cosineScore = 0;
+            if (vectorMode && qVec != null) {
+                cosineScore = Math.max(0, cosine(qVec, m.vector));
+            } else if (semanticMode && semanticOk) {
+                float[] mv = OxEmbeddingProvider.embed(agentId, m.id, m.text);
+                if (mv != null) {
+                    m.vector = mv; // reuse for MMR diversity below
+                    cosineScore = Math.max(0, cosine(qVec, mv));
+                }
+            }
             double ageDays = Math.max(0, (now - Math.max(m.lastAccess, m.createdAt)) / (double) DAY_MS);
             double stability = Math.max(0.2, m.stability);
             double retention = 1.0 / (1.0 + ageDays / (9.0 * stability));
@@ -320,7 +367,7 @@ public class OxMemoryStore {
             double score;
             if (q.isEmpty()) {
                 score = 0.5 * retention + 0.3 * m.importance + 0.2 * access;
-            } else if (vectorMode) {
+            } else if (useVecScoring) {
                 score = 0.42 * lexical + 0.32 * cosineScore + 0.14 * retention
                         + 0.08 * m.importance + 0.04 * access;
             } else {
@@ -351,7 +398,7 @@ public class OxMemoryStore {
             for (Mem candidate : active) {
                 double maxSim = 0;
                 for (Mem picked : chosen) {
-                    double sim = vectorMode
+                    double sim = useVecScoring
                             ? Math.max(0, cosine(candidate.vector, picked.vector))
                             : jaccard(new HashSet<>(tokenize(candidate.text)),
                             new HashSet<>(tokenize(picked.text)));
@@ -378,7 +425,8 @@ public class OxMemoryStore {
                     .append("] ").append(clip(m.text, 600)).append('\n');
         }
         String out = sb.toString().trim();
-        recordRecall(t0, mode, chosen.size(), out.length() / 4);
+        String recMode = semanticMode && !semanticOk ? MODE_SEMANTIC + "-unavailable" : mode;
+        recordRecall(t0, recMode, chosen.size(), out.length() / 4);
         return out;
     }
 
@@ -862,6 +910,8 @@ public class OxMemoryStore {
             v.put("supersedes", "");
             if (withVector) v.put("vec", bytes(embed(normalized)));
             db().insertWithOnConflict("memories", null, v, SQLiteDatabase.CONFLICT_IGNORE);
+            // Corpus grew: the LSA latent space must be rebuilt lazily (7.2).
+            OxEmbeddingProvider.markDirty(agentId);
         } catch (Throwable t) {
             FileLog.e("OxMemoryStore", t);
         }
@@ -901,6 +951,8 @@ public class OxMemoryStore {
                     v.put("valid_from", now);
                     v.put("importance", Math.max(old.importance, importance));
                     v.put("vec", bytes(embed(text)));
+                    // Text changed: drop the stale semantic vector + rebuild space (7.2).
+                    OxEmbeddingProvider.invalidateDoc(agentId, old.id);
                     if (old.publicId != null && !old.publicId.isEmpty()) {
                         OxMemoryOntology.updateEntry(agentId, old.publicId,
                                 clip(text, 8000), sha256("fact\nuser\n" + text), now);
