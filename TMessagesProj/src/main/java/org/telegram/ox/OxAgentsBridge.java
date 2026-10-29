@@ -62,6 +62,80 @@ public class OxAgentsBridge {
     }
 
     /**
+     * Deletes one OxUI message: drops the OxChatEntry from the local store and the
+     * matching row in messages_v2. The TL mid is located by timestamp (entry ts is
+     * captured at persistence time) with the text as a tie-breaker, because agent
+     * messages have no server id we could send. MessagesController's agent-dialog
+     * branch keeps the delete local-only.
+     */
+    public static boolean deleteOxEntry(long dialogId, long ts, String role, String text) {
+        if (dialogId == 0 || ts == 0) return false;
+        boolean removed;
+        if (isAgentDialog(dialogId)) {
+            OxAgent a = agentByTgId(dialogId);
+            removed = a != null && OxAgentStore.removeChatEntry(a.id, ts, role);
+        } else if (dialogId < 0) {
+            removed = OxGroupStore.removeEntry(-dialogId, ts, role);
+        } else {
+            return false;
+        }
+        ArrayList<Integer> ids = findLocalMessageIds(dialogId, ts, text);
+        if (!ids.isEmpty()) {
+            MessagesController.getInstance(0).deleteMessages(ids, null, null, dialogId, 0, false, 0, false);
+        }
+        log("deleteOxEntry did=" + dialogId + " role=" + role + " store=" + removed + " mids=" + ids.size());
+        return removed;
+    }
+
+    private static ArrayList<Integer> findLocalMessageIds(long dialogId, long ts, String text) {
+        ArrayList<Integer> result = new ArrayList<>();
+        long around = ts / 1000L;
+        String needle = text == null ? "" : text.replaceAll("\\s+", " ").trim();
+        if (needle.length() > 24) needle = needle.substring(0, 24);
+        try {
+            org.telegram.SQLite.SQLiteCursor cur = MessagesStorage.getInstance(0).getDatabase()
+                    .queryFinalized("SELECT mid, date, data FROM messages_v2 WHERE uid = " + dialogId
+                            + " AND date BETWEEN " + (around - 300) + " AND " + (around + 300));
+            int bestMid = 0, matchMid = 0;
+            long bestDelta = Long.MAX_VALUE, matchDelta = Long.MAX_VALUE;
+            try {
+                while (cur.next()) {
+                    int mid = (int) cur.longValue(0);
+                    long date = cur.longValue(1);
+                    long delta = Math.abs(date - around);
+                    if (delta < bestDelta) {
+                        bestDelta = delta;
+                        bestMid = mid;
+                    }
+                    if (needle.isEmpty()) continue;
+                    org.telegram.tgnet.NativeByteBuffer data = cur.byteBufferValue(2);
+                    if (data == null) continue;
+                    try {
+                        TLRPC.Message m = TLRPC.Message.TLdeserialize(
+                                data, data.readInt32(false), false);
+                        if (m == null || m.message == null) continue;
+                        String norm = m.message.replaceAll("\\s+", " ").trim();
+                        if (norm.startsWith(needle) && delta < matchDelta) {
+                            matchDelta = delta;
+                            matchMid = mid;
+                        }
+                    } catch (Throwable ignored) {
+                    } finally {
+                        data.reuse();
+                    }
+                }
+            } finally {
+                cur.dispose();
+            }
+            int chosen = matchMid != 0 ? matchMid : (bestDelta <= 8 ? bestMid : 0);
+            if (chosen != 0) result.add(chosen);
+        } catch (Throwable t) {
+            logErr("findLocalMessageIds failed did=" + dialogId, t);
+        }
+        return result;
+    }
+
+    /**
      * True when a TL request targets a synthetic agent peer. Such peers only exist in the
      * local database, so the request must never leave the device (Telegram would answer
      * PEER_ID_INVALID and the account would be poking at ids it does not own).

@@ -123,6 +123,25 @@ public class OxGroupStore {
         appendEntry(chatId, new OxChatEntry(role, content, System.currentTimeMillis(), imagePath), sender);
     }
 
+    /** Removes the first entry matching ts+role (used by OxUI delete). */
+    public static synchronized boolean removeEntry(long chatId, long ts, String role) {
+        try {
+            List<OxChatEntry> chat = loadChat(chatId);
+            for (int i = 0; i < chat.size(); i++) {
+                OxChatEntry e = chat.get(i);
+                if (e.ts == ts && (role == null || role.equals(e.role))) {
+                    chat.remove(i);
+                    prefs().edit().putString("log_" + key(chatId),
+                            OxChatEntry.toJsonArray(chat).toString()).apply();
+                    return true;
+                }
+            }
+        } catch (Throwable t) {
+            FileLog.e("OxGroupStore.removeEntry", t);
+        }
+        return false;
+    }
+
     /** Entry-based append: lets callers carry quote fields without stacking
      *  positional parameters. sender overrides entry.sender when non-null. */
     public static synchronized void appendEntry(long chatId, OxChatEntry entry, String sender) {

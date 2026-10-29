@@ -1462,7 +1462,11 @@ These confirm the feature directions rather than relying on guesses. Checked
    density for the composer and lists, file/QR skin sharing, ANSI-16
    terminal colours, avatar creation via emoji markup in agent-only mode,
    user-avatar RPC family, offline title editing, cross-chat search
-   aggregation, video/GIF/file attachments, avatar/provider/sampling/tool-
-   policy fields in the agent editor, tablet layout, a full TalkBack pass,
-   token-level streaming. It is not yet a complete replacement for Telegram
-   UI.
+   aggregation, video/GIF attachments, avatar/provider/sampling/tool-policy
+   fields in the agent editor, tablet layout, a full TalkBack pass,
+   token-level streaming. 0.74.0 adds message deletion (assistant, user,
+   photo and file bubbles; a second-step Delete/Cancel menu removes the
+   OxChatEntry and the matching local messages_v2 row through the
+   agent-dialog cacheOnly path) and Agent pin/unpin in the detail page,
+   which reorders the rail and survives restarts. It is not yet a complete
+   replacement for Telegram UI.

@@ -4414,3 +4414,24 @@ debug `c40d434cd464a49c319c3dd01040aa4e40f41868266cc776a932b5051c768ac5`。
 
 **产物**：release `508b935b2bbbe4ad6c9336751d33f87f8e0c1002cb597c28b304ae20768a3bd3`；
 debug `af2dd3e67008948b6dc939c5fcd0740a904b09c21857fa79a1fb493338477e5d`。
+## 5.196 alpha 0.74.0 —— 消息删除 + Agent 置顶 + 记忆架构报告（2026-10-29 14:05–14:35）
+
+- 删除：OxAgentStore.removeChatEntry / OxGroupStore.removeEntry 按 ts+role
+  删本地条目；deleteOxEntry 再按 uid+date±300s 反序列化 data 比对正文
+  前 24 字符定位 TL mid，走 MessagesController.deleteMessages（agent
+  dialog 分支强制 cacheOnly，不发服务器请求）；无正文时仅 8s 内按时间
+  兜底。OxUI 助手/用户/图片/文件气泡均加 Delete message + 二次确认，
+  菜单 accent 参数从 boolean[] 改为颜色 int[]（删除珊瑚红）。
+- 置顶：Agent 详情页 Chat/Edit 旁新增 Pin/Unpin，切换 pinned 后
+  saveAgent、重载并刷新 rail；listAgents 原有 pinned 优先排序。
+- 研究报告：docs/memory-architecture-report.md，对照 OxMemoryStore 现状
+  评估 Markdown 本体 + 关键词/向量混合检索，指出五项缺口与 0.75→0.77
+  路线；明确现有 embed 为 FNV 哈希投影，不是语义向量。
+- 设备验证：删除用户消息（date 比 store ts 早 19s）与助手长回复均
+  mids=1、cache4.db 对应行消失、chat.json 条目移除、Telegram UI 同步
+  不再显示；API Agent Pin 后 rail 置顶、agent.json pinned=true、重启
+  保持，Unpin 后恢复原顺序。release 7409 无 FATAL。
+- 版本规则：功能新增 → **0.74.0**（7409），patch 清零。
+
+**产物**：release `c4686060f2cefaa6b2f736c3d7e22a7731b0d54b41c20f3999b8938122c7eaf0`；
+debug `00cf1a3f1782630d453f5149638b232323fe31c2c4127a0506f7b0e8b2edc0dd`。
