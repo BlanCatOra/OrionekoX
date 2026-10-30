@@ -2768,21 +2768,24 @@ public class OxUiPreviewActivity extends Activity {
         list.setOrientation(LinearLayout.VERTICAL);
         listScroll.addView(list, new ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        listScroll.setMinimumHeight(dp(150));
         panel.addView(listScroll, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         panel.addView(sectionRule(), new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(1)));
         LinearLayout footer = new LinearLayout(this);
-        footer.setOrientation(LinearLayout.HORIZONTAL);
-        footer.setGravity(Gravity.CENTER_VERTICAL);
-        footer.setPadding(0, dp(12), 0, 0);
+        footer.setOrientation(LinearLayout.VERTICAL);
+        footer.setPadding(0, dp(12), 0, dp(2));
+        LinearLayout footerLinks = new LinearLayout(this);
+        footerLinks.setOrientation(LinearLayout.HORIZONTAL);
+        footerLinks.setGravity(Gravity.CENTER_VERTICAL);
         TextView hint = new TextView(this);
         hint.setText(LocaleController.getString(R.string.OxUiAgentsHint));
         hint.setTextSize(11);
         hint.setTypeface(sans());
         hint.setTextColor(MUTED);
-        footer.addView(hint, new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        footer.addView(hint, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         TextView settingsLink = new TextView(this);
         settingsLink.setText("Settings");
         settingsLink.setTextSize(11);
@@ -2791,7 +2794,7 @@ public class OxUiPreviewActivity extends Activity {
         settingsLink.setContentDescription("Settings");
         settingsLink.setPadding(0, 0, dp(14), 0);
         settingsLink.setOnClickListener(v -> showSettingsPanel());
-        footer.addView(settingsLink);
+        footerLinks.addView(settingsLink);
         TextView terminalLink = new TextView(this);
         terminalLink.setText("Terminal");
         terminalLink.setTextSize(11);
@@ -2800,14 +2803,16 @@ public class OxUiPreviewActivity extends Activity {
         terminalLink.setContentDescription("Open terminal");
         terminalLink.setPadding(0, 0, dp(14), 0);
         terminalLink.setOnClickListener(v -> openTerminal());
-        footer.addView(terminalLink);
+        footerLinks.addView(terminalLink);
         TextView telegram = new TextView(this);
         telegram.setText(LocaleController.getString(R.string.OxUiOpenTelegram));
         telegram.setTextSize(11);
         telegram.setTypeface(sans());
         telegram.setTextColor(INK);
         telegram.setOnClickListener(v -> openTelegramUi());
-        footer.addView(telegram);
+        footerLinks.addView(telegram);
+        footer.addView(footerLinks, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         panel.addView(footer, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 

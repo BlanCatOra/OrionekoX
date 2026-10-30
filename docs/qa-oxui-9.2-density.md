@@ -66,9 +66,34 @@ density 的响应（本轮改动所在），**未**验证面板点选交互本�
 切换并重启后 `logcat -d | grep -c FATAL` → **0**。仅有离线环境噪声（`FirebaseMessaging … FIS_AUTH_ERROR`、
 `MediaProvider IOException`、`CorpusConfigHelper MalformedJson`），与本改动无关。
 
+### 补充（0.87.0）：面板点选已取证
+
+上一轮遗留的「`Density` 点选未取证」已闭环。根因不在 `Density` 本身，而在**入口**：
+
+`showAgentPanel()` 里 `listScroll` 用了 `layout_height=0, weight=1`，但整个 `panel` 是
+`ScrollView` 的**唯一直接子节点**，测量规格为 `AT_MOST`。Android 在 `AT_MOST` 下算权重分配时
+`available = remaining = 0`，加权子项高度被算成 0，于是列表内容溢出画到下面那块「footer」上，
+把 `Settings / Terminal / Open Telegram UI` 三个链接盖住——`uiautomator dump` 里这三个节点
+根本不存在，点击也落到列表项上。
+
+修复（`OxUiPreviewActivity#showAgentPanel`）：
+- `listScroll` 改为 `WRAP_CONTENT` + `setMinimumHeight(dp(150))`，不再依赖权重分配；
+- footer 改为两行（提示语一行、三个链接一行），用 `WRAP_CONTENT` 自然撑开。
+
+实测（emulator-5554，构建 `BUILD SUCCESSFUL` 后 `adb install -r` 全新安装）：
+
+| 步骤 | 证据 |
+|---|---|
+| 打开 Agents 面板 | `uiautomator dump` 首次出现 `Settings [58,1409][197,1448] clk=true`、`Open terminal`、`Open Telegram UI` 三个独立可点节点（修复前三个节点缺失） |
+| 点 `Settings` | 打开完整设置面板（THEME / APPEARANCE / SHELL / COMPONENTS / ABOUT 全可见），截图 `dist/iter-shots/oxui-agents-settings-entry.png` |
+| 滚到 COMPONENTS，点 `Cozy` | 面板关闭并 `recreate()`，回到会话页；composer 由 compact 尺寸回到 cozy 基线：`＋ [47,2157][133,2252]`（105×116）、输入框 116px 高；截图 `dist/iter-shots/oxui-9.2-density-click-cozy.png` |
+| 再次点 footer `Settings` → `Compact` | 输入框 116px→95px、＋ 105×116→86×95；截图 `dist/iter-shots/oxui-9.2-density-click-compact.png` |
+| logcat | 两轮点击后 `grep -E "FATAL EXCEPTION\|E AndroidRuntime"` → **无输出** |
+
+结论：`Density` 单选的点击 → 持久化 → `recreate()` → 尺寸生效，全链路已实证。
+
 ## 诚实缺口
 
-- ⚠️ **面板点选未取证**：`Density` 单选（`shellChoice("Density", …)`）本身没有在模拟器上点击验证过，
-  本轮是通过写 prefs 达到 compact。若能打通 `showSettingsPanel()` 的入口，下一轮可补一次点选取证。
+- ✅ **面板点选已取证**（见上「补充（0.87.0）」，含双向 cozy↔compact 截图）。
 - 未做真机（非模拟器）验证；未测其他 preset 下的 compact 组合。
 - 附件缩略图 52dp→43dp 的视觉效果未单独截图（本轮界面无待发附件）。
