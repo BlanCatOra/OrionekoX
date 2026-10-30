@@ -5,6 +5,43 @@
 > also the WorkBuddy agent). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.88.0 — 2026-10-30
+
+Verification-only release: closes the three end-to-end gaps that had been
+carried as `⚠️ pending` since their implementation landed. No behaviour change
+in 8.3 / 8.4 / 9.4 themselves — what was missing was a way to *prove* them, not
+the code.
+
+- **8.3 group reverse-sync — verified end to end.** The implementation shipped
+  in 0.83.0, but no local group had ever actually been created on the test
+  device (`ox_groups.xml` was an empty map the whole time), so every attempt
+  only ever hit an empty list. Built one through Telegram UI → New Group →
+  two agents. Deleting a message from OxUI now reproduces the full chain:
+  `onNativeMessagesDeleted` → `deleteMessages local-group ... cacheOnly=true`
+  → `deleteOxEntry`. `log_1800000001` dropped 2 → 1 entries with the user turn
+  pruned and the agent reply kept; `cacheOnly=true` confirms nothing was sent
+  to Telegram's servers.
+- **8.4 search navigation — verified end to end.** In-chat `⌕` opens the search
+  bar; searching `needle` over two messages reports `1/2` and `↓` advances to
+  `2/2`, scrolling to and signalling the matching bubble.
+- **9.4 terminal ANSI-16 colouring — verified end to end.** The earlier note
+  claiming ESC could not be injected was misleading. The OxUI panel terminal
+  is not a shell at all — it has a fixed command set and renders plain
+  `TextView` text, so ANSI never had a chance there. `OxTerminalActivity` (the
+  Telegram UI Terminal tab) is the real one: `ProcessBuilder("/system/bin/sh")`
+  plus `ansiToSpannable`. Verified by writing a fixture with SGR sequences to
+  `/data/local/tmp/a.txt` and `cat`-ing it: all 16 foreground colours, 4
+  backgrounds, bold and underline render correctly, and non-SGR CSI
+  (`ESC[2J`, `ESC[1;1H`) is stripped rather than printed.
+- Known, unfixed: a local group opened from **Telegram UI** loads zero messages
+  (`processLoadedMessages size 0`) even though `dialogs.last_mid`, `messages_v2`
+  and `chats` all hold the right rows — the chat page keeps showing the
+  "You have created a group" card. OxUI's own group view reads the store
+  directly and works fine, which is how 8.3 was verified.
+- Test-harness note: the emulator must not run with `-gpu off`; opening a group
+  chat page then segfaults qemu's RenderThread deterministically
+  (`SEGV_MAPERR`, same offset both times). `-gpu swiftshader_indirect` is fine.
+
 ## 0.87.0 — 2026-10-30
 
 - OxUI: the Agents panel footer is reachable again, so Settings / Terminal /
