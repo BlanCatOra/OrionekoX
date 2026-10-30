@@ -5,6 +5,33 @@
 > also the WorkBuddy agent). See [NOTICE](NOTICE).
 > This project is an independent GPL-2.0 fork of DrKLO/Telegram.
 
+## 0.87.0 — 2026-10-30
+
+- OxUI: the Agents panel footer is reachable again, so Settings / Terminal /
+  Open Telegram UI can actually be tapped.
+  - `showAgentPanel()` sized `listScroll` as `height=0, weight=1` inside a panel
+    that is the single child of an `AT_MOST`-measured `ScrollView`; with
+    `AT_MOST` the weighted child resolves to 0, the list overflowed onto the
+    footer and those three links had no clickable nodes at all.
+  - The list is now `WRAP_CONTENT` with a 150dp minimum, and the footer is two
+    rows (hint / links). Verified on emulator-5554: the links are real
+    clickable nodes, tapping Settings opens the appearance panel, and
+    Cozy ↔ Compact still resizes the composer (116px ↔ 95px).
+
+## 0.86.0 — 2026-10-30
+
+- OxUI stage 9.2: density now scales the composer, not just bubble gaps.
+  - `OxUiSkin.density` only tightened bubble row gaps before (`rowGap` ×0.62);
+    the composer — the tallest fixed element on screen — ignored it entirely,
+    so "compact = more conversation per screen" never held where it mattered.
+  - New `sd()` box-metric helper (×0.82 under compact) applied to the composer
+    wrapper, composer padding, ＋/↑ buttons, input padding + minHeight, footer
+    row and the attachment row including its thumbnail.
+  - Type sizes are deliberately left alone: trading legibility for space is the
+    wrong trade in a chat app.
+  - Measured on emulator-5554: input 116px → 95px, attach 105×116 → 86×95,
+    send 116 → 95 (−18.1%, matches the 0.82 design value).
+
 ## 0.85.0 — 2026-10-30
 
 - OxUI stage 9.1: video / GIF attachments.
