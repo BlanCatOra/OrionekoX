@@ -296,6 +296,16 @@ public class OxUiPreviewActivity extends Activity {
         return dp(compactDensity() ? Math.max(6, cozy * 0.62f) : cozy);
     }
 
+    /**
+     * 9.2 density: compact skin shrinks the composer's box metrics (negative space,
+     * button hit areas, attachment thumbnail) so more conversation fits on screen.
+     * Type sizes are deliberately NOT scaled down — shrinking the reading system
+     * would trade legibility for space, which is the wrong trade for a chat app.
+     */
+    private int sd(float v) {
+        return dp(compactDensity() ? Math.max(2f, v * 0.82f) : v);
+    }
+
     /** Type scale: every skin can scale the whole reading system by +/-8%. */
     private float ts(float base) {
         return base * (skin == null ? 1f : skin.typeScale);
@@ -506,7 +516,7 @@ public class OxUiPreviewActivity extends Activity {
 
         composerWrap = new LinearLayout(this);
         composerWrap.setOrientation(LinearLayout.VERTICAL);
-        composerWrap.setPadding(dp(16), dp(6), dp(16), dp(10));
+        composerWrap.setPadding(sd(16), sd(6), sd(16), sd(10));
 
         replyRow = new LinearLayout(this);
         replyRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -543,7 +553,7 @@ public class OxUiPreviewActivity extends Activity {
         attachRow = new LinearLayout(this);
         attachRow.setOrientation(LinearLayout.HORIZONTAL);
         attachRow.setGravity(Gravity.CENTER_VERTICAL);
-        attachRow.setPadding(dp(10), dp(8), dp(10), dp(8));
+        attachRow.setPadding(sd(10), sd(8), sd(10), sd(8));
         attachRow.setBackground(plate(PAPER, 14, LINE, 1));
         attachRow.setVisibility(View.GONE);
         LinearLayout attachTexts = new LinearLayout(this);
@@ -552,7 +562,7 @@ public class OxUiPreviewActivity extends Activity {
         attachPreview.setScaleType(ImageView.ScaleType.CENTER_CROP);
         attachPreview.setBackground(plate(BONE, 12, LINE, 1));
         attachPreview.setClipToOutline(true);
-        attachRow.addView(attachPreview, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        attachRow.addView(attachPreview, new LinearLayout.LayoutParams(sd(52), sd(52)));
         attachName = new TextView(this);
         attachName.setTextSize(12);
         attachName.setTypeface(sans());
@@ -593,7 +603,7 @@ public class OxUiPreviewActivity extends Activity {
         LinearLayout composer = new LinearLayout(this);
         composer.setOrientation(LinearLayout.HORIZONTAL);
         composer.setGravity(Gravity.CENTER_VERTICAL);
-        composer.setPadding(dp(6), dp(4), dp(6), dp(4));
+        composer.setPadding(sd(6), sd(4), sd(6), sd(4));
         composer.setBackground(plate(PAPER, 22, LINE, 1));
 
         TextView attach = new TextView(this);
@@ -608,7 +618,7 @@ public class OxUiPreviewActivity extends Activity {
                 new CharSequence[]{"Photo", "Video", "File"},
                 new int[]{0, 0, 0},
                 new Runnable[]{this::pickImage, this::pickVideo, this::pickFile}));
-        composer.addView(attach, new LinearLayout.LayoutParams(dp(40), dp(44)));
+        composer.addView(attach, new LinearLayout.LayoutParams(sd(40), sd(44)));
 
         input = new EditText(this);
         input.setHint(LocaleController.getString(R.string.OxUiHint));
@@ -617,8 +627,8 @@ public class OxUiPreviewActivity extends Activity {
         input.setTextSize(16);
         input.setTypeface(sans());
         input.setBackgroundColor(Color.TRANSPARENT);
-        input.setPadding(dp(12), dp(9), dp(8), dp(9));
-        input.setMinHeight(dp(44));
+        input.setPadding(sd(12), sd(9), sd(8), sd(9));
+        input.setMinHeight(sd(44));
         input.setMaxLines(5);
         input.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
@@ -637,14 +647,14 @@ public class OxUiPreviewActivity extends Activity {
         send.setAlpha(0.42f);
         send.setContentDescription("Send");
         send.setOnClickListener(v -> sendMessage());
-        composer.addView(send, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        composer.addView(send, new LinearLayout.LayoutParams(sd(44), sd(44)));
         composerWrap.addView(composer, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         footerRow = new LinearLayout(this);
         footerRow.setOrientation(LinearLayout.HORIZONTAL);
         footerRow.setGravity(Gravity.CENTER_VERTICAL);
-        footerRow.setPadding(dp(8), dp(7), dp(8), 0);
+        footerRow.setPadding(sd(8), sd(7), sd(8), 0);
         statusLine = new TextView(this);
         statusLine.setText(LocaleController.getString(R.string.OxUiFooter));
         statusLine.setTextSize(11);
