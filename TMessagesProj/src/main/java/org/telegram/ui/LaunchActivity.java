@@ -359,6 +359,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     private AlertDialog loadingThemeProgressDialog;
 
     private boolean isNavigationBarColorFrozen = false;
+    // Set when OxUI's terminal preview asks for the real terminal; consumed once the fragment stack exists.
+    private boolean oxOpenTerminalOnStart = false; 
 
     private boolean navigateToPremiumBot;
     public Runnable navigateToPremiumGiftCallback;
@@ -472,11 +474,11 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         // preference back). Deep links/shares keep the normal Telegram path.
         try {
             Intent launchIntent = getIntent();
-            boolean plainLaunch = launchIntent == null
-                    || ((launchIntent.getAction() == null
-                        || Intent.ACTION_MAIN.equals(launchIntent.getAction()))
-                        && launchIntent.getData() == null);
-            if (plainLaunch && OxMode.IFACE_OXUI.equals(OxMode.getInterfaceMode())
+            // OxUI's terminal panel is a preview that never runs a shell. Its header button
+            // asks for the real terminal, which lives in the Telegram UI fragment stack.
+            if (launchIntent != null && launchIntent.getBooleanExtra("ox_open_terminal", false)) {
+                launchIntent.removeExtra("ox_open_terminal"); oxOpenTerminalOnStart = true; }
+            boolean plainLaunch = launchIntent == null || ((launchIntent.getAction() == null || Intent.ACTION_MAIN.equals(launchIntent.getAction())) && launchIntent.getData() == null); if (plainLaunch && !oxOpenTerminalOnStart && OxMode.IFACE_OXUI.equals(OxMode.getInterfaceMode())
                     && OxMode.isAgentOnly()
                     && (SharedConfig.passcodeHash.length() == 0 || !SharedConfig.appLocked)) {
                 Intent oxui = new Intent(this, OxUiPreviewActivity.class);
@@ -496,6 +498,20 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         // dies with the process, so it must be brought back up).
         VpnController.getInstance().load();
         actionBarLayout = new ActionBarLayout(this, true);
+
+        if (oxOpenTerminalOnStart) {
+            oxOpenTerminalOnStart = false;
+            AndroidUtilities.runOnUIThread(() -> {
+                try {
+                    Bundle targs = new Bundle();
+                    targs.putBoolean("presented", true);
+                    presentFragment(new OxTerminalActivity(targs));
+                } catch (Throwable t) {
+                    FileLog.e(t);
+                }
+            }, 400);
+        }
+
 
         frameLayout = new ActivityContentLayout(this);
         frameLayout.setClipToPadding(false);

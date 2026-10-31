@@ -12333,4 +12333,7 @@
     <string name="OxUiHidden">hidden</string>
     <string name="OxUiDockItemDesc">Dock item %1$s</string>
     <string name="OxUiSettings">Settings</string>
+    <string name="OxUiTerminalPreview">❯_ terminal preview</string>
+    <string name="OxUiTerminalNoShell">LOCAL · preview only · does not run shell · open Terminal tab for a real shell</string>
+    <string name="OxUiOpenRealTerminal">Open real terminal</string>
 </resources>

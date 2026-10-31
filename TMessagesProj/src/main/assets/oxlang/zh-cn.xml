@@ -12192,4 +12192,7 @@
     <string name="OxUiHidden">隐藏</string>
     <string name="OxUiDockItemDesc">Dock 项 %1$s</string>
     <string name="OxUiSettings">设置</string>
+    <string name="OxUiTerminalPreview">❯_ 终端预览</string>
+    <string name="OxUiTerminalNoShell">本地 · 仅预览 · 不执行 shell · 真终端请开底栏「终端」</string>
+    <string name="OxUiOpenRealTerminal">打开真终端</string>
 </resources>

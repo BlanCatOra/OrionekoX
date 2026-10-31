@@ -2178,13 +2178,35 @@ public class OxUiPreviewActivity extends Activity {
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(this);
-        title.setText("❯_ terminal");
+        title.setText(LocaleController.getString(R.string.OxUiTerminalPreview));
         title.setTextSize(14);
         title.setTypeface(mono());
         title.setTextColor(termAccent);
         title.setLetterSpacing(0.02f);
         head.addView(title, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView realTermBtn = new TextView(this);
+        realTermBtn.setText("❯_");
+        realTermBtn.setTextSize(12);
+        realTermBtn.setTypeface(mono());
+        realTermBtn.setTextColor(termAccent);
+        realTermBtn.setGravity(Gravity.CENTER);
+        realTermBtn.setBackground(plate(0, 6, 0x22FFFFFF, 1));
+        realTermBtn.setContentDescription(LocaleController.getString(R.string.OxUiOpenRealTerminal));
+        LinearLayout.LayoutParams rtbp = new LinearLayout.LayoutParams(dp(34), dp(26));
+        rtbp.rightMargin = dp(8);
+        realTermBtn.setOnClickListener(v -> {
+            hideOverlay();
+            try {
+                android.content.Intent it = new android.content.Intent(
+                        this, LaunchActivity.class);
+                it.putExtra("ox_open_terminal", true);
+                startActivity(it);
+            } catch (Throwable t) {
+                org.telegram.messenger.FileLog.e(t);
+            }
+        });
+        head.addView(realTermBtn, rtbp);
         TextView optionsBtn = new TextView(this);
         optionsBtn.setText("⋯");
         optionsBtn.setTextSize(16);
@@ -2239,7 +2261,7 @@ public class OxUiPreviewActivity extends Activity {
 
         // status line (Termius-like, honest about the local console)
         TextView status = new TextView(this);
-        status.setText("LOCAL  ·  tty pseudo-session  ·  no shell");
+        status.setText(LocaleController.getString(R.string.OxUiTerminalNoShell));
         status.setTextSize(9.5f);
         status.setTypeface(mono());
         status.setTextColor(termDim);
