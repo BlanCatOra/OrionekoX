@@ -411,7 +411,7 @@ public class OxUiPreviewActivity extends Activity {
         // element next to the send button diluted the single-accent rule.
 
         TextView telegram = new TextView(this);
-        telegram.setText("Telegram UI");
+        telegram.setText(LocaleController.getString(R.string.OxUiTelegram));
         telegram.setTextSize(11);
         telegram.setTypeface(sans());
         telegram.setTextColor(INK);
@@ -1577,7 +1577,7 @@ public class OxUiPreviewActivity extends Activity {
             badge.setBackground(plate(PAPER, 20, LINE, 1));
             row.addView(badge, new LinearLayout.LayoutParams(dp(34), dp(34)));
             TextView label = new TextView(this);
-            label.setText(a.name == null ? "Agent" : a.name);
+            label.setText(a.name == null ? LocaleController.getString(R.string.OxUiDefaultAgent) : a.name);
             label.setTextSize(14);
             label.setTypeface(sans());
             label.setTextColor(INK);
@@ -2028,7 +2028,7 @@ public class OxUiPreviewActivity extends Activity {
                     ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             if (active) {
                 TextView check = new TextView(this);
-                check.setText("active");
+                check.setText(LocaleController.getString(R.string.OxUiActive));
                 check.setTextSize(11);
                 check.setTypeface(mono());
                 check.setTextColor(MUTED);
@@ -2071,7 +2071,7 @@ public class OxUiPreviewActivity extends Activity {
         panel.addView(secretIn, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
         TextView secretSave = new TextView(this);
-        secretSave.setText("Save secret");
+        secretSave.setText(LocaleController.getString(R.string.OxUiSaveSecret));
         secretSave.setTextSize(12);
         secretSave.setTypeface(sansMedium());
         secretSave.setTextColor(INK);
@@ -2087,7 +2087,7 @@ public class OxUiPreviewActivity extends Activity {
         });
         panel.addView(secretSave, sslp);
         TextView secretNote = new TextView(this);
-        secretNote.setText("The PWD quick key types this into the local console. Stored in local prefs, never in the exported skin JSON.");
+        secretNote.setText(LocaleController.getString(R.string.OxUiSecretNote));
         secretNote.setTextSize(11);
         secretNote.setTypeface(sans());
         secretNote.setTextColor(MUTED);
@@ -2796,7 +2796,7 @@ public class OxUiPreviewActivity extends Activity {
         settingsLink.setOnClickListener(v -> showSettingsPanel());
         footerLinks.addView(settingsLink);
         TextView terminalLink = new TextView(this);
-        terminalLink.setText("Terminal");
+        terminalLink.setText(LocaleController.getString(R.string.OxUiTerminal));
         terminalLink.setTextSize(11);
         terminalLink.setTypeface(sans());
         terminalLink.setTextColor(INK);
@@ -3386,7 +3386,7 @@ public class OxUiPreviewActivity extends Activity {
         note.setPadding(dp(4), dp(14), dp(4), 0);
         body.addView(note);
         TextView importLink = new TextView(this);
-        importLink.setText("Import JSON…");
+        importLink.setText(LocaleController.getString(R.string.OxUiImportJsonShort));
         importLink.setTextSize(12);
         importLink.setTypeface(sansMedium());
         importLink.setTextColor(CLAY);
@@ -3399,7 +3399,7 @@ public class OxUiPreviewActivity extends Activity {
         actions.setOrientation(LinearLayout.HORIZONTAL);
         actions.setPadding(0, dp(14), 0, 0);
         TextView copyJson = new TextView(this);
-        copyJson.setText("Copy JSON");
+        copyJson.setText(LocaleController.getString(R.string.OxUiCopyJsonShort));
         copyJson.setTextSize(13);
         copyJson.setTypeface(sans());
         copyJson.setTextColor(INK);
@@ -3587,7 +3587,7 @@ public class OxUiPreviewActivity extends Activity {
                     ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             if (active) {
                 TextView check = new TextView(this);
-                check.setText("active");
+                check.setText(LocaleController.getString(R.string.OxUiActive));
                 check.setTextSize(11);
                 check.setTypeface(mono());
                 check.setTextColor(MUTED);
@@ -3708,7 +3708,7 @@ public class OxUiPreviewActivity extends Activity {
         head.addView(close, new LinearLayout.LayoutParams(dp(40), dp(40)));
         panel.addView(head);
         TextView hint = new TextView(this);
-        hint.setText("Paste a skin JSON (from Copy JSON) and apply it as the custom skin.");
+        hint.setText(LocaleController.getString(R.string.OxUiSkinImportHint));
         hint.setTextSize(12);
         hint.setTypeface(sans());
         hint.setTextColor(MUTED);
@@ -3741,7 +3741,7 @@ public class OxUiPreviewActivity extends Activity {
         cancel.setOnClickListener(v -> hideOverlay());
         actions.addView(cancel);
         TextView apply = new TextView(this);
-        apply.setText("Apply");
+        apply.setText(LocaleController.getString(R.string.OxUiApply));
         apply.setTextSize(13);
         apply.setTypeface(sansMedium());
         apply.setTextColor(BONE);
@@ -3807,7 +3807,7 @@ public class OxUiPreviewActivity extends Activity {
         panel.addView(head);
 
         TextView themeLabel = new TextView(this);
-        themeLabel.setText("THEME");
+        themeLabel.setText(LocaleController.getString(R.string.OxUiThemeSection));
         themeLabel.setTextSize(11);
         themeLabel.setTypeface(mono());
         themeLabel.setTextColor(MUTED);
@@ -3817,7 +3817,7 @@ public class OxUiPreviewActivity extends Activity {
 
         String[] values = {org.telegram.ox.OxMode.THEME_SYSTEM,
                 org.telegram.ox.OxMode.THEME_LIGHT, org.telegram.ox.OxMode.THEME_DARK};
-        String[] labels = {"Follow system", "Light", "Dark"};
+        String[] labels = {LocaleController.getString(R.string.OxUiThemeSystem), LocaleController.getString(R.string.OxUiThemeLight), LocaleController.getString(R.string.OxUiThemeDark)};
         String current = org.telegram.ox.OxMode.getOxTheme();
         for (int i = 0; i < values.length; i++) {
             final String value = values[i];
@@ -3843,7 +3843,7 @@ public class OxUiPreviewActivity extends Activity {
                     ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             if (active) {
                 TextView check = new TextView(this);
-                check.setText("active");
+                check.setText(LocaleController.getString(R.string.OxUiActive));
                 check.setTextSize(11);
                 check.setTypeface(mono());
                 check.setTextColor(MUTED);
@@ -3864,7 +3864,7 @@ public class OxUiPreviewActivity extends Activity {
         }
 
         TextView appearanceLabel = new TextView(this);
-        appearanceLabel.setText("APPEARANCE");
+        appearanceLabel.setText(LocaleController.getString(R.string.OxUiAppearanceSection));
         appearanceLabel.setTextSize(11);
         appearanceLabel.setTypeface(mono());
         appearanceLabel.setTextColor(MUTED);
@@ -3898,7 +3898,7 @@ public class OxUiPreviewActivity extends Activity {
                     ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             if (activeSkin) {
                 TextView check = new TextView(this);
-                check.setText("active");
+                check.setText(LocaleController.getString(R.string.OxUiActive));
                 check.setTextSize(11);
                 check.setTypeface(mono());
                 check.setTextColor(MUTED);
@@ -3919,14 +3919,14 @@ public class OxUiPreviewActivity extends Activity {
                 ColorStateList.valueOf(RIPPLE), null, null));
         customRow.setContentDescription("Customize skin");
         TextView customLabel = new TextView(this);
-        customLabel.setText("Customize…");
+        customLabel.setText(LocaleController.getString(R.string.OxUiCustomizeShort));
         customLabel.setTextSize(14);
         customLabel.setTypeface(sansMedium());
         customLabel.setTextColor(INK);
         customRow.addView(customLabel, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView customHint = new TextView(this);
-        customHint.setText("colors · radius · type");
+        customHint.setText(LocaleController.getString(R.string.OxUiCustomizeHint));
         customHint.setTextSize(11);
         customHint.setTypeface(mono());
         customHint.setTextColor(MUTED);
@@ -3936,7 +3936,7 @@ public class OxUiPreviewActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         TextView shellLabel = new TextView(this);
-        shellLabel.setText("SHELL");
+        shellLabel.setText(LocaleController.getString(R.string.OxUiShellSection));
         shellLabel.setTextSize(11);
         shellLabel.setTypeface(mono());
         shellLabel.setTextColor(MUTED);
@@ -3960,7 +3960,7 @@ public class OxUiPreviewActivity extends Activity {
         panel.addView(shellToggle("Footer status", skin == null || skin.showFooter, "showFooter"));
 
         TextView componentsLabel = new TextView(this);
-        componentsLabel.setText("COMPONENTS");
+        componentsLabel.setText(LocaleController.getString(R.string.OxUiComponentsSection));
         componentsLabel.setTextSize(11);
         componentsLabel.setTypeface(mono());
         componentsLabel.setTextColor(MUTED);
@@ -3974,7 +3974,7 @@ public class OxUiPreviewActivity extends Activity {
         panel.addView(shellToggle("Timestamps", skin == null || skin.showTimestamps, "showTimestamps"));
         panel.addView(shellToggle("Assistant accent rule", skin == null || skin.showAccent, "showAccent"));
         TextView dockLabel = new TextView(this);
-        dockLabel.setText("Dock items");
+        dockLabel.setText(LocaleController.getString(R.string.OxUiDockItems));
         dockLabel.setTextSize(11);
         dockLabel.setTypeface(mono());
         dockLabel.setTextColor(MUTED);
@@ -3993,7 +3993,7 @@ public class OxUiPreviewActivity extends Activity {
         panel.addView(rule, rlp);
 
         TextView aboutLabel = new TextView(this);
-        aboutLabel.setText("ABOUT");
+        aboutLabel.setText(LocaleController.getString(R.string.OxUiAboutSection));
         aboutLabel.setTextSize(11);
         aboutLabel.setTypeface(mono());
         aboutLabel.setTextColor(MUTED);
@@ -4011,7 +4011,7 @@ public class OxUiPreviewActivity extends Activity {
         panel.addView(version);
 
         TextView privacy = new TextView(this);
-        privacy.setText("Local-first: chats, memory and settings stay on this device.");
+        privacy.setText(LocaleController.getString(R.string.OxUiPrivacyLocalFirst));
         privacy.setTextSize(12);
         privacy.setTypeface(sans());
         privacy.setTextColor(MUTED);
@@ -4110,7 +4110,7 @@ public class OxUiPreviewActivity extends Activity {
         final EditText personaIn = editField(body, "PERSONA (AGENTS.MD)", a.agentsMd, 150, true);
 
         TextView skillsLabel = new TextView(this);
-        skillsLabel.setText("SKILLS");
+        skillsLabel.setText(LocaleController.getString(R.string.OxUiSkillsSection));
         skillsLabel.setTextSize(11);
         skillsLabel.setTypeface(mono());
         skillsLabel.setTextColor(MUTED);
@@ -4128,7 +4128,7 @@ public class OxUiPreviewActivity extends Activity {
         List<org.telegram.ox.OxSkillStore.Skill> skills = org.telegram.ox.OxSkillStore.list();
         if (skills.isEmpty()) {
             TextView none = new TextView(this);
-            none.setText("No SKILL.md packages found (Download/Operit/skills).");
+            none.setText(LocaleController.getString(R.string.OxUiNoSkillPackages));
             none.setTextSize(12);
             none.setTypeface(sans());
             none.setTextColor(MUTED);
@@ -4292,7 +4292,7 @@ public class OxUiPreviewActivity extends Activity {
         panel.addView(badge, new LinearLayout.LayoutParams(dp(58), dp(58)));
 
         TextView name = new TextView(this);
-        name.setText(a.name == null ? "Agent" : a.name);
+        name.setText(a.name == null ? LocaleController.getString(R.string.OxUiDefaultAgent) : a.name);
         name.setTextSize(28);
         name.setTypeface(serif());
         name.setTextColor(INK);
@@ -4367,7 +4367,7 @@ public class OxUiPreviewActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         actionsRow.addView(chat, clp);
         TextView edit = new TextView(this);
-        edit.setText("Edit");
+        edit.setText(LocaleController.getString(R.string.OxUiEdit));
         edit.setTextSize(14);
         edit.setTypeface(sans());
         edit.setTextColor(INK);
@@ -4382,7 +4382,7 @@ public class OxUiPreviewActivity extends Activity {
         elp.leftMargin = dp(10);
         actionsRow.addView(edit, elp);
         TextView pin = new TextView(this);
-        pin.setText(editTarget.pinned ? "Unpin" : "Pin");
+        pin.setText(editTarget.pinned ? LocaleController.getString(R.string.OxUiUnpin) : LocaleController.getString(R.string.OxUiPin));
         pin.setTextSize(14);
         pin.setTypeface(sans());
         pin.setTextColor(INK);
@@ -4604,7 +4604,7 @@ public class OxUiPreviewActivity extends Activity {
             agentRail.addView(chip, lp);
         }
         TextView terminalChip = new TextView(this);
-        terminalChip.setText("❯_  Terminal");
+        terminalChip.setText("❯_  " + LocaleController.getString(R.string.OxUiTerminal));
         terminalChip.setContentDescription("Open terminal");
         terminalChip.setTextSize(12);
         terminalChip.setTypeface(mono());
