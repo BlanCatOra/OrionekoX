@@ -12038,6 +12038,22 @@ public class MessagesController extends BaseController implements NotificationCe
             }
             runServerReload = false;
         }
+        // 2026-10-31 fix (G1 CP-5): the terminal empty end used to live in an
+        // `else if` chained to the server-reload branch below. For a local target
+        // runServerReload is forced to false, so that branch never ran and the
+        // empty end was dead code: an empty local chat looped size 0 forever
+        // (observed: 378 passes, loadIndex up to 379, no messagesDidLoad).
+        // It has to be evaluated before the server-reload condition, not after it.
+        if (oxLocalTarget && isCache && messagesRes.messages.isEmpty()) {
+            // No server reload was scheduled, so deliver the terminal empty end here.
+            // The cache pass above already set isEnd from messages_holes; with no rows
+            // and no hole row it defaults to false, and ChatActivity treats that as an
+            // unfinished load unless we explicitly end it (G1 contract §4.3).
+            org.telegram.ox.OxLocalHistory.clearReread(dialogId, loadIndex);
+            final int finalLoadIndex = loadIndex;
+            AndroidUtilities.runOnUIThread(() -> getNotificationCenter().postNotificationName(NotificationCenter.messagesDidLoad, dialogId, count, new ArrayList<>(), true, first_unread, last_message_id, unread_count, last_date, load_type, true, classGuid, finalLoadIndex, max_id, mentionsCount, mode));
+            return;
+        }
         if (!DialogObject.isEncryptedDialog(dialogId) && isCache && runServerReload) {
             if (mode == ChatActivity.MODE_SCHEDULED) {
                 lastScheduledServerQueryTime.put(dialogId, SystemClock.elapsedRealtime());
@@ -12100,15 +12116,6 @@ public class MessagesController extends BaseController implements NotificationCe
             if (messagesRes.messages.isEmpty()) {
                 return;
             }
-        } else if (oxLocalTarget && isCache && messagesRes.messages.isEmpty()) {
-            // No server reload was scheduled, so deliver the terminal empty end here.
-            // The cache pass above already set isEnd from messages_holes; with no rows
-            // and no hole row it defaults to false, and ChatActivity treats that as an
-            // unfinished load unless we explicitly end it (G1 contract §4.3).
-            org.telegram.ox.OxLocalHistory.clearReread(dialogId, loadIndex);
-            final int finalLoadIndex = loadIndex;
-            AndroidUtilities.runOnUIThread(() -> getNotificationCenter().postNotificationName(NotificationCenter.messagesDidLoad, dialogId, count, new ArrayList<>(), true, first_unread, last_message_id, unread_count, last_date, load_type, true, classGuid, finalLoadIndex, max_id, mentionsCount, mode));
-            return;
         }
         if (oxLocalTarget && isCache) {
             org.telegram.ox.OxLocalHistory.clearReread(dialogId, loadIndex);

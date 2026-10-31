@@ -20858,7 +20858,11 @@ public class ChatActivity extends BaseFragment implements
         }
 
         if (postponedScroll) {
-            if (load_type == 0 && isCache && messArr.size() < count) {
+            if (load_type == 0 && isCache && messArr.size() < count && !isEnd) {
+                // 2026-10-31 fix (G1 CP-5): isEnd was read into a local and then never
+                // consulted, so an empty local chat re-issued loadMessages on every
+                // pass (observed: 378 passes, loadIndex up to 379). A terminal empty
+                // end means there is nothing more to load, so the retry must not fire.
                 postponedScrollToLastMessageQueryIndex = lastLoadIndex;
                 waitingForLoad.add(lastLoadIndex);
                 getMessagesController().loadMessages(dialog_id, mergeDialogId, false, count, 0, 0, false, 0, classGuid, 0, 0, chatMode, threadMessageId, replyMaxReadId, lastLoadIndex++, isTopic);
@@ -20986,6 +20990,16 @@ public class ChatActivity extends BaseFragment implements
         if (chatMode == MODE_SCHEDULED || isQuickRepliesOrWelcomeMessagesMode()) {
             endReached[0] = cacheEndReached[0] = true;
             forwardEndReached[0] = forwardEndReached[0] = true;
+        }
+        // 2026-10-31 fix (G1 CP-5): a terminal empty end from the local history pass
+        // means there is nothing older to fetch. Without this the scroll trigger at
+        // the bottom of the list kept re-issuing loadMessages because endReached[0]
+        // stayed false, and an empty local chat looped forever (observed: 378 passes,
+        // loadIndex up to 379, no rows ever arriving).
+        if (isEnd && messArr.isEmpty() && load_type == 0) {
+            endReached[0] = cacheEndReached[0] = true;
+            loading = false;
+            checkDispatchHideSkeletons(true);
         }
         if ((!isThreadChat() || isTopic) && ChatObject.isChannel(currentChat) && !getMessagesController().dialogs_dict.containsKey(dialog_id) && load_type == 2 && loadIndex == 0) {
             forwardEndReached[0] = false;
