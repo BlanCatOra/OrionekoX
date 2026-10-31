@@ -12804,16 +12804,24 @@ public class MessagesController extends BaseController implements NotificationCe
             return;
         }
         long dialogId = DialogObject.getPeerDialogId(peer);
-        if (gettingUnknownDialogs.indexOfKey(dialogId) >= 0) {
-            return;
-        }
         // Ox local targets have no server peer: a getPeerDialogs request would only hit
         // Telegram with a fabricated id and, when it never answers, leave the dialog
         // restore and its pending task hanging (G1 contract §4.4). Restore the dialog
-        // row from messages_v2/chats locally instead, always clearing the marker.
+        // row from messages_v2/chats locally instead; the restore owns all marker and
+        // pending-task cleanup so no local path depends on a network callback.
         if (org.telegram.ox.OxAgentsBridge.classifyChatTarget(currentAccount, dialogId) == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.LOCAL_GROUP
                 || org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId)) {
-            restoreLocalUnknownDialog(dialogId);
+            if (gettingUnknownDialogs.indexOfKey(dialogId) < 0) {
+                gettingUnknownDialogs.put(dialogId, true);
+                restoreLocalUnknownDialog(dialogId, taskId);
+            } else if (taskId != 0) {
+                // A restore is already queued; the leftover pending task from a previous
+                // cycle must not outlive it (review D6: taskId>0 + existing marker).
+                getMessagesStorage().removePendingTask(taskId);
+            }
+            return;
+        }
+        if (gettingUnknownDialogs.indexOfKey(dialogId) >= 0) {
             return;
         }
         gettingUnknownDialogs.put(dialogId, true);
@@ -12866,7 +12874,7 @@ public class MessagesController extends BaseController implements NotificationCe
      * install/refresh the in-memory dialog, persist it back to the dialogs table, and
      * clear the pending state. Never issues a Telegram request.
      */
-    private void restoreLocalUnknownDialog(long dialogId) {
+    private void restoreLocalUnknownDialog(long dialogId, long taskId) {
         try {
             MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
                 TLRPC.Dialog restored = null;
@@ -12949,7 +12957,13 @@ public class MessagesController extends BaseController implements NotificationCe
                     });
                 }
                 AndroidUtilities.runOnUIThread(() -> {
+                    // Success, empty result and caught read/write errors all land here:
+                    // clear the in-memory marker and the leftover pending task exactly
+                    // once, without waiting for any network callback (review D6).
                     gettingUnknownDialogs.delete(dialogId);
+                    if (taskId != 0) {
+                        MessagesStorage.getInstance(0).removePendingTask(taskId);
+                    }
                     if (restoredFinal == null) {
                         return;
                     }
@@ -12972,8 +12986,12 @@ public class MessagesController extends BaseController implements NotificationCe
                 });
             });
         } catch (Throwable t) {
-            // Never leave the pending marker behind, even if the local restore itself fails.
+            // Never leave the pending marker or old task behind, even if the local
+            // restore itself fails to schedule (review D6: exception path is idempotent).
             gettingUnknownDialogs.delete(dialogId);
+            if (taskId != 0) {
+                MessagesStorage.getInstance(0).removePendingTask(taskId);
+            }
             FileLog.e("restoreLocalUnknownDialog scheduling failed did=" + dialogId, t);
         }
     }
