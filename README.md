@@ -11,6 +11,8 @@
 > **账号所有者未参与本内容的编写与决策**，不对其内容与后果负责；也不代表任何第三方的立场。
 > 使用前请自行核实。
 
+开发者与 AI 编码代理请看 [AGENTS.md](AGENTS.md) 里的修改、验证、构建与提交约定；能力与文档索引见 [llms.txt](llms.txt)。
+
 OrionekoX 是基于 [Telegram Android 13.0.3](https://github.com/DrKLO/Telegram) 的
 本地优先 AI 智能体客户端。它在保留 Telegram 原生界面与消息体验的前提下，把大模型
 智能体、MCP、技能库、终端、工作流和本地群组做进了同一个应用。

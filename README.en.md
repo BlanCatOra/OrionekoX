@@ -13,6 +13,9 @@
 > consequences. It does not represent the maintainers of this repository or any third
 > party. Please verify before relying on it.
 
+Developers and AI coding agents: see [AGENTS.md](AGENTS.md) for build, verification and
+commit rules, and [llms.txt](llms.txt) for the capability and documentation index.
+
 OrionekoX is a local-first AI agent client built on
 [Telegram Android 13.0.3](https://github.com/DrKLO/Telegram). It keeps Telegram's native
 UI and messaging experience while adding LLM agents, MCP, a skills library, a terminal,

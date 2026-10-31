@@ -1,30 +1,30 @@
 # OrionekoX
 
-> OrionekoX is a local-first AI agent client for Android, forked from Telegram 13.0.3.
-> It adds local agents, groups, MCP, skills, workspaces, terminal and workflows while
-> keeping Telegram's native UI. GPL-2.0; modifications by the AI coding agent blancatora.
+> OrionekoX 是基于 Telegram 的 Android Agent 客户端，包含 Ox 模式、OxUI 与原生界面；以下为能力说明和历史设计索引，实际支持范围以对应版本的独立验收为准。
+>
+> AI 生成 / AI-generated；Agent: blancatora；Model: gpt-6.1-sol；Harness: Codex CLI；Contact: blancatora@agent.qq.com；@BlanCatOra 仅作提交通道；本文可能有错误、遗漏或未充分验证，账号所有者未编写或逐项审阅且不对内容与后果负责，不代表上游或第三方立场，采用前请核实。
+> This AI-generated content may contain errors, omissions or unverified conclusions; the account owner did not write or review each change and is not responsible for the content or consequences; the account is only a submission channel, this does not represent upstream maintainers or third parties, and users should verify before relying on it.
 
-## Start here
+## 开始使用
 
-- [README (Chinese)](README.md): what it is, features, build, compatibility roadmap.
-- [README (English)](README.en.md): English equivalent.
-- [AGENTS.md](AGENTS.md): how AI coding agents should build, test and modify this repo.
+- [中文说明](README.md): 产品、安装入口与版本说明。
+- [English README](README.en.md): English product and installation overview.
+- [开发约定](AGENTS.md): 如何修改、验证、构建与提交本仓库。
 
-## Architecture
+## 能力与流程
 
-- [Ox bridge](TMessagesProj/src/main/java/org/telegram/ox/OxAgentsBridge.java): local agents, groups and media.
-- [Agent store](TMessagesProj/src/main/java/org/telegram/ox/OxAgentStore.java): synthetic contacts and provider/model settings.
-- [Group store](TMessagesProj/src/main/java/org/telegram/ox/OxGroupStore.java): local-only groups and per-group history.
-- [Ox settings UI](TMessagesProj/src/main/java/org/telegram/ui/OxSettingsActivity.java): provider, tools, MCP, skills, terminal and workflow settings.
+- [模式与引导](docs/ox-flows.md): Ox 模式、登录和返回路径的设计。
+- [OxUI](docs/oxui-design.md): 独立界面设计与交互目标。
+- [Harness 适配](docs/harness-adapters.md): 外部 Harness 对接、事件与能力边界。
+- [记忆架构](docs/memory-architecture-report.md): Markdown 本体、索引、版本和召回设计。
+- [导入流程](docs/operit-import.md): Operit 数据迁移设计与验证线索。
+- [兼容缺口](docs/operit-gap-analysis.md): 能力差距及待验证项，不是支持保证。
 
-## Build and test
+## 构建、许可与交付
 
-- [Build log and iteration history](docs/OrionekoX-alpha-0.0.1-构建报告.md)
-- [QA notes](docs/): per-round click-through checks
-- [Compatibility analysis](docs/operit-gap-analysis.md): Operit / Kelivo / RikkaHub gap tracking
-
-## Policy
-
-- [License](LICENSE): GPL-2.0, upstream DrKLO/Telegram.
-- [Notices](NOTICE): modification attribution and AI disclosure.
-- [Release checklist](docs/RELEASING.md): sanitization and publication gates.
+- [测试包说明](docs/debug-build.md): debug 包构建与隔离机制；旧清数据步骤须遵守当前禁区。
+- [资源校验](AGENTS.md): App 及实际交付范围内 Huawei/HockeyApp 的受影响变体先核任务名，再实测资源与默认语言标签；未实跑不能称通过。
+- [语言包升级](AGENTS.md): 需核对 `OX_ZH_PACK_VERSION` 实值（本仓库当前为 127）；旧中文包保留数据原地升级、重启与切换语言需实测，版本未提升时旧包可能继续生效；禁用 pm clear 或清缓存伪造升级，本文档修订未实跑。
+- [构建历史](docs/OrionekoX-alpha-0.0.1-构建报告.md): 历史构建与产物记录，不能代替当前版本验收。
+- [发布说明](docs/RELEASING.md): 发布检查输入；与 AGENTS 当前历史保护和署名要求一起核对。
+- [许可说明](docs/LICENSING.md): GPL-2.0 与上游、第三方来源。
