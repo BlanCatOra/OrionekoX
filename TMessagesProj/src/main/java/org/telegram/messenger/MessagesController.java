@@ -12877,8 +12877,12 @@ public class MessagesController extends BaseController implements NotificationCe
     private void restoreLocalUnknownDialog(long dialogId, long taskId) {
         try {
             MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
-                TLRPC.Dialog restored = null;
                 TLRPC.Message topMessage = null;
+                boolean rowExists = false;
+                int existingLastMid = 0;
+                int existingDate = 0;
+                boolean writeAttempted = false;
+                boolean dbWriteSucceeded = false;
                 SQLiteCursor cursor = null;
                 try {
                     cursor = MessagesStorage.getInstance(0).getDatabase().queryFinalized(
@@ -12902,8 +12906,47 @@ public class MessagesController extends BaseController implements NotificationCe
                         cursor.dispose();
                     }
                 }
+                // Review D7: an existing dialogs row owns its metadata (unread counters,
+                // inbox/outbox, pinned, flags, folder, serialized data). Never re-INSERT
+                // it: only a stale top pointer may be updated, and a genuinely missing
+                // row is the only case that creates one.
+                try {
+                    cursor = MessagesStorage.getInstance(0).getDatabase().queryFinalized(
+                            "SELECT last_mid, date FROM dialogs WHERE did = " + dialogId);
+                    if (cursor.next()) {
+                        rowExists = true;
+                        existingLastMid = cursor.intValue(0);
+                        existingDate = cursor.intValue(1);
+                    }
+                } catch (Exception e) {
+                    FileLog.e("restoreLocalUnknownDialog row probe failed did=" + dialogId, e);
+                } finally {
+                    if (cursor != null) {
+                        cursor.dispose();
+                    }
+                }
                 final TLRPC.Message messageFinal = topMessage;
-                if (messageFinal == null) {
+                TLRPC.Dialog restored = null;
+                boolean topStale = false;
+                if (messageFinal != null) {
+                    TLRPC.TL_dialog d = new TLRPC.TL_dialog();
+                    d.id = dialogId;
+                    if (messageFinal.peer_id != null && DialogObject.getPeerDialogId(messageFinal.peer_id) == dialogId) {
+                        d.peer = messageFinal.peer_id;
+                    } else if (org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId)) {
+                        TLRPC.TL_peerUser peerUser = new TLRPC.TL_peerUser();
+                        peerUser.user_id = dialogId;
+                        d.peer = peerUser;
+                    } else {
+                        TLRPC.TL_peerChat peerChat = new TLRPC.TL_peerChat();
+                        peerChat.chat_id = -dialogId;
+                        d.peer = peerChat;
+                    }
+                    d.top_message = messageFinal.id;
+                    d.last_message_date = messageFinal.date;
+                    restored = d;
+                    topStale = !rowExists || existingLastMid < messageFinal.id;
+                } else if (dialogId < 0) {
                     cursor = null;
                     try {
                         cursor = MessagesStorage.getInstance(0).getDatabase().queryFinalized(
@@ -12931,40 +12974,44 @@ public class MessagesController extends BaseController implements NotificationCe
                             cursor.dispose();
                         }
                     }
-                } else {
-                    TLRPC.TL_dialog d = new TLRPC.TL_dialog();
-                    d.id = dialogId;
-                    d.peer = DialogObject.getPeerDialogId(messageFinal.peer_id) == dialogId ? messageFinal.peer_id : null;
-                    if (d.peer == null) {
-                        d.peer = new TLRPC.TL_peerChat();
-                        d.peer.chat_id = -dialogId;
-                    }
-                    d.top_message = messageFinal.id;
-                    d.last_message_date = messageFinal.date;
-                    restored = d;
+                    topStale = restored != null && !rowExists;
                 }
                 final TLRPC.Dialog restoredFinal = restored;
-                if (restoredFinal != null) {
-                    MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
-                        try {
+                if (restoredFinal != null && topStale) {
+                    writeAttempted = true;
+                    try {
+                        if (rowExists) {
                             MessagesStorage.getInstance(0).getDatabase().executeFast(
-                                    "INSERT OR REPLACE INTO dialogs(did, date, unread_count, last_mid, inbox_max, outbox_max, last_mid_i, unread_count_i, pts, date_i, pinned, flags, folder_id, data, unread_reactions, last_mid_group, ttl_period, unread_poll_votes) "
+                                    "UPDATE dialogs SET last_mid = " + restoredFinal.top_message + ", date = " + restoredFinal.last_message_date
+                                            + " WHERE did = " + dialogId).stepThis().dispose();
+                        } else {
+                            MessagesStorage.getInstance(0).getDatabase().executeFast(
+                                    "INSERT INTO dialogs(did, date, unread_count, last_mid, inbox_max, outbox_max, last_mid_i, unread_count_i, pts, date_i, pinned, flags, folder_id, data, unread_reactions, last_mid_group, ttl_period, unread_poll_votes) "
                                             + "VALUES(" + dialogId + ", " + restoredFinal.last_message_date + ", 0, " + restoredFinal.top_message
                                             + ", 0, 0, 0, 0, 0, 0, 0, 0, 0, x'', 0, 0, 0, 0)").stepThis().dispose();
-                        } catch (Exception e) {
-                            FileLog.e("restoreLocalUnknownDialog write failed did=" + dialogId, e);
                         }
-                    });
+                        dbWriteSucceeded = true;
+                    } catch (Exception e) {
+                        FileLog.e("restoreLocalUnknownDialog write failed did=" + dialogId, e);
+                    }
+                } else if (restoredFinal != null) {
+                    // Row already holds an equal or newer top pointer: nothing to persist,
+                    // and the UI callback below is a plain state sync, not a write result.
+                    dbWriteSucceeded = true;
                 }
+                final boolean writeOkFinal = dbWriteSucceeded;
+                final boolean writeAttemptedFinal = writeAttempted;
                 AndroidUtilities.runOnUIThread(() -> {
-                    // Success, empty result and caught read/write errors all land here:
-                    // clear the in-memory marker and the leftover pending task exactly
-                    // once, without waiting for any network callback (review D6).
+                    // Success, no-op and caught errors all land here; markers and any
+                    // leftover pending task are cleared idempotently (review D6/D7).
                     gettingUnknownDialogs.delete(dialogId);
                     if (taskId != 0) {
                         MessagesStorage.getInstance(0).removePendingTask(taskId);
                     }
-                    if (restoredFinal == null) {
+                    if (restoredFinal == null || (writeAttemptedFinal && !writeOkFinal)) {
+                        // No dialog data, or the persistence attempt failed: no false
+                        // success, no in-memory install. User-visible failure surface
+                        // for dialog restore still needs a dedicated event (flagged).
                         return;
                     }
                     TLRPC.Dialog existing = dialogs_dict.get(dialogId);
