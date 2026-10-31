@@ -6733,6 +6733,7 @@
     <string name="OxAgentMemoryModeOff">关闭</string>
     <string name="OxAgentMemoryModeNormal">普通（关键词）</string>
     <string name="OxAgentMemoryModeVector">实验性（向量）</string>
+    <string name="OxAgentMemoryModeSemantic">语义（本地 LSA）</string>
     <string name="OxAgentMemoryThreshold">上下文压缩阈值（消息数）</string>
     <string name="OxAgentMemoryThresholdHint">默认 45</string>
     <string name="OxAgentHarness">接入方式 / Harness</string>

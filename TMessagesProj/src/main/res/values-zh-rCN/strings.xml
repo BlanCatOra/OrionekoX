@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <string name="NoChats">欢迎来到 OrionekoX</string>
+    <string name="OxAgentMemoryModeSemantic">语义（本地 LSA）</string>
     <string name="Vpn">VPN</string>
     <string name="VpnSettings">VPN 设置</string>
     <string name="UseVpn">使用 VPN</string>

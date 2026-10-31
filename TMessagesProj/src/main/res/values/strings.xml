@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="AppName">OrionekoX</string>
-    <string name="AppNameBeta">Telegram Beta</string>
     <string name="LanguageName">English</string>
     <string name="English">English</string>
     <string name="LanguageNameInEnglish">English</string>
@@ -173,7 +172,7 @@
     <string name="NoResultFoundFor">No results found for \"%s\".</string>
     <string name="NoResultFoundForTag">No results found for %s</string>
     <string name="NoResultFoundFor2">There were no results for \"%s\".\nTry a new search.</string>
-    <string name="NoChats">Welcome to Telegram</string>
+    <string name="NoChats">Welcome to OrionekoX</string>
     <string name="RecentlyViewed">Recently viewed</string>
     <string name="RecentlyViewedHide">HIDE</string>
     <string name="NoChatsHelp">Start messaging by tapping the pencil button in the bottom right corner.</string>
