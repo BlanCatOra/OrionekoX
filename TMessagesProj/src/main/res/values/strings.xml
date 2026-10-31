@@ -11853,6 +11853,12 @@
     <string name="OxUiInterfaceInfo">Telegram UI or the OxUI preview</string>
     <string name="OxUiTelegram">Telegram UI</string>
     <string name="OxUiPreviewName">OxUI preview</string>
+    <string name="OxUiTagline">Local agent studio</string>
+    <string name="OxUiEditMessage">Edit message</string>
+    <string name="OxUiForwardTo">Forward to</string>
+    <string name="OxUiTerminalOptions">Terminal options</string>
+    <string name="OxUiCustomizeSkin">Customize skin</string>
+    <string name="OxUiEditAgent">Edit agent</string>
     <string name="OxUiOpenPreview">Open OxUI preview</string>
     <string name="OxUiHint">Write something…</string>
     <string name="OxUiFooter">Preview · synced with Telegram UI</string>

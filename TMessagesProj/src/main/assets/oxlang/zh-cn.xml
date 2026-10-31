@@ -6758,6 +6758,12 @@
     <string name="OxUiInterfaceInfo">Telegram UI 或 OxUI 预览</string>
     <string name="OxUiTelegram">Telegram UI</string>
     <string name="OxUiPreviewName">OxUI 预览</string>
+    <string name="OxUiTagline">本地智能体工作室</string>
+    <string name="OxUiEditMessage">编辑消息</string>
+    <string name="OxUiForwardTo">转发到</string>
+    <string name="OxUiTerminalOptions">终端选项</string>
+    <string name="OxUiCustomizeSkin">自定义皮肤</string>
+    <string name="OxUiEditAgent">编辑智能体</string>
     <string name="OxUiOpenPreview">打开 OxUI 预览</string>
     <string name="OxUiHint">写点什么…</string>
     <string name="OxUiFooter">预览模式 · 与 Telegram UI 同步</string>

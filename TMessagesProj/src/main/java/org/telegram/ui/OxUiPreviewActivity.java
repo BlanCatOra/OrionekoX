@@ -371,7 +371,7 @@ public class OxUiPreviewActivity extends Activity {
         word.setLetterSpacing(-0.02f);
         title.addView(word);
         TextView sub = new TextView(this);
-        sub.setText("Local agent studio");
+        sub.setText(LocaleController.getString(R.string.OxUiTagline));
         sub.setTextSize(11);
         sub.setTypeface(sans());
         sub.setTextColor(MUTED);
@@ -1424,7 +1424,7 @@ public class OxUiPreviewActivity extends Activity {
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(this);
-        title.setText("Edit message");
+        title.setText(LocaleController.getString(R.string.OxUiEditMessage));
         title.setTextSize(26);
         title.setTypeface(serif());
         title.setTextColor(INK);
@@ -1463,7 +1463,7 @@ public class OxUiPreviewActivity extends Activity {
         actions.setGravity(Gravity.END);
         actions.setPadding(0, dp(14), 0, 0);
         TextView cancel = new TextView(this);
-        cancel.setText("Cancel");
+        cancel.setText(LocaleController.getString(R.string.Cancel));
         cancel.setTextSize(14);
         cancel.setTypeface(sans());
         cancel.setTextColor(INK);
@@ -1474,7 +1474,7 @@ public class OxUiPreviewActivity extends Activity {
         cancel.setOnClickListener(v -> hideOverlay());
         actions.addView(cancel);
         TextView save = new TextView(this);
-        save.setText("Save");
+        save.setText(LocaleController.getString(R.string.Save));
         save.setTextSize(14);
         save.setTypeface(sansMedium());
         save.setTextColor(BONE);
@@ -1529,7 +1529,7 @@ public class OxUiPreviewActivity extends Activity {
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(this);
-        title.setText("Forward to");
+        title.setText(LocaleController.getString(R.string.OxUiForwardTo));
         title.setTextSize(26);
         title.setTypeface(serif());
         title.setTextColor(INK);
@@ -1958,7 +1958,7 @@ public class OxUiPreviewActivity extends Activity {
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(this);
-        title.setText("Terminal options");
+        title.setText(LocaleController.getString(R.string.OxUiTerminalOptions));
         title.setTextSize(24);
         title.setTypeface(serif());
         title.setTextColor(INK);
@@ -2787,7 +2787,7 @@ public class OxUiPreviewActivity extends Activity {
         footer.addView(hint, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         TextView settingsLink = new TextView(this);
-        settingsLink.setText("Settings");
+        settingsLink.setText(LocaleController.getString(R.string.Settings));
         settingsLink.setTextSize(11);
         settingsLink.setTypeface(sans());
         settingsLink.setTextColor(INK);
@@ -3320,7 +3320,7 @@ public class OxUiPreviewActivity extends Activity {
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(this);
-        title.setText("Customize skin");
+        title.setText(LocaleController.getString(R.string.OxUiCustomizeSkin));
         title.setTextSize(28);
         title.setTypeface(serif());
         title.setTextColor(INK);
@@ -3408,7 +3408,7 @@ public class OxUiPreviewActivity extends Activity {
         copyJson.setPadding(dp(14), dp(10), dp(14), dp(10));
         actions.addView(copyJson);
         TextView cancel = new TextView(this);
-        cancel.setText("Cancel");
+        cancel.setText(LocaleController.getString(R.string.Cancel));
         cancel.setTextSize(13);
         cancel.setTypeface(sans());
         cancel.setTextColor(INK);
@@ -3433,7 +3433,7 @@ public class OxUiPreviewActivity extends Activity {
         plp.leftMargin = dp(10);
         actions.addView(prev, plp);
         TextView save = new TextView(this);
-        save.setText("Save");
+        save.setText(LocaleController.getString(R.string.Save));
         save.setTextSize(13);
         save.setTypeface(sansMedium());
         save.setTextColor(BONE);
@@ -3731,7 +3731,7 @@ public class OxUiPreviewActivity extends Activity {
         actions.setOrientation(LinearLayout.HORIZONTAL);
         actions.setPadding(0, dp(12), 0, 0);
         TextView cancel = new TextView(this);
-        cancel.setText("Cancel");
+        cancel.setText(LocaleController.getString(R.string.Cancel));
         cancel.setTextSize(13);
         cancel.setTypeface(sans());
         cancel.setTextColor(INK);
@@ -3790,7 +3790,7 @@ public class OxUiPreviewActivity extends Activity {
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(this);
-        title.setText("Settings");
+        title.setText(LocaleController.getString(R.string.Settings));
         title.setTextSize(28);
         title.setTypeface(serif());
         title.setTextColor(INK);
@@ -4080,7 +4080,7 @@ public class OxUiPreviewActivity extends Activity {
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(this);
-        title.setText("Edit agent");
+        title.setText(LocaleController.getString(R.string.OxUiEditAgent));
         title.setTextSize(28);
         title.setTypeface(serif());
         title.setTextColor(INK);
@@ -4186,7 +4186,7 @@ public class OxUiPreviewActivity extends Activity {
         actions.setOrientation(LinearLayout.HORIZONTAL);
         actions.setPadding(0, dp(14), 0, 0);
         TextView cancel = new TextView(this);
-        cancel.setText("Cancel");
+        cancel.setText(LocaleController.getString(R.string.Cancel));
         cancel.setTextSize(14);
         cancel.setTypeface(sans());
         cancel.setTextColor(INK);
@@ -4196,7 +4196,7 @@ public class OxUiPreviewActivity extends Activity {
         cancel.setOnClickListener(v -> hideOverlay());
         actions.addView(cancel);
         TextView save = new TextView(this);
-        save.setText("Save");
+        save.setText(LocaleController.getString(R.string.Save));
         save.setTextSize(14);
         save.setTypeface(sansMedium());
         save.setTextColor(BONE);
