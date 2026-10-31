@@ -62,6 +62,31 @@ public class OxAgentsBridge {
     }
 
     /**
+     * Single classification entry for how a dialog must be served, per the G1 fix
+     * contract (AC-T-20261031-B05-A-01 §3). LOCAL_GROUP requires the OxGroupStore
+     * created_<id> marker set by createLocalGroup; a bare chat_<id> member key or a
+     * negative dialog id alone never authorizes local-only handling. HYBRID keeps its
+     * server history and only merges local member state.
+     */
+    public enum OxChatTargetKind { AGENT_DM, LOCAL_GROUP, HYBRID_REAL_GROUP, REMOTE }
+
+    public static OxChatTargetKind classifyChatTarget(long account, long dialogId) {
+        if (account != 0 || dialogId == 0) {
+            return OxChatTargetKind.REMOTE; // TARGET_UNCONFIRMED by contract; treat as remote
+        }
+        if (isAgentDialog(dialogId)) {
+            return OxChatTargetKind.AGENT_DM;
+        }
+        if (dialogId < 0 && OxGroupStore.isLocallyCreated(-dialogId)) {
+            return OxChatTargetKind.LOCAL_GROUP;
+        }
+        if (dialogId < 0 && OxGroupStore.hasAgents(-dialogId)) {
+            return OxChatTargetKind.HYBRID_REAL_GROUP;
+        }
+        return OxChatTargetKind.REMOTE;
+    }
+
+    /**
      * Deletes one OxUI message: drops the OxChatEntry from the local store and the
      * matching row in messages_v2. The TL mid is located by timestamp (entry ts is
      * captured at persistence time) with the text as a tie-breaker, because agent

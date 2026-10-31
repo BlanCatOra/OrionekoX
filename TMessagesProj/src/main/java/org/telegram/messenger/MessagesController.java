@@ -11530,10 +11530,19 @@ public class MessagesController extends BaseController implements NotificationCe
         if (BuildVars.LOGS_ENABLED && loaderLogger == null && mode == 0) {
             loaderLogger = new Timer("MessageLoaderLogger dialogId=" + dialogId + " index=" + loadIndex + " count=" + count);
         }
-        // Synthetic Ox agent dialogs exist only in the local database. Their history is
-        // delivered by the cache pass above; a server refresh for a peer the account does
-        // not know can only fail (and would hit Telegram with a fake user id).
-        if (!fromCache && org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId)) {
+        // Ox local targets (agent dialogs and locally created groups) exist only in the
+        // local database. A server refresh for a peer the account does not know can only
+        // fail (and would hit Telegram with a fake id), so the network pass never runs
+        // for them. Instead of a silent return, the cache pass above finishes each
+        // loadIndex: one bounded local re-read after a write barrier, then a terminal
+        // EMPTY_END delivery (OxLocalHistory, G1 fix contract §4.2/4.3).
+        final boolean oxLocalTarget =
+                org.telegram.ox.OxAgentsBridge.classifyChatTarget(currentAccount, dialogId) == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.LOCAL_GROUP
+                || org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId);
+        if (!fromCache && oxLocalTarget) {
+            if (mode == ChatActivity.MODE_DEFAULT && threadMessageId == 0) {
+                org.telegram.ox.OxLocalHistory.reloadLocalAfterWriteBarrier(this, dialogId, count, max_id, classGuid, load_type, loadIndex);
+            }
             return;
         }
         if ((threadMessageId == 0 || isTopic || mode == ChatActivity.MODE_SUGGESTIONS || mode == ChatActivity.MODE_SAVED || mode == ChatActivity.MODE_QUICK_REPLIES || mode == ChatActivity.MODE_WELCOME_MESSAGES) && mode != ChatActivity.MODE_PINNED && (fromCache || DialogObject.isEncryptedDialog(dialogId))) {
@@ -11991,7 +12000,25 @@ public class MessagesController extends BaseController implements NotificationCe
         } else {
             reload = resCount == 0 && (!isInitialLoading || (SystemClock.elapsedRealtime() - lastServerQueryTime.get(dialogId, 0L)) > 60 * 1000 || (isCache && isTopic));
         }
-        if (!DialogObject.isEncryptedDialog(dialogId) && isCache && reload) {
+        final boolean oxLocalTarget =
+                org.telegram.ox.OxAgentsBridge.classifyChatTarget(currentAccount, dialogId) == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.LOCAL_GROUP
+                || org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId);
+        boolean runServerReload = reload;
+        if (oxLocalTarget && isCache && reload) {
+            // Local targets must never reach Telegram for history (GAP-1). The empty
+            // cache pass gets one bounded local re-read after the storage write
+            // barrier; if that is still empty it terminates with isEnd=true instead
+            // of leaving the chat on a permanent spinner.
+            if (mode == ChatActivity.MODE_DEFAULT) {
+                if (org.telegram.ox.OxLocalHistory.shouldReread(dialogId, loadIndex)) {
+                    org.telegram.ox.OxLocalHistory.reloadLocalAfterWriteBarrier(this, dialogId, count, max_id, classGuid, load_type, loadIndex);
+                    return;
+                }
+                org.telegram.ox.OxLocalHistory.clearReread(dialogId, loadIndex);
+            }
+            runServerReload = false;
+        }
+        if (!DialogObject.isEncryptedDialog(dialogId) && isCache && runServerReload) {
             if (mode == ChatActivity.MODE_SCHEDULED) {
                 lastScheduledServerQueryTime.put(dialogId, SystemClock.elapsedRealtime());
             } else if (mode == ChatActivity.MODE_QUICK_REPLIES) {
@@ -12053,6 +12080,18 @@ public class MessagesController extends BaseController implements NotificationCe
             if (messagesRes.messages.isEmpty()) {
                 return;
             }
+        } else if (oxLocalTarget && isCache && messagesRes.messages.isEmpty()) {
+            // No server reload was scheduled, so deliver the terminal empty end here.
+            // The cache pass above already set isEnd from messages_holes; with no rows
+            // and no hole row it defaults to false, and ChatActivity treats that as an
+            // unfinished load unless we explicitly end it (G1 contract §4.3).
+            org.telegram.ox.OxLocalHistory.clearReread(dialogId, loadIndex);
+            final int finalLoadIndex = loadIndex;
+            AndroidUtilities.runOnUIThread(() -> getNotificationCenter().postNotificationName(NotificationCenter.messagesDidLoad, dialogId, count, new ArrayList<>(), true, first_unread, last_message_id, unread_count, last_date, load_type, true, classGuid, finalLoadIndex, max_id, mentionsCount, mode));
+            return;
+        }
+        if (oxLocalTarget && isCache) {
+            org.telegram.ox.OxLocalHistory.clearReread(dialogId, loadIndex);
         }
         int size = messagesRes.messages.size();
         if (!isCache) {
@@ -12768,6 +12807,15 @@ public class MessagesController extends BaseController implements NotificationCe
         if (gettingUnknownDialogs.indexOfKey(dialogId) >= 0) {
             return;
         }
+        // Ox local targets have no server peer: a getPeerDialogs request would only hit
+        // Telegram with a fabricated id and, when it never answers, leave the dialog
+        // restore and its pending task hanging (G1 contract §4.4). Restore the dialog
+        // row from messages_v2/chats locally instead, always clearing the marker.
+        if (org.telegram.ox.OxAgentsBridge.classifyChatTarget(currentAccount, dialogId) == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.LOCAL_GROUP
+                || org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId)) {
+            restoreLocalUnknownDialog(dialogId);
+            return;
+        }
         gettingUnknownDialogs.put(dialogId, true);
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("load unknown dialog " + dialogId);
@@ -12810,6 +12858,124 @@ public class MessagesController extends BaseController implements NotificationCe
             }
             gettingUnknownDialogs.delete(dialogId);
         });
+    }
+
+    /**
+     * Local fallback for loadUnknownDialog on Ox local targets: read the latest
+     * messages_v2 row (or the group chat row when the dialog has no messages yet),
+     * install/refresh the in-memory dialog, persist it back to the dialogs table, and
+     * clear the pending state. Never issues a Telegram request.
+     */
+    private void restoreLocalUnknownDialog(long dialogId) {
+        try {
+            MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
+                TLRPC.Dialog restored = null;
+                TLRPC.Message topMessage = null;
+                SQLiteCursor cursor = null;
+                try {
+                    cursor = MessagesStorage.getInstance(0).getDatabase().queryFinalized(
+                            "SELECT data, mid, date FROM messages_v2 WHERE uid = " + dialogId + " ORDER BY date DESC, mid DESC LIMIT 1");
+                    if (cursor.next()) {
+                        NativeByteBuffer data = cursor.byteBufferValue(0);
+                        if (data != null) {
+                            topMessage = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
+                            data.reuse();
+                        }
+                        if (topMessage != null) {
+                            topMessage.id = cursor.intValue(1);
+                            topMessage.date = cursor.intValue(2);
+                            topMessage.dialog_id = dialogId;
+                        }
+                    }
+                } catch (Exception e) {
+                    FileLog.e("restoreLocalUnknownDialog read failed did=" + dialogId, e);
+                } finally {
+                    if (cursor != null) {
+                        cursor.dispose();
+                    }
+                }
+                final TLRPC.Message messageFinal = topMessage;
+                if (messageFinal == null) {
+                    cursor = null;
+                    try {
+                        cursor = MessagesStorage.getInstance(0).getDatabase().queryFinalized(
+                                "SELECT data FROM chats WHERE uid = " + (-dialogId));
+                        if (cursor.next()) {
+                            NativeByteBuffer data = cursor.byteBufferValue(0);
+                            if (data != null) {
+                                TLRPC.Chat chat = TLRPC.Chat.TLdeserialize(data, data.readInt32(false), false);
+                                data.reuse();
+                                if (chat != null) {
+                                    TLRPC.TL_dialog d = new TLRPC.TL_dialog();
+                                    d.id = dialogId;
+                                    d.peer = new TLRPC.TL_peerChat();
+                                    d.peer.chat_id = -dialogId;
+                                    d.top_message = 0;
+                                    d.last_message_date = chat.date;
+                                    restored = d;
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        FileLog.e("restoreLocalUnknownDialog chat fallback failed did=" + dialogId, e);
+                    } finally {
+                        if (cursor != null) {
+                            cursor.dispose();
+                        }
+                    }
+                } else {
+                    TLRPC.TL_dialog d = new TLRPC.TL_dialog();
+                    d.id = dialogId;
+                    d.peer = DialogObject.getPeerDialogId(messageFinal.peer_id) == dialogId ? messageFinal.peer_id : null;
+                    if (d.peer == null) {
+                        d.peer = new TLRPC.TL_peerChat();
+                        d.peer.chat_id = -dialogId;
+                    }
+                    d.top_message = messageFinal.id;
+                    d.last_message_date = messageFinal.date;
+                    restored = d;
+                }
+                final TLRPC.Dialog restoredFinal = restored;
+                if (restoredFinal != null) {
+                    MessagesStorage.getInstance(0).getStorageQueue().postRunnable(() -> {
+                        try {
+                            MessagesStorage.getInstance(0).getDatabase().executeFast(
+                                    "INSERT OR REPLACE INTO dialogs(did, date, unread_count, last_mid, inbox_max, outbox_max, last_mid_i, unread_count_i, pts, date_i, pinned, flags, folder_id, data, unread_reactions, last_mid_group, ttl_period, unread_poll_votes) "
+                                            + "VALUES(" + dialogId + ", " + restoredFinal.last_message_date + ", 0, " + restoredFinal.top_message
+                                            + ", 0, 0, 0, 0, 0, 0, 0, 0, 0, x'', 0, 0, 0, 0)").stepThis().dispose();
+                        } catch (Exception e) {
+                            FileLog.e("restoreLocalUnknownDialog write failed did=" + dialogId, e);
+                        }
+                    });
+                }
+                AndroidUtilities.runOnUIThread(() -> {
+                    gettingUnknownDialogs.delete(dialogId);
+                    if (restoredFinal == null) {
+                        return;
+                    }
+                    TLRPC.Dialog existing = dialogs_dict.get(dialogId);
+                    if (existing != null) {
+                        if (restoredFinal.top_message > existing.top_message) {
+                            existing.top_message = restoredFinal.top_message;
+                            existing.last_message_date = restoredFinal.last_message_date;
+                        }
+                    } else {
+                        dialogs_dict.put(dialogId, restoredFinal);
+                        allDialogs.add(restoredFinal);
+                    }
+                    if (messageFinal != null) {
+                        ArrayList<MessageObject> arr = new ArrayList<>();
+                        arr.add(new MessageObject(currentAccount, messageFinal, true, false));
+                        updateInterfaceWithMessages(dialogId, arr, 0);
+                    }
+                    getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload, true);
+                });
+            });
+        } catch (Throwable t) {
+            // Never leave the pending marker behind, even if the local restore itself fails.
+            gettingUnknownDialogs.delete(dialogId);
+            FileLog.e("restoreLocalUnknownDialog scheduling failed did=" + dialogId, t);
+        }
     }
 
     private void fetchFolderInLoadedPinnedDialogs(TLRPC.TL_messages_peerDialogs res) {
