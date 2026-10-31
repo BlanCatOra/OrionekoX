@@ -6,8 +6,8 @@ and no agent was added or removed.
 
 ## Group info (after 0.8.100)
 
-- Title “BlanCat 和 🤖 Yuki Waifu”, subtitle “2 位成员, 2 人在线”.
-- Creator row now renders “BlanCat · 在线 · 创建者”; member row “🤖 Yuki Waifu ·
+- Title “TestUser 和 🤖 Yuki Waifu”, subtitle “2 位成员, 2 人在线”.
+- Creator row now renders “TestUser · 在线 · 创建者”; member row “🤖 Yuki Waifu ·
   本地智能体”.
 - Actions: 消息 / 静音 / 语音聊天 / 离开; “添加成员” row present.
 

@@ -163,7 +163,7 @@
 
 App 内为本轮测试保留（供主代理处理，未删除既有数据）：
 - 智能体：`酒吧炒饭C2`（复制 Yuki，Provider OpenDesign，含 1535B 工作区文件）、`酒吧炒饭C2 · 副本`（.oxagent 导入，API Key 为空）、`R2C Card`（PNG 卡导入）
-- 群：`酒吧炒饭R2C测试群`（BlanCat + Yuki Waifu + 酒吧炒饭C2）
+- 群：`酒吧炒饭R2C测试群`（TestUser + Yuki Waifu + 酒吧炒饭C2）
 - 外观：预设 `R2C-Image`（`R2C-Dark` 已按用例删除）；当前为 **Telegram 原生** 模式
 - MCP：`R2C MCP`（http://10.0.2.2:8879/mcp）
 - 技能：`r2c-skill` 两条（重复导入产物）

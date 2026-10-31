@@ -14,7 +14,7 @@ Build: `io.github.blancatora.orionekox` versionName 0.8.109 (versionCode 1249).
 
 ## Verified
 
-- Group `BlanCat、Yuki Waifu 和 Yuki Waifu · 副本` (3 members).
+- Group `TestUser、Yuki Waifu 和 Yuki Waifu · 副本` (3 members).
 - Pushed a test image with “GROUP VISION 42” on a dark blue background and a yellow
   border. Sent it through 文件 → group-vision.jpg.
 - Log: `persistAndShow media type=1 mediaClass=TL_messageMediaPhoto photoNonNull=true`.

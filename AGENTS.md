@@ -51,7 +51,8 @@
 
 ## 禁区
 
-- 不读取、修改或提交个人数据、`.workbuddy/`、内部通讯与岗位档案、运行凭据、token、cookie、私钥、签名密钥、`google-services.json`、未脱敏日志或本地 SDK 路径；受控本地测试数据仅可按任务只读取证，不能把上述私密内容带出。
+- 不读取、修改或提交个人数据、`.workbuddy/`、内部通讯与岗位档案、运行凭据、token、cookie、私钥、签名密钥、**自己项目的** `google-services.json`、未脱敏日志或本地 SDK 路径；受控本地测试数据仅可按任务只读取证，不能把上述私密内容带出。
+  - ⚠️ 上游自带的 `TMessagesProj/google-services.json`（`project_id: tmessages2`，包名 `org.telegram.messenger`）与 `TMessagesProj/config/release.keystore` 是 Telegram 官方公开测试凭据，与 `origin/master` 逐字节相同（blob `640e841b` / `4c32fd31`）。**不要删这两个文件**——删了构建会坏，且不构成泄漏。禁区的对象是我们自己的 Firebase 项目凭据与签名密钥。
 - 不修改系统服务、桥接、权限与模型路由；不操作别人的工作树。保留已有用户改动，不 `pm clear`，不删除用户数据，不绕过 hooks。
 - 构建锁、设备锁与发布锁使用既定稳定文件及 flock 租约，不能为解锁删除锁文件或杀死他人进程。
 - 不 force push、不覆盖 tag/Release 资产、不重写已公开历史。`origin` 是 Telegram 上游；本项目交付显式使用 `autoco-publish` 与 `--repo BlanCatOra/OrionekoX`。

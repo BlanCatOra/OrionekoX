@@ -63,7 +63,7 @@
 
 ## 2. 真实 Harness 上下文证据
 
-桥接工作目录 `/home/blancat/orionekox-harness`，每套 Harness 一条短消息。
+桥接工作目录 `<harness-workdir>`，每套 Harness 一条短消息。
 原始记录 `/tmp/ox-bridge-smoke/context-0580.log`。
 
 | Harness | Turn 返回 | `/context` 关键值 |

@@ -125,7 +125,7 @@
 
 #### 1.5.2 群资料成员 — PASS
 
-- 资料页：`3 位成员, 3 人在线`；成员行：`BlanCat（创建者，在线）`、`Yuki Waifu（本地智能体）`、`酒吧炒饭B（本地智能体）`。
+- 资料页：`3 位成员, 3 人在线`；成员行：`TestUser（创建者，在线）`、`Yuki Waifu（本地智能体）`、`酒吧炒饭B（本地智能体）`。
 - 证据：`/tmp/bar-rice-B/107-group-profile.png`
 
 #### 1.5.3 群内提问 — PASS（仅 Yuki 回复）
@@ -222,7 +222,7 @@
 ### 2.6 重复添加/移除成员 — PASS
 
 - 第二次加 Echo：`4 位成员, 4 人在线`，Echo 仅一行（`/tmp/bar-rice-B/178-add-echo2.png` dump）。
-- 第二次移除：`3 位成员, 3 人在线`，成员行为 BlanCat/ Yuki/酒吧炒饭B，Echo 消失（`/tmp/bar-rice-B/179-remove-echo2.png`）。
+- 第二次移除：`3 位成员, 3 人在线`，成员行为 TestUser/ Yuki/酒吧炒饭B，Echo 消失（`/tmp/bar-rice-B/179-remove-echo2.png`）。
 - 计数、在线数、成员行三者一致。
 
 ---
@@ -232,7 +232,7 @@
 ### P1-1 群内 @ 指定 Agent 不生效，B 在群里从不回复
 
 - 复现：
-  1. 进入 `酒吧炒饭B测试群`（成员：BlanCat、Yuki Waifu、酒吧炒饭B）。
+  1. 进入 `酒吧炒饭B测试群`（成员：TestUser、Yuki Waifu、酒吧炒饭B）。
   2. 输入 `@`，在候选里选择 `酒吧炒饭B`（插入 `@agent_17 `）。
   3. 输入 `用一句话回答：两人份炒饭要不要加香菜？` 发送。
 - 期望：只有被 @ 的 `酒吧炒饭B` 回复，或至少由 B 回复。
@@ -369,7 +369,7 @@
 - Agent：
   - `酒吧炒饭B`（有效，OpenDesign/deepseek-v4.1-flash，AGENTS.md 为酒吧炒饭提示词）
   - `barB-nokey`（keyless 副本，用于 401 复现；建议删除）
-- 群：`酒吧炒饭B测试群`（BlanCat、Yuki Waifu、酒吧炒饭B；Echo 已移除）
+- 群：`酒吧炒饭B测试群`（TestUser、Yuki Waifu、酒吧炒饭B；Echo 已移除）
 - 单聊文件与工作区：
   - `酒吧炒饭B` 工作区：`bar-fried-rice.md`（1937 B）、`inbox/1793001589003_bar-rice-B.jpg`、`inbox/1793003655325_bar-fried-rice-B.pdf`、多个 `inbox/1793…_bar-rice-B.txt` 副本
   - 上传到设备的测试文件：`/sdcard/Download/bar-rice-B.jpg`、`bar-rice-B.txt`、`bar-fried-rice-B.pdf`

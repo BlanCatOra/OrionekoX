@@ -11,7 +11,7 @@ emulator-5554 with `-gpu off`. Local agents/groups only; no real contact message
   `tgId 555000019` to the copy.
 - Created a group immediately with Yuki + the copy: log
   `handleCreateChat users=2 agents=2 real=0`, `createLocalGroup id=1800000005 agents=2`;
-  profile showed “3 位成员, 3 人在线” with BlanCat + Yuki + copy. Previously C was
+  profile showed “3 位成员, 3 人在线” with TestUser + Yuki + copy. Previously C was
   silently dropped because `createChat` skipped users missing from the users cache;
   `createChat` now calls `syncAgents(false)` before building `req.users`.
 

@@ -34,7 +34,7 @@
 
 | # | 项目 | 结果 | 证据 |
 |---|---|---|---|
-| 1 | 新建/复制 Agent 后立即建群（该 Agent + Yuki），3 位成员，该 Agent 能回复；`@agent_<id>` 仅目标回复 | **PASS** | `08h-group-created.png`（3 位成员/3 人在线）、`09-group-profile.png`（BlanCat 创建者 + Yuki + R2A 各一行）、`11a-group-replies.png`（Yuki 回复）、`12a-at25-reply.png`（@agent_25 后仅 R2A 回复） |
+| 1 | 新建/复制 Agent 后立即建群（该 Agent + Yuki），3 位成员，该 Agent 能回复；`@agent_<id>` 仅目标回复 | **PASS** | `08h-group-created.png`（3 位成员/3 人在线）、`09-group-profile.png`（TestUser 创建者 + Yuki + R2A 各一行）、`11a-group-replies.png`（Yuki 回复）、`12a-at25-reply.png`（@agent_25 后仅 R2A 回复） |
 | 2 | 群内发带可识别文字图片，缩略图/无红叹号，Agent 能描述 | **PASS** | `14-image-sent.png`：图片预览正常、无红叹号；R2A 回复“蓝底测试卡，上面写着「BAR FRIED RICE」和「R2A TEST IMAGE 2026-10-26」” |
 | 3 | 回聊天列表再进 Agent：历史立即显示、输入框正常、无“开始Bot” | **PASS**（有偶发空白，见 P2-1） | `15b-r2a-chat.png`、`21e-r2a-reopen.png`；无“开始Bot”按钮 |
 | 4 | 改名后欢迎语同步新名字 | **PASS** | `16c-chatlist-renamed.png` 列表预览、`16d-renamed-chat.png` 欢迎气泡均变为“酒吧炒饭R2A改名” |
@@ -93,7 +93,7 @@
 | 子项 | 结果 | 证据 |
 |---|---|---|
 | 新建群选择 R2A + Yuki，命名 `酒吧炒饭R2A测试群` | PASS | `08h-group-created.png` |
-| 群资料成员数/成员行正确 | PASS | 3 位成员、3 人在线；BlanCat（创建者）、Yuki、R2A 各一行；`09-group-profile.png` |
+| 群资料成员数/成员行正确 | PASS | 3 位成员、3 人在线；TestUser（创建者）、Yuki、R2A 各一行；`09-group-profile.png` |
 | 群内提问，本地 Agent 回复且无红叹号 | PASS | 普通消息仅 Yuki 回复；@R2A 后 R2A 回复；`11a-group-replies.png`、`12a-at25-reply.png` |
 | 添加 Echo Assistant，成员数 +1 且仅一行 | PASS | 3→4 位成员；`28b-echo-added2.png` |
 | 长按 Echo 移除，成员数恢复 | PASS | 4→3 位；`29b-remove-state.png` |

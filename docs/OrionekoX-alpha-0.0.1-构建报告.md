@@ -839,7 +839,7 @@ sha256 `841a6801…`）；`dist/OrionekoX-0.8.20-debug-arm64-x64.apk`
   显示“2 位成员，2 人在线”，群内消息触发 agent 回合（QA2 自身 Key 返回 401，链路正常）。
 - 修复群选择器/建群页：
   - 成员状态「机器人」→「本地智能体」（`GroupCreateUserCell`）。
-  - 默认群名机翻「BlanCat(单位:千美元)🤖 QA2」→「BlanCat 和 🤖 QA2」；
+  - 默认群名机翻「TestUser(单位:千美元)🤖 QA2」→「TestUser 和 🤖 QA2」；
     `GroupCreateMembersTwo/Three/Four/Five` 全部改为中文枚举。
   - 「已选 1 / 200000」：`MembersCountSelected`、`Of`、`OfS` 的「编号」机翻修正。
 - 批量修复「信件」→「消息」、「编号」相关机翻、自动删除文案、`AutoDelete1Day`
@@ -1015,8 +1015,8 @@ release/debug 已安装并重新固定桌面图标。
 
 - `OxGroupStore.chatIds()` 枚举本地 agent 群；`syncAgents` 启动时以及 2.5s/7s
   延迟调用 `sanitizeLocalGroupTitles()`，把旧群名里的「(单位:千美元)」替换为「、」。
-- 实测：DB 中群名从 `BlanCat(单位:千美元)🤖 QA2` 修正为 `blancat、🤖 qa2`；
-  重启后聊天列表显示「BlanCat、 🤖 QA2」。
+- 实测：DB 中群名从 `TestUser(单位:千美元)🤖 QA2` 修正为 `testuser、🤖 qa2`；
+  重启后聊天列表显示「TestUser、 🤖 QA2」。
 - 当前会话的 DialogCell 不会立即刷新，需要下次启动或重新加载列表；DB 已持久化。
 - 0.8.35 release/debug 已构建、安装、推送、固定桌面图标。
 
@@ -1710,7 +1710,7 @@ release/debug 已安装并重新固定桌面图标。
 ## 5.75 alpha 0.8.75 —— 本地群回复回归与搜索崩溃限制（2026-10-26 09:58–10:03）
 
 **实测**
-- 在既有本地群 “BlanCat 和 🤖 Yuki Waifu” 发送
+- 在既有本地群 “TestUser 和 🤖 Yuki Waifu” 发送
   “Group check: reply with the word kiwi, do not use tools.”：消息 10:02 发出并
   显示“已查看”，Yuki 未调用工具（`onRound tools=0`），并凭群历史指出暗号是
   pineapple 而不是 kiwi，说明本地群落库、群历史注入与回复链路在 0.8.75 正常。
@@ -1885,7 +1885,7 @@ release/debug 已安装并重新固定桌面图标。
   全部稳定，所有掉线现场都没有 OrionekoX FATAL/ANR。后续交互 QA 使用 `-gpu off`。
 
 **实测**
-- 本地群 “BlanCat 和 🤖 Yuki Waifu” 发送
+- 本地群 “TestUser 和 🤖 Yuki Waifu” 发送
   “Version check: reply with one word, do not use tools.”：10:57 发出并显示
   “已查看”，Yuki 单条回复，`onRound tools=0`，群历史与本地投递正常。
 - **媒体发送首次成功**：Yuki 1:1 → 文件 → 内部存储器 → Download → `ox_photo.png`
@@ -2094,7 +2094,7 @@ release/debug 已安装并重新固定桌面图标。
 ## 5.95 alpha 0.8.95–0.8.98 —— 本地群资料页（2026-10-26 12:25–12:47）
 
 **问题**
-- 打开本地群“BlanCat 和 🤖 Yuki Waifu”的资料页只有头像、标题、成员数和
+- 打开本地群“TestUser 和 🤖 Yuki Waifu”的资料页只有头像、标题、成员数和
   消息/静音/离开，成员列表与“添加成员”全部为空。原因是创建群时 ChatFull 只
   `putChatFull` 到内存，没有写入存储；重启后 `ProfileActivity` 从
   `getChatFull` 和 `loadChatInfo` 都拿不到，且本地群无法从服务器补拉。
@@ -2137,7 +2137,7 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
   `UsersController` 缓存里已有当前用户的 `TL_userEmpty` 占位对象；
   `putUser(self, false)` 不会覆盖它，导致成员 cell 取到空用户、只显示“创建者”徽标。
 - 0.8.100 改为 `putUser(self, true)` 强制写入真实用户对象。
-- 实测群资料页现在显示“BlanCat · 在线 · 创建者”与“🤖 Yuki Waifu · 本地智能体”，
+- 实测群资料页现在显示“TestUser · 在线 · 创建者”与“🤖 Yuki Waifu · 本地智能体”，
   标题下为“2 位成员, 2 人在线”；创建者行不再空白。
 
 **产物**：`dist/OrionekoX-0.8.100-alpha-arm64-x64.apk`（versionCode 1159，sha256
@@ -2146,7 +2146,7 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
 ## 5.98 alpha 0.8.100 —— 群管理与消息菜单 QA（2026-10-26 12:58–13:05）
 
 **实测**
-- 群资料页显示“BlanCat · 在线 · 创建者”“🤖 Yuki Waifu · 本地智能体”，标题下
+- 群资料页显示“TestUser · 在线 · 创建者”“🤖 Yuki Waifu · 本地智能体”，标题下
   “2 位成员, 2 人在线”；动作行 消息/静音/语音聊天/离开。
 - 添加成员页：顶部“通过链接邀请他人加入群组”，下列全部本地智能体；Yuki 的开关
   为已选中且禁用，说明已有成员过滤生效。本次未选择/确认任何成员，返回退出。
@@ -2180,7 +2180,7 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
     与桥接层已更新的 ChatFull 重复，出现两行 Echo 和“4 位成员”；本地分支不再
     调用 `onAddUser`。
 - 复测：添加 Echo Assistant 后群资料为“3 位成员, 3 人在线”，成员行
-  BlanCat / Yuki / Echo 各一行；日志 `addLocalGroupMembers chat=1800000001
+  TestUser / Yuki / Echo 各一行；日志 `addLocalGroupMembers chat=1800000001
   count=3`，无 failed，无 `addChatUser` 请求。随后用备份把测试群恢复为仅 Yuki，
   冷启动后群聊头部与资料页均回到“2 位成员, 2 人在线”。
 - 记录见 `OrionekoX/docs/qa-group-0.8.102.md`。
@@ -2195,7 +2195,7 @@ debug `7285a26f…`。0.8.96 为未分发的中间构建。
   `OxAgentsBridge.removeLocalGroupMember` 从 `OxGroupStore` 删除该 agent、重建并
   持久化 ChatFull，再发 `chatInfoDidLoad`；本人“离开群组”仍走 Telegram 原路径。
 - 实测添加 Echo 后长按成员行，菜单含“从群组中移除”；移除后无需返回重进，资料页
-  立即显示“2 位成员, 2 人在线”，列表只剩 BlanCat 与 Yuki；日志
+  立即显示“2 位成员, 2 人在线”，列表只剩 TestUser 与 Yuki；日志
   `removeLocalGroupMember ... count=2`，无 `deleteChatUser` 请求。
 - 同时修正本地群头部刷新顺序：`updateListAnimated` 先重算在线数，再
   `updateProfileData(true)`，避免“2 位成员, 3 人在线”的旧缓存。

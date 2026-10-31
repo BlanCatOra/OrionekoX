@@ -84,8 +84,8 @@
 
 | 子步骤 | 结果 | 证据 |
 |---|---|---|
-| 新建群并选择 C 与 Yuki | PASS（选择阶段） | 出现“已选 2 / 200000”，摘要“BlanCat、Yuki Waifu 和 酒吧炒饭C”；`/tmp/bar-rice-C/75-group-selected2.png` |
-| 群创建结果 | **FAIL** | 群资料页显示“2 位成员, 2 人在线”，成员行只有 BlanCat（创建者）与 Yuki；C 被静默丢弃；`/tmp/bar-rice-C/80-group-profile.png`、`/tmp/bar-rice-C/81-group-members.png` |
+| 新建群并选择 C 与 Yuki | PASS（选择阶段） | 出现“已选 2 / 200000”，摘要“TestUser、Yuki Waifu 和 酒吧炒饭C”；`/tmp/bar-rice-C/75-group-selected2.png` |
+| 群创建结果 | **FAIL** | 群资料页显示“2 位成员, 2 人在线”，成员行只有 TestUser（创建者）与 Yuki；C 被静默丢弃；`/tmp/bar-rice-C/80-group-profile.png`、`/tmp/bar-rice-C/81-group-members.png` |
 | 群消息与回复 | **FAIL** | 17:26 发送“群里确认…”，仅 Yuki 回复，C 无回复；无红叹号；`/tmp/bar-rice-C/83-group-replies.png` |
 | 添加 Echo | PASS | 确认弹窗“您确定要添加 🤖 Echo Assistant 到 酒吧炒饭C测试群 吗？/ 向 Echo Assistant 显示最后100条消息”；确认后 3 位成员，Echo 仅一行；`/tmp/bar-rice-C/87-after-add-echo.png`、`/tmp/bar-rice-C/88-echo-added.png` |
 | 移除 Echo | PASS | 长按 → 从群组中移除，立即恢复 2 位成员、Echo 消失（无二次确认）；`/tmp/bar-rice-C/90-remove-confirm.png`、`/tmp/bar-rice-C/91-after-remove-echo.png` |
@@ -113,7 +113,7 @@
 - 未删除用户数据、未 `pm clear`、未修改真实账号设置；未向任何真实联系人发送消息。
 - 测试对象保留，供主代理清理：
   - 智能体：`酒吧炒饭C`（Yuki 副本，username `@agent_18`）
-  - 群：`酒吧炒饭C测试群`（当前 3 位成员：BlanCat 创建者、Yuki Waifu、酒吧炒饭C）
+  - 群：`酒吧炒饭C测试群`（当前 3 位成员：TestUser 创建者、Yuki Waifu、酒吧炒饭C）
   - 工作流：`酒吧炒饭C工作流`（已删除）
   - 设备文件：`/sdcard/Download/bar-rice-C.jpg`
   - 截图：`/tmp/bar-rice-C/`
@@ -178,8 +178,8 @@
 ### P1-1 群创建静默丢弃刚创建的本地智能体
 
 - 复现：复制 Yuki 得到 C → 立即新建群，勾选 C 与 Yuki（界面显示已选 2）→ 创建。
-- 期望：群成员为 BlanCat + Yuki + C（3 人），C 有成员行并能回复。
-- 实际：群显示“2 位成员”（BlanCat + Yuki），C 无成员行；群消息只有 Yuki 回复。
+- 期望：群成员为 TestUser + Yuki + C（3 人），C 有成员行并能回复。
+- 实际：群显示“2 位成员”（TestUser + Yuki），C 无成员行；群消息只有 Yuki 回复。
 - 重启 app 后 C 出现在联系人列表，手动“添加成员”可成功加入并显示成员行，说明是创建时的注册/缓存竞态。
 - 证据：`/tmp/bar-rice-C/75-group-selected2.png`、`/tmp/bar-rice-C/80-group-profile.png`、`/tmp/bar-rice-C/81-group-members.png`、`/tmp/bar-rice-C/83-group-replies.png`。
 

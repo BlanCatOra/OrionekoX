@@ -72,7 +72,7 @@
 |---|---|---|
 | 新建群组，选择 `酒吧炒饭A` + `Yuki Waifu` | PASS | 已选 2 / 200000（`05-group-selected.png`） |
 | 命名 `酒吧炒饭A测试群` | PASS | `05-group-name2.png` |
-| 群资料成员行正确（BlanCat 创建者 + 2 agent） | **FAIL** | 实际只有 BlanCat（创建者）+ Yuki Waifu，`酒吧炒饭A` 消失；标题却是“2 位成员, 2 人在线”（`05-group-info.png`）。详见 P1-2 |
+| 群资料成员行正确（TestUser 创建者 + 2 agent） | **FAIL** | 实际只有 TestUser（创建者）+ Yuki Waifu，`酒吧炒饭A` 消失；标题却是“2 位成员, 2 人在线”（`05-group-info.png`）。详见 P1-2 |
 | 群内发问，等待本地 agent 回复 | PASS（仅 Yuki） | 14:47:16 发送；14:47:25 Yuki 回复“我这边不加香菜，两人份就留一半香菜单独放边上，谁想吃自己加～”，无红叹号（`05-group-reply.png`） |
 | 添加 Echo Assistant | PASS | 确认文案“您确定要添加 Echo Assistant 到 酒吧炒饭A测试群 吗？/ 向 Echo Assistant 显示最后100条消息”；成员数 2→3，Echo 仅一行（`05-after-add-echo2.png`） |
 | 长按 Echo → 从群组中移除 | PASS | 移除后立即恢复为 2 位成员，Echo 消失 |
@@ -97,7 +97,7 @@
 - 保留的测试对象（供主代理清理）：
   - Agent `酒吧炒饭A`（原始测试 Agent，Provider: OpenDesign / deepseek-v4.1-flash）
   - Agent `酒吧炒饭A-copy`（`.oxagent` 导入副本，@agent_15）
-  - 群 `酒吧炒饭A测试群`（现成员：BlanCat、Yuki Waifu）
+  - 群 `酒吧炒饭A测试群`（现成员：TestUser、Yuki Waifu）
   - 工作区文件 `bar-fried-rice.md`、`inbox/1792996894268_bar-rice-A.jpg`
   - `/sdcard/Download/`：`bar-rice-A.jpg`、`bar-rice-A-avatar.png`、`note-B.txt`、`____A.oxagent`
 
@@ -183,8 +183,8 @@
 ### P1-2 建群时选中的 `酒吧炒饭A` 未加入，成员数与成员行不一致
 
 - 复现：聊天列表 → 新建群组 → 选择 `酒吧炒饭A` 与 `Yuki Waifu`（显示“已选 2”）→ 命名 `酒吧炒饭A测试群` → 创建 → 打开群资料。
-- 期望：显示 BlanCat（创建者）+ Yuki Waifu + 酒吧炒饭A，共 3 人。
-- 实际：只显示 BlanCat + Yuki Waifu；标题“2 位成员, 2 人在线”（计数不含创建者）。`酒吧炒饭A` 无法在群内回复。
+- 期望：显示 TestUser（创建者）+ Yuki Waifu + 酒吧炒饭A，共 3 人。
+- 实际：只显示 TestUser + Yuki Waifu；标题“2 位成员, 2 人在线”（计数不含创建者）。`酒吧炒饭A` 无法在群内回复。
 - 证据：`05-group-selected.png`、`05-group-info.png`、`05-group-reply.png`（仅 Yuki 回复）。
 - 级别：P1（静默丢成员）。
 
@@ -228,7 +228,7 @@
 
 ### P2-4 群成员计数语义混乱且可被误读
 
-- 实际：群资料显示“2 位成员, 2 人在线”，但下方列出 BlanCat（创建者）+ Yuki Waifu；创建者不计入“成员”数，与常规 Telegram 语义不一致。
+- 实际：群资料显示“2 位成员, 2 人在线”，但下方列出 TestUser（创建者）+ Yuki Waifu；创建者不计入“成员”数，与常规 Telegram 语义不一致。
 - 期望：显示总人数（含创建者）或明确写“2 个智能体”。
 - 证据：`05-group-info.png`。
 - 级别：P2（文案/计数）。

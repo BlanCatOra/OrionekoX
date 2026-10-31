@@ -21,22 +21,54 @@ publicly visible. The repository is GPL-2.0; keep upstream notices intact.
 
 Never publish:
 
-- keystores (`*.keystore`, `*.jks`, `*.p12`) or signing passwords;
-- `google-services.json` / Firebase API keys;
+- keystores (`*.keystore`, `*.jks`, `*.p12`) or signing passwords **that belong to us**;
+- **our own** `google-services.json` / Firebase API keys;
 - private email addresses, phone numbers, internal IPs or home-directory paths;
 - provider API keys, OAuth tokens, cookies or `~/.dsh` credentials;
-- user data backups (`*.oxagent`, chat databases, agent workspaces).
+- user data backups (`*.oxagent`, chat databases, agent workspaces);
+- real Telegram display names or usernames in QA records — use `TestUser`.
 
-Scan the working tree and history before pushing:
+⚠️ **Upstream test credentials are NOT leaks.** `TMessagesProj/google-services.json`
+(`project_id: tmessages2`, package `org.telegram.messenger`) and
+`TMessagesProj/config/release.keystore` are Telegram's own public test credentials,
+byte-identical to `origin/master` (blobs `640e841b` / `4c32fd31`). Do not delete them —
+the build breaks. The rule targets **our** Firebase project and **our** signing keys.
+
+### Run the scanner
 
 ```bash
-git grep -nE 'AIza[0-9A-Za-z_-]{20,}|sk-[A-Za-z0-9]{20,}|BEGIN (RSA |EC )?PRIVATE KEY'
-git log --all -p | grep -nE 'AIza[0-9A-Za-z_-]{20,}|sk-[A-Za-z0-9]{20,}'
+tools/sanitize-scan.sh            # working tree + current branch history
+tools/sanitize-scan.sh --staged   # staged content only (pre-commit)
+tools/sanitize-scan.sh --all      # every ref's tree + full history (before release)
 ```
 
-If a secret is already in history, rewrite a separate public mirror with
-`git filter-repo`; do not push the original history and delete the file afterwards.
-The local development repository may keep its original history.
+Exit code 0 = clean. The script excludes third-party directories by pathspec
+(`TMessagesProj/jni`, `TMessagesProj_Modules`, `design-skills`) and carries a
+verified allowlist for upstream test credentials and webrtc fixture IPs.
+
+**Read the two sections separately:**
+
+- `worktree` clean → current state is safe to push.
+- `history` hits → already-pushed history contains it; editing current files does not
+  remove it. Record it, do not rewrite public history.
+
+### If a secret is already in history
+
+- **Not yet pushed** → rebuild clean history (`git bundle` backup first, then
+  `git checkout --orphan`).
+- **Already pushed** → do not rewrite. Remove from current files, rotate the credential,
+  and record the exposure. Rewriting a public repo breaks every existing clone.
+
+### Known false positives (do not chase these)
+
+| Pattern | Where | Why it is safe |
+|---|---|---|
+| `192.168.x.x` | `TMessagesProj/jni/voip/webrtc/**` | upstream unit-test fixture IPs |
+| `BEGIN ... PRIVATE KEY` (literal) | `fake_rtc_certificate_generator.h` | upstream fake certificate |
+| `AIzaSy...` | `google-services.json`, `AndroidManifest.xml` | Telegram's public test key |
+| `Cheng` | `jni/voip/webrtc/modules/third_party/g722/**` | copyright line `Chengxiang Lu`, CMU 1993 |
+| `sk-` inside words | `design-skills/**/*.csv` | `task-based`, `risk-...` — not a key |
+| `/home/gradle`, `/home/source` | `Dockerfile` | container build users |
 
 ## 2. Documentation gates
 
@@ -67,13 +99,17 @@ adb install -r TMessagesProj_AppStandalone/build/outputs/apk/afat/standalone/app
 - Only after explicit owner authorization: create the remote repository and push the
   sanitized mirror.
 - Use the owner account only as a transport channel; the AI identity stays
-  `blancatora` and the model `deepseek-v4.1-flash`.
+  `blancatora` and the model is reported as `Roost` (Perch's model layer). Never name
+  the underlying model, never write a routing alias such as `team-auto`.
 - Release notes and repository descriptions carry the same AI disclosure.
 - Do not push an unsigned or differently-signed APK as an update to an existing install.
 
 ## 5. Commit trailers
 
 ```text
-Generated-by: blancatora (DeepSeek Harness / deepseek-v4.1-flash)
+Generated-by: <model-id> (Agent: blancatora / Harness: <real harness>)
 AI-Disclosure: 本提交由 AI 编码代理生成；可能含未经人工复核的改动。
 ```
+
+`<model-id>` is the real model identifier in lowercase, or `Roost` when the underlying
+model is not disclosed. Never a Chinese nickname, never a routing alias.

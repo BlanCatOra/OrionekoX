@@ -22,7 +22,7 @@ was messaged and no server member request was issued.
 
 ## Add-member pass
 
-- Starting state: “2 位成员, 2 人在线”, rows BlanCat (创建者) and Yuki Waifu.
+- Starting state: “2 位成员, 2 人在线”, rows TestUser (创建者) and Yuki Waifu.
 - 添加成员 → picker → Echo Assistant selected (Yuki's switch is checked+disabled).
 - Confirmation dialog: “添加1成员 … 向 Echo Assistant 显示最后100条消息”.
 - After 添加: “3 位成员, 3 人在线”, exactly one Echo Assistant row; no duplicate.

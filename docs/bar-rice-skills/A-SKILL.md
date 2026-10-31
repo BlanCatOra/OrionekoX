@@ -11,7 +11,7 @@ description: 独立完成 OrionekoX「酒吧炒饭」全流程测试；建档、
 
 ## 0. 环境与硬约束
 
-- 工作目录：`/home/blancat/.zcode/workspace/5ea3fe57-d78f-4398-86e9-48d972c6ed70/OrionekoX`
+- 工作目录：`<repo-root>`
 - 设备：`emulator-5554`，release 包 `io.github.blancatora.orionekox`（当前 0.8.103，
   versionCode 1189），debug 包为 `.debug`；以 release 为准。
 - 只与本地智能体（界面标注“本地智能体”）或仅含本地成员的群交互。
@@ -60,7 +60,7 @@ description: 独立完成 OrionekoX「酒吧炒饭」全流程测试；建档、
 ### 1.5 本地群、成员与群回复
 1. 从聊天列表新建群组，选择 `酒吧炒饭A` 与 Yuki Waifu 两个本地智能体，
    命名 `酒吧炒饭A测试群`，创建。
-2. 打开群资料页，确认成员数与成员行正确（BlanCat 创建者 + 两个 agent）；截图。
+2. 打开群资料页，确认成员数与成员行正确（TestUser 创建者 + 两个 agent）；截图。
 3. 在群里发送：`群里确认：两人份炒饭要不要加香菜？各自用一句话回答。`
    等待本地 agent 回复，确认群内出现回复气泡且没有红叹号；截图。
 4. 群资料页 → 添加成员 → 选择 Echo Assistant → 确认；确认成员数 +1 且 Echo 只有一行。

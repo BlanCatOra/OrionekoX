@@ -16,7 +16,7 @@ No real Telegram contact was messaged and no user data was cleared.
 
 ## Local group reply
 
-- Opened “BlanCat 和 🤖 Yuki Waifu”, sent
+- Opened “TestUser 和 🤖 Yuki Waifu”, sent
   “Version check: reply with one word, do not use tools.”
 - Bubble shows `于 10:57 AM 发送, 已查看`; Yuki replied once
   (“Ready～…”), and `OxBridge: onRound dialog=-1800000001 tools=0` confirms no tool

@@ -90,7 +90,7 @@ app-data 可写目录不允许执行二进制。该限制不是命令拼接或 P
 ## 2. 真实 Harness 验证
 
 桥接在本机（非模拟器）运行，工作目录
-`/home/blancat/orionekox-harness`，逐 Harness 使用真实 CLI；证据保存在
+`<harness-workdir>`，逐 Harness 使用真实 CLI；证据保存在
 `/tmp/ox-bridge-smoke/*.json`。
 
 | Harness | Turn 1 | Turn 2（resume） | Native compact | Turn 3（compact 后） |

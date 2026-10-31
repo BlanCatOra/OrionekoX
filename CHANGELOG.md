@@ -194,7 +194,7 @@ the code.
 
 ## 0.8.100 — 2026-10-26
 
-- Local-group creator row renders the real self user (BlanCat · 在线 · 创建者).
+- Local-group creator row renders the real self user (TestUser · 在线 · 创建者).
 - Agent profile actions trimmed to 消息/静音; bot-only share/report/block entries hidden.
 
 ## 0.8.95–0.8.99 — 2026-10-26

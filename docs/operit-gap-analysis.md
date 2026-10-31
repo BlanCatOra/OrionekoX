@@ -426,7 +426,7 @@ of a separate automation graph:
 
 ### 0.8.75 local-group regression pass
 
-- Sent a new message in the existing local group “BlanCat 和 🤖 Yuki Waifu”. It was
+- Sent a new message in the existing local group “TestUser 和 🤖 Yuki Waifu”. It was
   persisted locally, marked 已查看, and Yuki replied with `onRound tools=0`, recalling
   the group codeword from the per-group history. Confirms group storage, history
   injection and replies still work after the 0.8.72–0.8.75 copy changes.
@@ -619,7 +619,7 @@ of a separate automation graph:
 - The blank creator row came from `putUser(self, false)` leaving a pre-existing
   `TL_userEmpty` placeholder in the user cache. Forcing `putUser(self, true)` makes
   the member cell resolve the real user; the profile now shows
-  “BlanCat · 在线 · 创建者” and “Yuki Waifu · 本地智能体”, with “2 位成员, 2 人在线”.
+  “TestUser · 在线 · 创建者” and “Yuki Waifu · 本地智能体”, with “2 位成员, 2 人在线”.
 
 ### 0.8.100 group management QA
 
@@ -661,7 +661,7 @@ of a separate automation graph:
   for local groups; the latter recalculates `onlineCount` first, so the subtitle
   immediately shows “2 位成员, 2 人在线” instead of the old online count.
 - Verified by adding Echo, long-pressing its row, choosing 从群组中移除, and observing
-  the immediate 2/2 header with only BlanCat + Yuki. Details:
+  the immediate 2/2 header with only TestUser + Yuki. Details:
   `docs/qa-group-0.8.103.md`.
 
 ### 0.8.104 bar-rice P1 fixes

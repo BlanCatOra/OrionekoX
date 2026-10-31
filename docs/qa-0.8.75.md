@@ -11,7 +11,7 @@ contacts were messaged and no user data was cleared.
 | Chat list | Long-press Yuki Waifu → action mode → overflow | Only 归档 / 标记为未读 / 清空历史记录; “屏蔽用户” is gone for local agents (0.8.74 fix confirmed) |
 | Contacts | Open Contacts tab, inspect agent rows | 7 local agents, no real contacts added or removed |
 | New contact sheet | Tap the add-contact FAB, read copy, close without saving | “同步联系人到手机” shown (0.8.75 copy fix); no contact created |
-| Local group | Open “BlanCat 和 🤖 Yuki Waifu”, send “Group check: reply with the word kiwi, do not use tools.” | Message shows 已查看, Yuki replies without tool calls (`onRound tools=0`) and recalls the group codeword “pineapple” from history |
+| Local group | Open “TestUser 和 🤖 Yuki Waifu”, send “Group check: reply with the word kiwi, do not use tools.” | Message shows 已查看, Yuki replies without tool calls (`onRound tools=0`) and recalls the group codeword “pineapple” from history |
 | Rebrand runtime | Sample zh pack on device | `ChatAir` count 0; “清除 OrionekoX 缓存”, “同步联系人到手机”, Telegram Desktop QR copy present |
 
 ## Emulator limitation (not an app crash)
@@ -27,7 +27,7 @@ contacts were messaged and no user data was cleared.
 
 ## Data notes
 
-- One test message was added to the existing local group “BlanCat 和 🤖 Yuki Waifu”
+- One test message was added to the existing local group “TestUser 和 🤖 Yuki Waifu”
   (1800000001). It contains no personal data and can be deleted by the user.
 - No agents, workflows, MCP servers, workspace files or contacts were created,
   modified or deleted during this pass.

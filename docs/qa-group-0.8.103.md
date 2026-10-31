@@ -19,11 +19,11 @@ was messaged and no server member request was issued.
 
 ## Removal pass
 
-- Starting state: “2 位成员, 2 人在线”, rows BlanCat (创建者) and Yuki Waifu.
+- Starting state: “2 位成员, 2 人在线”, rows TestUser (创建者) and Yuki Waifu.
 - Added Echo Assistant through 添加成员 → confirmed (“3 位成员, 3 人在线”, one Echo row).
 - Long-pressed the Echo row: 发送消息 / 添加成员标记 / 设为管理员 / 修改权限 /
   从群组中移除. Tapped 从群组中移除.
-- Result without leaving the screen: “2 位成员, 2 人在线”, BlanCat + Yuki only.
+- Result without leaving the screen: “2 位成员, 2 人在线”, TestUser + Yuki only.
 - `OxBridge: removeLocalGroupMember chat=1800000001 user=555000002 count=2`, no
   `deleteChatUser` request in logcat. `OxGroupStore` no longer lists Echo.
 
