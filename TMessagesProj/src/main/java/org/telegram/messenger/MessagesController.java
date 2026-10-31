@@ -11536,9 +11536,24 @@ public class MessagesController extends BaseController implements NotificationCe
         // for them. Instead of a silent return, the cache pass above finishes each
         // loadIndex: one bounded local re-read after a write barrier, then a terminal
         // EMPTY_END delivery (OxLocalHistory, G1 fix contract §4.2/4.3).
+        final org.telegram.ox.OxAgentsBridge.TargetResolution targetResolution =
+                org.telegram.ox.OxAgentsBridge.classifyTarget(currentAccount, dialogId);
         final boolean oxLocalTarget =
-                org.telegram.ox.OxAgentsBridge.classifyChatTarget(currentAccount, dialogId) == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.LOCAL_GROUP
-                || org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId);
+                targetResolution.status == org.telegram.ox.OxAgentsBridge.TargetStatus.CONFIRMED
+                        && (targetResolution.kind == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.LOCAL_GROUP
+                        || targetResolution.kind == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.AGENT_DM);
+        if (targetResolution.status == org.telegram.ox.OxAgentsBridge.TargetStatus.TARGET_UNCONFIRMED && !fromCache) {
+            // Review D1: an unresolved target must not reach Telegram with a fabricated
+            // peer. Deliver a visible failure for this loadIndex instead of a silent
+            // return (ChatActivity consumes NotificationCenter.loadingMessagesFailed).
+            AndroidUtilities.runOnUIThread(() -> {
+                TLRPC.TL_error error = new TLRPC.TL_error();
+                error.code = 404;
+                error.text = "OX_TARGET_UNCONFIRMED";
+                getNotificationCenter().postNotificationName(NotificationCenter.loadingMessagesFailed, classGuid, null, error);
+            });
+            return;
+        }
         if (!fromCache && oxLocalTarget) {
             // Every supported mode/thread combination of a local target finishes through
             // the native storage query (review D2/D8); no silent return, no network.
@@ -12001,9 +12016,12 @@ public class MessagesController extends BaseController implements NotificationCe
         } else {
             reload = resCount == 0 && (!isInitialLoading || (SystemClock.elapsedRealtime() - lastServerQueryTime.get(dialogId, 0L)) > 60 * 1000 || (isCache && isTopic));
         }
+        final org.telegram.ox.OxAgentsBridge.TargetResolution targetResolution =
+                org.telegram.ox.OxAgentsBridge.classifyTarget(currentAccount, dialogId);
         final boolean oxLocalTarget =
-                org.telegram.ox.OxAgentsBridge.classifyChatTarget(currentAccount, dialogId) == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.LOCAL_GROUP
-                || org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId);
+                targetResolution.status == org.telegram.ox.OxAgentsBridge.TargetStatus.CONFIRMED
+                        && (targetResolution.kind == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.LOCAL_GROUP
+                        || targetResolution.kind == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.AGENT_DM);
         boolean runServerReload = reload;
         if (oxLocalTarget && isCache && reload) {
             // Local targets must never reach Telegram for history (GAP-1). The empty
@@ -12811,8 +12829,24 @@ public class MessagesController extends BaseController implements NotificationCe
         // restore and its pending task hanging (G1 contract §4.4). Restore the dialog
         // row from messages_v2/chats locally instead; the restore owns all marker and
         // pending-task cleanup so no local path depends on a network callback.
-        if (org.telegram.ox.OxAgentsBridge.classifyChatTarget(currentAccount, dialogId) == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.LOCAL_GROUP
-                || org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId)) {
+        final org.telegram.ox.OxAgentsBridge.TargetResolution restoreResolution =
+                org.telegram.ox.OxAgentsBridge.classifyTarget(currentAccount, dialogId);
+        final boolean oxLocalRestore =
+                restoreResolution.status == org.telegram.ox.OxAgentsBridge.TargetStatus.CONFIRMED
+                        && (restoreResolution.kind == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.LOCAL_GROUP
+                        || restoreResolution.kind == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.AGENT_DM);
+        if (restoreResolution.status == org.telegram.ox.OxAgentsBridge.TargetStatus.TARGET_UNCONFIRMED) {
+            // Review D1: unproven origin — neither serve remotely nor restore locally.
+            // Markers are cleared so no cycle hangs; the task, if any, is dropped with a
+            // logged reason instead of a network request to a fabricated peer.
+            gettingUnknownDialogs.delete(dialogId);
+            if (taskId != 0) {
+                getMessagesStorage().removePendingTask(taskId);
+            }
+            FileLog.e("loadUnknownDialog: target unconfirmed did=" + dialogId + " reason=" + restoreResolution.reason);
+            return;
+        }
+        if (oxLocalRestore) {
             if (gettingUnknownDialogs.indexOfKey(dialogId) < 0) {
                 gettingUnknownDialogs.put(dialogId, true);
                 restoreLocalUnknownDialog(dialogId, taskId);

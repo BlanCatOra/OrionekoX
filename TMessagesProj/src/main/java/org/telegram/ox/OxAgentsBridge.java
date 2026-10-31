@@ -70,20 +70,63 @@ public class OxAgentsBridge {
      */
     public enum OxChatTargetKind { AGENT_DM, LOCAL_GROUP, HYBRID_REAL_GROUP, REMOTE }
 
+    /**
+     * Review D1: resolution status travels separately from the confirmed kind.
+     * TARGET_UNCONFIRMED means the caller must not route anywhere yet — no network,
+     * no local serving — until a recovery/audit path resolves the origin.
+     */
+    public enum TargetStatus { CONFIRMED, TARGET_UNCONFIRMED }
+
+    public static final class TargetResolution {
+        public final TargetStatus status;
+        public final OxChatTargetKind kind; // null when status == TARGET_UNCONFIRMED
+        public final String reason;
+
+        TargetResolution(TargetStatus status, OxChatTargetKind kind, String reason) {
+            this.status = status;
+            this.kind = kind;
+            this.reason = reason;
+        }
+    }
+
+    /** Confirmed kind with no ambiguity. */
+    public static TargetResolution confirmed(OxChatTargetKind kind) {
+        return new TargetResolution(TargetStatus.CONFIRMED, kind, null);
+    }
+
+    public static TargetResolution unconfirmed(String reason) {
+        return new TargetResolution(TargetStatus.TARGET_UNCONFIRMED, null, reason);
+    }
+
     public static OxChatTargetKind classifyChatTarget(long account, long dialogId) {
-        if (account != 0 || dialogId == 0) {
-            return OxChatTargetKind.REMOTE; // TARGET_UNCONFIRMED by contract; treat as remote
+        return classifyTarget((int) account, dialogId).kind;
+    }
+
+    public static TargetResolution classifyTarget(int account, long dialogId) {
+        // account is part of the request identity (contract §3): a non-default account
+        // or unknown context must never be served from the account-0 local stores, and
+        // it must not be pushed to Telegram either — it stays unresolved.
+        if (account != 0) {
+            return unconfirmed("account " + account + " has no local classification");
+        }
+        if (dialogId == 0) {
+            return unconfirmed("empty dialog id");
         }
         if (isAgentDialog(dialogId)) {
-            return OxChatTargetKind.AGENT_DM;
+            return confirmed(OxChatTargetKind.AGENT_DM);
         }
-        if (dialogId < 0 && OxGroupStore.isLocallyCreated(-dialogId)) {
-            return OxChatTargetKind.LOCAL_GROUP;
+        if (dialogId < 0) {
+            if (OxGroupStore.isLocallyCreated(-dialogId)) {
+                return confirmed(OxChatTargetKind.LOCAL_GROUP);
+            }
+            // An Ox member registry without the created_ marker is an old-group
+            // candidate whose origin is unproven: it must not be served remotely with
+            // a fabricated peer, nor silently treated as a plain real group.
+            if (OxGroupStore.hasAgents(-dialogId)) {
+                return unconfirmed("ox members present but created_ marker missing (old local-group candidate)");
+            }
         }
-        if (dialogId < 0 && OxGroupStore.hasAgents(-dialogId)) {
-            return OxChatTargetKind.HYBRID_REAL_GROUP;
-        }
-        return OxChatTargetKind.REMOTE;
+        return confirmed(OxChatTargetKind.REMOTE);
     }
 
     /**
