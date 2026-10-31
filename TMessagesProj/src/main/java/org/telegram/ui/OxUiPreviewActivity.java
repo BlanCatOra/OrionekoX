@@ -2128,7 +2128,7 @@ public class OxUiPreviewActivity extends Activity {
         row.addView(text, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView state = new TextView(this);
-        state.setText(on ? "on" : "off");
+        state.setText(LocaleController.getString(on ? R.string.OxUiOn : R.string.OxUiOff));
         state.setTextSize(11);
         state.setTypeface(mono());
         state.setTextColor(MUTED);
@@ -3553,18 +3553,20 @@ public class OxUiPreviewActivity extends Activity {
     }
 
     /** A labelled row of radio choices for shell options. */
-    private LinearLayout shellChoice(String label, String[][] options, String current,
-            boolean firstOfGroup) {
+    private LinearLayout shellChoice(int labelRes, String field, int[] optionLabelRes,
+            String[][] options, String current, boolean firstOfGroup) {
         LinearLayout wrap = new LinearLayout(this);
         wrap.setOrientation(LinearLayout.VERTICAL);
         TextView caption = new TextView(this);
-        caption.setText(label);
+        caption.setText(LocaleController.getString(labelRes));
         caption.setTextSize(11);
         caption.setTypeface(mono());
         caption.setTextColor(MUTED);
         caption.setPadding(dp(4), firstOfGroup ? dp(4) : dp(12), dp(4), dp(4));
         wrap.addView(caption);
-        for (String[] opt : options) {
+        for (int oi = 0; oi < options.length; oi++) {
+            String[] opt = options[oi];
+            final String optLabel = LocaleController.getString(optionLabelRes[oi]);
             boolean active = opt[1].equals(current);
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -3572,14 +3574,14 @@ public class OxUiPreviewActivity extends Activity {
             row.setPadding(dp(4), dp(9), dp(4), dp(9));
             row.setBackground(new android.graphics.drawable.RippleDrawable(
                     ColorStateList.valueOf(RIPPLE), null, null));
-            row.setContentDescription(opt[0]);
+            row.setContentDescription(optLabel);
             View dot = new View(this);
             dot.setBackground(active ? plate(SIGNAL, 6, 0, 0) : plate(0, 6, LINE, 1));
             LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(12), dp(12));
             dlp.rightMargin = dp(14);
             row.addView(dot, dlp);
             TextView text = new TextView(this);
-            text.setText(opt[0]);
+            text.setText(optLabel);
             text.setTextSize(14);
             text.setTypeface(sans());
             text.setTextColor(INK);
@@ -3594,15 +3596,14 @@ public class OxUiPreviewActivity extends Activity {
                 row.addView(check);
             }
             final String value = opt[1];
-            final String fieldName = "Navigation".equals(label) ? "navStyle"
-                    : ("Density".equals(label) ? "density" : "navMaterial");
-            row.setOnClickListener(v -> setSkinField(fieldName, value));
+            row.setOnClickListener(v -> setSkinField(field, value));
             wrap.addView(row);
         }
         return wrap;
     }
 
-    private LinearLayout shellToggle(String label, boolean on, String field) {
+    private LinearLayout shellToggle(int labelRes, boolean on, String field) {
+        final String label = LocaleController.getString(labelRes);
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -3623,7 +3624,7 @@ public class OxUiPreviewActivity extends Activity {
         row.addView(text, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView state = new TextView(this);
-        state.setText(on ? "on" : "off");
+        state.setText(LocaleController.getString(on ? R.string.OxUiOn : R.string.OxUiOff));
         state.setTextSize(11);
         state.setTypeface(mono());
         state.setTextColor(MUTED);
@@ -3632,14 +3633,15 @@ public class OxUiPreviewActivity extends Activity {
         return row;
     }
 
-    private LinearLayout dockItemToggle(String label, int bit, boolean on) {
+    private LinearLayout dockItemToggle(int labelRes, int bit, boolean on) {
+        final String label = LocaleController.getString(labelRes);
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(4), dp(11), dp(4), dp(11));
         row.setBackground(new android.graphics.drawable.RippleDrawable(
                 ColorStateList.valueOf(RIPPLE), null, null));
-        row.setContentDescription("Dock item " + label);
+        row.setContentDescription(LocaleController.formatString("OxUiDockItemDesc", R.string.OxUiDockItemDesc, label));
         View dot = new View(this);
         dot.setBackground(on ? plate(SIGNAL, 6, 0, 0) : plate(0, 6, LINE, 1));
         LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(12), dp(12));
@@ -3653,7 +3655,7 @@ public class OxUiPreviewActivity extends Activity {
         row.addView(text, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView state = new TextView(this);
-        state.setText(on ? "shown" : "hidden");
+        state.setText(LocaleController.getString(on ? R.string.OxUiShown : R.string.OxUiHidden));
         state.setTextSize(11);
         state.setTypeface(mono());
         state.setTextColor(MUTED);
@@ -3945,19 +3947,25 @@ public class OxUiPreviewActivity extends Activity {
         panel.addView(shellLabel);
         final String navStyle = skin == null ? "rail" : skin.navStyle;
         final String navMaterial = skin == null ? "solid" : skin.navMaterial;
-        panel.addView(shellChoice("Navigation", new String[][]{
-                {"Rail", "rail"}, {"Bottom bar", "bottom"}, {"Floating dock", "floating"}
-        }, navStyle, true));
+        panel.addView(shellChoice(R.string.OxUiNavStyle, "navStyle",
+                new int[]{R.string.OxUiNavRail, R.string.OxUiNavBottom, R.string.OxUiNavFloating},
+                new String[][]{
+                        {"Rail", "rail"}, {"Bottom bar", "bottom"}, {"Floating dock", "floating"}
+                }, navStyle, true));
         final String dockPos = skin == null ? "aboveInput" : skin.dockPosition;
-        panel.addView(shellChoice("Dock position", new String[][]{
-                {"Top (under header)", "top"}, {"Above input", "aboveInput"},
-                {"Bottom of screen", "bottom"}
-        }, dockPos, false));
-        panel.addView(shellChoice("Material", new String[][]{
-                {"Solid", "solid"}, {"Acrylic", "acrylic"}, {"Mica", "mica"}, {"Glass", "glass"}
-        }, navMaterial, false));
-        panel.addView(shellToggle("Rail chips", skin == null || skin.showRail, "showRail"));
-        panel.addView(shellToggle("Footer status", skin == null || skin.showFooter, "showFooter"));
+        panel.addView(shellChoice(R.string.OxUiDockPosition, "dockPosition",
+                new int[]{R.string.OxUiDockTop, R.string.OxUiDockAboveInput, R.string.OxUiDockBottom},
+                new String[][]{
+                        {"Top (under header)", "top"}, {"Above input", "aboveInput"},
+                        {"Bottom of screen", "bottom"}
+                }, dockPos, false));
+        panel.addView(shellChoice(R.string.OxUiMaterial, "navMaterial",
+                new int[]{R.string.OxUiMatSolid, R.string.OxUiMatAcrylic, R.string.OxUiMatMica, R.string.OxUiMatGlass},
+                new String[][]{
+                        {"Solid", "solid"}, {"Acrylic", "acrylic"}, {"Mica", "mica"}, {"Glass", "glass"}
+                }, navMaterial, false));
+        panel.addView(shellToggle(R.string.OxUiRailChips, skin == null || skin.showRail, "showRail"));
+        panel.addView(shellToggle(R.string.OxUiFooterStatus, skin == null || skin.showFooter, "showFooter"));
 
         TextView componentsLabel = new TextView(this);
         componentsLabel.setText(LocaleController.getString(R.string.OxUiComponentsSection));
@@ -3968,11 +3976,13 @@ public class OxUiPreviewActivity extends Activity {
         componentsLabel.setPadding(dp(4), dp(18), dp(4), dp(6));
         panel.addView(componentsLabel);
         final String density = skin == null ? "cozy" : skin.density;
-        panel.addView(shellChoice("Density", new String[][]{
-                {"Cozy", "cozy"}, {"Compact", "compact"}
-        }, density, true));
-        panel.addView(shellToggle("Timestamps", skin == null || skin.showTimestamps, "showTimestamps"));
-        panel.addView(shellToggle("Assistant accent rule", skin == null || skin.showAccent, "showAccent"));
+        panel.addView(shellChoice(R.string.OxUiDensity, "density",
+                new int[]{R.string.OxUiDensityCozy, R.string.OxUiDensityCompact},
+                new String[][]{
+                        {"Cozy", "cozy"}, {"Compact", "compact"}
+                }, density, true));
+        panel.addView(shellToggle(R.string.OxUiTimestamps, skin == null || skin.showTimestamps, "showTimestamps"));
+        panel.addView(shellToggle(R.string.OxUiAccentRule, skin == null || skin.showAccent, "showAccent"));
         TextView dockLabel = new TextView(this);
         dockLabel.setText(LocaleController.getString(R.string.OxUiDockItems));
         dockLabel.setTextSize(11);
@@ -3981,9 +3991,9 @@ public class OxUiPreviewActivity extends Activity {
         dockLabel.setPadding(dp(4), dp(12), dp(4), dp(4));
         panel.addView(dockLabel);
         final int dockMask = skin == null ? 15 : skin.dockItems;
-        String[] dockNames = {"Agents", "Search", "Terminal", "Settings"};
+        int[] dockNameRes = {R.string.OxUiAgents, R.string.OxUiSearchAll, R.string.OxUiTerminal, R.string.OxUiSettings};
         for (int i = 0; i < 4; i++) {
-            panel.addView(dockItemToggle(dockNames[i], i, (dockMask & (1 << i)) != 0));
+            panel.addView(dockItemToggle(dockNameRes[i], i, (dockMask & (1 << i)) != 0));
         }
 
         View rule = sectionRule();
