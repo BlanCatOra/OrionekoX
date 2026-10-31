@@ -2,24 +2,31 @@ package org.telegram.ox;
 
 import android.util.SparseIntArray;
 
-import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
-import org.telegram.tgnet.NativeByteBuffer;
 import org.telegram.tgnet.TLRPC;
 
 import java.util.HashMap;
 
 /**
- * Bounded local history finishing for Ox local targets (G1 fix contract §4.2/4.3):
- * after an empty cache read, re-read the same loadIndex once from messages_v2 behind
- * the storage-queue write barrier and always deliver a terminal
- * NotificationCenter.messagesDidLoad — isEnd=true even when the dialog has no rows, so
- * a freshly created local group never ends up waiting on a Telegram server response.
+ * Bounded local history finishing for Ox local targets (G1 fix contract §4.2/4.3).
+ *
+ * Review D8: instead of a hand-written SQL projection, the finishing pass reuses
+ * MessagesStorage.getMessagesInternal — the exact native query/decoder used by the
+ * cache pass — so pagination direction, around/unread anchors, holes, media and
+ * message metadata survive verbatim. The call must be dispatched from the
+ * storageQueue so it runs behind any previously queued write (write barrier).
+ *
+ * Review D5 (partial): the in-flight marker below is the once-per-request guard;
+ * the terminal empty end itself stays in MessagesController and only fires for the
+ * initial page after the bounded re-read. Structured STORAGE_ERROR propagation from
+ * getMessagesInternal remains a registered gap (D3) — the native catch swallows SQL
+ * errors into an empty result.
  */
 public final class OxLocalHistory {
+    /** loadIndex currently in a finishing pass, per dialog (review D4 full key pending). */
     private static final HashMap<Long, Integer> PENDING_REREAD = new HashMap<>();
 
     private OxLocalHistory() {}
@@ -37,59 +44,42 @@ public final class OxLocalHistory {
         }
     }
 
-    public static void reloadLocalAfterWriteBarrier(MessagesController controller, long dialogId, int count, int maxId, int classGuid, int loadType, int loadIndex) {
+    /**
+     * Finishing pass for a local target that must not touch the network. Runs the
+     * native storage query behind the storageQueue barrier and delivers through the
+     * normal processLoadedMessages path with the full original request identity.
+     */
+    public static void finishLocalTarget(MessagesController controller, long dialogId, long mergeDialogId,
+                                         int count, int maxId, int offsetDate, int minDate, int classGuid,
+                                         int loadType, int mode, long threadMessageId, int loadIndex,
+                                         boolean processMessages, boolean isTopic) {
         synchronized (OxLocalHistory.class) {
             PENDING_REREAD.put(dialogId, loadIndex);
         }
         MessagesStorage storage = MessagesStorage.getInstance(0);
         storage.getStorageQueue().postRunnable(() -> {
-            TLRPC.TL_messages_messages res = new TLRPC.TL_messages_messages();
-            int topMid = 0;
-            SQLiteCursor cursor = null;
+            Runnable processRunnable;
             try {
-                String query = "SELECT data, send_state, mid, date FROM messages_v2 WHERE uid = " + dialogId
-                        + (maxId != 0 ? " AND mid < " + maxId : "")
-                        + " ORDER BY date DESC, mid DESC LIMIT " + count;
-                cursor = storage.getDatabase().queryFinalized(query);
-                while (cursor.next()) {
-                    NativeByteBuffer data = cursor.byteBufferValue(0);
-                    if (data != null) {
-                        TLRPC.Message message = TLRPC.Message.TLdeserialize(data, data.readInt32(false), false);
-                        data.reuse();
-                        if (message != null) {
-                            message.send_state = cursor.intValue(1);
-                            message.id = cursor.intValue(2);
-                            message.date = cursor.intValue(3);
-                            message.dialog_id = dialogId;
-                            if (message.id > 0 && message.send_state != 0 && message.send_state != 3) {
-                                message.send_state = 0;
-                            }
-                            res.messages.add(message);
-                            if (message.id > topMid) {
-                                topMid = message.id;
-                            }
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // STORAGE_ERROR by contract: report with a visible terminal, never clear
-                // the local table and pretend the dialog is simply empty.
-                FileLog.e("OxLocalHistory re-read failed did=" + dialogId, e);
-            } finally {
-                if (cursor != null) {
-                    cursor.dispose();
-                }
+                // Same queue as putMessages: everything written before this point is
+                // committed before this query runs (contract §4.2.2 write barrier).
+                processRunnable = storage.getMessagesInternal(dialogId, mergeDialogId, count, maxId, offsetDate,
+                        minDate, classGuid, loadType, mode, threadMessageId, loadIndex, processMessages, isTopic, null);
+            } catch (Throwable t) {
+                FileLog.e("OxLocalHistory native query failed did=" + dialogId, t);
+                clearReread(dialogId, loadIndex);
+                AndroidUtilities.runOnUIThread(() ->
+                        controller.processLoadedMessages(new TLRPC.TL_messages_messages(), 0, dialogId, mergeDialogId,
+                                count, maxId, offsetDate, true, classGuid, 0, 0, 0, 0, loadType, false, mode,
+                                threadMessageId, loadIndex, false, 0, false, isTopic, null));
+                return;
             }
-            final int finalTopMid = topMid;
-            final boolean end = res.messages.size() < count;
-            final int resCount = res.messages.size();
-            final TLRPC.TL_messages_messages finalRes = res;
-            AndroidUtilities.runOnUIThread(() -> {
+            org.telegram.messenger.Utilities.stageQueue.postRunnable(() -> {
                 try {
-                    controller.processLoadedMessages(finalRes, resCount, dialogId, 0, count, maxId, 0, true,
-                            classGuid, 0, finalTopMid, 0, 0, loadType, end, 0, 0, loadIndex, false, 0, true, false, null);
+                    processRunnable.run();
                 } catch (Throwable t) {
                     FileLog.e("OxLocalHistory deliver failed did=" + dialogId, t);
+                } finally {
+                    clearReread(dialogId, loadIndex);
                 }
             });
         });

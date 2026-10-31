@@ -11540,9 +11540,10 @@ public class MessagesController extends BaseController implements NotificationCe
                 org.telegram.ox.OxAgentsBridge.classifyChatTarget(currentAccount, dialogId) == org.telegram.ox.OxAgentsBridge.OxChatTargetKind.LOCAL_GROUP
                 || org.telegram.ox.OxAgentsBridge.isAgentDialog(dialogId);
         if (!fromCache && oxLocalTarget) {
-            if (mode == ChatActivity.MODE_DEFAULT && threadMessageId == 0) {
-                org.telegram.ox.OxLocalHistory.reloadLocalAfterWriteBarrier(this, dialogId, count, max_id, classGuid, load_type, loadIndex);
-            }
+            // Every supported mode/thread combination of a local target finishes through
+            // the native storage query (review D2/D8); no silent return, no network.
+            org.telegram.ox.OxLocalHistory.finishLocalTarget(this, dialogId, mergeDialogId, count, max_id, offset_date,
+                    minDate, classGuid, load_type, mode, threadMessageId, loadIndex, processMessages, isTopic);
             return;
         }
         if ((threadMessageId == 0 || isTopic || mode == ChatActivity.MODE_SUGGESTIONS || mode == ChatActivity.MODE_SAVED || mode == ChatActivity.MODE_QUICK_REPLIES || mode == ChatActivity.MODE_WELCOME_MESSAGES) && mode != ChatActivity.MODE_PINNED && (fromCache || DialogObject.isEncryptedDialog(dialogId))) {
@@ -12009,11 +12010,12 @@ public class MessagesController extends BaseController implements NotificationCe
             // cache pass gets one bounded local re-read after the storage write
             // barrier; if that is still empty it terminates with isEnd=true instead
             // of leaving the chat on a permanent spinner.
+            if (mode == ChatActivity.MODE_DEFAULT && threadMessageId == 0 && org.telegram.ox.OxLocalHistory.shouldReread(dialogId, loadIndex)) {
+                org.telegram.ox.OxLocalHistory.finishLocalTarget(this, dialogId, mergeDialogId, count, max_id, offset_date,
+                        0, classGuid, load_type, mode, threadMessageId, loadIndex, needProcess, isTopic);
+                return;
+            }
             if (mode == ChatActivity.MODE_DEFAULT) {
-                if (org.telegram.ox.OxLocalHistory.shouldReread(dialogId, loadIndex)) {
-                    org.telegram.ox.OxLocalHistory.reloadLocalAfterWriteBarrier(this, dialogId, count, max_id, classGuid, load_type, loadIndex);
-                    return;
-                }
                 org.telegram.ox.OxLocalHistory.clearReread(dialogId, loadIndex);
             }
             runServerReload = false;
